@@ -111,8 +111,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 </select>
                             </div>
                             <div class="qisutu-form-field">
-                                <label>[% Translate.AdminSystemEmail %]</label>
-                                <select name="SystemEmailID">
+                                <label>[% Translate.AdminSystemEmail %] *</label>
+                                <select name="SystemEmailID" required>
                                     <option value="">[% Translate.AdminNoSelection %]</option>
                                     [% RAW.CreateSystemEmailOptionsHTML %]
                                 </select>
@@ -208,8 +208,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 </select>
                             </div>
                             <div class="qisutu-form-field">
-                                <label>[% Translate.AdminSystemEmail %]</label>
-                                <select name="SystemEmailID">
+                                <label>[% Translate.AdminSystemEmail %] *</label>
+                                <select name="SystemEmailID" required>
                                     <option value="">[% Translate.AdminNoSelection %]</option>
                                     [% RAW.EditSystemEmailOptionsHTML %]
                                 </select>

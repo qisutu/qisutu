@@ -86,6 +86,10 @@
                     if (hidden) {
                         hidden.value = item.id || '';
                     }
+                    input.dispatchEvent(new CustomEvent('qisutu:autocomplete-selected', {
+                        bubbles: true,
+                        detail: { item: item }
+                    }));
                     closeAll();
                 });
 
@@ -117,7 +121,13 @@
 
                 input.setCustomValidity('');
                 if (hidden && term !== selectedLabel) {
+                    var hadSelection = hidden.value !== '';
                     hidden.value = '';
+                    if (hadSelection) {
+                        input.dispatchEvent(new CustomEvent('qisutu:autocomplete-cleared', {
+                            bubbles: true
+                        }));
+                    }
                 }
 
                 window.clearTimeout(timer);
@@ -187,9 +197,300 @@
         });
     }
 
+    function initCustomerInfo() {
+        var input = document.querySelector('[data-qisutu-customer-user-autocomplete]');
+        var hidden = document.getElementById('qisutu-agent-ticket-create-customer-user-id');
+        var panel = document.querySelector('[data-qisutu-customer-info]');
+
+        if (!input || !hidden || !panel) {
+            return;
+        }
+
+        var url = panel.getAttribute('data-qisutu-customer-info-url') || '';
+        var empty = panel.querySelector('[data-qisutu-customer-info-empty]');
+        var loading = panel.querySelector('[data-qisutu-customer-info-loading]');
+        var error = panel.querySelector('[data-qisutu-customer-info-error]');
+        var content = panel.querySelector('[data-qisutu-customer-info-content]');
+        var customerList = panel.querySelector('[data-qisutu-customer-info-customer]');
+        var customerUserList = panel.querySelector('[data-qisutu-customer-info-customer-user]');
+        var requestIndex = 0;
+        var controller = null;
+
+        function setVisible(node, visible) {
+            if (node) {
+                node.classList.toggle('qisutu-hidden', !visible);
+            }
+        }
+
+        function reset() {
+            requestIndex += 1;
+            if (controller) {
+                try { controller.abort(); } catch (abortError) {}
+                controller = null;
+            }
+            if (customerList) {
+                customerList.innerHTML = '';
+            }
+            if (customerUserList) {
+                customerUserList.innerHTML = '';
+            }
+            setVisible(empty, true);
+            setVisible(loading, false);
+            setVisible(error, false);
+            setVisible(content, false);
+        }
+
+        function renderFields(target, fields) {
+            target.innerHTML = '';
+
+            (Array.isArray(fields) ? fields : []).forEach(function (field) {
+                var row = document.createElement('div');
+                var label = document.createElement('dt');
+                var value = document.createElement('dd');
+
+                row.className = 'qisutu-agent-ticket-create-customer-info-row';
+                label.textContent = field.label || '';
+                value.textContent = field.value === null || typeof field.value === 'undefined' || field.value === ''
+                    ? '–'
+                    : String(field.value);
+
+                row.appendChild(label);
+                row.appendChild(value);
+                target.appendChild(row);
+            });
+        }
+
+        function load(customerUserID) {
+            customerUserID = String(customerUserID || '').trim();
+            if (!url || !customerUserID) {
+                reset();
+                return;
+            }
+
+            requestIndex += 1;
+            var currentIndex = requestIndex;
+
+            if (controller) {
+                try { controller.abort(); } catch (abortError) {}
+            }
+            controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+
+            setVisible(empty, false);
+            setVisible(loading, true);
+            setVisible(error, false);
+            setVisible(content, false);
+
+            fetch(url + (url.indexOf('?') === -1 ? '?' : '&') + 'CustomerUserID=' + encodeURIComponent(customerUserID), {
+                credentials: 'same-origin',
+                signal: controller ? controller.signal : undefined
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error('customer info failed');
+                }
+                return response.json();
+            }).then(function (data) {
+                if (currentIndex !== requestIndex) {
+                    return;
+                }
+                if (!data || !data.success) {
+                    throw new Error('customer info unavailable');
+                }
+
+                renderFields(customerList, data.customer && data.customer.fields);
+                renderFields(customerUserList, data.customer_user && data.customer_user.fields);
+                setVisible(loading, false);
+                setVisible(error, false);
+                setVisible(content, true);
+            }).catch(function (loadError) {
+                if (loadError && loadError.name === 'AbortError') {
+                    return;
+                }
+                if (currentIndex !== requestIndex) {
+                    return;
+                }
+                setVisible(loading, false);
+                setVisible(error, true);
+                setVisible(content, false);
+            });
+        }
+
+        input.addEventListener('qisutu:autocomplete-selected', function () {
+            load(hidden.value);
+        });
+
+        input.addEventListener('qisutu:autocomplete-cleared', reset);
+
+        if (hidden.value) {
+            load(hidden.value);
+        }
+        else {
+            reset();
+        }
+    }
+
+    function initServices() {
+        var customerInput = document.querySelector('[data-qisutu-customer-user-autocomplete]');
+        var customerHidden = document.getElementById('qisutu-agent-ticket-create-customer-user-id');
+        var service = document.querySelector('[data-qisutu-create-service]');
+        var info = document.querySelector('[data-qisutu-create-sla-info]');
+
+        if (!customerInput || !customerHidden || !service) {
+            return;
+        }
+
+        var url = service.getAttribute('data-qisutu-service-options-url') || '';
+        var placeholderText = service.options.length ? service.options[0].textContent : '';
+        var initialServiceID = service.value || '';
+        var itemsByID = {};
+        var requestIndex = 0;
+        var controller = null;
+
+        function text(selector, value) {
+            var node = info ? info.querySelector(selector) : null;
+            if (node) {
+                node.textContent = value === null || typeof value === 'undefined' || value === '' ? '–' : String(value);
+            }
+        }
+
+        function renderInfo(item) {
+            if (!info) {
+                return;
+            }
+
+            var visible = !!(item && item.sla_id);
+            info.classList.toggle('qisutu-hidden', !visible);
+            if (!visible) {
+                return;
+            }
+
+            text('[data-qisutu-sla-name]', item.sla_name);
+            text('[data-qisutu-sla-calendar]', item.calendar_name);
+            text('[data-qisutu-sla-source]', item.assignment_source_label);
+            text('[data-qisutu-sla-update-mode]', item.update_mode_label);
+            text('[data-qisutu-sla-first]', item.first_response_minutes);
+            text('[data-qisutu-sla-update]', item.update_minutes);
+            text('[data-qisutu-sla-solution]', item.solution_minutes);
+        }
+
+        function clearOptions() {
+            service.innerHTML = '';
+            var option = document.createElement('option');
+            option.value = '';
+            option.textContent = placeholderText;
+            service.appendChild(option);
+            itemsByID = {};
+            renderInfo(null);
+        }
+
+        function renderOptions(items, selectedID) {
+            clearOptions();
+            (Array.isArray(items) ? items : []).forEach(function (item) {
+                var id = String(item.id || '');
+                if (!id) {
+                    return;
+                }
+                itemsByID[id] = item;
+                var option = document.createElement('option');
+                option.value = id;
+                option.textContent = item.label || '';
+                service.appendChild(option);
+            });
+
+            selectedID = String(selectedID || '');
+            if (selectedID && itemsByID[selectedID]) {
+                service.value = selectedID;
+                renderInfo(itemsByID[selectedID]);
+            }
+            else {
+                service.value = '';
+                renderInfo(null);
+            }
+        }
+
+        function load(customerUserID, selectedID) {
+            customerUserID = String(customerUserID || '').trim();
+            requestIndex += 1;
+            var currentIndex = requestIndex;
+
+            if (controller) {
+                try { controller.abort(); } catch (abortError) {}
+            }
+            controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+
+            if (!url || !customerUserID) {
+                clearOptions();
+                return;
+            }
+
+            fetch(url + (url.indexOf('?') === -1 ? '?' : '&') + 'CustomerUserID=' + encodeURIComponent(customerUserID), {
+                credentials: 'same-origin',
+                signal: controller ? controller.signal : undefined
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error('service options failed');
+                }
+                return response.json();
+            }).then(function (data) {
+                if (currentIndex !== requestIndex) {
+                    return;
+                }
+                renderOptions(data && data.success ? data.items : [], selectedID);
+            }).catch(function (error) {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
+                if (currentIndex === requestIndex) {
+                    clearOptions();
+                }
+            });
+        }
+
+        service.addEventListener('change', function () {
+            var item = itemsByID[String(service.value || '')];
+            renderInfo(item);
+        });
+
+        customerInput.addEventListener('qisutu:autocomplete-selected', function () {
+            load(customerHidden.value, '');
+        });
+        customerInput.addEventListener('qisutu:autocomplete-cleared', function () {
+            clearOptions();
+        });
+
+        if (customerHidden.value) {
+            load(customerHidden.value, initialServiceID);
+        }
+        else {
+            clearOptions();
+        }
+    }
+
+    function initPendingUntil() {
+        var status = document.querySelector('[data-qisutu-create-status]');
+        var field = document.querySelector('[data-qisutu-create-pending-until-field]');
+        var input = document.getElementById('qisutu-agent-ticket-create-pending-until');
+
+        if (!status || !field || !input) {
+            return;
+        }
+
+        function update() {
+            var selected = status.options[status.selectedIndex];
+            var stateType = selected ? (selected.getAttribute('data-state-type') || '') : '';
+            var isPending = stateType === 'pending';
+
+            field.classList.toggle('qisutu-hidden', !isPending);
+            input.required = isPending;
+        }
+
+        status.addEventListener('change', update);
+        update();
+    }
+
     function initQueueTemplate() {
         var queue = document.querySelector('[data-qisutu-create-queue]');
         var body = document.querySelector('[data-qisutu-create-body]');
+        var dynamicFields = document.querySelector('[data-qisutu-create-dynamic-fields]');
 
         if (!queue || !body) {
             return;
@@ -215,9 +516,48 @@
             }, 100);
         }
 
+        var dynamicFieldsRequestIndex = 0;
+
+        function dynamicFieldsLoad(queueID) {
+            var url = queue.getAttribute('data-qisutu-dynamic-fields-url') || '';
+            dynamicFieldsRequestIndex += 1;
+            var currentRequest = dynamicFieldsRequestIndex;
+
+            if (!dynamicFields) {
+                return;
+            }
+
+            if (!url || !queueID) {
+                dynamicFields.innerHTML = '';
+                return;
+            }
+
+            dynamicFields.innerHTML = '';
+
+            fetch(url + (url.indexOf('?') === -1 ? '?' : '&') + 'QueueID=' + encodeURIComponent(queueID), {
+                credentials: 'same-origin'
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error('dynamic fields failed');
+                }
+                return response.json();
+            }).then(function (data) {
+                if (currentRequest !== dynamicFieldsRequestIndex) {
+                    return;
+                }
+                dynamicFields.innerHTML = data && data.success ? (data.html || '') : '';
+            }).catch(function () {
+                if (currentRequest === dynamicFieldsRequestIndex) {
+                    dynamicFields.innerHTML = '';
+                }
+            });
+        }
+
         queue.addEventListener('change', function () {
             var url = queue.getAttribute('data-qisutu-template-url') || '';
             var queueID = queue.value || '';
+
+            dynamicFieldsLoad(queueID);
 
             if (!url || !queueID) {
                 editorSetData('');
@@ -505,11 +845,36 @@
         }, true);
     }
 
+    function initDynamicMultiSelects() {
+        document.addEventListener('change', function (event) {
+            var select = event.target && event.target.closest
+                ? event.target.closest('select[data-qisutu-dynamic-multiselect]')
+                : null;
+
+            if (!select) {
+                return;
+            }
+
+            var emptyOption = select.querySelector('option[value=""]');
+            var hasSelectedValue = Array.prototype.slice.call(select.options).some(function (option) {
+                return option.value !== '' && option.selected;
+            });
+
+            if (emptyOption && hasSelectedValue) {
+                emptyOption.selected = false;
+            }
+        });
+    }
+
     function init() {
         initAutocomplete();
+        initCustomerInfo();
+        initServices();
+        initPendingUntil();
         initQueueTemplate();
         initAttachments();
         initFormValidation();
+        initDynamicMultiSelects();
     }
 
     if (document.readyState === 'loading') {

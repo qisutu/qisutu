@@ -1,0 +1,61 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+<section class="qisutu-dashboard" aria-labelledby="qisutu-admin-slas-title">
+    <div class="qisutu-dashboard-header">
+        <div><h1 id="qisutu-admin-slas-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div>
+        [% IF ShowBackToList %]<a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminSLAs">[% Translate.AdminBackToList %]</a>[% END %]
+    </div>
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+    [% IF ShowList %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.AdminSLAsList %]</h2><span class="qisutu-panel-subtitle">[% SLACount %]</span></div><a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminSLAs;Action=Create">[% Translate.AdminSLACreate %]</a></div>
+        [% IF SLACount %]
+        <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table">
+            <thead><tr><th>[% Translate.AdminSLA %]</th><th>[% Translate.AdminService %]</th><th>[% Translate.AdminCalendar %]</th><th>[% Translate.AdminEscalations %]</th><th>[% Translate.AdminDefault %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminActions %]</th></tr></thead>
+            <tbody>
+            [% FOREACH SLA IN SLAList %]
+                <tr>
+                    <td><strong>[% SLA.name %]</strong></td><td>[% SLA.service_name %]</td><td>[% SLA.calendar_display %]</td>
+                    <td>[% Translate.AdminEscalationFirstResponse %]: [% SLA.first_response_minutes %]<br>[% Translate.AdminEscalationUpdate %]: [% SLA.update_minutes %]<br>[% Translate.AdminEscalationSolution %]: [% SLA.solution_minutes %]</td>
+                    <td>[% SLA.is_default_label %]</td>
+                    <td>[% SLA.active_label %]</td>
+                    <td><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminSLAs;Action=Edit;SLAID=[% SLA.id %]">[% Translate.AdminEdit %]</a></td>
+                </tr>
+            [% END %]
+            </tbody>
+        </table></div>
+        [% ELSE %]<div class="qisutu-empty"><strong>[% Translate.AdminSLAsEmpty %]</strong></div>[% END %]
+    </section>
+    [% END %]
+
+    [% IF ShowForm %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><h2>[% FormTitle %]</h2></div>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+            <input type="hidden" name="Page" value="AdminSLAs">
+            <input type="hidden" name="Step" value="[% FormStep %]">
+            <input type="hidden" name="SLAID" value="[% FormSLAID %]">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label>[% Translate.AdminSLA %] *</label><input type="text" name="Name" value="[% FormSLAName %]" maxlength="255" required></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminService %] *</label><select name="ServiceID" required><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.FormServiceOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminCalendar %] *</label><select name="CalendarID" required><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.FormCalendarOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSLAUpdateMode %] *</label><select name="UpdateMode" required><option value="customer_response" [% FormUpdateModeCustomerSelected %]>[% Translate.AdminSLAUpdateModeCustomer %]</option><option value="regular" [% FormUpdateModeRegularSelected %]>[% Translate.AdminSLAUpdateModeRegular %]</option></select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminEscalationFirstResponse %]</label><input type="number" name="FirstResponseMinutes" value="[% FormSLAFirstResponseMinutes %]" min="0"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminEscalationUpdate %]</label><input type="number" name="UpdateMinutes" value="[% FormSLAUpdateMinutes %]" min="0"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminEscalationSolution %]</label><input type="number" name="SolutionMinutes" value="[% FormSLASolutionMinutes %]" min="0"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSortOrder %]</label><input type="number" name="SortOrder" value="[% FormSLASortOrder %]" min="1"></div>
+                <label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="IsDefault" value="1" [% FormSLAIsDefaultChecked %]><span>[% Translate.AdminSLADefaultForService %]</span></label>
+                [% IF ShowEdit %]<label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="Active" value="1" [% FormSLAActiveChecked %]><span>[% Translate.AdminActive %]</span></label>[% END %]
+            </div>
+            <p class="qisutu-form-hint">[% Translate.AdminSLASnapshotHint %]</p>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% FormSubmitLabel %]</button></div>
+        </form>
+    </section>
+    [% END %]
+</section>

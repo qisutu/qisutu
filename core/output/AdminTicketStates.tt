@@ -1,0 +1,36 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+<section class="qisutu-dashboard" aria-labelledby="qisutu-admin-ticket-states-title">
+    <div class="qisutu-dashboard-header"><div><h1 id="qisutu-admin-ticket-states-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div>[% IF ShowBackToList %]<a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminTicketStates">[% Translate.AdminBackToList %]</a>[% END %]</div>
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+    [% IF ShowList %]
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.AdminTicketStatesList %]</h2><span class="qisutu-panel-subtitle">[% StateCount %]</span></div><a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminTicketStates;Action=Create">[% Translate.AdminTicketStateCreate %]</a></div>
+        <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table"><thead><tr><th>[% Translate.AdminTicketState %]</th><th>[% Translate.AdminTicketStateType %]</th><th>[% Translate.AdminSLAPause %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminActions %]</th></tr></thead><tbody>
+        [% FOREACH State IN StateList %]<tr><td><strong>[% State.name %]</strong></td><td>[% State.state_type_label %]</td><td>[% State.sla_pause_label %]</td><td>[% State.active_label %]</td><td><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminTicketStates;Action=Edit;StateID=[% State.id %]">[% Translate.AdminEdit %]</a></td></tr>[% END %]
+        </tbody></table></div>
+    </section>
+    [% END %]
+    [% IF ShowForm %]
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% FormTitle %]</h2></div>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+            <input type="hidden" name="Page" value="AdminTicketStates">
+            <input type="hidden" name="Step" value="[% FormStep %]">
+            <input type="hidden" name="StateID" value="[% FormStateID %]">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketState %] *</label><input type="text" name="Name" value="[% FormStateName %]" required></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketStateType %] *</label><select name="StateType" required><option value="new" [% FormTypeNewSelected %]>[% Translate.AdminTicketStateTypeNew %]</option><option value="open" [% FormTypeOpenSelected %]>[% Translate.AdminTicketStateTypeOpen %]</option><option value="pending" [% FormTypePendingSelected %]>[% Translate.AdminTicketStateTypePending %]</option><option value="closed" [% FormTypeClosedSelected %]>[% Translate.AdminTicketStateTypeClosed %]</option></select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSortOrder %]</label><input type="number" name="SortOrder" value="[% FormStateSortOrder %]" min="1"></div>
+                <label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="SLAPause" value="1" [% FormStateSLAPauseChecked %]><span>[% Translate.AdminSLAPause %]</span></label>
+                [% IF ShowEdit %]<label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="Active" value="1" [% FormStateActiveChecked %]><span>[% Translate.AdminActive %]</span></label>[% END %]
+            </div>
+            <p class="qisutu-form-hint">[% Translate.AdminSLAPauseHint %]</p>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% FormSubmitLabel %]</button></div>
+        </form>
+    </section>
+    [% END %]
+</section>

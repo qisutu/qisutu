@@ -80,6 +80,7 @@ sub main {
         'Escalation check:',
         'pending_reached=' . ( $Result->{PendingDue} || 0 ),
         'escalated=' . ( $Result->{Escalated} || 0 ),
+        'recalculated=' . ( $Result->{Recalculated} || 0 ),
         'checked=' . ( $Result->{Checked} || 0 ),
     ) . "\n";
 

@@ -27,6 +27,7 @@ use warnings;
 use utf8;
 use JSON::PP qw(encode_json);
 use Time::Local qw(timelocal);
+use QisutuService;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -53,7 +54,8 @@ sub Run {
     my $Articles = [];
     my $ArticleCreateError = '';
 
-    my $TicketObject = $Self->_TicketObject();
+    my $TicketObject       = $Self->_TicketObject();
+    my $DynamicFieldObject = $Self->_DynamicFieldObject();
     my $AttachmentMaxSizeMB    = $Self->_AttachmentMaxSizeMB();
     my $AttachmentMaxSizeBytes = $AttachmentMaxSizeMB * 1024 * 1024;
 
@@ -70,6 +72,42 @@ sub Run {
             Data => $Self->_CustomerUserLookup(
                 Query => $Request->{Term} || $Request->{term} || $Request->{Query} || $Request->{query} || $Request->{q} || '',
             ),
+        );
+    }
+
+    if ( ( $Request->{Step} || '' ) eq 'DynamicFields' ) {
+        my $User = $Param{User} || {};
+        my $QueueID = $Request->{QueueID} || 0;
+        my $AccessibleTicket = $TicketObject ? $TicketObject->TicketGet(
+            TicketID => $TicketID,
+            User     => $User,
+            Language => $Language,
+        ) : undef;
+        my $Queue = $Self->_QueueGet( QueueID => $QueueID );
+        my $QueueAccess = $Queue ? $Self->_QueueAccessCheck(
+            User       => $User,
+            QueueID    => $QueueID,
+            Permission => 'ticket.edit',
+        ) : 0;
+
+        my $HTML = '';
+        my $Success = $AccessibleTicket && $Queue && $QueueAccess && $DynamicFieldObject ? 1 : 0;
+
+        if ($Success) {
+            $HTML = $DynamicFieldObject->FormHTML(
+                QueueID  => $QueueID,
+                TicketID => $TicketID,
+                Language => $Language,
+                IDPrefix => 'qisutu-ticket-tool-queue-dynamic-field',
+            );
+            $Success = 0 if $DynamicFieldObject->Error();
+        }
+
+        return $Self->_JSONResponse(
+            Data => {
+                success => $Success,
+                html    => $Success ? $HTML : '',
+            },
         );
     }
 
@@ -157,6 +195,16 @@ sub Run {
 
         if ( !$ArticleCreateError && !$StatusID ) {
             $ArticleCreateError = 'Translate:TicketStatusUpdateFailed';
+        }
+
+        if ( !$ArticleCreateError && $ArticleMode ne 'forward' && $DynamicFieldObject ) {
+            if ( !$DynamicFieldObject->TicketValueValidate(
+                QueueID  => $TicketForSubmit->{queue_id},
+                Request  => $Request,
+                Language => $Language,
+            ) ) {
+                $ArticleCreateError = $DynamicFieldObject->Error() || 'Translate:TicketDynamicFieldInvalid';
+            }
         }
 
         if ( !$ArticleCreateError && ( $ArticleMode eq 'email' || $ArticleMode eq 'forward' ) ) {
@@ -301,6 +349,19 @@ sub Run {
             }
         }
 
+        if ( !$ArticleCreateError && $ArticleMode ne 'forward' && $DynamicFieldObject ) {
+            if ( !$DynamicFieldObject->TicketValueSave(
+                TicketID        => $TicketID,
+                QueueID         => $TicketForSubmit->{queue_id},
+                Request         => $Request,
+                Language        => $Language,
+                ChangedByUserID => $User->{user_account_id},
+            ) ) {
+                $ArticleCreateError = $DynamicFieldObject->Error() || 'Translate:TicketDynamicFieldSaveFailed';
+                $Self->{DB}->Rollback();
+            }
+        }
+
         if ( !$ArticleCreateError && ( $ArticleMode eq 'email' || $ArticleMode eq 'forward' ) ) {
             my $SendResult = $Self->_EmailSend(
                 FromName    => $FromName,
@@ -430,13 +491,61 @@ sub Run {
         CurrentPriorityID => $Ticket->{priority_id},
         Language          => $Language,
     );
+    my $QueueOptionCurrentID = $ToolActionError && $ToolActionActive eq 'queue' && ( $Request->{QueueID} || 0 )
+        ? $Request->{QueueID}
+        : $Ticket->{queue_id};
     my $QueueOptionsHTML = $Self->_QueueOptionsHTML(
-        CurrentQueueID => $Ticket->{queue_id},
+        CurrentQueueID => $QueueOptionCurrentID,
+    );
+    my $ServiceOptionCurrentID = $ToolActionError && $ToolActionActive eq 'service'
+        ? ( defined $Request->{ServiceID} ? $Request->{ServiceID} : ( $Ticket->{service_id} || 0 ) )
+        : ( $Ticket->{service_id} || 0 );
+    my $ServiceOptionsHTML = $Self->_ServiceOptionsHTML(
+        CustomerID       => $Ticket->{customer_id},
+        CurrentServiceID => $ServiceOptionCurrentID,
+        Language         => $Language,
     );
     my $ClosedStateOptionsHTML = $Self->_ClosedStateOptionsHTML(
         Language       => $Language,
         CurrentStateID => $Ticket->{state_id},
     );
+
+    my $ArticleDynamicFieldsHTML = $DynamicFieldObject ? $DynamicFieldObject->FormHTML(
+        QueueID  => $Ticket->{queue_id},
+        TicketID => $Ticket->{id},
+        Request  => $ArticleCreateError ? $Request : {},
+        Language => $Language,
+        IDPrefix => 'qisutu-ticket-article-dynamic-field',
+    ) : '';
+    my $PriorityDynamicFieldsHTML = $DynamicFieldObject ? $DynamicFieldObject->FormHTML(
+        QueueID  => $Ticket->{queue_id},
+        TicketID => $Ticket->{id},
+        Request  => $ToolActionError && $ToolActionActive eq 'priority' ? $Request : {},
+        Language => $Language,
+        IDPrefix => 'qisutu-ticket-tool-priority-dynamic-field',
+    ) : '';
+    my $QueueDynamicFieldQueueID = $ToolActionError && $ToolActionActive eq 'queue' && ( $Request->{QueueID} || 0 )
+        ? $Request->{QueueID}
+        : $Ticket->{queue_id};
+    my $QueueDynamicFieldsHTML = $DynamicFieldObject ? $DynamicFieldObject->FormHTML(
+        QueueID  => $QueueDynamicFieldQueueID,
+        TicketID => $Ticket->{id},
+        Request  => $ToolActionError && $ToolActionActive eq 'queue' ? $Request : {},
+        Language => $Language,
+        IDPrefix => 'qisutu-ticket-tool-queue-dynamic-field',
+    ) : '';
+    my $CloseDynamicFieldsHTML = $DynamicFieldObject ? $DynamicFieldObject->FormHTML(
+        QueueID  => $Ticket->{queue_id},
+        TicketID => $Ticket->{id},
+        Request  => $ToolActionError && $ToolActionActive eq 'close' ? $Request : {},
+        Language => $Language,
+        IDPrefix => 'qisutu-ticket-tool-close-dynamic-field',
+    ) : '';
+    my $TicketDynamicFieldsDisplayHTML = $DynamicFieldObject ? $DynamicFieldObject->DisplayHTML(
+        QueueID  => $Ticket->{queue_id},
+        TicketID => $Ticket->{id},
+        Language => $Language,
+    ) : '';
 
     my $ArticleEmptyClass = $ArticleCount ? 'qisutu-hidden' : '';
     my $ArticleCreateErrorClass = $ArticleCreateError ? '' : 'qisutu-hidden';
@@ -459,6 +568,16 @@ sub Run {
             TicketNumber          => $Ticket->{ticket_number},
             TicketTitle           => $Ticket->{title},
             TicketQueue           => $Ticket->{queue_full_name} || $Ticket->{queue_name},
+            TicketServiceID       => $Ticket->{service_id} || 0,
+            TicketService         => $Ticket->{service_name} || '-',
+            TicketSLA             => $Ticket->{sla_name_display} || '-',
+            TicketSLACalendar     => $Ticket->{sla_calendar_display} || '-',
+            TicketSLASource       => $Ticket->{sla_source_label} || 'Translate:TicketSLASourceQueue',
+            TicketSLAUpdateMode   => $Ticket->{sla_update_mode_label} || 'Translate:AdminSLAUpdateModeCustomer',
+            TicketSLAFirstResponseMinutes => $Ticket->{sla_source} && $Ticket->{sla_source} eq 'sla' ? ( $Ticket->{sla_first_response_minutes} || 0 ) : ( $Ticket->{escalation_first_response_minutes} || 0 ),
+            TicketSLAUpdateMinutes        => $Ticket->{sla_source} && $Ticket->{sla_source} eq 'sla' ? ( $Ticket->{sla_update_minutes} || 0 ) : ( $Ticket->{escalation_update_minutes} || 0 ),
+            TicketSLASolutionMinutes      => $Ticket->{sla_source} && $Ticket->{sla_source} eq 'sla' ? ( $Ticket->{sla_solution_minutes} || 0 ) : ( $Ticket->{escalation_solution_minutes} || 0 ),
+            TicketSLAPause         => $Ticket->{sla_pause} ? 'Translate:CommonYes' : 'Translate:CommonNo',
             TicketState           => $Ticket->{state_name_display},
             TicketStateType       => $Ticket->{state_type},
             TicketPriority        => $Ticket->{priority_name_display} || $Ticket->{priority_name},
@@ -525,7 +644,14 @@ sub Run {
             TicketStatusOptionsHTML  => $StatusOptionsHTML,
             TicketPriorityOptionsHTML => $PriorityOptionsHTML,
             TicketQueueOptionsHTML   => $QueueOptionsHTML,
+            TicketServiceOptionsHTML => $ServiceOptionsHTML,
             TicketClosedStateOptionsHTML => $ClosedStateOptionsHTML,
+            TicketArticleDynamicFieldsHTML => $ArticleDynamicFieldsHTML,
+            TicketPriorityDynamicFieldsHTML => $PriorityDynamicFieldsHTML,
+            TicketQueueDynamicFieldsHTML => $QueueDynamicFieldsHTML,
+            TicketCloseDynamicFieldsHTML => $CloseDynamicFieldsHTML,
+            TicketDynamicFieldsDisplayHTML => $TicketDynamicFieldsDisplayHTML,
+            HasTicketDynamicFields => $TicketDynamicFieldsDisplayHTML ? 1 : 0,
             TicketToolError          => $ToolActionError,
             TicketToolErrorClass     => $TicketToolErrorClass,
             TicketToolActive         => $ToolActionActive,
@@ -1299,7 +1425,7 @@ sub _TicketToolUpdate {
     my $Action       = $Self->_Trim( $Request->{ToolAction} );
     my $Body         = $Request->{ToolArticleBody} || '';
 
-    my %Allowed = map { $_ => 1 } qw(priority owner responsible customer queue close);
+    my %Allowed = map { $_ => 1 } qw(priority owner responsible customer service queue close);
 
     if ( !$Allowed{$Action} ) {
         return {
@@ -1341,6 +1467,27 @@ sub _TicketToolUpdate {
 
     my $Summary = '';
     my $UpdateOK;
+    my $DynamicFieldQueueID = $Action eq 'queue'
+        ? ( $Request->{QueueID} || 0 )
+        : ( $TicketBefore->{queue_id} || 0 );
+    my $SaveDynamicFields = $Action eq 'priority' || $Action eq 'queue' || $Action eq 'close' ? 1 : 0;
+    my $ToolDynamicFieldObject = $SaveDynamicFields ? $Self->_DynamicFieldObject() : undef;
+
+    if ( $SaveDynamicFields && $DynamicFieldQueueID ) {
+        if ( !$ToolDynamicFieldObject || !$ToolDynamicFieldObject->TicketValueValidate(
+            QueueID  => $DynamicFieldQueueID,
+            Request  => $Request,
+            Language => $Language,
+        ) ) {
+            return {
+                Success    => 0,
+                ActiveTool => $Action,
+                Error      => $ToolDynamicFieldObject
+                    ? ( $ToolDynamicFieldObject->Error() || 'Translate:TicketDynamicFieldInvalid' )
+                    : 'Translate:AdminDynamicFieldLoadFailed',
+            };
+        }
+    }
 
     if ( $Action eq 'priority' ) {
         my $PriorityID = $Request->{PriorityID} || 0;
@@ -1511,6 +1658,69 @@ sub _TicketToolUpdate {
             ChangedByUserID => $User->{user_account_id},
         );
     }
+    elsif ( $Action eq 'service' ) {
+        my $ServiceID = defined $Request->{ServiceID} ? $Request->{ServiceID} : 0;
+
+        if ( $ServiceID !~ m{\A\d+\z} ) {
+            return {
+                Success    => 0,
+                ActiveTool => $Action,
+                Error      => 'Translate:TicketToolSelectionRequired',
+            };
+        }
+
+        if ( ( $TicketBefore->{service_id} || 0 ) == $ServiceID ) {
+            return {
+                Success    => 0,
+                ActiveTool => $Action,
+                Error      => 'Translate:TicketToolNoChange',
+            };
+        }
+
+        my $NewValue = $Language eq 'de' ? 'Kein Service / Queue-Eskalation' : 'No service / queue escalation';
+        if ($ServiceID) {
+            my $ServiceObject = QisutuService->new(
+                Config => $Self->{Config},
+                DB     => $Self->{DB},
+            );
+            my $Resolved = $ServiceObject->SLAResolve(
+                CustomerID => $TicketBefore->{customer_id},
+                ServiceID  => $ServiceID,
+            );
+            if ( !$Resolved ) {
+                return {
+                    Success    => 0,
+                    ActiveTool => $Action,
+                    Error      => $ServiceObject->Error() || 'Translate:TicketServiceNotAvailable',
+                };
+            }
+            $NewValue = ( $Resolved->{service_name} || '-' ) . ' / ' . ( $Resolved->{sla_name} || '-' );
+        }
+
+        my $OldValue = ( $TicketBefore->{service_id} || 0 )
+            ? ( ( $TicketBefore->{service_name} || '-' ) . ' / ' . ( $TicketBefore->{sla_name_display} || '-' ) )
+            : ( $Language eq 'de' ? 'Kein Service / Queue-Eskalation' : 'No service / queue escalation' );
+
+        $Summary = $Self->_ToolSummary(
+            Language => $Language,
+            Action   => $Action,
+            OldValue => $OldValue,
+            NewValue => $NewValue,
+        );
+
+        $Self->{DB}->BeginWork() || return {
+            Success    => 0,
+            ActiveTool => $Action,
+            Error      => 'Translate:TicketToolUpdateFailed',
+        };
+
+        $UpdateOK = $TicketObject->TicketServiceUpdate(
+            TicketID        => $TicketID,
+            ServiceID       => $ServiceID,
+            User            => $User,
+            ChangedByUserID => $User->{user_account_id},
+        );
+    }
     elsif ( $Action eq 'queue' ) {
         my $QueueID = $Request->{QueueID} || 0;
         my $Queue = $Self->_QueueGet( QueueID => $QueueID );
@@ -1602,6 +1812,24 @@ sub _TicketToolUpdate {
             ActiveTool => $Action,
             Error      => $Error,
         };
+    }
+
+    if ($SaveDynamicFields) {
+        if ( !$ToolDynamicFieldObject->TicketValueSave(
+            TicketID        => $TicketID,
+            QueueID         => $DynamicFieldQueueID,
+            Request         => $Request,
+            Language        => $Language,
+            ChangedByUserID => $User->{user_account_id},
+        ) ) {
+            my $Error = $ToolDynamicFieldObject->Error() || 'Translate:TicketDynamicFieldSaveFailed';
+            $Self->{DB}->Rollback();
+            return {
+                Success    => 0,
+                ActiveTool => $Action,
+                Error      => $Error,
+            };
+        }
     }
 
     my $ArticleID = $TicketObject->ArticleCreate(
@@ -1872,6 +2100,50 @@ sub _QueueOptionsHTML {
     return $HTML;
 }
 
+sub _ServiceOptionsHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $CustomerID       = $Param{CustomerID} || 0;
+    my $CurrentServiceID = $Param{CurrentServiceID} || 0;
+    my $Language         = $Param{Language} || 'en';
+    my $ServiceObject = QisutuService->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
+    my $Rows = $CustomerID ? $ServiceObject->AvailableServiceList( CustomerID => $CustomerID ) : [];
+    $Rows ||= [];
+
+    my %Included = map { ( $_->{id} || 0 ) => 1 } @{$Rows};
+    if ( $CurrentServiceID && !$Included{$CurrentServiceID} ) {
+        my $Current = $ServiceObject->ServiceGet( ServiceID => $CurrentServiceID );
+        if ($Current) {
+            unshift @{$Rows}, {
+                id        => $Current->{id},
+                full_name => $Current->{full_name},
+                sla_name  => '',
+            };
+        }
+    }
+
+    my $EmptyLabel = $Language eq 'de'
+        ? 'Kein Service / Queue-Eskalation verwenden'
+        : 'No service / use queue escalation';
+    my $HTML = '<option value="0"' . ( !$CurrentServiceID ? ' selected' : '' ) . '>'
+        . $Self->_Escape($EmptyLabel) . '</option>';
+
+    for my $Row ( @{$Rows} ) {
+        next if !( $Row->{id} || 0 );
+        my $Selected = ( $Row->{id} || 0 ) == $CurrentServiceID ? ' selected' : '';
+        my $Label = $Row->{full_name} || '';
+        $Label .= ' — ' . $Row->{sla_name} if $Row->{sla_name};
+        $HTML .= '<option value="' . $Self->_Escape( $Row->{id} ) . '"' . $Selected . '>'
+            . $Self->_Escape($Label)
+            . '</option>';
+    }
+
+    return $HTML;
+}
+
 sub _ToolSummary {
     my ( $Self, %Param ) = @_;
 
@@ -1885,6 +2157,7 @@ sub _ToolSummary {
         owner       => 'Besitzer geändert',
         responsible => 'Verantwortlicher geändert',
         customer    => 'Kunde / Ansprechpartner geändert',
+        service     => 'Service / SLA geändert',
         queue       => 'Queue geändert',
         close       => 'Ticket geschlossen',
     );
@@ -1894,6 +2167,7 @@ sub _ToolSummary {
         owner       => 'Owner changed',
         responsible => 'Responsible changed',
         customer    => 'Customer / contact changed',
+        service     => 'Service / SLA changed',
         queue       => 'Queue changed',
         close       => 'Ticket closed',
     );
@@ -1916,6 +2190,7 @@ sub _ToolArticleSubject {
         owner       => 'Ticket-Aktion: Besitzer geändert',
         responsible => 'Ticket-Aktion: Verantwortlicher geändert',
         customer    => 'Ticket-Aktion: Kunde / Ansprechpartner geändert',
+        service     => 'Ticket-Aktion: Service / SLA geändert',
         queue       => 'Ticket-Aktion: Queue geändert',
         close       => 'Ticket-Aktion: Ticket geschlossen',
     );
@@ -1925,6 +2200,7 @@ sub _ToolArticleSubject {
         owner       => 'Ticket action: owner changed',
         responsible => 'Ticket action: responsible changed',
         customer    => 'Ticket action: customer / contact changed',
+        service     => 'Ticket action: service / SLA changed',
         queue       => 'Ticket action: queue changed',
         close       => 'Ticket action: ticket closed',
     );
@@ -1951,6 +2227,68 @@ sub _Trim {
     return $Value;
 }
 
+
+sub _QueueAccessCheck {
+    my ( $Self, %Param ) = @_;
+
+    my $User       = $Param{User} || {};
+    my $QueueID    = $Param{QueueID} || 0;
+    my $Permission = $Param{Permission} || 'ticket.edit';
+    my $UserID     = $User->{user_account_id} || 0;
+
+    return 0 if $UserID !~ m{\A\d+\z} || !$UserID;
+    return 0 if $QueueID !~ m{\A\d+\z} || !$QueueID;
+
+    my $PermissionObject = $Self->_PermissionObject();
+    return 0 if !$PermissionObject;
+
+    return $PermissionObject->QueueAccessCheck(
+        UserID     => $UserID,
+        QueueID    => $QueueID,
+        Permission => $Permission,
+    ) ? 1 : 0;
+}
+
+sub _PermissionObject {
+    my ($Self) = @_;
+
+    return $Self->{PermissionObject} if $Self->{PermissionObject};
+    return if !$Self->{DB};
+
+    my $Loaded = eval {
+        require QisutuPermission;
+        1;
+    };
+    return if !$Loaded;
+
+    $Self->{PermissionObject} = QisutuPermission->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
+
+    return $Self->{PermissionObject};
+}
+
+sub _DynamicFieldObject {
+    my ($Self) = @_;
+
+    return $Self->{DynamicFieldObject} if $Self->{DynamicFieldObject};
+    return if !$Self->{DB};
+
+    my $Loaded = eval {
+        require QisutuDynamicField;
+        1;
+    };
+    return if !$Loaded;
+
+    $Self->{DynamicFieldObject} = QisutuDynamicField->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+        Output => $Self->{Output},
+    );
+
+    return $Self->{DynamicFieldObject};
+}
 
 sub _TicketObject {
     my ($Self) = @_;

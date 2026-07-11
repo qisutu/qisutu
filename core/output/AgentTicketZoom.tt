@@ -82,6 +82,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="owner">[% Translate.TicketToolOwner %]</button>
                                 <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="responsible">[% Translate.TicketToolResponsible %]</button>
                                 <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="customer">[% Translate.TicketToolCustomer %]</button>
+                                <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="service">[% Translate.TicketToolService %]</button>
                                 <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="queue">[% Translate.TicketToolQueue %]</button>
                                 <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="close">[% Translate.TicketToolClose %]</button>
                                 <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="link">[% Translate.TicketToolLink %]</button>
@@ -109,6 +110,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                                     [% RAW.TicketPriorityOptionsHTML %]
                                                 </select>
                                             </div>
+                                            [% RAW.TicketPriorityDynamicFieldsHTML %]
                                             <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
                                                 <label for="qisutu-ticket-tool-priority-body">[% Translate.TicketToolInternalArticle %]</label>
                                                 <textarea id="qisutu-ticket-tool-priority-body" class="qisutu-richtext" name="ToolArticleBody" rows="5"></textarea>
@@ -209,6 +211,35 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     </form>
                                 </div>
 
+                                <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="service">
+                                    <h4>[% Translate.TicketServiceChange %]</h4>
+                                    <form method="post" action="index.pl" data-qisutu-ticket-tool-form>
+                                        <input type="hidden" name="Page" value="AgentTicketZoom">
+                                        <input type="hidden" name="Step" value="TicketToolUpdate">
+                                        <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                        <input type="hidden" name="ToolAction" value="service">
+
+                                        <div class="qisutu-ticket-tools-form-grid">
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                                <label for="qisutu-ticket-tool-service">[% Translate.TicketService %]</label>
+                                                <select id="qisutu-ticket-tool-service" name="ServiceID">
+                                                    [% RAW.TicketServiceOptionsHTML %]
+                                                </select>
+                                                <p class="qisutu-form-help">[% Translate.TicketServiceOptional %]</p>
+                                            </div>
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                                <label for="qisutu-ticket-tool-service-body">[% Translate.TicketToolInternalArticle %]</label>
+                                                <textarea id="qisutu-ticket-tool-service-body" class="qisutu-richtext" name="ToolArticleBody" rows="5" required></textarea>
+                                                <p class="qisutu-form-help">[% Translate.TicketToolInternalArticleHelp %]</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="qisutu-form-actions">
+                                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketToolSaveChange %]</button>
+                                        </div>
+                                    </form>
+                                </div>
+
                                 <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="queue">
                                     <h4>[% Translate.TicketToolQueue %]</h4>
                                     <form method="post" action="index.pl" data-qisutu-ticket-tool-form>
@@ -220,10 +251,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                         <div class="qisutu-ticket-tools-form-grid">
                                             <div class="qisutu-form-field">
                                                 <label for="qisutu-ticket-tool-queue">[% Translate.TicketQueue %]</label>
-                                                <select id="qisutu-ticket-tool-queue" name="QueueID" required>
+                                                <select id="qisutu-ticket-tool-queue" name="QueueID" required data-qisutu-ticket-tool-queue data-qisutu-dynamic-fields-url="index.pl?Page=AgentTicketZoom&amp;Step=DynamicFields&amp;TicketID=[% TicketID %]">
                                                     [% RAW.TicketQueueOptionsHTML %]
                                                 </select>
                                             </div>
+                                            <div class="qisutu-ticket-tools-form-wide" data-qisutu-ticket-tool-queue-dynamic-fields>[% RAW.TicketQueueDynamicFieldsHTML %]</div>
                                             <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
                                                 <label for="qisutu-ticket-tool-queue-body">[% Translate.TicketToolInternalArticle %]</label>
                                                 <textarea id="qisutu-ticket-tool-queue-body" class="qisutu-richtext" name="ToolArticleBody" rows="5"></textarea>
@@ -252,6 +284,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                                     [% RAW.TicketClosedStateOptionsHTML %]
                                                 </select>
                                             </div>
+                                            [% RAW.TicketCloseDynamicFieldsHTML %]
                                             <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
                                                 <label for="qisutu-ticket-tool-close-body">[% Translate.TicketToolInternalArticle %]</label>
                                                 <textarea id="qisutu-ticket-tool-close-body" class="qisutu-richtext" name="ToolArticleBody" rows="5"></textarea>
@@ -425,6 +458,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <p class="qisutu-form-help">[% Translate.TicketPendingUntilHelp %]</p>
                                 </div>
 
+                                <div data-qisutu-ticket-article-dynamic-fields>[% RAW.TicketArticleDynamicFieldsHTML %]</div>
+
                                 <div class="qisutu-form-field">
                                     <label for="qisutu-article-body">[% Translate.TicketArticleBody %]</label>
                                     <textarea id="qisutu-article-body" class="qisutu-richtext" name="Body" rows="7"></textarea>
@@ -535,6 +570,28 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                         <div class="qisutu-ticket-info-block" data-qisutu-ticket-info-section>
                             <h3>
+                                <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="false" aria-controls="qisutu-ticket-info-service-sla" data-qisutu-ticket-info-toggle>
+                                    <span>[% Translate.TicketServiceAndSLA %]</span>
+                                    <span class="qisutu-ticket-info-chevron" aria-hidden="true"></span>
+                                </button>
+                            </h3>
+                            <div id="qisutu-ticket-info-service-sla" class="qisutu-ticket-info-content" data-qisutu-ticket-info-content hidden>
+                                <dl class="qisutu-ticket-info-list">
+                                    <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketService %]</dt><dd>[% TicketService %]</dd></div>
+                                    <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLA %]</dt><dd>[% TicketSLA %]</dd></div>
+                                    <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLASource %]</dt><dd>[% TicketSLASource %]</dd></div>
+                                    <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLACalendar %]</dt><dd>[% TicketSLACalendar %]</dd></div>
+                                    <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLAUpdateMode %]</dt><dd>[% TicketSLAUpdateMode %]</dd></div>
+                                    <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLAFirstResponseMinutes %]</dt><dd>[% TicketSLAFirstResponseMinutes %]</dd></div>
+                                    <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLAUpdateMinutes %]</dt><dd>[% TicketSLAUpdateMinutes %]</dd></div>
+                                    <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLASolutionMinutes %]</dt><dd>[% TicketSLASolutionMinutes %]</dd></div>
+                                    <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLAPauseStatus %]</dt><dd>[% TicketSLAPause %]</dd></div>
+                                </dl>
+                            </div>
+                        </div>
+
+                        <div class="qisutu-ticket-info-block" data-qisutu-ticket-info-section>
+                            <h3>
                                 <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="false" aria-controls="qisutu-ticket-info-escalations" data-qisutu-ticket-info-toggle>
                                     <span>[% Translate.TicketEscalations %]</span>
                                     <span class="qisutu-ticket-info-chevron" aria-hidden="true"></span>
@@ -550,7 +607,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                         <dt>[% Translate.TicketFirstResponseDueAt %]</dt>
                                         <dd class="[% TicketFirstResponseDueClass %]">
                                             [% TicketFirstResponseDueAt %]
-                                            [% IF TicketFirstResponseEscalated %]
+                                            [% IF TicketFirstResponseEscalatedSince %]
                                             <span class="qisutu-escalation-since">[% Translate.TicketEscalatedSince %] [% TicketFirstResponseEscalatedSince %]</span>
                                             [% END %]
                                         </dd>
@@ -563,7 +620,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                         <dt>[% Translate.TicketUpdateDueAt %]</dt>
                                         <dd class="[% TicketUpdateDueClass %]">
                                             [% TicketUpdateDueAt %]
-                                            [% IF TicketUpdateEscalated %]
+                                            [% IF TicketUpdateEscalatedSince %]
                                             <span class="qisutu-escalation-since">[% Translate.TicketEscalatedSince %] [% TicketUpdateEscalatedSince %]</span>
                                             [% END %]
                                         </dd>
@@ -572,7 +629,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                         <dt>[% Translate.TicketSolutionDueAt %]</dt>
                                         <dd class="[% TicketSolutionDueClass %]">
                                             [% TicketSolutionDueAt %]
-                                            [% IF TicketSolutionEscalated %]
+                                            [% IF TicketSolutionEscalatedSince %]
                                             <span class="qisutu-escalation-since">[% Translate.TicketEscalatedSince %] [% TicketSolutionEscalatedSince %]</span>
                                             [% END %]
                                         </dd>
@@ -593,6 +650,20 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 </dl>
                             </div>
                         </div>
+
+                        [% IF HasTicketDynamicFields %]
+                        <div class="qisutu-ticket-info-block" data-qisutu-ticket-info-section>
+                            <h3>
+                                <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="false" aria-controls="qisutu-ticket-info-dynamic-fields" data-qisutu-ticket-info-toggle>
+                                    <span>[% Translate.TicketDynamicFields %]</span>
+                                    <span class="qisutu-ticket-info-chevron" aria-hidden="true"></span>
+                                </button>
+                            </h3>
+                            <div id="qisutu-ticket-info-dynamic-fields" class="qisutu-ticket-info-content" data-qisutu-ticket-info-content hidden>
+                                <dl class="qisutu-ticket-info-list">[% RAW.TicketDynamicFieldsDisplayHTML %]</dl>
+                            </div>
+                        </div>
+                        [% END %]
                     </aside>
                 </section>
                 [% ELSE %]
@@ -609,4 +680,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
-            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071051"></script>
+            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071101"></script>

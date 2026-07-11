@@ -1,0 +1,72 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+<section class="qisutu-dashboard" aria-labelledby="qisutu-admin-services-title">
+    <div class="qisutu-dashboard-header">
+        <div><h1 id="qisutu-admin-services-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div>
+        [% IF ShowBackToList %]<a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminServices">[% Translate.AdminBackToList %]</a>[% END %]
+    </div>
+
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+    [% IF ShowList %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header">
+            <div><h2>[% Translate.AdminServicesList %]</h2><span class="qisutu-panel-subtitle">[% ServiceCount %]</span></div>
+            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminServices;Action=Create">[% Translate.AdminServiceCreate %]</a>
+        </div>
+        [% IF ServiceCount %]
+        <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table">
+            <thead><tr><th>[% Translate.AdminService %]</th><th>[% Translate.AdminSLAsTitle %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminActions %]</th></tr></thead>
+            <tbody>
+            [% FOREACH Service IN ServiceList %]
+                <tr>
+                    <td><strong>[% Service.full_name %]</strong><div class="qisutu-form-hint">[% Service.description %]</div></td>
+                    <td>[% Service.sla_count %]</td>
+                    <td>[% Service.active_label %]</td>
+                    <td class="qisutu-admin-table-actions"><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminServices;Action=Edit;ServiceID=[% Service.id %]">[% Translate.AdminEdit %]</a></td>
+                </tr>
+            [% END %]
+            </tbody>
+        </table></div>
+        [% ELSE %]<div class="qisutu-empty"><strong>[% Translate.AdminServicesEmpty %]</strong></div>[% END %]
+    </section>
+    [% END %]
+
+    [% IF ShowCreate %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><h2>[% Translate.AdminServiceCreate %]</h2></div>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+            <input type="hidden" name="Page" value="AdminServices"><input type="hidden" name="Step" value="ServiceCreate">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label>[% Translate.AdminService %] *</label><input type="text" name="Name" maxlength="255" required></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminParentService %]</label><select name="ParentServiceID"><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.CreateParentOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSortOrder %]</label><input type="number" name="SortOrder" value="1000" min="1"></div>
+                <div class="qisutu-form-field qisutu-ticket-tools-form-wide"><label>[% Translate.AdminDescription %]</label><textarea name="Description" rows="5"></textarea></div>
+            </div>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button></div>
+        </form>
+    </section>
+    [% END %]
+
+    [% IF ShowEdit %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.AdminServiceEdit %]</h2><span class="qisutu-panel-subtitle">[% ServiceFullName %]</span></div></div>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+            <input type="hidden" name="Page" value="AdminServices"><input type="hidden" name="Step" value="ServiceUpdate"><input type="hidden" name="ServiceID" value="[% ServiceID %]">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label>[% Translate.AdminService %] *</label><input type="text" name="Name" value="[% ServiceName %]" maxlength="255" required></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminParentService %]</label><select name="ParentServiceID"><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.EditParentOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSortOrder %]</label><input type="number" name="SortOrder" value="[% ServiceSortOrder %]" min="1"></div>
+                <div class="qisutu-form-field qisutu-ticket-tools-form-wide"><label>[% Translate.AdminDescription %]</label><textarea name="Description" rows="5">[% ServiceDescription %]</textarea></div>
+                <label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="Active" value="1" [% ServiceActiveChecked %]><span>[% Translate.AdminActive %]</span></label>
+            </div>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button></div>
+        </form>
+    </section>
+    [% END %]
+</section>

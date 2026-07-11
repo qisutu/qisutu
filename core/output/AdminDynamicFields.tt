@@ -1,0 +1,310 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-dynamic-fields-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-admin-dynamic-fields-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                    <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=Admin">[% Translate.AdminBackToList %]</a>
+                </div>
+
+                <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+                [% IF ShowList %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminDynamicFieldsList %]</h2>
+                            <span class="qisutu-panel-subtitle">[% FieldCount %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminDynamicFields;Action=FieldCreate">[% Translate.AdminDynamicFieldCreate %]</a>
+                    </div>
+
+                    [% IF FieldCount %]
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminDisplayName %]</th>
+                                    <th>[% Translate.AdminDatabaseField %]</th>
+                                    <th>[% Translate.AdminFieldType %]</th>
+                                    <th>[% Translate.AdminRequired %]</th>
+                                    <th>[% Translate.AdminActive %]</th>
+                                    <th>[% Translate.AdminSortOrder %]</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% FOREACH Field IN FieldList %]
+                                <tr>
+                                    <td><strong>[% Field.label %]</strong></td>
+                                    <td>[% Field.name %]</td>
+                                    <td>[% Field.field_type %]</td>
+                                    <td>[% Field.required_display %]</td>
+                                    <td>[% Field.active_display %]</td>
+                                    <td>[% Field.sort_order %]</td>
+                                    <td class="qisutu-table-actions">
+                                        <a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminDynamicFields;Action=FieldEdit;FieldID=[% Field.id %]">[% Translate.AdminEdit %]</a>
+                                        <a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminDynamicFields;Action=FieldQueue;FieldID=[% Field.id %]">[% Translate.AdminDynamicFieldAssignQueues %]</a>
+                                    </td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                    [% ELSE %]
+                    <div class="qisutu-empty">
+                        <strong>[% Translate.AdminNoEntries %]</strong>
+                    </div>
+                    [% END %]
+                </section>
+
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminDynamicFieldQueueAssignment %]</h2>
+                            <span class="qisutu-panel-subtitle">[% Translate.AdminDynamicFieldQueueAssignmentDescription %]</span>
+                        </div>
+                    </div>
+                    <div class="qisutu-dynamic-assignment-columns">
+                        <div class="qisutu-dynamic-assignment-list">
+                            <h3>[% Translate.AdminDynamicFieldsTitle %]</h3>
+                            [% FOREACH Field IN FieldList %]
+                            <a href="index.pl?Page=AdminDynamicFields;Action=FieldQueue;FieldID=[% Field.id %]">
+                                <strong>[% Field.label %]</strong>
+                                <span>[% Field.name %]</span>
+                            </a>
+                            [% END %]
+                        </div>
+                        <div class="qisutu-dynamic-assignment-list">
+                            <h3>[% Translate.AdminQueuesTitle %]</h3>
+                            [% FOREACH Queue IN QueueList %]
+                            <a href="index.pl?Page=AdminDynamicFields;Action=QueueField;QueueID=[% Queue.id %]">
+                                <strong>[% Queue.display_name %]</strong>
+                                <span>[% Queue.inactive_display %]</span>
+                            </a>
+                            [% END %]
+                        </div>
+                    </div>
+                </section>
+                [% END %]
+
+                [% IF ShowFieldCreate %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminDynamicFieldCreate %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminDynamicFields">[% Translate.AdminBackToList %]</a>
+                    </div>
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminDynamicFields">
+                        <input type="hidden" name="Step" value="DynamicFieldCreate">
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminDatabaseField %]</label>
+                                <input type="text" name="Name" value="[% FieldName %]" required>
+                                <span class="qisutu-form-hint">[% Translate.AdminDatabaseFieldHint %]</span>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminFieldType %]</label>
+                                <select name="FieldType" data-qisutu-field-type>[% RAW.FieldCreateTypeOptionsHTML %]</select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="[% FieldSortOrder %]" min="1">
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="IsRequired" value="1" [% FieldRequiredChecked %]>
+                                <span>[% Translate.AdminRequired %]</span>
+                            </label>
+                        </div>
+                        <div class="qisutu-admin-form-block qisutu-dynamic-selection-config" data-qisutu-selection-config>
+                            <h3>[% Translate.AdminDynamicFieldPossibleValues %]</h3>
+                            <span class="qisutu-form-hint">[% Translate.AdminDynamicFieldPossibleValuesHint %]</span>
+                            <input type="hidden" name="OptionRowCount" value="[% CreateOptionRowCount %]" data-qisutu-option-count>
+                            <div class="qisutu-dynamic-option-rows" data-qisutu-option-rows>[% RAW.CreateOptionRowsHTML %]</div>
+                            <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-option-add>[% Translate.AdminDynamicFieldOptionAdd %]</button>
+                            <label class="qisutu-form-checkbox qisutu-dynamic-show-empty">
+                                <input type="checkbox" name="ShowEmptyValue" value="1" data-qisutu-show-empty-value [% CreateShowEmptyChecked %]>
+                                <span>[% Translate.AdminDynamicFieldShowEmptyValue %]</span>
+                            </label>
+                            <span class="qisutu-form-hint">[% Translate.AdminDynamicFieldDefaultHint %]</span>
+                        </div>
+                        <div class="qisutu-admin-form-block">
+                            <h3>[% Translate.AdminTranslations %]</h3>
+                            <input type="hidden" name="TranslationRowCount" value="[% CreateTranslationRowCount %]" data-qisutu-translation-count>
+                            <div class="qisutu-translation-rows" data-qisutu-translation-rows>[% RAW.CreateTranslationRowsHTML %]</div>
+                            <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-translation-add>[% Translate.AdminTranslationAdd %]</button>
+                        </div>
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowFieldEdit %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminDynamicFieldEdit %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminDynamicFields">[% Translate.AdminBackToList %]</a>
+                    </div>
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminDynamicFields">
+                        <input type="hidden" name="Step" value="DynamicFieldUpdate">
+                        <input type="hidden" name="FieldID" value="[% FieldID %]">
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminDatabaseField %]</label>
+                                <input type="text" value="[% FieldName %]" readonly>
+                                <span class="qisutu-form-hint">[% Translate.AdminDatabaseFieldReadonlyHint %]</span>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminFieldType %]</label>
+                                <select name="FieldType" data-qisutu-field-type>[% RAW.FieldEditTypeOptionsHTML %]</select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="[% FieldSortOrder %]" min="1">
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="IsRequired" value="1" [% FieldRequiredChecked %]>
+                                <span>[% Translate.AdminRequired %]</span>
+                            </label>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="Active" value="1" [% FieldActiveChecked %]>
+                                <span>[% Translate.AdminActive %]</span>
+                            </label>
+                        </div>
+                        <div class="qisutu-admin-form-block qisutu-dynamic-selection-config" data-qisutu-selection-config>
+                            <h3>[% Translate.AdminDynamicFieldPossibleValues %]</h3>
+                            <span class="qisutu-form-hint">[% Translate.AdminDynamicFieldPossibleValuesHint %]</span>
+                            <input type="hidden" name="OptionRowCount" value="[% EditOptionRowCount %]" data-qisutu-option-count>
+                            <div class="qisutu-dynamic-option-rows" data-qisutu-option-rows>[% RAW.EditOptionRowsHTML %]</div>
+                            <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-option-add>[% Translate.AdminDynamicFieldOptionAdd %]</button>
+                            <label class="qisutu-form-checkbox qisutu-dynamic-show-empty">
+                                <input type="checkbox" name="ShowEmptyValue" value="1" data-qisutu-show-empty-value [% EditShowEmptyChecked %]>
+                                <span>[% Translate.AdminDynamicFieldShowEmptyValue %]</span>
+                            </label>
+                            <span class="qisutu-form-hint">[% Translate.AdminDynamicFieldDefaultHint %]</span>
+                        </div>
+                        <div class="qisutu-admin-form-block">
+                            <h3>[% Translate.AdminTranslations %]</h3>
+                            <input type="hidden" name="TranslationRowCount" value="[% EditTranslationRowCount %]" data-qisutu-translation-count>
+                            <div class="qisutu-translation-rows" data-qisutu-translation-rows>[% RAW.EditTranslationRowsHTML %]</div>
+                            <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-translation-add>[% Translate.AdminTranslationAdd %]</button>
+                        </div>
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+                    <form class="qisutu-admin-delete-form" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminDynamicFields">
+                        <input type="hidden" name="Step" value="DynamicFieldDelete">
+                        <input type="hidden" name="FieldID" value="[% FieldID %]">
+                        <button class="qisutu-button qisutu-button-danger" type="submit">[% Translate.AdminDeleteField %]</button>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowFieldQueue %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminDynamicFieldAssignQueues %]</h2>
+                            <span class="qisutu-panel-subtitle">[% AssignmentFieldLabel %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminDynamicFields">[% Translate.AdminBackToList %]</a>
+                    </div>
+                    <form method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminDynamicFields">
+                        <input type="hidden" name="Step" value="DynamicFieldQueueSave">
+                        <input type="hidden" name="FieldID" value="[% FieldID %]">
+                        <div class="qisutu-assignment-checkbox-grid">[% RAW.FieldQueueOptionsHTML %]</div>
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowQueueField %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminDynamicQueueAssignFields %]</h2>
+                            <span class="qisutu-panel-subtitle">[% AssignmentQueueLabel %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminDynamicFields">[% Translate.AdminBackToList %]</a>
+                    </div>
+                    <form method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminDynamicFields">
+                        <input type="hidden" name="Step" value="DynamicQueueFieldSave">
+                        <input type="hidden" name="QueueID" value="[% AssignmentQueueID %]">
+                        <div class="qisutu-assignment-checkbox-grid">[% RAW.QueueFieldOptionsHTML %]</div>
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+            </section>
+
+            <template id="qisutu-dynamic-option-row-template">
+                <div class="qisutu-dynamic-option-row" data-qisutu-option-row>
+                    <div class="qisutu-form-field">
+                        <label>[% Translate.AdminDynamicFieldOptionKey %]</label>
+                        <input type="text" data-qisutu-option-key>
+                    </div>
+                    <div class="qisutu-form-field">
+                        <label>[% Translate.AdminDynamicFieldOptionValue %]</label>
+                        <input type="text" data-qisutu-option-value>
+                    </div>
+                    <div class="qisutu-form-field">
+                        <label>[% Translate.AdminSortOrder %]</label>
+                        <input type="number" min="1" value="1000" data-qisutu-option-sort-order>
+                    </div>
+                    <label class="qisutu-form-checkbox qisutu-dynamic-option-default">
+                        <input type="checkbox" name="DefaultOption" value="" data-qisutu-option-default>
+                        <span>[% Translate.AdminDynamicFieldOptionDefault %]</span>
+                    </label>
+                    <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-option-remove>[% Translate.AdminRemove %]</button>
+                </div>
+            </template>
+
+            <template id="qisutu-translation-row-template">
+                <div class="qisutu-translation-row" data-qisutu-translation-row>
+                    <div class="qisutu-form-field">
+                        <label>[% Translate.AdminTranslationLanguage %]</label>
+                        <select data-qisutu-translation-language>[% RAW.TranslationLanguageOptionsHTML %]</select>
+                    </div>
+                    <div class="qisutu-form-field">
+                        <label>[% Translate.AdminDisplayName %]</label>
+                        <input type="text" data-qisutu-translation-label>
+                    </div>
+                    <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-translation-remove>[% Translate.AdminRemove %]</button>
+                </div>
+            </template>
+            <script src="[% StaticBase %]/js/qisutu-admin-dynamic-fields.js"></script>

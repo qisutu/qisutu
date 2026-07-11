@@ -2890,7 +2890,20 @@ body.qisutu-overlay-open {
 }
 
 .qisutu-agent-ticket-create-form {
-    max-width: 1120px;
+    max-width: none;
+}
+
+.qisutu-agent-ticket-create-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.9fr) minmax(300px, 0.85fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.qisutu-agent-ticket-create-main {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
 }
 
 .qisutu-agent-ticket-create-send {
@@ -2914,12 +2927,270 @@ body.qisutu-overlay-open {
     accent-color: var(--qisutu-primary);
 }
 
+.qisutu-agent-ticket-create-sla-info {
+    padding: 14px 16px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 9px;
+    background: #f8fbfd;
+}
+
+.qisutu-agent-ticket-create-sla-info h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+}
+
+.qisutu-agent-ticket-create-sla-info .qisutu-ticket-info-list {
+    margin: 0;
+}
+
+.qisutu-agent-ticket-create-sla-info .qisutu-ticket-info-row {
+    grid-template-columns: minmax(170px, 0.9fr) minmax(0, 1.1fr);
+}
+
 .qisutu-agent-ticket-create-form .qisutu-form-field-richtext .ck.ck-editor__main > .ck-editor__editable {
     min-height: 300px;
 }
 
-@media (max-width: 760px) {
-    .qisutu-agent-ticket-create-form .qisutu-admin-form-columns {
+.qisutu-agent-ticket-create-actions {
+    justify-content: flex-end;
+}
+
+.qisutu-agent-ticket-create-customer-info {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 10px;
+    background: #f8fbfd;
+}
+
+.qisutu-agent-ticket-create-customer-info h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.qisutu-agent-ticket-create-customer-info-message {
+    margin: 14px 0 0;
+    color: var(--qisutu-muted);
+    line-height: 1.5;
+}
+
+.qisutu-agent-ticket-create-customer-info-content {
+    display: grid;
+    gap: 20px;
+    margin-top: 18px;
+}
+
+.qisutu-agent-ticket-create-customer-info-content section {
+    min-width: 0;
+}
+
+.qisutu-agent-ticket-create-customer-info-content h3 {
+    margin: 0 0 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--qisutu-border);
+    font-size: 15px;
+}
+
+.qisutu-agent-ticket-create-customer-info-content dl {
+    display: grid;
+    gap: 0;
+    margin: 0;
+}
+
+.qisutu-agent-ticket-create-customer-info-row {
+    display: grid;
+    grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1.35fr);
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(203, 213, 223, 0.72);
+}
+
+.qisutu-agent-ticket-create-customer-info-row:last-child {
+    border-bottom: 0;
+}
+
+.qisutu-agent-ticket-create-customer-info-row dt,
+.qisutu-agent-ticket-create-customer-info-row dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.qisutu-agent-ticket-create-customer-info-row dt {
+    color: var(--qisutu-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.qisutu-agent-ticket-create-customer-info-row dd {
+    color: var(--qisutu-text);
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
+@media (max-width: 1080px) {
+    .qisutu-agent-ticket-create-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+    .qisutu-agent-ticket-create-customer-info-row {
+        grid-template-columns: 1fr;
+        gap: 3px;
+    }
+}
+
+/* Ticket dynamic fields and queue assignment. */
+.qisutu-dynamic-assignment-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.qisutu-dynamic-assignment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.qisutu-dynamic-assignment-list h3 {
+    margin: 0 0 4px;
+}
+
+.qisutu-dynamic-assignment-list > a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 13px;
+    border: 1px solid #d4dde6;
+    border-radius: 7px;
+    background: #fff;
+    color: inherit;
+    text-decoration: none;
+}
+
+.qisutu-dynamic-assignment-list > a:hover,
+.qisutu-dynamic-assignment-list > a:focus-visible {
+    border-color: #0c6078;
+    box-shadow: 0 0 0 2px rgba(12, 96, 120, 0.12);
+}
+
+.qisutu-dynamic-assignment-list > a span {
+    color: #687789;
+    font-size: 12px;
+}
+
+.qisutu-assignment-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 4px 0 20px;
+}
+
+.qisutu-assignment-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 42px;
+    padding: 9px 12px;
+    border: 1px solid #d4dde6;
+    border-radius: 7px;
+    background: #f8fafc;
+}
+
+.qisutu-assignment-checkbox input {
+    flex: 0 0 auto;
+}
+
+.qisutu-ticket-dynamic-fields {
+    grid-column: 1 / -1;
+    margin: 4px 0 2px;
+    padding: 15px;
+    border: 1px solid #d4dde6;
+    border-radius: 8px;
+    background: #f7fafc;
+}
+
+.qisutu-ticket-dynamic-fields h4 {
+    margin: 0 0 13px;
+    font-size: 16px;
+}
+
+.qisutu-ticket-dynamic-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+}
+
+.qisutu-ticket-dynamic-field-wide {
+    grid-column: 1 / -1;
+}
+
+.qisutu-agent-ticket-create-main > [data-qisutu-create-dynamic-fields] {
+    display: block;
+}
+
+@media (max-width: 900px) {
+    .qisutu-dynamic-assignment-columns,
+    .qisutu-assignment-checkbox-grid,
+    .qisutu-ticket-dynamic-fields-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .qisutu-ticket-dynamic-field-wide {
+        grid-column: auto;
+    }
+}
+
+.qisutu-dynamic-selection-config {
+    padding: 14px;
+    border: 1px solid #d4dde6;
+    border-radius: 8px;
+    background: #f7fafc;
+}
+
+.qisutu-dynamic-option-rows {
+    display: grid;
+    gap: 10px;
+}
+
+.qisutu-dynamic-option-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.9fr) minmax(220px, 1.4fr) minmax(110px, 0.45fr) auto auto;
+    gap: 10px;
+    align-items: end;
+    padding: 12px;
+    border: 1px solid #d4dde6;
+    border-radius: 7px;
+    background: #fff;
+}
+
+.qisutu-dynamic-option-default {
+    align-self: end;
+    min-height: 40px;
+    white-space: nowrap;
+}
+
+.qisutu-dynamic-show-empty {
+    margin-top: 4px;
+}
+
+.qisutu-ticket-dynamic-fields select[multiple] {
+    min-height: 110px;
+}
+
+@media (max-width: 1100px) {
+    .qisutu-dynamic-option-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .qisutu-dynamic-option-row {
         grid-template-columns: 1fr;
     }
 }

@@ -277,6 +277,8 @@ sub _MultipartParse {
     my $Target      = $Param{Target};
     my $Source      = defined $Param{Source} ? $Param{Source} : '';
     my $ContentType = $Param{ContentType} || '';
+    my %Parsed;
+    my %Uploads;
 
     return if !$Target;
     return if $Source eq '';
@@ -326,8 +328,7 @@ sub _MultipartParse {
             $PartContentType =~ s{\A\s+|\s+\z}{}g;
             $PartContentType ||= 'application/octet-stream';
 
-            $Target->{__Uploads} ||= {};
-            push @{ $Target->{__Uploads}->{$Name} ||= [] }, {
+            push @{ $Uploads{$Name} ||= [] }, {
                 Filename           => $Filename,
                 ContentType        => $PartContentType,
                 Content            => $Content,
@@ -338,7 +339,22 @@ sub _MultipartParse {
             next PART;
         }
 
-        $Target->{$Name} = eval { decode( 'UTF-8', $Content, 1 ) } || $Content;
+        _ParamValueStore(
+            Target => \%Parsed,
+            Key    => $Name,
+            Value  => eval { decode( 'UTF-8', $Content, 1 ) } || $Content,
+        );
+    }
+
+    for my $Name ( keys %Parsed ) {
+        $Target->{$Name} = $Parsed{$Name};
+    }
+
+    if ( keys %Uploads ) {
+        $Target->{__Uploads} ||= {};
+        for my $Name ( keys %Uploads ) {
+            push @{ $Target->{__Uploads}->{$Name} ||= [] }, @{ $Uploads{$Name} };
+        }
     }
 
     return 1;
@@ -420,6 +436,8 @@ sub _ParamParse {
     return if !$Target;
     return if !$Source;
 
+    my %Parsed;
+
     for my $Pair ( split /[&;]/, $Source ) {
         next if $Pair eq '';
 
@@ -430,9 +448,40 @@ sub _ParamParse {
 
         next if $Key eq '';
 
-        $Target->{$Key} = $Value;
+        _ParamValueStore(
+            Target => \%Parsed,
+            Key    => $Key,
+            Value  => $Value,
+        );
     }
 
+    for my $Key ( keys %Parsed ) {
+        $Target->{$Key} = $Parsed{$Key};
+    }
+
+    return 1;
+}
+
+sub _ParamValueStore {
+    my (%Param) = @_;
+
+    my $Target = $Param{Target};
+    my $Key    = $Param{Key};
+    my $Value  = $Param{Value};
+
+    return if !$Target || !defined $Key || $Key eq '';
+
+    if ( !exists $Target->{$Key} ) {
+        $Target->{$Key} = $Value;
+        return 1;
+    }
+
+    if ( ref $Target->{$Key} eq 'ARRAY' ) {
+        push @{ $Target->{$Key} }, $Value;
+        return 1;
+    }
+
+    $Target->{$Key} = [ $Target->{$Key}, $Value ];
     return 1;
 }
 

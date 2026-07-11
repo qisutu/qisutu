@@ -30,8 +30,10 @@ use POSIX qw(strftime);
 use Time::Local qw(timelocal);
 
 use QisutuCalendar;
+use QisutuDynamicField;
 use QisutuHTML;
 use QisutuNotification;
+use QisutuService;
 use QisutuSystemSetting;
 
 sub new {
@@ -151,13 +153,14 @@ sub TicketList {
         }
         elsif ( $View eq 'escalated' ) {
             push @Where,
-                's.state_type NOT IN (?, ?)
+                's.state_type <> ?
+                 AND s.sla_pause = 0
                  AND (
                     (t.first_response_due_at IS NOT NULL AND t.first_response_at IS NULL AND t.first_response_due_at <= NOW())
                     OR (t.update_due_at IS NOT NULL AND t.update_due_at <= NOW())
                     OR (t.solution_due_at IS NOT NULL AND t.solution_at IS NULL AND t.solution_due_at <= NOW())
                  )';
-            push @Bind, 'closed', 'pending';
+            push @Bind, 'closed';
         }
         elsif ( $View eq 'my' ) {
             push @Where, 't.owner_user_id = ?';
@@ -213,6 +216,24 @@ sub TicketList {
             t.customer_user_id,
             t.owner_user_id,
             t.responsible_user_id,
+            t.service_id,
+            t.sla_id,
+            t.sla_source,
+            t.sla_name_snapshot,
+            t.sla_calendar_id,
+            t.sla_update_mode,
+            t.sla_first_response_minutes,
+            t.sla_update_minutes,
+            t.sla_solution_minutes,
+            t.sla_pause_started_at,
+            t.sla_pause_total_minutes,
+            t.sla_first_response_breached,
+            t.sla_update_breached,
+            t.sla_solution_breached,
+            svc.full_name AS service_name,
+            sl.name AS current_sla_name,
+            sla_cal.name AS sla_calendar_name,
+            sla_cal.timezone AS sla_calendar_timezone,
             t.created_at,
             t.changed_at,
             t.first_response_due_at,
@@ -228,8 +249,11 @@ sub TicketList {
             t.escalation_state,
             q.name AS queue_name,
             q.full_name AS queue_full_name,
+            queue_cal.name AS queue_calendar_name,
+            queue_cal.timezone AS queue_calendar_timezone,
             s.name AS state_name,
             s.state_type,
+            s.sla_pause,
             p.name AS priority_name,
             p.priority_value,
             c.name AS customer_name,
@@ -249,6 +273,10 @@ sub TicketList {
          INNER JOIN ticket_queue q ON q.id = t.queue_id
          INNER JOIN ticket_state s ON s.id = t.state_id
          INNER JOIN ticket_priority p ON p.id = t.priority_id
+         LEFT JOIN calendar queue_cal ON queue_cal.id = q.calendar_id
+         LEFT JOIN service svc ON svc.id = t.service_id
+         LEFT JOIN sla sl ON sl.id = t.sla_id
+         LEFT JOIN calendar sla_cal ON sla_cal.id = t.sla_calendar_id
          LEFT JOIN customer c ON c.id = t.customer_id
          LEFT JOIN customer_user cu ON cu.id = t.customer_user_id
          LEFT JOIN user_account cu_account ON cu_account.id = cu.user_account_id
@@ -514,7 +542,7 @@ sub _TicketListOrderExpression {
         changed          => 't.changed_at',
         age              => 't.created_at',
         escalation_state => 'CASE
-            WHEN s.state_type NOT IN ("closed", "pending") AND (
+            WHEN s.state_type <> "closed" AND s.sla_pause = 0 AND (
                 (t.first_response_due_at IS NOT NULL AND t.first_response_at IS NULL AND t.first_response_due_at <= NOW())
                 OR (t.update_due_at IS NOT NULL AND t.update_due_at <= NOW())
                 OR (t.solution_due_at IS NOT NULL AND t.solution_at IS NULL AND t.solution_due_at <= NOW())
@@ -679,6 +707,21 @@ sub TicketGet {
             t.customer_user_id,
             t.owner_user_id,
             t.responsible_user_id,
+            t.service_id,
+            t.sla_id,
+            t.sla_source,
+            t.sla_assignment_source,
+            t.sla_name_snapshot,
+            t.sla_calendar_id,
+            t.sla_update_mode,
+            t.sla_first_response_minutes,
+            t.sla_update_minutes,
+            t.sla_solution_minutes,
+            t.sla_pause_started_at,
+            t.sla_pause_total_minutes,
+            t.sla_first_response_breached,
+            t.sla_update_breached,
+            t.sla_solution_breached,
             t.created_at,
             t.changed_at,
             t.first_response_due_at,
@@ -698,10 +741,17 @@ sub TicketGet {
             q.escalation_solution_minutes,
             q.name AS queue_name,
             q.full_name AS queue_full_name,
+            queue_cal.name AS queue_calendar_name,
+            queue_cal.timezone AS queue_calendar_timezone,
             s.name AS state_name,
             s.state_type,
+            s.sla_pause,
             p.name AS priority_name,
             p.priority_value,
+            svc.full_name AS service_name,
+            sl.name AS current_sla_name,
+            sla_cal.name AS sla_calendar_name,
+            sla_cal.timezone AS sla_calendar_timezone,
             c.customer_number,
             c.name AS customer_name,
             cu_account.login AS customer_user_login,
@@ -728,6 +778,10 @@ sub TicketGet {
          INNER JOIN ticket_queue q ON q.id = t.queue_id
          INNER JOIN ticket_state s ON s.id = t.state_id
          INNER JOIN ticket_priority p ON p.id = t.priority_id
+         LEFT JOIN calendar queue_cal ON queue_cal.id = q.calendar_id
+         LEFT JOIN service svc ON svc.id = t.service_id
+         LEFT JOIN sla sl ON sl.id = t.sla_id
+         LEFT JOIN calendar sla_cal ON sla_cal.id = t.sla_calendar_id
          LEFT JOIN customer c ON c.id = t.customer_id
          LEFT JOIN customer_user cu ON cu.id = t.customer_user_id
          LEFT JOIN user_account cu_account ON cu_account.id = cu.user_account_id
@@ -802,6 +856,29 @@ sub TicketGet {
 
     $Ticket->{customer_name}      ||= '';
     $Ticket->{customer_number}    ||= '';
+    $Ticket->{service_name}       ||= '-';
+    $Ticket->{sla_name_display}     = $Ticket->{sla_name_snapshot} || $Ticket->{current_sla_name} || '-';
+    if ( ( $Ticket->{sla_source} || '' ) eq 'sla' ) {
+        $Ticket->{sla_calendar_display} = $Ticket->{sla_calendar_name}
+            ? $Ticket->{sla_calendar_name} . ( $Ticket->{sla_calendar_timezone} ? ' ' . $Ticket->{sla_calendar_timezone} : '' )
+            : '-';
+    }
+    else {
+        $Ticket->{sla_calendar_display} = $Ticket->{queue_calendar_name}
+            ? $Ticket->{queue_calendar_name} . ( $Ticket->{queue_calendar_timezone} ? ' ' . $Ticket->{queue_calendar_timezone} : '' )
+            : '-';
+    }
+    if ( ( $Ticket->{sla_source} || '' ) eq 'sla' ) {
+        $Ticket->{sla_source_label} = ( $Ticket->{sla_assignment_source} || '' ) eq 'customer'
+            ? 'Translate:TicketSLASourceCustomer'
+            : 'Translate:TicketSLASourceDefault';
+    }
+    else {
+        $Ticket->{sla_source_label} = 'Translate:TicketSLASourceQueue';
+    }
+    $Ticket->{sla_update_mode_label} = ( $Ticket->{sla_update_mode} || '' ) eq 'regular'
+        ? 'Translate:AdminSLAUpdateModeRegular'
+        : 'Translate:AdminSLAUpdateModeCustomer';
     $Ticket->{state_name_display} = $Self->_TicketStateDisplay(
         State => $Ticket->{state_name},
     );
@@ -1247,6 +1324,7 @@ sub TicketCreateFromAgent {
 
     my $User              = $Param{User} || {};
     my $QueueID           = $Param{QueueID} || 0;
+    my $ServiceID         = $Param{ServiceID} || 0;
     my $CustomerUserID    = $Param{CustomerUserID} || 0;
     my $OwnerUserID       = $Param{OwnerUserID} || 0;
     my $ResponsibleUserID = $Param{ResponsibleUserID} || 0;
@@ -1256,9 +1334,12 @@ sub TicketCreateFromAgent {
     my $Cc                = $Param{Cc} || '';
     my $StateID           = $Param{StateID} || 0;
     my $PriorityID        = $Param{PriorityID} || 0;
+    my $PendingUntilRaw   = $Param{PendingUntil} || '';
     my $SendEmail         = $Param{SendEmail} ? 1 : 0;
     my $Attachments       = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
-    my $UserID            = $User->{user_account_id} || 0;
+    my $DynamicFieldRequest = ref $Param{DynamicFieldRequest} eq 'HASH' ? $Param{DynamicFieldRequest} : {};
+    my $Language            = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
+    my $UserID              = $User->{user_account_id} || 0;
 
     if ( $UserID !~ m{\A\d+\z} || !$UserID || ( $User->{account_type} || '' ) ne 'agent' ) {
         $Self->{LastError} = 'Valid agent user is required';
@@ -1372,6 +1453,53 @@ sub TicketCreateFromAgent {
         return;
     }
 
+    my $SLASnapshot = {
+        service_id            => undef,
+        sla_id                => undef,
+        sla_source            => 'queue',
+        assignment_source     => 'queue',
+        sla_name              => undef,
+        calendar_id           => undef,
+        update_mode           => 'customer_response',
+        first_response_minutes => 0,
+        update_minutes         => 0,
+        solution_minutes       => 0,
+    };
+
+    if ($ServiceID) {
+        if ( $ServiceID !~ m{\A\d+\z} ) {
+            $Self->{LastError} = 'Translate:TicketServiceNotAvailable';
+            return;
+        }
+
+        my $ServiceObject = QisutuService->new(
+            Config => $Self->{Config},
+            DB     => $Self->{DB},
+        );
+        my $Resolved = $ServiceObject->SLAResolve(
+            CustomerID => $CustomerUser->{customer_id},
+            ServiceID  => $ServiceID,
+        );
+
+        if ( !$Resolved ) {
+            $Self->{LastError} = $ServiceObject->Error() || 'Translate:TicketServiceNotAvailable';
+            return;
+        }
+
+        $SLASnapshot = {
+            service_id             => $Resolved->{service_id},
+            sla_id                 => $Resolved->{sla_id},
+            sla_source             => 'sla',
+            assignment_source      => $Resolved->{assignment_source} || 'default',
+            sla_name               => $Resolved->{sla_name},
+            calendar_id            => $Resolved->{calendar_id},
+            update_mode            => $Resolved->{update_mode} || 'customer_response',
+            first_response_minutes => $Resolved->{first_response_minutes} || 0,
+            update_minutes         => $Resolved->{update_minutes} || 0,
+            solution_minutes       => $Resolved->{solution_minutes} || 0,
+        };
+    }
+
     $OwnerUserID ||= $UserID;
 
     for my $AgentCheck (
@@ -1405,7 +1533,7 @@ sub TicketCreateFromAgent {
     }
 
     my $State = $Self->{DB}->SelectRow(
-        'SELECT id, state_type
+        'SELECT id, state_type, sla_pause
          FROM ticket_state
          WHERE id = ?
            AND active = 1
@@ -1416,6 +1544,22 @@ sub TicketCreateFromAgent {
     if ( !$State ) {
         $Self->{LastError} = 'Translate:AgentTicketCreateStateInvalid';
         return;
+    }
+
+    my $PendingUntil;
+    if ( ( $State->{state_type} || '' ) eq 'pending' ) {
+        $PendingUntil = $Self->_DateTimeInputNormalize($PendingUntilRaw);
+
+        if ( !$PendingUntil ) {
+            $Self->{LastError} = 'Translate:TicketPendingUntilRequired';
+            return;
+        }
+
+        my $Now = $Self->_NowDateTime();
+        if ( $Now && $PendingUntil le $Now ) {
+            $Self->{LastError} = 'Translate:TicketPendingUntilFutureRequired';
+            return;
+        }
     }
 
     my $Priority = $Self->{DB}->SelectRow(
@@ -1429,6 +1573,20 @@ sub TicketCreateFromAgent {
 
     if ( !$Priority ) {
         $Self->{LastError} = 'Translate:AgentTicketCreatePriorityInvalid';
+        return;
+    }
+
+    my $DynamicFieldObject = QisutuDynamicField->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
+
+    if ( !$DynamicFieldObject->TicketValueValidate(
+        QueueID  => $QueueID,
+        Request  => $DynamicFieldRequest,
+        Language => $Language,
+    ) ) {
+        $Self->{LastError} = $DynamicFieldObject->Error() || 'Translate:TicketDynamicFieldInvalid';
         return;
     }
 
@@ -1499,7 +1657,19 @@ sub TicketCreateFromAgent {
             customer_user_id,
             owner_user_id,
             responsible_user_id,
+            service_id,
+            sla_id,
+            sla_source,
+            sla_assignment_source,
+            sla_name_snapshot,
+            sla_calendar_id,
+            sla_update_mode,
+            sla_first_response_minutes,
+            sla_update_minutes,
+            sla_solution_minutes,
             pending_started_at,
+            pending_until,
+            sla_pause_started_at,
             solution_at,
             created_by_user_id,
             changed_by_user_id,
@@ -1507,7 +1677,10 @@ sub TicketCreateFromAgent {
             changed_at
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             CASE WHEN ? = "pending" THEN NOW() ELSE NULL END,
+            ?,
+            CASE WHEN ? = 1 THEN NOW() ELSE NULL END,
             CASE WHEN ? = "closed" THEN NOW() ELSE NULL END,
             ?, ?, NOW(), NOW()
         )',
@@ -1520,7 +1693,19 @@ sub TicketCreateFromAgent {
         $CustomerUserID,
         $OwnerUserID,
         $ResponsibleUserID || undef,
+        $SLASnapshot->{service_id},
+        $SLASnapshot->{sla_id},
+        $SLASnapshot->{sla_source},
+        $SLASnapshot->{assignment_source},
+        $SLASnapshot->{sla_name},
+        $SLASnapshot->{calendar_id},
+        $SLASnapshot->{update_mode},
+        $SLASnapshot->{first_response_minutes},
+        $SLASnapshot->{update_minutes},
+        $SLASnapshot->{solution_minutes},
         $State->{state_type} || '',
+        $PendingUntil,
+        $State->{sla_pause} ? 1 : 0,
         $State->{state_type} || '',
         $UserID,
         $UserID,
@@ -1535,6 +1720,18 @@ sub TicketCreateFromAgent {
     my $TicketID = $Self->{DB}->LastInsertID('ticket');
     if ( !$TicketID ) {
         $Self->{LastError} = 'Ticket ID could not be loaded';
+        $Self->{DB}->Rollback();
+        return;
+    }
+
+    if ( !$DynamicFieldObject->TicketValueSave(
+        TicketID        => $TicketID,
+        QueueID         => $QueueID,
+        Request         => $DynamicFieldRequest,
+        Language        => $Language,
+        ChangedByUserID => $UserID,
+    ) ) {
+        $Self->{LastError} = $DynamicFieldObject->Error() || 'Translate:TicketDynamicFieldSaveFailed';
         $Self->{DB}->Rollback();
         return;
     }
@@ -2904,10 +3101,16 @@ sub TicketStatusUpdate {
             t.state_id,
             t.pending_started_at,
             t.pending_total_minutes,
-            q.calendar_id
+            t.sla_pause_started_at,
+            t.sla_pause_total_minutes,
+            t.sla_source,
+            t.sla_calendar_id,
+            q.calendar_id AS queue_calendar_id,
+            current_state.state_type AS current_state_type,
+            current_state.sla_pause AS current_sla_pause
          FROM ticket t
-         INNER JOIN ticket_queue q
-            ON q.id = t.queue_id
+         INNER JOIN ticket_queue q ON q.id = t.queue_id
+         INNER JOIN ticket_state current_state ON current_state.id = t.state_id
          WHERE t.id = ?
          LIMIT 1',
         $TicketID,
@@ -2919,7 +3122,7 @@ sub TicketStatusUpdate {
     }
 
     my $State = $Self->{DB}->SelectRow(
-        'SELECT id, state_type
+        'SELECT id, state_type, sla_pause
          FROM ticket_state
          WHERE id = ?
            AND active = 1
@@ -2933,6 +3136,9 @@ sub TicketStatusUpdate {
     }
 
     my $Now = $Self->_NowDateTime();
+    my $CalendarID = ( $Ticket->{sla_source} || '' ) eq 'sla'
+        ? ( $Ticket->{sla_calendar_id} || 0 )
+        : ( $Ticket->{queue_calendar_id} || 0 );
 
     my $PendingUntil;
     if ( ( $State->{state_type} || '' ) eq 'pending' ) {
@@ -2950,67 +3156,65 @@ sub TicketStatusUpdate {
     }
 
     my $PendingMinutesToAdd = 0;
-    if ( ( $State->{state_type} || '' ) ne 'pending' && $Ticket->{pending_started_at} && $Now ) {
+    if (
+        ( $Ticket->{current_state_type} || '' ) eq 'pending'
+        && ( $State->{state_type} || '' ) ne 'pending'
+        && $Ticket->{pending_started_at}
+        && $Now
+    ) {
         $PendingMinutesToAdd = $Self->_WorkingMinutesBetween(
-            CalendarID => $Ticket->{calendar_id},
+            CalendarID => $CalendarID,
             Start      => $Ticket->{pending_started_at},
             End        => $Now,
         );
     }
 
-    my $Result;
+    my $SLAPauseMinutesToAdd = 0;
+    if (
+        $Ticket->{current_sla_pause}
+        && !$State->{sla_pause}
+        && $Ticket->{sla_pause_started_at}
+        && $Now
+    ) {
+        $SLAPauseMinutesToAdd = $Self->_WorkingMinutesBetween(
+            CalendarID => $CalendarID,
+            Start      => $Ticket->{sla_pause_started_at},
+            End        => $Now,
+        );
+    }
 
-    if ( ( $State->{state_type} || '' ) eq 'pending' ) {
-        $Result = $Self->{DB}->Do(
-            'UPDATE ticket
-             SET state_id = ?,
-                 pending_started_at = COALESCE(pending_started_at, NOW()),
-                 pending_until = ?,
-                 escalation_state = ?,
-                 changed_by_user_id = ?,
-                 changed_at = NOW()
-             WHERE id = ?',
-            $StatusID,
-            $PendingUntil,
-            'normal',
-            $ChangedByUserID,
-            $TicketID,
-        );
-    }
-    elsif ( ( $State->{state_type} || '' ) eq 'closed' ) {
-        $Result = $Self->{DB}->Do(
-            'UPDATE ticket
-             SET state_id = ?,
-                 pending_total_minutes = pending_total_minutes + ?,
-                 pending_started_at = NULL,
-                 pending_until = NULL,
-                 solution_at = COALESCE(solution_at, NOW()),
-                 changed_by_user_id = ?,
-                 changed_at = NOW()
-             WHERE id = ?',
-            $StatusID,
-            $PendingMinutesToAdd,
-            $ChangedByUserID,
-            $TicketID,
-        );
-    }
-    else {
-        $Result = $Self->{DB}->Do(
-            'UPDATE ticket
-             SET state_id = ?,
-                 pending_total_minutes = pending_total_minutes + ?,
-                 pending_started_at = NULL,
-                 pending_until = NULL,
-                 solution_at = NULL,
-                 changed_by_user_id = ?,
-                 changed_at = NOW()
-             WHERE id = ?',
-            $StatusID,
-            $PendingMinutesToAdd,
-            $ChangedByUserID,
-            $TicketID,
-        );
-    }
+    my $Result = $Self->{DB}->Do(
+        'UPDATE ticket
+         SET state_id = ?,
+             pending_total_minutes = pending_total_minutes + ?,
+             pending_started_at = CASE
+                 WHEN ? = "pending" THEN COALESCE(pending_started_at, NOW())
+                 ELSE NULL
+             END,
+             pending_until = CASE WHEN ? = "pending" THEN ? ELSE NULL END,
+             sla_pause_total_minutes = sla_pause_total_minutes + ?,
+             sla_pause_started_at = CASE
+                 WHEN ? = 1 THEN COALESCE(sla_pause_started_at, NOW())
+                 ELSE NULL
+             END,
+             solution_at = CASE
+                 WHEN ? = "closed" THEN COALESCE(solution_at, NOW())
+                 ELSE solution_at
+             END,
+             changed_by_user_id = ?,
+             changed_at = NOW()
+         WHERE id = ?',
+        $StatusID,
+        $PendingMinutesToAdd,
+        $State->{state_type} || '',
+        $State->{state_type} || '',
+        $PendingUntil,
+        $SLAPauseMinutesToAdd,
+        $State->{sla_pause} ? 1 : 0,
+        $State->{state_type} || '',
+        $ChangedByUserID,
+        $TicketID,
+    );
 
     if ( !$Result ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Ticket status could not be updated';
@@ -3032,7 +3236,6 @@ sub TicketStatusUpdate {
 
     return $Recalculated;
 }
-
 
 sub TicketPriorityUpdate {
     my ( $Self, %Param ) = @_;
@@ -3125,9 +3328,18 @@ sub TicketQueueUpdate {
     }
 
     my $Ticket = $Self->{DB}->SelectRow(
-        'SELECT id, queue_id
-         FROM ticket
-         WHERE id = ?
+        'SELECT
+            t.id,
+            t.queue_id,
+            t.sla_source,
+            t.sla_calendar_id,
+            t.sla_pause_started_at,
+            q.calendar_id AS queue_calendar_id,
+            state.sla_pause
+         FROM ticket t
+         INNER JOIN ticket_queue q ON q.id = t.queue_id
+         INNER JOIN ticket_state state ON state.id = t.state_id
+         WHERE t.id = ?
          LIMIT 1',
         $TicketID,
     );
@@ -3169,19 +3381,188 @@ sub TicketQueueUpdate {
         }
     }
 
+    my $PauseMinutesToAdd = 0;
+    if ( $Ticket->{sla_pause} && $Ticket->{sla_pause_started_at} ) {
+        my $OldCalendarID = ( $Ticket->{sla_source} || '' ) eq 'sla'
+            ? ( $Ticket->{sla_calendar_id} || 0 )
+            : ( $Ticket->{queue_calendar_id} || 0 );
+        my $Now = $Self->_NowDateTime();
+        if ($Now) {
+            $PauseMinutesToAdd = $Self->_WorkingMinutesBetween(
+                CalendarID => $OldCalendarID,
+                Start      => $Ticket->{sla_pause_started_at},
+                End        => $Now,
+            );
+        }
+    }
+
     my $Result = $Self->{DB}->Do(
         'UPDATE ticket
          SET queue_id = ?,
+             sla_pause_total_minutes = sla_pause_total_minutes + ?,
+             sla_pause_started_at = CASE WHEN ? = 1 THEN NOW() ELSE NULL END,
              changed_by_user_id = ?,
              changed_at = NOW()
          WHERE id = ?',
         $QueueID,
+        $PauseMinutesToAdd,
+        $Ticket->{sla_pause} ? 1 : 0,
         $ChangedByUserID,
         $TicketID,
     );
 
     if ( !$Result ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Ticket queue could not be updated';
+        return;
+    }
+
+    return $Self->RecalculateTicketEscalationTimes(
+        TicketID        => $TicketID,
+        ChangedByUserID => $ChangedByUserID,
+    );
+}
+
+
+sub TicketServiceUpdate {
+    my ( $Self, %Param ) = @_;
+
+    my $TicketID        = $Param{TicketID} || 0;
+    my $ServiceID       = defined $Param{ServiceID} ? $Param{ServiceID} : 0;
+    my $User            = $Param{User} || {};
+    my $ChangedByUserID = $Param{ChangedByUserID} || 1;
+
+    if ( $TicketID !~ m{\A\d+\z} || !$TicketID ) {
+        $Self->{LastError} = 'Valid TicketID is required';
+        return;
+    }
+
+    if ( $ServiceID !~ m{\A\d+\z} ) {
+        $Self->{LastError} = 'Translate:TicketServiceNotAvailable';
+        return;
+    }
+
+    my $Ticket = $Self->{DB}->SelectRow(
+        'SELECT
+            t.id,
+            t.queue_id,
+            t.customer_id,
+            t.service_id,
+            t.sla_source,
+            t.sla_calendar_id,
+            t.sla_pause_started_at,
+            t.sla_pause_total_minutes,
+            q.calendar_id AS queue_calendar_id,
+            state.sla_pause
+         FROM ticket t
+         INNER JOIN ticket_queue q ON q.id = t.queue_id
+         INNER JOIN ticket_state state ON state.id = t.state_id
+         WHERE t.id = ?
+         LIMIT 1',
+        $TicketID,
+    );
+
+    if ( !$Ticket ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Ticket could not be loaded';
+        return;
+    }
+
+    if ( $User->{user_account_id} && !$Self->_TicketChangeAllowed( Ticket => $Ticket, User => $User ) ) {
+        $Self->{LastError} = 'Ticket change access denied';
+        return;
+    }
+
+    my $Snapshot = {
+        service_id             => undef,
+        sla_id                 => undef,
+        sla_source             => 'queue',
+        assignment_source      => 'queue',
+        sla_name               => undef,
+        calendar_id            => undef,
+        update_mode            => 'customer_response',
+        first_response_minutes => 0,
+        update_minutes         => 0,
+        solution_minutes       => 0,
+    };
+
+    if ($ServiceID) {
+        my $ServiceObject = QisutuService->new(
+            Config => $Self->{Config},
+            DB     => $Self->{DB},
+        );
+        my $Resolved = $ServiceObject->SLAResolve(
+            CustomerID => $Ticket->{customer_id},
+            ServiceID  => $ServiceID,
+        );
+
+        if ( !$Resolved ) {
+            $Self->{LastError} = $ServiceObject->Error() || 'Translate:TicketServiceNotAvailable';
+            return;
+        }
+
+        $Snapshot = {
+            service_id             => $Resolved->{service_id},
+            sla_id                 => $Resolved->{sla_id},
+            sla_source             => 'sla',
+            assignment_source      => $Resolved->{assignment_source} || 'default',
+            sla_name               => $Resolved->{sla_name},
+            calendar_id            => $Resolved->{calendar_id},
+            update_mode            => $Resolved->{update_mode} || 'customer_response',
+            first_response_minutes => $Resolved->{first_response_minutes} || 0,
+            update_minutes         => $Resolved->{update_minutes} || 0,
+            solution_minutes       => $Resolved->{solution_minutes} || 0,
+        };
+    }
+
+    my $PauseMinutesToAdd = 0;
+    if ( $Ticket->{sla_pause} && $Ticket->{sla_pause_started_at} ) {
+        my $OldCalendarID = ( $Ticket->{sla_source} || '' ) eq 'sla'
+            ? ( $Ticket->{sla_calendar_id} || 0 )
+            : ( $Ticket->{queue_calendar_id} || 0 );
+        my $Now = $Self->_NowDateTime();
+        if ($Now) {
+            $PauseMinutesToAdd = $Self->_WorkingMinutesBetween(
+                CalendarID => $OldCalendarID,
+                Start      => $Ticket->{sla_pause_started_at},
+                End        => $Now,
+            );
+        }
+    }
+
+    my $Result = $Self->{DB}->Do(
+        'UPDATE ticket
+         SET service_id = ?,
+             sla_id = ?,
+             sla_source = ?,
+             sla_assignment_source = ?,
+             sla_name_snapshot = ?,
+             sla_calendar_id = ?,
+             sla_update_mode = ?,
+             sla_first_response_minutes = ?,
+             sla_update_minutes = ?,
+             sla_solution_minutes = ?,
+             sla_pause_total_minutes = sla_pause_total_minutes + ?,
+             sla_pause_started_at = CASE WHEN ? = 1 THEN NOW() ELSE NULL END,
+             changed_by_user_id = ?,
+             changed_at = NOW()
+         WHERE id = ?',
+        $Snapshot->{service_id},
+        $Snapshot->{sla_id},
+        $Snapshot->{sla_source},
+        $Snapshot->{assignment_source},
+        $Snapshot->{sla_name},
+        $Snapshot->{calendar_id},
+        $Snapshot->{update_mode},
+        $Snapshot->{first_response_minutes},
+        $Snapshot->{update_minutes},
+        $Snapshot->{solution_minutes},
+        $PauseMinutesToAdd,
+        $Ticket->{sla_pause} ? 1 : 0,
+        $ChangedByUserID,
+        $TicketID,
+    );
+
+    if ( !$Result ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:TicketServiceUpdateFailed';
         return;
     }
 
@@ -3210,9 +3591,21 @@ sub TicketCustomerUserUpdate {
     }
 
     my $Ticket = $Self->{DB}->SelectRow(
-        'SELECT id, queue_id, customer_id, customer_user_id
-         FROM ticket
-         WHERE id = ?
+        'SELECT
+            t.id,
+            t.queue_id,
+            t.customer_id,
+            t.customer_user_id,
+            t.service_id,
+            t.sla_source,
+            t.sla_calendar_id,
+            t.sla_pause_started_at,
+            q.calendar_id AS queue_calendar_id,
+            state.sla_pause
+         FROM ticket t
+         INNER JOIN ticket_queue q ON q.id = t.queue_id
+         INNER JOIN ticket_state state ON state.id = t.state_id
+         WHERE t.id = ?
          LIMIT 1',
         $TicketID,
     );
@@ -3251,27 +3644,126 @@ sub TicketCustomerUserUpdate {
         return;
     }
 
-    my $Result = $Self->{DB}->Do(
-        'UPDATE ticket
-         SET customer_id = ?,
-             customer_user_id = ?,
-             changed_by_user_id = ?,
-             changed_at = NOW()
-         WHERE id = ?',
-        $CustomerUser->{customer_id},
-        $CustomerUser->{id},
-        $ChangedByUserID,
-        $TicketID,
-    );
+    my $Snapshot;
+    if ( $Ticket->{service_id} ) {
+        my $ServiceObject = QisutuService->new(
+            Config => $Self->{Config},
+            DB     => $Self->{DB},
+        );
+        my $Resolved = $ServiceObject->SLAResolve(
+            CustomerID => $CustomerUser->{customer_id},
+            ServiceID  => $Ticket->{service_id},
+        );
+
+        if ($Resolved) {
+            $Snapshot = {
+                service_id             => $Resolved->{service_id},
+                sla_id                 => $Resolved->{sla_id},
+                sla_source             => 'sla',
+                assignment_source      => $Resolved->{assignment_source} || 'default',
+                sla_name               => $Resolved->{sla_name},
+                calendar_id            => $Resolved->{calendar_id},
+                update_mode            => $Resolved->{update_mode} || 'customer_response',
+                first_response_minutes => $Resolved->{first_response_minutes} || 0,
+                update_minutes         => $Resolved->{update_minutes} || 0,
+                solution_minutes       => $Resolved->{solution_minutes} || 0,
+            };
+        }
+        else {
+            $Snapshot = {
+                service_id             => undef,
+                sla_id                 => undef,
+                sla_source             => 'queue',
+                assignment_source      => 'queue',
+                sla_name               => undef,
+                calendar_id            => undef,
+                update_mode            => 'customer_response',
+                first_response_minutes => 0,
+                update_minutes         => 0,
+                solution_minutes       => 0,
+            };
+        }
+    }
+
+    my $PauseMinutesToAdd = 0;
+    if ( $Snapshot && $Ticket->{sla_pause} && $Ticket->{sla_pause_started_at} ) {
+        my $OldCalendarID = ( $Ticket->{sla_source} || '' ) eq 'sla'
+            ? ( $Ticket->{sla_calendar_id} || 0 )
+            : ( $Ticket->{queue_calendar_id} || 0 );
+        my $Now = $Self->_NowDateTime();
+        if ($Now) {
+            $PauseMinutesToAdd = $Self->_WorkingMinutesBetween(
+                CalendarID => $OldCalendarID,
+                Start      => $Ticket->{sla_pause_started_at},
+                End        => $Now,
+            );
+        }
+    }
+
+    my $Result;
+    if ($Snapshot) {
+        $Result = $Self->{DB}->Do(
+            'UPDATE ticket
+             SET customer_id = ?,
+                 customer_user_id = ?,
+                 service_id = ?,
+                 sla_id = ?,
+                 sla_source = ?,
+                 sla_assignment_source = ?,
+                 sla_name_snapshot = ?,
+                 sla_calendar_id = ?,
+                 sla_update_mode = ?,
+                 sla_first_response_minutes = ?,
+                 sla_update_minutes = ?,
+                 sla_solution_minutes = ?,
+                 sla_pause_total_minutes = sla_pause_total_minutes + ?,
+                 sla_pause_started_at = CASE WHEN ? = 1 THEN NOW() ELSE NULL END,
+                 changed_by_user_id = ?,
+                 changed_at = NOW()
+             WHERE id = ?',
+            $CustomerUser->{customer_id},
+            $CustomerUser->{id},
+            $Snapshot->{service_id},
+            $Snapshot->{sla_id},
+            $Snapshot->{sla_source},
+            $Snapshot->{assignment_source},
+            $Snapshot->{sla_name},
+            $Snapshot->{calendar_id},
+            $Snapshot->{update_mode},
+            $Snapshot->{first_response_minutes},
+            $Snapshot->{update_minutes},
+            $Snapshot->{solution_minutes},
+            $PauseMinutesToAdd,
+            $Ticket->{sla_pause} ? 1 : 0,
+            $ChangedByUserID,
+            $TicketID,
+        );
+    }
+    else {
+        $Result = $Self->{DB}->Do(
+            'UPDATE ticket
+             SET customer_id = ?,
+                 customer_user_id = ?,
+                 changed_by_user_id = ?,
+                 changed_at = NOW()
+             WHERE id = ?',
+            $CustomerUser->{customer_id},
+            $CustomerUser->{id},
+            $ChangedByUserID,
+            $TicketID,
+        );
+    }
 
     if ( !$Result ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Ticket customer user could not be updated';
         return;
     }
 
-    return 1;
+    return $Self->RecalculateTicketEscalationTimes(
+        TicketID        => $TicketID,
+        ChangedByUserID => $ChangedByUserID,
+    );
 }
-
 
 sub TicketOwnerUpdate {
     my ( $Self, %Param ) = @_;
@@ -3503,20 +3995,30 @@ sub RecalculateTicketEscalationTimes {
             t.queue_id,
             t.created_at,
             t.changed_at,
+            t.first_response_due_at AS previous_first_response_due_at,
+            t.update_due_at AS previous_update_due_at,
+            t.solution_due_at AS previous_solution_due_at,
             t.solution_at,
-            t.pending_started_at,
-            t.pending_until,
-            t.pending_total_minutes,
-            s.state_type,
-            q.calendar_id,
-            q.escalation_first_response_minutes,
-            q.escalation_update_minutes,
-            q.escalation_solution_minutes
+            t.sla_source,
+            t.sla_calendar_id,
+            t.sla_update_mode,
+            t.sla_first_response_minutes,
+            t.sla_update_minutes,
+            t.sla_solution_minutes,
+            t.sla_pause_started_at,
+            t.sla_pause_total_minutes,
+            t.sla_first_response_breached,
+            t.sla_update_breached,
+            t.sla_solution_breached,
+            state.state_type,
+            state.sla_pause,
+            q.calendar_id AS queue_calendar_id,
+            q.escalation_first_response_minutes AS queue_first_response_minutes,
+            q.escalation_update_minutes AS queue_update_minutes,
+            q.escalation_solution_minutes AS queue_solution_minutes
          FROM ticket t
-         INNER JOIN ticket_state s
-            ON s.id = t.state_id
-         INNER JOIN ticket_queue q
-            ON q.id = t.queue_id
+         INNER JOIN ticket_state state ON state.id = t.state_id
+         INNER JOIN ticket_queue q ON q.id = t.queue_id
          WHERE t.id = ?
          LIMIT 1',
         $TicketID,
@@ -3554,72 +4056,12 @@ sub RecalculateTicketEscalationTimes {
         return;
     }
 
-    my $CalendarID = $Ticket->{calendar_id} || 0;
-    my $FirstResponseDueAt;
-    my $UpdateDueAt;
-    my $SolutionDueAt;
-
-    if ( $Ticket->{escalation_first_response_minutes} ) {
-        $FirstResponseDueAt = $Self->_AddEscalationMinutes(
-            CalendarID => $CalendarID,
-            Start      => $Ticket->{created_at},
-            Minutes    => $Ticket->{escalation_first_response_minutes},
-        );
-    }
-
-    if ( $Ticket->{escalation_solution_minutes} ) {
-        $SolutionDueAt = $Self->_AddEscalationMinutes(
-            CalendarID => $CalendarID,
-            Start      => $Ticket->{created_at},
-            Minutes    => $Ticket->{escalation_solution_minutes},
-        );
-    }
-
-    my $FirstResponseAt       = $ArticleDates->{first_agent_response_at};
-    my $LastAgentArticleAt    = $ArticleDates->{last_agent_article_at};
-    my $LastCustomerArticleAt = $ArticleDates->{last_customer_article_at};
-
-    if (
-        $Ticket->{escalation_update_minutes}
-        && $FirstResponseAt
-        && $LastCustomerArticleAt
-        && ( !$LastAgentArticleAt || $LastCustomerArticleAt gt $LastAgentArticleAt )
-    ) {
-        $UpdateDueAt = $Self->_AddEscalationMinutes(
-            CalendarID => $CalendarID,
-            Start      => $LastCustomerArticleAt,
-            Minutes    => $Ticket->{escalation_update_minutes},
-        );
-    }
-
-    my $PendingTotalMinutes = $Ticket->{pending_total_minutes} || 0;
-    if ( $PendingTotalMinutes && $PendingTotalMinutes =~ m{\A\d+\z} ) {
-        $FirstResponseDueAt = $Self->_AddEscalationMinutes(
-            CalendarID => $CalendarID,
-            Start      => $FirstResponseDueAt,
-            Minutes    => $PendingTotalMinutes,
-        ) if $FirstResponseDueAt;
-
-        $UpdateDueAt = $Self->_AddEscalationMinutes(
-            CalendarID => $CalendarID,
-            Start      => $UpdateDueAt,
-            Minutes    => $PendingTotalMinutes,
-        ) if $UpdateDueAt;
-
-        $SolutionDueAt = $Self->_AddEscalationMinutes(
-            CalendarID => $CalendarID,
-            Start      => $SolutionDueAt,
-            Minutes    => $PendingTotalMinutes,
-        ) if $SolutionDueAt;
-    }
-
-    my $SolutionAt = $Ticket->{solution_at};
-    if ( ( $Ticket->{state_type} || '' ) eq 'closed' && !$SolutionAt ) {
-        $SolutionAt = $Ticket->{changed_at};
-    }
-    elsif ( ( $Ticket->{state_type} || '' ) ne 'closed' ) {
-        $SolutionAt = undef;
-    }
+    my $UsesSLA = ( $Ticket->{sla_source} || '' ) eq 'sla' ? 1 : 0;
+    my $CalendarID = $UsesSLA ? ( $Ticket->{sla_calendar_id} || 0 ) : ( $Ticket->{queue_calendar_id} || 0 );
+    my $FirstMinutes = $UsesSLA ? ( $Ticket->{sla_first_response_minutes} || 0 ) : ( $Ticket->{queue_first_response_minutes} || 0 );
+    my $UpdateMinutes = $UsesSLA ? ( $Ticket->{sla_update_minutes} || 0 ) : ( $Ticket->{queue_update_minutes} || 0 );
+    my $SolutionMinutes = $UsesSLA ? ( $Ticket->{sla_solution_minutes} || 0 ) : ( $Ticket->{queue_solution_minutes} || 0 );
+    my $UpdateMode = $UsesSLA ? ( $Ticket->{sla_update_mode} || 'customer_response' ) : 'customer_response';
 
     if ( !defined $Self->{_DisplayNowDateTime} ) {
         my $NowRow = $Self->{DB}->SelectRow(
@@ -3629,15 +4071,164 @@ sub RecalculateTicketEscalationTimes {
     }
     my $Now = $Self->{_DisplayNowDateTime} || '';
 
-    my $EscalationState = $Self->_EscalationStateCalculate(
-        Now                => $Now,
-        StateType          => $Ticket->{state_type},
-        FirstResponseDueAt => $FirstResponseDueAt,
-        FirstResponseAt    => $FirstResponseAt,
-        UpdateDueAt        => $UpdateDueAt,
-        SolutionDueAt      => $SolutionDueAt,
-        SolutionAt         => $SolutionAt,
-    );
+    my $PauseMinutes = $Ticket->{sla_pause_total_minutes} || 0;
+    if ( $Ticket->{sla_pause} && $Ticket->{sla_pause_started_at} && $Now ) {
+        $PauseMinutes += $Self->_WorkingMinutesBetween(
+            CalendarID => $CalendarID,
+            Start      => $Ticket->{sla_pause_started_at},
+            End        => $Now,
+        );
+    }
+
+    my $FirstResponseDueAt;
+    my $SolutionDueAt;
+    my $UpdateDueAt;
+
+    if ($FirstMinutes) {
+        $FirstResponseDueAt = $Self->_AddEscalationMinutes(
+            CalendarID => $CalendarID,
+            Start      => $Ticket->{created_at},
+            Minutes    => $FirstMinutes,
+        );
+        if ( $FirstResponseDueAt && $PauseMinutes ) {
+            $FirstResponseDueAt = $Self->_AddEscalationMinutes(
+                CalendarID => $CalendarID,
+                Start      => $FirstResponseDueAt,
+                Minutes    => $PauseMinutes,
+            );
+        }
+    }
+
+    if ($SolutionMinutes) {
+        $SolutionDueAt = $Self->_AddEscalationMinutes(
+            CalendarID => $CalendarID,
+            Start      => $Ticket->{created_at},
+            Minutes    => $SolutionMinutes,
+        );
+        if ( $SolutionDueAt && $PauseMinutes ) {
+            $SolutionDueAt = $Self->_AddEscalationMinutes(
+                CalendarID => $CalendarID,
+                Start      => $SolutionDueAt,
+                Minutes    => $PauseMinutes,
+            );
+        }
+    }
+
+    my $FirstResponseAt       = $ArticleDates->{first_agent_response_at};
+    my $LastAgentArticleAt    = $ArticleDates->{last_agent_article_at};
+    my $LastCustomerArticleAt = $ArticleDates->{last_customer_article_at};
+
+    if ( $UpdateMinutes && $FirstResponseAt && ( $Ticket->{state_type} || '' ) ne 'closed' ) {
+        my $UpdateStart;
+
+        if ( $UpdateMode eq 'regular' ) {
+            $UpdateStart = $LastAgentArticleAt || $FirstResponseAt;
+        }
+        elsif (
+            $LastCustomerArticleAt
+            && ( !$LastAgentArticleAt || $LastCustomerArticleAt gt $LastAgentArticleAt )
+        ) {
+            $UpdateStart = $LastCustomerArticleAt;
+        }
+
+        if ($UpdateStart) {
+            $UpdateDueAt = $Self->_AddEscalationMinutes(
+                CalendarID => $CalendarID,
+                Start      => $UpdateStart,
+                Minutes    => $UpdateMinutes,
+            );
+            if ( $UpdateDueAt && $PauseMinutes ) {
+                $UpdateDueAt = $Self->_AddEscalationMinutes(
+                    CalendarID => $CalendarID,
+                    Start      => $UpdateDueAt,
+                    Minutes    => $PauseMinutes,
+                );
+            }
+        }
+    }
+
+    my $SolutionAt = $Ticket->{solution_at};
+    if ( ( $Ticket->{state_type} || '' ) eq 'closed' && !$SolutionAt ) {
+        $SolutionAt = $Ticket->{changed_at};
+    }
+
+    my $FirstBreached = $Ticket->{sla_first_response_breached} ? 1 : 0;
+    my $UpdateBreached = $Ticket->{sla_update_breached} ? 1 : 0;
+    my $SolutionBreached = $Ticket->{sla_solution_breached} ? 1 : 0;
+
+    if ( $FirstResponseDueAt && $FirstResponseAt && $FirstResponseAt gt $FirstResponseDueAt ) {
+        $FirstBreached = 1;
+    }
+    elsif (
+        $FirstResponseDueAt
+        && !$FirstResponseAt
+        && !$Ticket->{sla_pause}
+        && ( $Ticket->{state_type} || '' ) ne 'closed'
+        && $Now
+        && $FirstResponseDueAt le $Now
+    ) {
+        $FirstBreached = 1;
+    }
+
+    if (
+        $Ticket->{previous_update_due_at}
+        && $LastAgentArticleAt
+        && $LastAgentArticleAt gt $Ticket->{previous_update_due_at}
+    ) {
+        $UpdateBreached = 1;
+    }
+    if (
+        $UpdateDueAt
+        && !$Ticket->{sla_pause}
+        && ( $Ticket->{state_type} || '' ) ne 'closed'
+        && $Now
+        && $UpdateDueAt le $Now
+    ) {
+        $UpdateBreached = 1;
+    }
+
+    if ( $SolutionDueAt && $SolutionAt && $SolutionAt gt $SolutionDueAt ) {
+        $SolutionBreached = 1;
+    }
+    elsif (
+        $SolutionDueAt
+        && !$SolutionAt
+        && !$Ticket->{sla_pause}
+        && ( $Ticket->{state_type} || '' ) ne 'closed'
+        && $Now
+        && $SolutionDueAt le $Now
+    ) {
+        $SolutionBreached = 1;
+    }
+
+    my $EscalationState = 'normal';
+    if ( $FirstBreached || $UpdateBreached || $SolutionBreached ) {
+        $EscalationState = 'escalated';
+    }
+    elsif ( !$Ticket->{sla_pause} && ( $Ticket->{state_type} || '' ) ne 'closed' && $Now ) {
+        my @WarningChecks;
+        push @WarningChecks, [ $FirstResponseDueAt, $FirstMinutes ] if $FirstResponseDueAt && !$FirstResponseAt;
+        push @WarningChecks, [ $UpdateDueAt, $UpdateMinutes ] if $UpdateDueAt;
+        push @WarningChecks, [ $SolutionDueAt, $SolutionMinutes ] if $SolutionDueAt && !$SolutionAt;
+
+        for my $Check (@WarningChecks) {
+            my ( $DueAt, $TargetMinutes ) = @{$Check};
+            next if !$DueAt || $DueAt le $Now;
+
+            my $Remaining = $Self->_WorkingMinutesBetween(
+                CalendarID => $CalendarID,
+                Start      => $Now,
+                End        => $DueAt,
+            );
+            my $Threshold = int( ( $TargetMinutes || 0 ) * 0.20 );
+            $Threshold = 1 if $Threshold < 1;
+
+            if ( $Remaining <= $Threshold ) {
+                $EscalationState = 'warning';
+                last;
+            }
+        }
+    }
 
     my $Result = $Self->{DB}->Do(
         'UPDATE ticket
@@ -3649,6 +4240,9 @@ sub RecalculateTicketEscalationTimes {
              solution_due_at = ?,
              solution_at = ?,
              escalation_state = ?,
+             sla_first_response_breached = ?,
+             sla_update_breached = ?,
+             sla_solution_breached = ?,
              changed_by_user_id = ?,
              changed_at = changed_at
          WHERE id = ?',
@@ -3660,6 +4254,9 @@ sub RecalculateTicketEscalationTimes {
         $SolutionDueAt,
         $SolutionAt,
         $EscalationState,
+        $FirstBreached,
+        $UpdateBreached,
+        $SolutionBreached,
         $ChangedByUserID,
         $TicketID,
     );
@@ -3671,7 +4268,6 @@ sub RecalculateTicketEscalationTimes {
 
     return 1;
 }
-
 
 sub CheckTicketEscalations {
     my ( $Self, %Param ) = @_;
@@ -3717,7 +4313,8 @@ sub CheckTicketEscalations {
          FROM ticket t
          INNER JOIN ticket_state s
             ON s.id = t.state_id
-         WHERE s.state_type NOT IN (?, ?)
+         WHERE s.state_type <> ?
+           AND s.sla_pause = 0
            AND t.escalation_state <> ?
            AND (
                 (t.first_response_due_at IS NOT NULL AND t.first_response_at IS NULL AND t.first_response_due_at <= DATE_FORMAT(NOW(), "%Y-%m-%d %H:%i:%s"))
@@ -3733,7 +4330,6 @@ sub CheckTicketEscalations {
             t.id ASC
          LIMIT ' . $RemainingLimit,
         'closed',
-        'pending',
         'escalated',
     ) || [];
 
@@ -3744,6 +4340,26 @@ sub CheckTicketEscalations {
         my $Result = $Self->{DB}->Do(
             'UPDATE ticket
              SET escalation_state = ?,
+                 sla_first_response_breached = CASE
+                     WHEN first_response_due_at IS NOT NULL
+                       AND first_response_at IS NULL
+                       AND first_response_due_at <= DATE_FORMAT(NOW(), "%Y-%m-%d %H:%i:%s")
+                     THEN 1
+                     ELSE sla_first_response_breached
+                 END,
+                 sla_update_breached = CASE
+                     WHEN update_due_at IS NOT NULL
+                       AND update_due_at <= DATE_FORMAT(NOW(), "%Y-%m-%d %H:%i:%s")
+                     THEN 1
+                     ELSE sla_update_breached
+                 END,
+                 sla_solution_breached = CASE
+                     WHEN solution_due_at IS NOT NULL
+                       AND solution_at IS NULL
+                       AND solution_due_at <= DATE_FORMAT(NOW(), "%Y-%m-%d %H:%i:%s")
+                     THEN 1
+                     ELSE sla_solution_breached
+                 END,
                  changed_by_user_id = ?,
                  changed_at = changed_at
              WHERE id = ?
@@ -3764,10 +4380,18 @@ sub CheckTicketEscalations {
         }
     }
 
+    my $RecalculationLimit = $Limit > 5000 ? 5000 : $Limit;
+    my $Recalculated = $Self->RecalculateOpenTicketEscalationStates(
+        Force           => 1,
+        Limit           => $RecalculationLimit,
+        ChangedByUserID => $ChangedByUserID,
+    );
+
     return {
         PendingDue      => $PendingDue,
         PendingReleased => $PendingReleased,
         Escalated       => $Escalated,
+        Recalculated    => $Recalculated || 0,
         Checked         => $PendingDue + $Escalated,
     };
 }
@@ -3837,9 +4461,16 @@ sub RecalculateOpenTicketEscalationStates {
     if ( !$Force ) {
         $Where .= '
             AND (
-                (q.escalation_first_response_minutes > 0 AND t.first_response_due_at IS NULL)
-                OR (q.escalation_solution_minutes > 0 AND t.solution_due_at IS NULL)
-                OR (q.escalation_update_minutes > 0 AND t.last_customer_article_at IS NULL)
+                (t.sla_source = "sla" AND (
+                    (t.sla_first_response_minutes > 0 AND t.first_response_due_at IS NULL)
+                    OR (t.sla_solution_minutes > 0 AND t.solution_due_at IS NULL)
+                    OR (t.sla_update_minutes > 0 AND t.update_due_at IS NULL)
+                ))
+                OR (t.sla_source <> "sla" AND (
+                    (q.escalation_first_response_minutes > 0 AND t.first_response_due_at IS NULL)
+                    OR (q.escalation_solution_minutes > 0 AND t.solution_due_at IS NULL)
+                    OR (q.escalation_update_minutes > 0 AND t.update_due_at IS NULL)
+                ))
             )';
     }
 
@@ -4003,7 +4634,7 @@ sub _EscalationStateCalculate {
     my ( $Self, %Param ) = @_;
 
     return 'normal' if ( $Param{StateType} || '' ) eq 'closed';
-    return 'normal' if ( $Param{StateType} || '' ) eq 'pending';
+    return 'normal' if $Param{SLAPause};
 
     my $Now = $Param{Now} || '';
     return 'normal' if !$Now;
@@ -4074,7 +4705,7 @@ sub _EscalationDisplayPrepare {
     }
 
     my $EscalationCheckActive = 1;
-    if ( ( $Ticket->{state_type} || '' ) eq 'closed' || ( $Ticket->{state_type} || '' ) eq 'pending' ) {
+    if ( ( $Ticket->{state_type} || '' ) eq 'closed' || $Ticket->{sla_pause} ) {
         $EscalationCheckActive = 0;
     }
 
@@ -4082,7 +4713,11 @@ sub _EscalationDisplayPrepare {
     $Ticket->{first_response_due_class} = '';
     $Ticket->{first_response_escalated_since} = '';
 
-    if (
+    if ( $Ticket->{sla_first_response_breached} ) {
+        $Ticket->{first_response_escalated} = 1;
+        $Ticket->{first_response_due_class} = 'qisutu-escalation-value-escalated';
+    }
+    elsif (
         $EscalationCheckActive
         && $Now
         && $Ticket->{first_response_due_at}
@@ -4098,7 +4733,11 @@ sub _EscalationDisplayPrepare {
     $Ticket->{update_due_class} = '';
     $Ticket->{update_escalated_since} = '';
 
-    if (
+    if ( $Ticket->{sla_update_breached} ) {
+        $Ticket->{update_escalated} = 1;
+        $Ticket->{update_due_class} = 'qisutu-escalation-value-escalated';
+    }
+    elsif (
         $EscalationCheckActive
         && $Now
         && $Ticket->{update_due_at}
@@ -4113,7 +4752,11 @@ sub _EscalationDisplayPrepare {
     $Ticket->{solution_due_class} = '';
     $Ticket->{solution_escalated_since} = '';
 
-    if (
+    if ( $Ticket->{sla_solution_breached} ) {
+        $Ticket->{solution_escalated} = 1;
+        $Ticket->{solution_due_class} = 'qisutu-escalation-value-escalated';
+    }
+    elsif (
         $EscalationCheckActive
         && $Now
         && $Ticket->{solution_due_at}

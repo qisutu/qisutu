@@ -39,87 +39,137 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <input type="hidden" name="Page" value="AgentTicketCreate">
                         <input type="hidden" name="Step" value="AgentTicketCreate">
 
-                        <div class="qisutu-agent-ticket-create-send">
-                            <label class="qisutu-form-checkbox" for="qisutu-agent-ticket-create-send-email">
-                                <input id="qisutu-agent-ticket-create-send-email" type="checkbox" name="SendEmail" value="1" [% RAW.SendEmailChecked %]>
-                                <span>[% Translate.AgentTicketCreateSendEmail %]</span>
-                            </label>
-                        </div>
-
-                        <div class="qisutu-admin-form-columns">
-                            <div class="qisutu-form-field">
-                                <label for="qisutu-agent-ticket-create-queue">[% Translate.TicketQueue %] *</label>
-                                <select id="qisutu-agent-ticket-create-queue" name="QueueID" required data-qisutu-create-queue data-qisutu-template-url="index.pl?Page=AgentTicketCreate&amp;Step=QueueTemplate">
-                                    [% RAW.QueueOptionsHTML %]
-                                </select>
-                            </div>
-
-                            <div class="qisutu-form-field qisutu-autocomplete">
-                                <label for="qisutu-agent-ticket-create-customer-user">[% Translate.AgentTicketCreateToCustomerUser %] *</label>
-                                <input type="hidden" id="qisutu-agent-ticket-create-customer-user-id" name="CustomerUserID" value="[% CustomerUserID %]" data-qisutu-autocomplete-target>
-                                <input id="qisutu-agent-ticket-create-customer-user" type="text" name="CustomerUserSearch" value="[% CustomerUserSearch %]" required autocomplete="off" placeholder="[% Translate.TicketToolCustomerSearchPlaceholder %]" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketCreate&amp;Step=CustomerUserLookup" data-qisutu-autocomplete-hidden="qisutu-agent-ticket-create-customer-user-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]">
-                                <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
-                                <span class="qisutu-form-hint">[% Translate.TicketToolCustomerSearchHelp %]</span>
-                            </div>
-
-                            <div class="qisutu-form-field">
-                                <label for="qisutu-agent-ticket-create-cc">[% Translate.TicketArticleReplyCc %]</label>
-                                <input id="qisutu-agent-ticket-create-cc" type="text" name="Cc" value="[% Cc %]" autocomplete="off" placeholder="name@example.com">
-                                <span class="qisutu-form-hint">[% Translate.TicketArticleReplyCcHelp %]</span>
-                            </div>
-
-                            <div class="qisutu-form-field qisutu-autocomplete">
-                                <label for="qisutu-agent-ticket-create-owner">[% Translate.TicketOwner %]</label>
-                                <input type="hidden" id="qisutu-agent-ticket-create-owner-id" name="OwnerUserID" value="[% OwnerUserID %]" data-qisutu-autocomplete-target>
-                                <input id="qisutu-agent-ticket-create-owner" type="text" name="OwnerUserSearch" value="[% OwnerUserSearch %]" autocomplete="off" placeholder="[% Translate.TicketToolOwnerSearchPlaceholder %]" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketCreate&amp;Step=AgentLookup" data-qisutu-autocomplete-hidden="qisutu-agent-ticket-create-owner-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]">
-                                <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
-                                <span class="qisutu-form-hint">[% Translate.AgentTicketCreateOwnerHelp %]</span>
-                            </div>
-
-                            <div class="qisutu-form-field qisutu-autocomplete">
-                                <label for="qisutu-agent-ticket-create-responsible">[% Translate.TicketResponsible %]</label>
-                                <input type="hidden" id="qisutu-agent-ticket-create-responsible-id" name="ResponsibleUserID" value="[% ResponsibleUserID %]" data-qisutu-autocomplete-target>
-                                <input id="qisutu-agent-ticket-create-responsible" type="text" name="ResponsibleUserSearch" value="[% ResponsibleUserSearch %]" autocomplete="off" placeholder="[% Translate.TicketToolResponsibleSearchPlaceholder %]" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketCreate&amp;Step=AgentLookup" data-qisutu-autocomplete-hidden="qisutu-agent-ticket-create-responsible-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]">
-                                <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
-                                <span class="qisutu-form-hint">[% Translate.TicketToolAutocompleteHelp %]</span>
-                            </div>
-
-                            <div class="qisutu-form-field">
-                                <label for="qisutu-agent-ticket-create-title-field">[% Translate.TicketArticleSubject %] *</label>
-                                <input id="qisutu-agent-ticket-create-title-field" type="text" name="Title" value="[% Title %]" maxlength="500" required>
-                            </div>
-
-                            <div class="qisutu-form-field qisutu-form-field-richtext">
-                                <label for="qisutu-agent-ticket-create-body">[% Translate.TicketArticleBody %] *</label>
-                                <textarea id="qisutu-agent-ticket-create-body" class="qisutu-richtext" name="Body" rows="12" data-qisutu-create-body data-qisutu-body-required-message="[% Translate.AgentTicketCreateBodyRequired %]">[% Body %]</textarea>
-                            </div>
-
-                            <div class="qisutu-form-field qisutu-form-field-wide qisutu-ticket-reply-attachments">
-                                <label for="qisutu-agent-ticket-create-attachments">[% Translate.TicketArticleAttachments %]</label>
-                                <input id="qisutu-agent-ticket-create-attachments" type="file" name="TicketAttachment" multiple data-qisutu-attachment-input data-qisutu-attachment-max-bytes="[% AttachmentMaxSizeBytes %]" data-qisutu-attachment-max-label="[% AttachmentMaxSizeMB %] MB">
-                                <div class="qisutu-ticket-reply-attachment-list" data-qisutu-attachment-list data-qisutu-attachment-remove-label="[% Translate.TicketArticleAttachmentRemove %]">
-                                    <p class="qisutu-form-hint" data-qisutu-attachment-empty>[% Translate.TicketArticleAttachmentsEmpty %]</p>
+                        <div class="qisutu-agent-ticket-create-layout">
+                            <div class="qisutu-agent-ticket-create-main">
+                                <div class="qisutu-agent-ticket-create-send">
+                                    <label class="qisutu-form-checkbox" for="qisutu-agent-ticket-create-send-email">
+                                        <input id="qisutu-agent-ticket-create-send-email" type="checkbox" name="SendEmail" value="1" [% RAW.SendEmailChecked %]>
+                                        <span>[% Translate.AgentTicketCreateSendEmail %]</span>
+                                    </label>
                                 </div>
-                                <span class="qisutu-form-hint">[% Translate.TicketArticleAttachmentsHelp %] [% Translate.TicketArticleAttachmentLimitHelp %] [% AttachmentMaxSizeMB %] MB</span>
+
+                                <div class="qisutu-form-field qisutu-autocomplete">
+                                    <label for="qisutu-agent-ticket-create-customer-user">[% Translate.AgentTicketCreateToCustomerUser %] *</label>
+                                    <input type="hidden" id="qisutu-agent-ticket-create-customer-user-id" name="CustomerUserID" value="[% CustomerUserID %]" data-qisutu-autocomplete-target>
+                                    <input id="qisutu-agent-ticket-create-customer-user" type="text" name="CustomerUserSearch" value="[% CustomerUserSearch %]" required autocomplete="off" placeholder="[% Translate.TicketToolCustomerSearchPlaceholder %]" data-qisutu-autocomplete data-qisutu-customer-user-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketCreate&amp;Step=CustomerUserLookup" data-qisutu-autocomplete-hidden="qisutu-agent-ticket-create-customer-user-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]">
+                                    <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+                                    <span class="qisutu-form-hint">[% Translate.TicketToolCustomerSearchHelp %]</span>
+                                </div>
+
+                                <div class="qisutu-form-field">
+                                    <label for="qisutu-agent-ticket-create-service">[% Translate.TicketService %]</label>
+                                    <select id="qisutu-agent-ticket-create-service" name="ServiceID" data-qisutu-create-service data-qisutu-service-options-url="[% ServiceOptionsURL %]">
+                                        [% RAW.ServiceOptionsHTML %]
+                                    </select>
+                                    <span class="qisutu-form-hint">[% Translate.TicketServiceOptional %]</span>
+                                </div>
+
+                                <div class="qisutu-agent-ticket-create-sla-info [% ServiceSLAInfoClass %]" data-qisutu-create-sla-info>
+                                    <h3>[% Translate.TicketServiceAndSLA %]</h3>
+                                    <dl class="qisutu-ticket-info-list">
+                                        <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLA %]</dt><dd data-qisutu-sla-name>[% ServiceSLAName %]</dd></div>
+                                        <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLACalendar %]</dt><dd data-qisutu-sla-calendar>[% ServiceSLACalendar %]</dd></div>
+                                        <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLASource %]</dt><dd data-qisutu-sla-source>[% ServiceSLASource %]</dd></div>
+                                        <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLAUpdateMode %]</dt><dd data-qisutu-sla-update-mode>[% ServiceSLAUpdateMode %]</dd></div>
+                                        <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLAFirstResponseMinutes %]</dt><dd data-qisutu-sla-first>[% ServiceSLAFirstResponseMinutes %]</dd></div>
+                                        <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLAUpdateMinutes %]</dt><dd data-qisutu-sla-update>[% ServiceSLAUpdateMinutes %]</dd></div>
+                                        <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketSLASolutionMinutes %]</dt><dd data-qisutu-sla-solution>[% ServiceSLASolutionMinutes %]</dd></div>
+                                    </dl>
+                                </div>
+
+                                <div class="qisutu-form-field">
+                                    <label for="qisutu-agent-ticket-create-queue">[% Translate.TicketQueue %] *</label>
+                                    <select id="qisutu-agent-ticket-create-queue" name="QueueID" required data-qisutu-create-queue data-qisutu-template-url="index.pl?Page=AgentTicketCreate&amp;Step=QueueTemplate" data-qisutu-dynamic-fields-url="index.pl?Page=AgentTicketCreate&amp;Step=DynamicFields">
+                                        [% RAW.QueueOptionsHTML %]
+                                    </select>
+                                </div>
+
+                                <div data-qisutu-create-dynamic-fields>[% RAW.TicketDynamicFieldsHTML %]</div>
+
+                                <div class="qisutu-form-field">
+                                    <label for="qisutu-agent-ticket-create-cc">[% Translate.TicketArticleReplyCc %]</label>
+                                    <input id="qisutu-agent-ticket-create-cc" type="text" name="Cc" value="[% Cc %]" autocomplete="off" placeholder="name@example.com">
+                                    <span class="qisutu-form-hint">[% Translate.TicketArticleReplyCcHelp %]</span>
+                                </div>
+
+                                <div class="qisutu-form-field qisutu-autocomplete">
+                                    <label for="qisutu-agent-ticket-create-owner">[% Translate.TicketOwner %]</label>
+                                    <input type="hidden" id="qisutu-agent-ticket-create-owner-id" name="OwnerUserID" value="[% OwnerUserID %]" data-qisutu-autocomplete-target>
+                                    <input id="qisutu-agent-ticket-create-owner" type="text" name="OwnerUserSearch" value="[% OwnerUserSearch %]" autocomplete="off" placeholder="[% Translate.TicketToolOwnerSearchPlaceholder %]" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketCreate&amp;Step=AgentLookup" data-qisutu-autocomplete-hidden="qisutu-agent-ticket-create-owner-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]">
+                                    <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+                                    <span class="qisutu-form-hint">[% Translate.AgentTicketCreateOwnerHelp %]</span>
+                                </div>
+
+                                <div class="qisutu-form-field qisutu-autocomplete">
+                                    <label for="qisutu-agent-ticket-create-responsible">[% Translate.TicketResponsible %]</label>
+                                    <input type="hidden" id="qisutu-agent-ticket-create-responsible-id" name="ResponsibleUserID" value="[% ResponsibleUserID %]" data-qisutu-autocomplete-target>
+                                    <input id="qisutu-agent-ticket-create-responsible" type="text" name="ResponsibleUserSearch" value="[% ResponsibleUserSearch %]" autocomplete="off" placeholder="[% Translate.TicketToolResponsibleSearchPlaceholder %]" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketCreate&amp;Step=AgentLookup" data-qisutu-autocomplete-hidden="qisutu-agent-ticket-create-responsible-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]">
+                                    <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+                                    <span class="qisutu-form-hint">[% Translate.TicketToolAutocompleteHelp %]</span>
+                                </div>
+
+                                <div class="qisutu-form-field">
+                                    <label for="qisutu-agent-ticket-create-title-field">[% Translate.TicketArticleSubject %] *</label>
+                                    <input id="qisutu-agent-ticket-create-title-field" type="text" name="Title" value="[% Title %]" maxlength="500" required>
+                                </div>
+
+                                <div class="qisutu-form-field qisutu-form-field-richtext">
+                                    <label for="qisutu-agent-ticket-create-body">[% Translate.TicketArticleBody %] *</label>
+                                    <textarea id="qisutu-agent-ticket-create-body" class="qisutu-richtext" name="Body" rows="12" data-qisutu-create-body data-qisutu-body-required-message="[% Translate.AgentTicketCreateBodyRequired %]">[% Body %]</textarea>
+                                </div>
+
+                                <div class="qisutu-form-field qisutu-ticket-reply-attachments">
+                                    <label for="qisutu-agent-ticket-create-attachments">[% Translate.TicketArticleAttachments %]</label>
+                                    <input id="qisutu-agent-ticket-create-attachments" type="file" name="TicketAttachment" multiple data-qisutu-attachment-input data-qisutu-attachment-max-bytes="[% AttachmentMaxSizeBytes %]" data-qisutu-attachment-max-label="[% AttachmentMaxSizeMB %] MB">
+                                    <div class="qisutu-ticket-reply-attachment-list" data-qisutu-attachment-list data-qisutu-attachment-remove-label="[% Translate.TicketArticleAttachmentRemove %]">
+                                        <p class="qisutu-form-hint" data-qisutu-attachment-empty>[% Translate.TicketArticleAttachmentsEmpty %]</p>
+                                    </div>
+                                    <span class="qisutu-form-hint">[% Translate.TicketArticleAttachmentsHelp %] [% Translate.TicketArticleAttachmentLimitHelp %] [% AttachmentMaxSizeMB %] MB</span>
+                                </div>
+
+                                <div class="qisutu-form-field">
+                                    <label for="qisutu-agent-ticket-create-state">[% Translate.TicketState %]</label>
+                                    <select id="qisutu-agent-ticket-create-state" name="StateID" required data-qisutu-create-status>
+                                        [% RAW.StatusOptionsHTML %]
+                                    </select>
+                                </div>
+
+                                <div class="qisutu-form-field [% PendingUntilFieldClass %]" data-qisutu-create-pending-until-field>
+                                    <label for="qisutu-agent-ticket-create-pending-until">[% Translate.TicketPendingUntil %] *</label>
+                                    <input id="qisutu-agent-ticket-create-pending-until" type="datetime-local" name="PendingUntil" value="[% PendingUntil %]" [% RAW.PendingUntilRequired %]>
+                                    <span class="qisutu-form-hint">[% Translate.TicketPendingUntilHelp %]</span>
+                                </div>
+
+                                <div class="qisutu-form-field">
+                                    <label for="qisutu-agent-ticket-create-priority">[% Translate.TicketPriority %]</label>
+                                    <select id="qisutu-agent-ticket-create-priority" name="PriorityID" required>
+                                        [% RAW.PriorityOptionsHTML %]
+                                    </select>
+                                </div>
+
+                                <div class="qisutu-form-actions qisutu-agent-ticket-create-actions">
+                                    <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketCreateSubmit %]</button>
+                                </div>
                             </div>
 
-                            <div class="qisutu-form-field">
-                                <label for="qisutu-agent-ticket-create-state">[% Translate.TicketState %]</label>
-                                <select id="qisutu-agent-ticket-create-state" name="StateID" required>
-                                    [% RAW.StatusOptionsHTML %]
-                                </select>
-                            </div>
+                            <aside class="qisutu-agent-ticket-create-customer-info" aria-labelledby="qisutu-agent-ticket-create-customer-info-title" aria-live="polite" data-qisutu-customer-info data-qisutu-customer-info-url="index.pl?Page=AgentTicketCreate&amp;Step=CustomerUserInfo">
+                                <h2 id="qisutu-agent-ticket-create-customer-info-title">[% Translate.AgentTicketCreateCustomerInfoPanelTitle %]</h2>
 
-                            <div class="qisutu-form-field">
-                                <label for="qisutu-agent-ticket-create-priority">[% Translate.TicketPriority %]</label>
-                                <select id="qisutu-agent-ticket-create-priority" name="PriorityID" required>
-                                    [% RAW.PriorityOptionsHTML %]
-                                </select>
-                            </div>
-                        </div>
+                                <p class="qisutu-agent-ticket-create-customer-info-message" data-qisutu-customer-info-empty>[% Translate.AgentTicketCreateCustomerInfoEmpty %]</p>
+                                <p class="qisutu-agent-ticket-create-customer-info-message qisutu-hidden" data-qisutu-customer-info-loading>[% Translate.AgentTicketCreateCustomerInfoLoading %]</p>
+                                <p class="qisutu-agent-ticket-create-customer-info-message qisutu-form-error qisutu-hidden" data-qisutu-customer-info-error>[% Translate.AgentTicketCreateCustomerInfoError %]</p>
 
-                        <div class="qisutu-form-actions">
-                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketCreateSubmit %]</button>
+                                <div class="qisutu-agent-ticket-create-customer-info-content qisutu-hidden" data-qisutu-customer-info-content>
+                                    <section>
+                                        <h3>[% Translate.TicketCustomer %]</h3>
+                                        <dl data-qisutu-customer-info-customer></dl>
+                                    </section>
+                                    <section>
+                                        <h3>[% Translate.TicketCustomerUser %]</h3>
+                                        <dl data-qisutu-customer-info-customer-user></dl>
+                                    </section>
+                                </div>
+                            </aside>
                         </div>
                     </form>
                     [% ELSE %]
@@ -147,4 +197,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
-            <script src="[% StaticBase %]/js/qisutu-agent-ticket-create.js?v=2026071101"></script>
+            <script src="[% StaticBase %]/js/qisutu-agent-ticket-create.js?v=2026071104"></script>

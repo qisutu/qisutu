@@ -2758,8 +2758,8 @@ sub QueueCreate {
     my $EscalationSolution = $Self->_UnsignedInteger( $Param{EscalationSolutionMinutes} );
     my $UserID         = $Param{ChangedByUserID} || 1;
 
-    if ( !$Name || !$GroupID ) {
-        $Self->{LastError} = 'Queue name and group are required';
+    if ( !$Name || !$GroupID || !$SystemEmailID ) {
+        $Self->{LastError} = 'Translate:AdminQueueNameGroupSystemEmailRequired';
         return;
     }
 
@@ -2867,8 +2867,8 @@ sub QueueUpdate {
     my $EscalationSolution = $Self->_UnsignedInteger( $Param{EscalationSolutionMinutes} );
     my $UserID         = $Param{ChangedByUserID} || 1;
 
-    if ( $QueueID !~ m{\A\d+\z} || !$QueueID || !$Name || !$GroupID ) {
-        $Self->{LastError} = 'Queue, queue name and group are required';
+    if ( $QueueID !~ m{\A\d+\z} || !$QueueID || !$Name || !$GroupID || !$SystemEmailID ) {
+        $Self->{LastError} = 'Translate:AdminQueueNameGroupSystemEmailRequired';
         return;
     }
 

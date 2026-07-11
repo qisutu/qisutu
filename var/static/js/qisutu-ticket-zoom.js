@@ -95,6 +95,7 @@
         var replyCcInput = document.querySelector('[data-qisutu-reply-cc-input]');
         var noteCustomerVisibleField = document.querySelector('[data-qisutu-note-customer-visible-field]');
         var noteCustomerVisibleCheckbox = document.querySelector('[data-qisutu-note-customer-visible]');
+        var dynamicFields = document.querySelector('[data-qisutu-ticket-article-dynamic-fields]');
 
         if (!form || !modeInput) {
             return;
@@ -135,8 +136,20 @@
             }
         }
 
+        function dynamicFieldsToggle(show) {
+            if (!dynamicFields) {
+                return;
+            }
+
+            dynamicFields.classList.toggle('qisutu-hidden', !show);
+            dynamicFields.querySelectorAll('input, textarea, select').forEach(function (field) {
+                field.disabled = !show;
+            });
+        }
+
         function noteModeOpen(button) {
             modeInput.value = 'note';
+            dynamicFieldsToggle(true);
 
             if (replyArticleIDInput) {
                 replyArticleIDInput.value = '';
@@ -192,6 +205,7 @@
             var template = article ? article.querySelector('[data-qisutu-article-reply-template]') : null;
 
             modeInput.value = 'email';
+            dynamicFieldsToggle(true);
 
             if (replyArticleIDInput) {
                 replyArticleIDInput.value = button.getAttribute('data-qisutu-reply-article-id') || '';
@@ -252,6 +266,7 @@
             var template = article ? article.querySelector('[data-qisutu-article-forward-template]') : null;
 
             modeInput.value = 'forward';
+            dynamicFieldsToggle(false);
 
             if (replyArticleIDInput) {
                 replyArticleIDInput.value = button.getAttribute('data-qisutu-forward-article-id') || '';
@@ -296,6 +311,8 @@
                 }, 250);
             }
         }
+
+        dynamicFieldsToggle(modeInput.value !== 'forward');
 
         document.querySelectorAll('[data-qisutu-reply-mode="note"]').forEach(function (button) {
             button.addEventListener('click', function () {
@@ -939,6 +956,70 @@
         });
     }
 
+    function initTicketToolDynamicFields() {
+        var queue = document.querySelector('[data-qisutu-ticket-tool-queue]');
+        var target = document.querySelector('[data-qisutu-ticket-tool-queue-dynamic-fields]');
+
+        if (!queue || !target) {
+            return;
+        }
+
+        var requestIndex = 0;
+
+        queue.addEventListener('change', function () {
+            var url = queue.getAttribute('data-qisutu-dynamic-fields-url') || '';
+            var queueID = queue.value || '';
+            requestIndex += 1;
+            var currentRequest = requestIndex;
+
+            if (!url || !queueID) {
+                target.innerHTML = '';
+                return;
+            }
+
+            target.innerHTML = '';
+
+            fetch(url + (url.indexOf('?') === -1 ? '?' : '&') + 'QueueID=' + encodeURIComponent(queueID), {
+                credentials: 'same-origin'
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error('dynamic fields failed');
+                }
+                return response.json();
+            }).then(function (data) {
+                if (currentRequest !== requestIndex) {
+                    return;
+                }
+                target.innerHTML = data && data.success ? (data.html || '') : '';
+            }).catch(function () {
+                if (currentRequest === requestIndex) {
+                    target.innerHTML = '';
+                }
+            });
+        });
+    }
+
+    function initDynamicMultiSelects() {
+        document.addEventListener('change', function (event) {
+            var select = event.target && event.target.closest
+                ? event.target.closest('select[data-qisutu-dynamic-multiselect]')
+                : null;
+
+            if (!select) {
+                return;
+            }
+
+            var emptyOption = select.querySelector('option[value=""]');
+            var hasSelectedValue = Array.prototype.slice.call(select.options).some(function (option) {
+                return option.value !== '' && option.selected;
+            });
+
+            if (emptyOption && hasSelectedValue) {
+                emptyOption.selected = false;
+            }
+        });
+    }
+
     function init() {
         initArticles();
         initTicketInfoSections();
@@ -947,6 +1028,8 @@
         initAttachmentUpload();
         initTicketToolsOverlay();
         initTicketToolAutocomplete();
+        initTicketToolDynamicFields();
+        initDynamicMultiSelects();
     }
 
     if (document.readyState === 'loading') {

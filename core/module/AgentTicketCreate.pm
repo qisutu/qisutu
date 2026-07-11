@@ -27,6 +27,7 @@ use warnings;
 use utf8;
 
 use JSON::PP qw(encode_json);
+use QisutuService;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -67,6 +68,24 @@ sub Run {
         );
     }
 
+    if ( $Step eq 'CustomerUserInfo' ) {
+        return $Self->_JSONResponse(
+            Data => $Self->_CustomerUserInfo(
+                CustomerUserID => $Request->{CustomerUserID},
+                Language       => $Language,
+            ),
+        );
+    }
+
+    if ( $Step eq 'ServiceOptions' ) {
+        return $Self->_JSONResponse(
+            Data => $Self->_ServiceOptionsData(
+                CustomerUserID => $Request->{CustomerUserID},
+                Language       => $Language,
+            ),
+        );
+    }
+
     if ( $Step eq 'QueueTemplate' ) {
         return $Self->_JSONResponse(
             Data => $Self->_QueueTemplateData(
@@ -76,7 +95,36 @@ sub Run {
         );
     }
 
+    if ( $Step eq 'DynamicFields' ) {
+        my $QueueCheck = $Self->_QueueTemplateData(
+            QueueID => $Request->{QueueID},
+            User    => $User,
+        );
+        my $DynamicFieldObject = $Self->_DynamicFieldObject();
+
+        my $HTML = '';
+        my $Success = $QueueCheck->{success} && $DynamicFieldObject ? 1 : 0;
+
+        if ($Success) {
+            $HTML = $DynamicFieldObject->FormHTML(
+                QueueID  => $Request->{QueueID},
+                Language => $Language,
+                IDPrefix => 'qisutu-agent-ticket-create-dynamic-field',
+            );
+            $Success = 0 if $DynamicFieldObject->Error();
+        }
+
+        return $Self->_JSONResponse(
+            Data => {
+                success => $Success,
+                html    => $Success ? $HTML : '',
+            },
+        );
+    }
+
     my $TicketObject          = $Self->_TicketObject();
+    my $DynamicFieldObject    = $Self->_DynamicFieldObject();
+    my $ServiceObject         = QisutuService->new( Config => $Self->{Config}, DB => $Self->{DB} );
     my $AttachmentMaxSizeMB   = $Self->_AttachmentMaxSizeMB();
     my $AttachmentMaxSizeByte = $AttachmentMaxSizeMB * 1024 * 1024;
     my $IsSubmit              = $Step eq 'AgentTicketCreate' ? 1 : 0;
@@ -84,9 +132,13 @@ sub Run {
     my $SendEmail             = $IsSubmit ? ( $Request->{SendEmail} ? 1 : 0 ) : 1;
 
     my $QueueList = $Self->_QueueList( User => $User );
-    my $QueueID   = $Request->{QueueID} || ( @{$QueueList} ? $QueueList->[0]->{id} : 0 );
+    my $QueueID   = $Request->{QueueID} || 0;
+    my $ServiceID = $Request->{ServiceID} || 0;
     my $StateID   = $Request->{StateID} || $Self->_DefaultStateID();
     my $PriorityID = $Request->{PriorityID} || $Self->_DefaultPriorityID();
+    my $PendingUntil = $Request->{PendingUntil} || '';
+    my $StateType    = $Self->_StateTypeGet( StateID => $StateID );
+    my $IsPending    = $StateType eq 'pending' ? 1 : 0;
 
     my $Body = $Request->{Body} || '';
     if ( !$IsSubmit && $QueueID ) {
@@ -130,10 +182,37 @@ sub Run {
             }
         }
 
+        if ( !$CreateError && $ServiceID ) {
+            my $CustomerID = $ServiceObject->CustomerIDFromCustomerUser(
+                CustomerUserID => $Request->{CustomerUserID},
+            );
+            my $ResolvedSLA = $CustomerID ? $ServiceObject->SLAResolve(
+                CustomerID => $CustomerID,
+                ServiceID  => $ServiceID,
+            ) : undef;
+            if ( !$ResolvedSLA ) {
+                $CreateError = $ServiceObject->Error() || 'Translate:TicketServiceNotAvailable';
+            }
+        }
+
+        if ( !$CreateError && $QueueID ) {
+            if ( !$DynamicFieldObject ) {
+                $CreateError = 'Translate:AdminDynamicFieldLoadFailed';
+            }
+            elsif ( !$DynamicFieldObject->TicketValueValidate(
+                QueueID  => $QueueID,
+                Request  => $Request,
+                Language => $Language,
+            ) ) {
+                $CreateError = $DynamicFieldObject->Error() || 'Translate:TicketDynamicFieldInvalid';
+            }
+        }
+
         if ( !$CreateError ) {
             my $TicketID = $TicketObject->TicketCreateFromAgent(
                 User              => $User,
                 QueueID           => $QueueID,
+                ServiceID         => $ServiceID,
                 CustomerUserID    => $Request->{CustomerUserID},
                 OwnerUserID       => $Request->{OwnerUserID},
                 ResponsibleUserID => $Request->{ResponsibleUserID},
@@ -143,8 +222,11 @@ sub Run {
                 Cc                => $Request->{Cc},
                 StateID           => $StateID,
                 PriorityID        => $PriorityID,
+                PendingUntil      => $PendingUntil,
                 SendEmail         => $SendEmail,
                 Attachments       => $Attachments,
+                DynamicFieldRequest => $Request,
+                Language            => $Language,
             );
 
             if ($TicketID) {
@@ -164,6 +246,7 @@ sub Run {
     my $QueueOptionsHTML = $Self->_QueueOptionsHTML(
         QueueList       => $QueueList,
         CurrentQueueID  => $QueueID,
+        Language         => $Language,
     );
     my $StatusOptionsHTML = $Self->_StatusOptionsHTML(
         CurrentStateID => $StateID,
@@ -173,6 +256,33 @@ sub Run {
         CurrentPriorityID => $PriorityID,
         Language          => $Language,
     );
+    my $ServiceData = $Request->{CustomerUserID}
+        ? $Self->_ServiceOptionsData(
+            CustomerUserID => $Request->{CustomerUserID},
+            Language       => $Language,
+        )
+        : { success => 1, items => [] };
+    my $ServiceOptionsHTML = $Self->_ServiceOptionsHTML(
+        Items             => $ServiceData->{items} || [],
+        CurrentServiceID  => $ServiceID,
+        Language          => $Language,
+    );
+    my $SelectedService = {};
+    for my $Item ( @{ $ServiceData->{items} || [] } ) {
+        if ( ( $Item->{id} || 0 ) == $ServiceID ) {
+            $SelectedService = $Item;
+            last;
+        }
+    }
+
+    my $TicketDynamicFieldsHTML = $DynamicFieldObject && $QueueID
+        ? $DynamicFieldObject->FormHTML(
+            QueueID  => $QueueID,
+            Request  => $Request,
+            Language => $Language,
+            IDPrefix => 'qisutu-agent-ticket-create-dynamic-field',
+        )
+        : '';
 
     return {
         Template => 'AgentTicketCreate.tt',
@@ -184,8 +294,20 @@ sub Run {
             FormAction         => 'index.pl',
             HasQueueOptions    => $HasQueueOptions,
             QueueOptionsHTML   => $QueueOptionsHTML,
+            ServiceOptionsHTML => $ServiceOptionsHTML,
+            ServiceID          => $ServiceID,
+            ServiceOptionsURL  => 'index.pl?Page=AgentTicketCreate&Step=ServiceOptions',
+            ServiceSLAName     => $SelectedService->{sla_name} || '',
+            ServiceSLACalendar => $SelectedService->{calendar_name} || '',
+            ServiceSLASource   => 'Translate:TicketSLASourceCustomer',
+            ServiceSLAFirstResponseMinutes => $SelectedService->{first_response_minutes} || 0,
+            ServiceSLAUpdateMinutes        => $SelectedService->{update_minutes} || 0,
+            ServiceSLASolutionMinutes      => $SelectedService->{solution_minutes} || 0,
+            ServiceSLAUpdateMode => ( $SelectedService->{update_mode} || '' ) eq 'regular' ? 'Translate:AdminSLAUpdateModeRegular' : 'Translate:AdminSLAUpdateModeCustomer',
+            ServiceSLAInfoClass => $ServiceID && $SelectedService->{sla_id} ? '' : 'qisutu-hidden',
             StatusOptionsHTML  => $StatusOptionsHTML,
             PriorityOptionsHTML => $PriorityOptionsHTML,
+            TicketDynamicFieldsHTML => $TicketDynamicFieldsHTML,
             CreateError        => $CreateError,
             CreateErrorClass   => $CreateError ? '' : 'qisutu-hidden',
             SendEmailChecked   => $SendEmail ? 'checked' : '',
@@ -198,6 +320,9 @@ sub Run {
             ResponsibleUserSearch => $Request->{ResponsibleUserSearch} || '',
             Title               => $Request->{Title} || '',
             Body                => $Body,
+            PendingUntil        => $PendingUntil,
+            PendingUntilFieldClass => $IsPending ? '' : 'qisutu-hidden',
+            PendingUntilRequired   => $IsPending ? 'required' : '',
             AttachmentMaxSizeMB => $AttachmentMaxSizeMB,
             AttachmentMaxSizeBytes => $AttachmentMaxSizeByte,
         },
@@ -248,7 +373,13 @@ sub _QueueOptionsHTML {
 
     my $Rows      = $Param{QueueList} || [];
     my $CurrentID = $Param{CurrentQueueID} || 0;
-    my $HTML      = '';
+    my $Language  = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
+    my $Placeholder = $Self->_Translation(
+        Key      => 'AgentTicketCreateQueuePlaceholder',
+        Language => $Language,
+        Fallback => $Language eq 'de' ? 'Bitte Queue auswählen' : 'Please select a queue',
+    );
+    my $HTML = '<option value="">' . $Self->_Escape($Placeholder) . '</option>';
 
     for my $Row ( @{$Rows} ) {
         my $Selected = $CurrentID && $Row->{id} == $CurrentID ? ' selected' : '';
@@ -314,6 +445,24 @@ sub _PriorityOptionsHTML {
     }
 
     return $HTML;
+}
+
+sub _StateTypeGet {
+    my ( $Self, %Param ) = @_;
+
+    my $StateID = $Param{StateID} || 0;
+    return '' if $StateID !~ m{\A\d+\z} || !$StateID;
+
+    my $Row = $Self->{DB}->SelectRow(
+        'SELECT state_type
+         FROM ticket_state
+         WHERE id = ?
+           AND active = 1
+         LIMIT 1',
+        $StateID,
+    );
+
+    return $Row ? ( $Row->{state_type} || '' ) : '';
 }
 
 sub _DefaultStateID {
@@ -453,6 +602,269 @@ sub _CustomerUserLookup {
     }
 
     return { items => \@Items };
+}
+
+sub _CustomerUserInfo {
+    my ( $Self, %Param ) = @_;
+
+    my $CustomerUserID = $Param{CustomerUserID} || 0;
+    my $Language       = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
+
+    return { success => 0 }
+        if $CustomerUserID !~ m{\A\d+\z} || !$CustomerUserID;
+
+    my $Row = $Self->{DB}->SelectRow(
+        'SELECT
+            cu.id AS customer_user_id,
+            cu.active AS customer_user_active,
+            c.id AS customer_id,
+            c.customer_number,
+            c.name AS customer_name,
+            c.active AS customer_active,
+            ua.email,
+            ua.firstname,
+            ua.lastname,
+            ua.is_active AS user_account_active
+         FROM customer_user cu
+         INNER JOIN customer c
+            ON c.id = cu.customer_id
+         INNER JOIN user_account ua
+            ON ua.id = cu.user_account_id
+         WHERE cu.id = ?
+           AND cu.active = 1
+           AND c.active = 1
+           AND ua.is_active = 1
+           AND ua.account_type = ?
+         LIMIT 1',
+        $CustomerUserID,
+        'customer',
+    );
+
+    return { success => 0 } if !$Row;
+
+    my $ActiveYes = $Self->_Translation(
+        Key      => 'AdminActiveYes',
+        Language => $Language,
+        Fallback => $Language eq 'de' ? 'Ja' : 'Yes',
+    );
+    my $ActiveNo = $Self->_Translation(
+        Key      => 'AdminActiveNo',
+        Language => $Language,
+        Fallback => $Language eq 'de' ? 'Nein' : 'No',
+    );
+
+    my @CustomerFields = (
+        {
+            label => $Self->_Translation(
+                Key      => 'AdminCustomerNumber',
+                Language => $Language,
+                Fallback => $Language eq 'de' ? 'Kundennummer' : 'Customer number',
+            ),
+            value => $Row->{customer_number} || '',
+        },
+        {
+            label => $Self->_Translation(
+                Key      => 'AdminName',
+                Language => $Language,
+                Fallback => $Language eq 'de' ? 'Name' : 'Name',
+            ),
+            value => $Row->{customer_name} || '',
+        },
+        {
+            label => $Self->_Translation(
+                Key      => 'AdminActive',
+                Language => $Language,
+                Fallback => $Language eq 'de' ? 'Aktiv' : 'Active',
+            ),
+            value => $Row->{customer_active} ? $ActiveYes : $ActiveNo,
+        },
+    );
+
+    push @CustomerFields, @{ $Self->_DynamicFieldInformationList(
+        ObjectType => 'customer',
+        ObjectID   => $Row->{customer_id},
+        Language   => $Language,
+    ) };
+
+    my @CustomerUserFields = (
+        {
+            label => $Self->_Translation(
+                Key      => 'AdminFirstname',
+                Language => $Language,
+                Fallback => $Language eq 'de' ? 'Vorname' : 'First name',
+            ),
+            value => $Row->{firstname} || '',
+        },
+        {
+            label => $Self->_Translation(
+                Key      => 'AdminLastname',
+                Language => $Language,
+                Fallback => $Language eq 'de' ? 'Nachname' : 'Last name',
+            ),
+            value => $Row->{lastname} || '',
+        },
+        {
+            label => $Self->_Translation(
+                Key      => 'AdminEmail',
+                Language => $Language,
+                Fallback => $Language eq 'de' ? 'E-Mail' : 'Email',
+            ),
+            value => $Row->{email} || '',
+        },
+        {
+            label => $Self->_Translation(
+                Key      => 'AdminActive',
+                Language => $Language,
+                Fallback => $Language eq 'de' ? 'Aktiv' : 'Active',
+            ),
+            value => $Row->{customer_user_active} && $Row->{user_account_active} ? $ActiveYes : $ActiveNo,
+        },
+    );
+
+    push @CustomerUserFields, @{ $Self->_DynamicFieldInformationList(
+        ObjectType => 'customer_user',
+        ObjectID   => $Row->{customer_user_id},
+        Language   => $Language,
+    ) };
+
+    return {
+        success       => 1,
+        customer      => { fields => \@CustomerFields },
+        customer_user => { fields => \@CustomerUserFields },
+    };
+}
+
+sub _DynamicFieldInformationList {
+    my ( $Self, %Param ) = @_;
+
+    my $ObjectType      = $Param{ObjectType} || '';
+    my $ObjectID        = $Param{ObjectID} || 0;
+    my $Language        = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
+    my $DefaultLanguage = $Self->{Config}->{Language}->{Default} || 'en';
+
+    return [] if !$ObjectType;
+    return [] if $ObjectID !~ m{\A\d+\z} || !$ObjectID;
+
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT
+            COALESCE(current_translation.label, default_translation.label, f.label, f.name) AS label,
+            f.field_type,
+            COALESCE(v.value_text, "") AS value_text
+         FROM user_dynamic_field f
+         LEFT JOIN user_dynamic_field_translation current_translation
+            ON current_translation.field_id = f.id
+           AND current_translation.language = ?
+         LEFT JOIN user_dynamic_field_translation default_translation
+            ON default_translation.field_id = f.id
+           AND default_translation.language = ?
+         LEFT JOIN user_dynamic_field_value v
+            ON v.field_id = f.id
+           AND v.object_type = ?
+           AND v.object_id = ?
+         WHERE f.object_type = ?
+           AND f.active = 1
+         ORDER BY f.sort_order ASC, label ASC, f.id ASC',
+        $Language,
+        $DefaultLanguage,
+        $ObjectType,
+        $ObjectID,
+        $ObjectType,
+    ) || [];
+
+    my @Fields;
+    for my $Field ( @{$Rows} ) {
+        push @Fields, {
+            label      => $Field->{label} || '',
+            value      => defined $Field->{value_text} ? $Field->{value_text} : '',
+            field_type => $Field->{field_type} || 'text',
+        };
+    }
+
+    return \@Fields;
+}
+
+sub _Translation {
+    my ( $Self, %Param ) = @_;
+
+    my $Key      = $Param{Key} || '';
+    my $Language = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
+    my $Fallback = defined $Param{Fallback} ? $Param{Fallback} : $Key;
+
+    return $Fallback if !$Key || !$Self->{Output};
+
+    my $Translated = $Self->{Output}->Translate(
+        Key      => $Key,
+        Language => $Language,
+    );
+
+    return $Translated && $Translated ne $Key ? $Translated : $Fallback;
+}
+
+sub _ServiceOptionsData {
+    my ( $Self, %Param ) = @_;
+
+    my $CustomerUserID = $Param{CustomerUserID} || 0;
+    my $Language       = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
+    my $ServiceObject  = QisutuService->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    my $CustomerID     = $ServiceObject->CustomerIDFromCustomerUser(
+        CustomerUserID => $CustomerUserID,
+    );
+
+    return { success => 0, items => [] } if !$CustomerID;
+
+    my $Rows = $ServiceObject->AvailableServiceList( CustomerID => $CustomerID );
+    return { success => 0, items => [], error => $ServiceObject->Error() } if $ServiceObject->Error();
+
+    my @Items;
+    for my $Row ( @{$Rows} ) {
+        push @Items, {
+            id                     => $Row->{id},
+            label                  => $Row->{full_name} || '',
+            sla_id                 => $Row->{sla_id} || 0,
+            sla_name               => $Row->{sla_name} || '',
+            calendar_name          => $Row->{calendar_name} || '',
+            update_mode            => $Row->{update_mode} || 'customer_response',
+            first_response_minutes => $Row->{first_response_minutes} || 0,
+            update_minutes         => $Row->{update_minutes} || 0,
+            solution_minutes       => $Row->{solution_minutes} || 0,
+            assignment_source      => $Row->{assignment_source} || 'customer',
+            assignment_source_label => $Self->_Translation(
+                Key      => ( $Row->{assignment_source} || '' ) eq 'customer' ? 'TicketSLASourceCustomer' : 'TicketSLASourceDefault',
+                Language => $Language,
+                Fallback => ( $Row->{assignment_source} || '' ) eq 'customer' ? 'Customer assignment' : 'Service default',
+            ),
+            update_mode_label => $Self->_Translation(
+                Key      => ( $Row->{update_mode} || '' ) eq 'regular' ? 'AdminSLAUpdateModeRegular' : 'AdminSLAUpdateModeCustomer',
+                Language => $Language,
+                Fallback => ( $Row->{update_mode} || '' ) eq 'regular' ? 'Regular update' : 'After customer response',
+            ),
+        };
+    }
+
+    return { success => 1, items => \@Items };
+}
+
+sub _ServiceOptionsHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Items = $Param{Items} || [];
+    my $CurrentServiceID = $Param{CurrentServiceID} || 0;
+    my $Language = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
+    my $HTML = '<option value="">' . $Self->_Escape(
+        $Self->_Translation(
+            Key      => 'TicketServiceSelect',
+            Language => $Language,
+            Fallback => 'Select service',
+        )
+    ) . '</option>';
+
+    for my $Item ( @{$Items} ) {
+        my $Selected = ( $Item->{id} || 0 ) == $CurrentServiceID ? ' selected' : '';
+        $HTML .= '<option value="' . $Self->_Escape( $Item->{id} || '' ) . '"' . $Selected . '>'
+            . $Self->_Escape( $Item->{label} || '' ) . '</option>';
+    }
+
+    return $HTML;
 }
 
 sub _QueueTemplateData {
@@ -781,6 +1193,27 @@ sub _PermissionObject {
     );
 
     return $Self->{PermissionObject};
+}
+
+sub _DynamicFieldObject {
+    my ($Self) = @_;
+
+    return $Self->{DynamicFieldObject} if $Self->{DynamicFieldObject};
+    return if !$Self->{DB};
+
+    my $Loaded = eval {
+        require QisutuDynamicField;
+        1;
+    };
+    return if !$Loaded;
+
+    $Self->{DynamicFieldObject} = QisutuDynamicField->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+        Output => $Self->{Output},
+    );
+
+    return $Self->{DynamicFieldObject};
 }
 
 sub _TicketObject {
