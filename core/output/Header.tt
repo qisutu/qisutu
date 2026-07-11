@@ -1,0 +1,53 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+<div class="qisutu-app">
+    <aside class="qisutu-sidebar" aria-label="[% Translate.Navigation %]">
+        <div class="qisutu-sidebar-brand">
+            <span class="qisutu-sidebar-logo">
+                <img src="[% StaticBase %]/img/logo.png" alt="Qisutu">
+            </span>
+            <span class="qisutu-sidebar-name">[% SystemName %]</span>
+        </div>
+
+        <nav class="qisutu-nav">
+            [% RAW.NavigationHTML %]
+        </nav>
+
+        <div class="qisutu-sidebar-user">
+            <div class="qisutu-sidebar-user-avatar">[% UserInitials %]</div>
+            <div class="qisutu-sidebar-user-text">
+                <div class="qisutu-sidebar-user-name">[% UserDisplayName %]</div>
+                <div class="qisutu-sidebar-user-links">
+                    <a class="qisutu-sidebar-user-link" href="index.pl?Page=Logout">[% Translate.StartLogout %]</a>
+                </div>
+            </div>
+            [% IF UserHasPreferences %]
+                <a class="qisutu-sidebar-user-settings" href="[% UserPreferencesURL %]" title="[% UserPreferencesTitle %]" aria-label="[% UserPreferencesTitle %]">⚙</a>
+            [% END %]
+        </div>
+    </aside>
+
+    <section class="qisutu-workspace">
+        <main class="qisutu-main">

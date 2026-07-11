@@ -1,0 +1,68 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-admin-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                </div>
+
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.NavigationAdmin %]</h2>
+                    </div>
+                    <div class="qisutu-admin-start-grid">
+                        <a class="qisutu-admin-start-item" href="index.pl?Page=AdminSystemSettings">
+                            <strong>[% Translate.AdminSystemSettingsTitle %]</strong>
+                            <span>[% Translate.AdminSystemSettingsDescription %]</span>
+                        </a>
+                        <a class="qisutu-admin-start-item" href="index.pl?Page=AdminAgents">
+                            <strong>[% Translate.AdminAgentsTitle %]</strong>
+                            <span>[% Translate.AdminAgentsDescription %]</span>
+                        </a>
+                        <a class="qisutu-admin-start-item" href="index.pl?Page=AdminCustomers">
+                            <strong>[% Translate.AdminCustomersTitle %]</strong>
+                            <span>[% Translate.AdminCustomersDescription %]</span>
+                        </a>
+                        <a class="qisutu-admin-start-item" href="index.pl?Page=AdminQueues">
+                            <strong>[% Translate.AdminQueuesTitle %]</strong>
+                            <span>[% Translate.AdminQueuesDescription %]</span>
+                        </a>
+                        <a class="qisutu-admin-start-item" href="index.pl?Page=AdminGroups">
+                            <strong>[% Translate.AdminGroupsTitle %]</strong>
+                            <span>[% Translate.AdminGroupsDescription %]</span>
+                        </a>
+                        <a class="qisutu-admin-start-item" href="index.pl?Page=AdminPermissions">
+                            <strong>[% Translate.AdminPermissionsTitle %]</strong>
+                            <span>[% Translate.AdminPermissionsDescription %]</span>
+                        </a>
+                        <a class="qisutu-admin-start-item" href="index.pl?Page=AdminAgentNotifications">
+                            <strong>[% Translate.AdminAgentNotificationsTitle %]</strong>
+                            <span>[% Translate.AdminAgentNotificationsDescription %]</span>
+                        </a>
+                    </div>
+                </section>
+            </section>

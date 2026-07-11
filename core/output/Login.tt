@@ -1,0 +1,83 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+        <section class="qisutu-login" aria-labelledby="qisutu-login-title">
+            <div class="qisutu-login-panel">
+                <div class="qisutu-login-brand">
+                    <div class="qisutu-login-logo">
+                        <img src="[% StaticBase %]/img/logo.png" style="height: 100%;" alt="Qisutu">
+                    </div>
+                    <div>
+                        <h1 id="qisutu-login-title">[% SystemName %]</h1>
+                        <p>[% Translate.LoginIntro %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-login-message" role="alert">
+                    [% ErrorMessage %]
+                </div>
+
+                <form class="qisutu-login-form" method="post" action="[% FormAction %]" autocomplete="on">
+                    <input type="hidden" name="Step" value="Login">
+
+                    <fieldset class="qisutu-login-type">
+                        <legend>[% Translate.LoginAccountType %]</legend>
+                        <label>
+                            <input type="radio" name="AccountType" value="agent" [% AgentChecked %]>
+                            <span>[% Translate.LoginAsAgent %]</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="AccountType" value="customer" [% CustomerChecked %]>
+                            <span>[% Translate.LoginAsCustomer %]</span>
+                        </label>
+                    </fieldset>
+
+                    <div class="qisutu-login-field">
+                        <label for="qisutu-login-name">[% Translate.LoginUsername %]</label>
+                        <input
+                            id="qisutu-login-name"
+                            type="text"
+                            name="Login"
+                            value="[% LoginValue %]"
+                            autocomplete="username"
+                            required
+                            autofocus>
+                    </div>
+
+                    <div class="qisutu-login-field">
+                        <label for="qisutu-login-password">[% Translate.LoginPassword %]</label>
+                        <input
+                            id="qisutu-login-password"
+                            type="password"
+                            name="Password"
+                            autocomplete="current-password"
+                            required>
+                    </div>
+
+                    <button class="qisutu-login-button" type="submit">
+                        [% Translate.LoginSubmit %]
+                    </button>
+                </form>
+            </div>
+        </section>

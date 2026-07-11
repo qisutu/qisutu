@@ -1,0 +1,84 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-customer-ticket-list-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-customer-ticket-list-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                    <a class="qisutu-button qisutu-button-primary" href="[% CustomerTicketCreateURL %]">[% Translate.TicketCreateNew %]</a>
+                </div>
+
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header qisutu-panel-header-compact">
+                        <div class="qisutu-panel-actions qisutu-panel-actions-right">
+                            <span class="qisutu-panel-counter">[% TicketCount %]</span>
+                        </div>
+                    </div>
+
+                    [% IF HasTickets %]
+                    <div class="qisutu-table-wrap qisutu-ticket-list-wrap">
+                        <table class="qisutu-table qisutu-ticket-list-table qisutu-ticket-list-table-customer">
+                            <colgroup>
+                                <col class="qisutu-ticket-list-col-number">
+                                <col class="qisutu-ticket-list-col-title">
+                                <col class="qisutu-ticket-list-col-ticketdata">
+                                <col class="qisutu-ticket-list-col-changed">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.TicketNumber %]</th>
+                                    <th>[% Translate.TicketTitle %]</th>
+                                    <th>[% Translate.TicketQueue %] / [% Translate.TicketState %]</th>
+                                    <th>[% Translate.TicketChanged %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% FOREACH Ticket IN Tickets %]
+                                <tr class="qisutu-ticket-list-row">
+                                    <td class="qisutu-ticket-list-number" data-label="[% Translate.TicketNumber %]">
+                                        <a href="[% Ticket.ticket_zoom_url %]">[% Ticket.ticket_number %]</a>
+                                    </td>
+                                    <td class="qisutu-ticket-list-title-cell" data-label="[% Translate.TicketTitle %]">
+                                        <a class="qisutu-ticket-title-link" href="[% Ticket.ticket_zoom_url %]" title="[% Ticket.title %]">[% Ticket.title %]</a>
+                                    </td>
+                                    <td class="qisutu-ticket-list-meta-cell" data-label="[% Translate.TicketQueue %] / [% Translate.TicketState %]">
+                                        <span class="qisutu-ticket-list-main">[% Ticket.queue_name %]</span>
+                                        <span class="qisutu-table-muted">[% Ticket.state_name_display %] · [% Ticket.priority_name_display %]</span>
+                                    </td>
+                                    <td class="qisutu-ticket-list-changed-cell" data-label="[% Translate.TicketChanged %]">[% Ticket.changed_at_display %]</td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                    [% ELSE %]
+                    <div class="qisutu-empty">
+                        <strong>[% Translate.TicketListEmptyTitle %]</strong>
+                        <p>[% Translate.TicketListEmptyText %]</p>
+                    </div>
+                    [% END %]
+                </section>
+            </section>

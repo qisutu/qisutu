@@ -1,0 +1,277 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-queues-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-admin-queues-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+                [% IF ShowList %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminQueuesList %]</h2>
+                            <span class="qisutu-panel-subtitle">[% QueueCount %] [% Translate.AdminEntries %]</span>
+                        </div>
+                        <div class="qisutu-panel-actions">
+                            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminQueues;Action=Create">[% Translate.AdminQueueCreate %]</a>
+                        </div>
+                    </div>
+
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminQueue %]</th>
+                                    <th>[% Translate.AdminGroups %]</th>
+                                    <th>[% Translate.AdminSystemEmail %]</th>
+                                    <th>[% Translate.AdminFollowUpAllowed %]</th>
+                                    <th>[% Translate.AdminActive %]</th>
+                                    <th>[% Translate.AdminAction %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% FOREACH Queue IN QueueList %]
+                                <tr>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminQueues;Action=Edit;QueueID=[% Queue.id %]">[% Queue.full_name %]</a></td>
+                                    <td>[% Queue.group_names %]</td>
+                                    <td>[% Queue.system_email %]</td>
+                                    <td>[% Queue.follow_up_allowed_label %]</td>
+                                    <td>[% Queue.active_label %]</td>
+                                    <td>
+                                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                                            <input type="hidden" name="Page" value="AdminQueues">
+                                            <input type="hidden" name="Step" value="QueueDeactivate">
+                                            <input type="hidden" name="QueueID" value="[% Queue.id %]">
+                                            <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminDeactivate %]</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                [% END %]
+
+                [% IF ShowCreate %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminQueueCreate %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminQueues">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminQueues">
+                        <input type="hidden" name="Step" value="QueueCreate">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminQueue %]</label>
+                                <input type="text" name="Name" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminParentQueueID %]</label>
+                                <select name="ParentQueueID">
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.CreateParentQueueOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminGroupID %]</label>
+                                <select name="GroupID" required>
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.CreateGroupOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSystemEmail %]</label>
+                                <select name="SystemEmailID">
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.CreateSystemEmailOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSalutation %]</label>
+                                <select name="SalutationID">
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.CreateSalutationOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSignature %]</label>
+                                <select name="SignatureID">
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.CreateSignatureOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminCalendar %]</label>
+                                <select name="CalendarID">
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.CreateCalendarOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="1000" min="1">
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="FollowUpAllowed" value="1" checked>
+                                <span>[% Translate.AdminFollowUpAllowed %]</span>
+                            </label>
+                        </div>
+
+                        <div class="qisutu-admin-form-block">
+                            <h3>[% Translate.AdminEscalations %]</h3>
+                            <div class="qisutu-admin-form-columns">
+                                <div class="qisutu-form-field">
+                                    <label>[% Translate.AdminEscalationFirstResponse %]</label>
+                                    <input type="number" name="EscalationFirstResponseMinutes" value="0" min="0">
+                                </div>
+                                <div class="qisutu-form-field">
+                                    <label>[% Translate.AdminEscalationUpdate %]</label>
+                                    <input type="number" name="EscalationUpdateMinutes" value="0" min="0">
+                                </div>
+                                <div class="qisutu-form-field">
+                                    <label>[% Translate.AdminEscalationSolution %]</label>
+                                    <input type="number" name="EscalationSolutionMinutes" value="0" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowEdit %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminQueueEdit %]</h2>
+                            <span class="qisutu-panel-subtitle">[% QueueFullName %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminQueues">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminQueues">
+                        <input type="hidden" name="Step" value="QueueUpdate">
+                        <input type="hidden" name="QueueID" value="[% QueueID %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminQueue %]</label>
+                                <input type="text" name="Name" value="[% QueueName %]" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminParentQueueID %]</label>
+                                <select name="ParentQueueID">
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.EditParentQueueOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminGroupID %]</label>
+                                <select name="GroupID" required>
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.EditGroupOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSystemEmail %]</label>
+                                <select name="SystemEmailID">
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.EditSystemEmailOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSalutation %]</label>
+                                <select name="SalutationID">
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.EditSalutationOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSignature %]</label>
+                                <select name="SignatureID">
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.EditSignatureOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminCalendar %]</label>
+                                <select name="CalendarID">
+                                    <option value="">[% Translate.AdminNoSelection %]</option>
+                                    [% RAW.EditCalendarOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="[% QueueSortOrder %]" min="1">
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="FollowUpAllowed" value="1" [% QueueFollowUpChecked %]>
+                                <span>[% Translate.AdminFollowUpAllowed %]</span>
+                            </label>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="Active" value="1" [% QueueActiveChecked %]>
+                                <span>[% Translate.AdminActive %]</span>
+                            </label>
+                        </div>
+
+                        <div class="qisutu-admin-form-block">
+                            <h3>[% Translate.AdminEscalations %]</h3>
+                            <div class="qisutu-admin-form-columns">
+                                <div class="qisutu-form-field">
+                                    <label>[% Translate.AdminEscalationFirstResponse %]</label>
+                                    <input type="number" name="EscalationFirstResponseMinutes" value="[% QueueEscalationFirstResponseMinutes %]" min="0">
+                                </div>
+                                <div class="qisutu-form-field">
+                                    <label>[% Translate.AdminEscalationUpdate %]</label>
+                                    <input type="number" name="EscalationUpdateMinutes" value="[% QueueEscalationUpdateMinutes %]" min="0">
+                                </div>
+                                <div class="qisutu-form-field">
+                                    <label>[% Translate.AdminEscalationSolution %]</label>
+                                    <input type="number" name="EscalationSolutionMinutes" value="[% QueueEscalationSolutionMinutes %]" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+                </section>
+
+                [% END %]
+            </section>

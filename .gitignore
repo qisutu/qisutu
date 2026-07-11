@@ -1,0 +1,26 @@
+# Runtime data
+log/*
+var/log/*
+var/cache/*
+var/tmp/*
+var/sessions/*
+*.log
+*.pid
+
+# Local configuration overrides and backups
+core/config/QisutuConfigLocal.pm
+*.bak
+*.orig
+*~
+*.swp
+
+# Generated archives
+*.zip
+*.tar
+*.tar.gz
+
+# IDE and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

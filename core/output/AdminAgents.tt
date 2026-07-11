@@ -1,0 +1,385 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-agents-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-admin-agents-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+                [% IF ShowList %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminAgentsList %]</h2>
+                            <span class="qisutu-panel-subtitle">[% AgentCount %] [% Translate.AdminEntries %]</span>
+                        </div>
+                        <div class="qisutu-panel-actions">
+                            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminAgents;Action=FieldCreate">[% Translate.AdminAgentFieldCreate %]</a>
+                            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminAgents;Action=Create">[% Translate.AdminAgentCreate %]</a>
+                        </div>
+                    </div>
+
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminLogin %]</th>
+                                    <th>[% Translate.AdminName %]</th>
+                                    <th>[% Translate.AdminEmail %]</th>
+                                    <th>[% Translate.AdminGroups %]</th>
+                                    <th>[% Translate.AdminActive %]</th>
+                                    <th>[% Translate.AdminAction %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% FOREACH Agent IN AgentList %]
+                                <tr>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminAgents;Action=Edit;UserAccountID=[% Agent.id %]">[% Agent.login %]</a></td>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminAgents;Action=Edit;UserAccountID=[% Agent.id %]">[% Agent.firstname %] [% Agent.lastname %]</a></td>
+                                    <td>[% Agent.email %]</td>
+                                    <td>[% Agent.group_names %]</td>
+                                    <td>[% Agent.active_label %]</td>
+                                    <td>
+                                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                                            <input type="hidden" name="Page" value="AdminAgents">
+                                            <input type="hidden" name="Step" value="AgentDeactivate">
+                                            <input type="hidden" name="UserAccountID" value="[% Agent.id %]">
+                                            <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminDeactivate %]</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="qisutu-panel qisutu-admin-definition-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminAgentFields %]</h2>
+                    </div>
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminDatabaseField %]</th>
+                                    <th>[% Translate.AdminDisplayName %]</th>
+                                    <th>[% Translate.AdminFieldType %]</th>
+                                    <th>[% Translate.AdminRequired %]</th>
+                                    <th>[% Translate.AdminActive %]</th>
+                                    <th>[% Translate.AdminSortOrder %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% FOREACH Field IN FieldList %]
+                                <tr>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminAgents;Action=FieldEdit;FieldID=[% Field.id %]">[% Field.name %]</a></td>
+                                    <td>[% Field.label %]</td>
+                                    <td>[% Field.field_type %]</td>
+                                    <td>[% Field.is_required %]</td>
+                                    <td>[% Field.active_label %]</td>
+                                    <td>[% Field.sort_order %]</td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                [% END %]
+
+                [% IF ShowCreate %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminAgentCreate %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminAgents">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminAgents">
+                        <input type="hidden" name="Step" value="AgentCreate">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminLogin %]</label>
+                                <input type="text" name="Login" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminEmail %]</label>
+                                <input type="email" name="Email" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminPassword %]</label>
+                                <input type="password" name="Password" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminFirstname %]</label>
+                                <input type="text" name="Firstname">
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminLastname %]</label>
+                                <input type="text" name="Lastname">
+                            </div>
+                        </div>
+
+                        [% RAW.CreateDynamicFieldsHTML %]
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowEdit %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminAgentEdit %]</h2>
+                            <span class="qisutu-panel-subtitle">[% AgentLogin %] [% AgentGroups %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminAgents">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminAgents">
+                        <input type="hidden" name="Step" value="AgentUpdate">
+                        <input type="hidden" name="UserAccountID" value="[% AgentID %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminLogin %]</label>
+                                <input type="text" name="Login" value="[% AgentLogin %]" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminEmail %]</label>
+                                <input type="email" name="Email" value="[% AgentEmail %]" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminPasswordNew %]</label>
+                                <input type="password" name="Password">
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminFirstname %]</label>
+                                <input type="text" name="Firstname" value="[% AgentFirstname %]">
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminLastname %]</label>
+                                <input type="text" name="Lastname" value="[% AgentLastname %]">
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="IsActive" value="1" [% AgentActiveChecked %]>
+                                <span>[% Translate.AdminActive %]</span>
+                            </label>
+                        </div>
+
+                        [% RAW.EditDynamicFieldsHTML %]
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="qisutu-panel qisutu-admin-definition-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminAgentGroupPermissions %]</h2>
+                    </div>
+
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminGroupID %]</th>
+                                    <th>[% Translate.AdminPermissionRead %]</th>
+                                    <th>[% Translate.AdminPermissionCreate %]</th>
+                                    <th>[% Translate.AdminPermissionChange %]</th>
+                                    <th>[% Translate.AdminPermissionOverview %]</th>
+                                    <th>[% Translate.AdminPermissionFull %]</th>
+                                    <th>[% Translate.AdminAction %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% FOREACH AgentGroup IN AgentGroupList %]
+                                <tr>
+                                    <td>[% AgentGroup.name %] [% AgentGroup.title %]</td>
+                                    <td><input form="qisutu-agent-group-permission-[% AgentGroup.user_group_id %]" type="checkbox" name="PermissionRead" value="1" [% AgentGroup.permission_read_checked %]></td>
+                                    <td><input form="qisutu-agent-group-permission-[% AgentGroup.user_group_id %]" type="checkbox" name="PermissionCreate" value="1" [% AgentGroup.permission_create_checked %]></td>
+                                    <td><input form="qisutu-agent-group-permission-[% AgentGroup.user_group_id %]" type="checkbox" name="PermissionChange" value="1" [% AgentGroup.permission_change_checked %]></td>
+                                    <td><input form="qisutu-agent-group-permission-[% AgentGroup.user_group_id %]" type="checkbox" name="PermissionOverview" value="1" [% AgentGroup.permission_overview_checked %]></td>
+                                    <td><input form="qisutu-agent-group-permission-[% AgentGroup.user_group_id %]" type="checkbox" name="PermissionFull" value="1" [% AgentGroup.permission_full_checked %]></td>
+                                    <td>
+                                        <form id="qisutu-agent-group-permission-[% AgentGroup.user_group_id %]" class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                                            <input type="hidden" name="Page" value="AdminAgents">
+                                            <input type="hidden" name="Step" value="AgentGroupPermissionUpdate">
+                                            <input type="hidden" name="UserAccountID" value="[% AgentID %]">
+                                            <input type="hidden" name="GroupID" value="[% AgentGroup.user_group_id %]">
+                                            <button class="qisutu-button qisutu-button-primary qisutu-button-small" type="submit">[% Translate.AdminSave %]</button>
+                                        </form>
+                                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                                            <input type="hidden" name="Page" value="AdminAgents">
+                                            <input type="hidden" name="Step" value="AgentGroupRemove">
+                                            <input type="hidden" name="UserAccountID" value="[% AgentID %]">
+                                            <input type="hidden" name="GroupID" value="[% AgentGroup.user_group_id %]">
+                                            <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminRemove %]</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                [% END %]
+
+                [% IF ShowFieldCreate %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminAgentFieldCreate %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminAgents">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminAgents">
+                        <input type="hidden" name="Step" value="AgentDynamicFieldCreate">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminDatabaseField %]</label>
+                                <input type="text" name="Name" required>
+                                <span class="qisutu-form-hint">[% Translate.AdminDatabaseFieldHint %]</span>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminFieldType %]</label>
+                                <select name="FieldType">
+                                    [% RAW.FieldCreateTypeOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="1000" min="1">
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="IsRequired" value="1">
+                                <span>[% Translate.AdminRequired %]</span>
+                            </label>
+                        </div>
+
+                        <div class="qisutu-admin-form-block">
+                            <h3>[% Translate.AdminTranslations %]</h3>
+                            <input type="hidden" name="TranslationRowCount" value="[% CreateTranslationRowCount %]" data-qisutu-translation-count>
+                            <div class="qisutu-translation-rows" data-qisutu-translation-rows>
+                                [% RAW.CreateTranslationRowsHTML %]
+                            </div>
+                            <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-translation-add>[% Translate.AdminTranslationAdd %]</button>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowFieldEdit %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminAgentFieldEdit %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminAgents">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminAgents">
+                        <input type="hidden" name="Step" value="AgentDynamicFieldUpdate">
+                        <input type="hidden" name="FieldID" value="[% FieldID %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminDatabaseField %]</label>
+                                <input type="text" value="[% FieldName %]" readonly>
+                                <span class="qisutu-form-hint">[% Translate.AdminDatabaseFieldReadonlyHint %]</span>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminFieldType %]</label>
+                                <select name="FieldType">
+                                    [% RAW.FieldEditTypeOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="[% FieldSortOrder %]" min="1">
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="IsRequired" value="1" [% FieldRequiredChecked %]>
+                                <span>[% Translate.AdminRequired %]</span>
+                            </label>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="Active" value="1" [% FieldActiveChecked %]>
+                                <span>[% Translate.AdminActive %]</span>
+                            </label>
+                        </div>
+
+                        <div class="qisutu-admin-form-block">
+                            <h3>[% Translate.AdminTranslations %]</h3>
+                            <input type="hidden" name="TranslationRowCount" value="[% EditTranslationRowCount %]" data-qisutu-translation-count>
+                            <div class="qisutu-translation-rows" data-qisutu-translation-rows>
+                                [% RAW.EditTranslationRowsHTML %]
+                            </div>
+                            <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-translation-add>[% Translate.AdminTranslationAdd %]</button>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+
+                    <form class="qisutu-admin-delete-form" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminAgents">
+                        <input type="hidden" name="Step" value="AgentDynamicFieldDelete">
+                        <input type="hidden" name="FieldID" value="[% FieldID %]">
+                        <button class="qisutu-button qisutu-button-danger" type="submit">[% Translate.AdminDeleteField %]</button>
+                    </form>
+                </section>
+                [% END %]
+            </section>
+            <template id="qisutu-translation-row-template">
+                <div class="qisutu-translation-row" data-qisutu-translation-row>
+                    <div class="qisutu-form-field">
+                        <label>[% Translate.AdminTranslationLanguage %]</label>
+                        <select data-qisutu-translation-language>
+                            [% RAW.TranslationLanguageOptionsHTML %]
+                        </select>
+                    </div>
+                    <div class="qisutu-form-field">
+                        <label>[% Translate.AdminDisplayName %]</label>
+                        <input type="text" data-qisutu-translation-label>
+                    </div>
+                    <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-translation-remove>[% Translate.AdminRemove %]</button>
+                </div>
+            </template>
+            <script src="[% StaticBase %]/js/qisutu-admin-dynamic-fields.js"></script>

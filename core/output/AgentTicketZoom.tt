@@ -1,0 +1,612 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-agent-ticket-zoom-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-agent-ticket-zoom-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                    <a class="qisutu-button qisutu-button-secondary" href="[% TicketListURL %]">[% Translate.TicketBackToList %]</a>
+                </div>
+
+                [% IF TicketFound %]
+                <section class="qisutu-ticket-layout">
+                    <article class="qisutu-panel qisutu-ticket-main">
+                        <div class="qisutu-panel-header">
+                            <h2>[% TicketTitle %]</h2>
+                        </div>
+
+                        <div class="qisutu-ticket-meta-grid">
+                            <div>
+                                <span>[% Translate.TicketNumber %]</span>
+                                <strong>[% TicketNumber %]</strong>
+                            </div>
+                            <div>
+                                <span>[% Translate.TicketQueue %]</span>
+                                <strong>[% TicketQueue %]</strong>
+                            </div>
+                            <div>
+                                <span>[% Translate.TicketState %]</span>
+                                <strong>[% TicketState %]</strong>
+                            </div>
+                            <div>
+                                <span>[% Translate.TicketPriority %]</span>
+                                <strong>[% TicketPriority %]</strong>
+                            </div>
+                            <div>
+                                <span>[% Translate.TicketAge %]</span>
+                                <strong>[% TicketAge %]</strong>
+                            </div>
+                        </div>
+
+                        <section class="qisutu-ticket-reply-top-actions" aria-label="[% Translate.TicketReplyActionsTitle %]">
+                            <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-reply-mode="note" data-qisutu-reply-title="[% Translate.TicketCreateNote %]" data-qisutu-submit-label="[% Translate.TicketArticleSaveNote %]" data-qisutu-scroll-reply="1">[% Translate.TicketCreateNote %]</button>
+                            <button class="qisutu-ticket-tools-button" type="button" aria-label="[% Translate.TicketToolsOpen %]" aria-expanded="[% TicketToolsButtonExpanded %]" data-qisutu-ticket-tools-open>
+                                <span aria-hidden="true">⚙</span>
+                            </button>
+                        </section>
+
+                        <section class="qisutu-ticket-tools-overlay [% TicketToolsOverlayClass %]" aria-labelledby="qisutu-ticket-tools-title" aria-hidden="[% TicketToolsOverlayAriaHidden %]" data-qisutu-ticket-tools-overlay data-qisutu-ticket-tools-active="[% TicketToolActive %]">
+                            <div class="qisutu-ticket-tools-header">
+                                <div>
+                                    <h3 id="qisutu-ticket-tools-title">[% Translate.TicketToolsTitle %]</h3>
+                                    <p>[% Translate.TicketToolsIntro %]</p>
+                                </div>
+                                <button class="qisutu-ticket-tools-close" type="button" aria-label="[% Translate.TicketToolsClose %]" data-qisutu-ticket-tools-close>×</button>
+                            </div>
+
+                            <div class="qisutu-ticket-tools-grid" role="tablist" aria-label="[% Translate.TicketToolsTitle %]">
+                                <button class="qisutu-ticket-tools-tile qisutu-ticket-tools-tile-active" type="button" role="tab" aria-selected="true" data-qisutu-ticket-tool="priority">[% Translate.TicketToolPriority %]</button>
+                                <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="owner">[% Translate.TicketToolOwner %]</button>
+                                <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="responsible">[% Translate.TicketToolResponsible %]</button>
+                                <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="customer">[% Translate.TicketToolCustomer %]</button>
+                                <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="queue">[% Translate.TicketToolQueue %]</button>
+                                <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="close">[% Translate.TicketToolClose %]</button>
+                                <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="link">[% Translate.TicketToolLink %]</button>
+                                <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="merge">[% Translate.TicketToolMerge %]</button>
+                                <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="history">[% Translate.TicketToolHistory %]</button>
+                            </div>
+
+                            <div class="qisutu-ticket-tools-panels">
+                                <div class="qisutu-form-error [% TicketToolErrorClass %]">
+                                    [% TicketToolError %]
+                                </div>
+
+                                <div class="qisutu-ticket-tools-panel" data-qisutu-ticket-tool-panel="priority">
+                                    <h4>[% Translate.TicketToolPriority %]</h4>
+                                    <form method="post" action="index.pl" data-qisutu-ticket-tool-form>
+                                        <input type="hidden" name="Page" value="AgentTicketZoom">
+                                        <input type="hidden" name="Step" value="TicketToolUpdate">
+                                        <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                        <input type="hidden" name="ToolAction" value="priority">
+
+                                        <div class="qisutu-ticket-tools-form-grid">
+                                            <div class="qisutu-form-field">
+                                                <label for="qisutu-ticket-tool-priority">[% Translate.TicketPriority %]</label>
+                                                <select id="qisutu-ticket-tool-priority" name="PriorityID" required>
+                                                    [% RAW.TicketPriorityOptionsHTML %]
+                                                </select>
+                                            </div>
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                                <label for="qisutu-ticket-tool-priority-body">[% Translate.TicketToolInternalArticle %]</label>
+                                                <textarea id="qisutu-ticket-tool-priority-body" class="qisutu-richtext" name="ToolArticleBody" rows="5"></textarea>
+                                                <p class="qisutu-form-help">[% Translate.TicketToolInternalArticleHelp %]</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="qisutu-form-actions">
+                                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketToolSaveChange %]</button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="owner">
+                                    <h4>[% Translate.TicketToolOwner %]</h4>
+                                    <form method="post" action="index.pl" data-qisutu-ticket-tool-form>
+                                        <input type="hidden" name="Page" value="AgentTicketZoom">
+                                        <input type="hidden" name="Step" value="TicketToolUpdate">
+                                        <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                        <input type="hidden" name="ToolAction" value="owner">
+                                        <input type="hidden" id="qisutu-ticket-tool-owner-id" name="OwnerUserID" value="" data-qisutu-autocomplete-target>
+
+                                        <div class="qisutu-ticket-tools-form-grid">
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide qisutu-autocomplete">
+                                                <label for="qisutu-ticket-tool-owner">[% Translate.TicketOwner %]</label>
+                                                <input id="qisutu-ticket-tool-owner" type="text" value="" placeholder="[% Translate.TicketToolOwnerSearchPlaceholder %]" autocomplete="off" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketZoom&amp;Step=AgentLookup&amp;TicketID=[% TicketID %]" data-qisutu-autocomplete-hidden="qisutu-ticket-tool-owner-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]" data-qisutu-autocomplete-reset-on-panel="1">
+                                                <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+                                                <p class="qisutu-form-help">[% Translate.TicketToolAutocompleteHelp %]</p>
+                                            </div>
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                                <label for="qisutu-ticket-tool-owner-body">[% Translate.TicketToolInternalArticle %]</label>
+                                                <textarea id="qisutu-ticket-tool-owner-body" class="qisutu-richtext" name="ToolArticleBody" rows="5"></textarea>
+                                                <p class="qisutu-form-help">[% Translate.TicketToolInternalArticleHelp %]</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="qisutu-form-actions">
+                                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketToolSaveChange %]</button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="responsible">
+                                    <h4>[% Translate.TicketToolResponsible %]</h4>
+                                    <form method="post" action="index.pl" data-qisutu-ticket-tool-form>
+                                        <input type="hidden" name="Page" value="AgentTicketZoom">
+                                        <input type="hidden" name="Step" value="TicketToolUpdate">
+                                        <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                        <input type="hidden" name="ToolAction" value="responsible">
+                                        <input type="hidden" id="qisutu-ticket-tool-responsible-id" name="ResponsibleUserID" value="" data-qisutu-autocomplete-target>
+
+                                        <div class="qisutu-ticket-tools-form-grid">
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide qisutu-autocomplete">
+                                                <label for="qisutu-ticket-tool-responsible">[% Translate.TicketResponsible %]</label>
+                                                <input id="qisutu-ticket-tool-responsible" type="text" value="" placeholder="[% Translate.TicketToolResponsibleSearchPlaceholder %]" autocomplete="off" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketZoom&amp;Step=AgentLookup&amp;TicketID=[% TicketID %]" data-qisutu-autocomplete-hidden="qisutu-ticket-tool-responsible-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]" data-qisutu-autocomplete-reset-on-panel="1">
+                                                <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+                                                <p class="qisutu-form-help">[% Translate.TicketToolAutocompleteHelp %]</p>
+                                            </div>
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                                <label for="qisutu-ticket-tool-responsible-body">[% Translate.TicketToolInternalArticle %]</label>
+                                                <textarea id="qisutu-ticket-tool-responsible-body" class="qisutu-richtext" name="ToolArticleBody" rows="5"></textarea>
+                                                <p class="qisutu-form-help">[% Translate.TicketToolInternalArticleHelp %]</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="qisutu-form-actions">
+                                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketToolSaveChange %]</button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="customer">
+                                    <h4>[% Translate.TicketToolCustomer %]</h4>
+                                    <form method="post" action="index.pl" data-qisutu-ticket-tool-form>
+                                        <input type="hidden" name="Page" value="AgentTicketZoom">
+                                        <input type="hidden" name="Step" value="TicketToolUpdate">
+                                        <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                        <input type="hidden" name="ToolAction" value="customer">
+                                        <input type="hidden" id="qisutu-ticket-tool-customer-user-id" name="CustomerUserID" value="" data-qisutu-autocomplete-target>
+
+                                        <div class="qisutu-ticket-tools-form-grid">
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide qisutu-autocomplete">
+                                                <label for="qisutu-ticket-tool-customer-user">[% Translate.TicketCustomerUser %]</label>
+                                                <input id="qisutu-ticket-tool-customer-user" type="text" value="" placeholder="[% Translate.TicketToolCustomerSearchPlaceholder %]" autocomplete="off" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketZoom&amp;Step=CustomerUserLookup&amp;TicketID=[% TicketID %]" data-qisutu-autocomplete-hidden="qisutu-ticket-tool-customer-user-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]" data-qisutu-autocomplete-reset-on-panel="1">
+                                                <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+                                                <p class="qisutu-form-help">[% Translate.TicketToolCustomerSearchHelp %]</p>
+                                            </div>
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                                <label for="qisutu-ticket-tool-customer-body">[% Translate.TicketToolInternalArticle %]</label>
+                                                <textarea id="qisutu-ticket-tool-customer-body" class="qisutu-richtext" name="ToolArticleBody" rows="5"></textarea>
+                                                <p class="qisutu-form-help">[% Translate.TicketToolInternalArticleHelp %]</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="qisutu-form-actions">
+                                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketToolSaveChange %]</button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="queue">
+                                    <h4>[% Translate.TicketToolQueue %]</h4>
+                                    <form method="post" action="index.pl" data-qisutu-ticket-tool-form>
+                                        <input type="hidden" name="Page" value="AgentTicketZoom">
+                                        <input type="hidden" name="Step" value="TicketToolUpdate">
+                                        <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                        <input type="hidden" name="ToolAction" value="queue">
+
+                                        <div class="qisutu-ticket-tools-form-grid">
+                                            <div class="qisutu-form-field">
+                                                <label for="qisutu-ticket-tool-queue">[% Translate.TicketQueue %]</label>
+                                                <select id="qisutu-ticket-tool-queue" name="QueueID" required>
+                                                    [% RAW.TicketQueueOptionsHTML %]
+                                                </select>
+                                            </div>
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                                <label for="qisutu-ticket-tool-queue-body">[% Translate.TicketToolInternalArticle %]</label>
+                                                <textarea id="qisutu-ticket-tool-queue-body" class="qisutu-richtext" name="ToolArticleBody" rows="5"></textarea>
+                                                <p class="qisutu-form-help">[% Translate.TicketToolInternalArticleHelp %]</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="qisutu-form-actions">
+                                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketToolSaveChange %]</button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="close">
+                                    <h4>[% Translate.TicketToolClose %]</h4>
+                                    <form method="post" action="index.pl" data-qisutu-ticket-tool-form>
+                                        <input type="hidden" name="Page" value="AgentTicketZoom">
+                                        <input type="hidden" name="Step" value="TicketToolUpdate">
+                                        <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                        <input type="hidden" name="ToolAction" value="close">
+
+                                        <div class="qisutu-ticket-tools-form-grid">
+                                            <div class="qisutu-form-field">
+                                                <label for="qisutu-ticket-tool-close-state">[% Translate.TicketState %]</label>
+                                                <select id="qisutu-ticket-tool-close-state" name="ClosedStateID" required>
+                                                    [% RAW.TicketClosedStateOptionsHTML %]
+                                                </select>
+                                            </div>
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                                <label for="qisutu-ticket-tool-close-body">[% Translate.TicketToolInternalArticle %]</label>
+                                                <textarea id="qisutu-ticket-tool-close-body" class="qisutu-richtext" name="ToolArticleBody" rows="5"></textarea>
+                                                <p class="qisutu-form-help">[% Translate.TicketToolInternalArticleHelp %]</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="qisutu-form-actions">
+                                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketToolCloseSubmit %]</button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="link">
+                                    <h4>[% Translate.TicketToolLink %]</h4>
+                                    <div class="qisutu-ticket-tools-form-grid">
+                                        <div class="qisutu-form-field">
+                                            <label for="qisutu-ticket-tool-link-number">[% Translate.TicketToolTicketNumber %]</label>
+                                            <input id="qisutu-ticket-tool-link-number" type="text" disabled>
+                                        </div>
+                                    </div>
+                                    <p class="qisutu-ticket-tools-placeholder">[% Translate.TicketToolsPlaceholder %]</p>
+                                </div>
+
+                                <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="merge">
+                                    <h4>[% Translate.TicketToolMerge %]</h4>
+                                    <div class="qisutu-ticket-tools-form-grid">
+                                        <div class="qisutu-form-field">
+                                            <label for="qisutu-ticket-tool-merge-number">[% Translate.TicketToolTargetTicketNumber %]</label>
+                                            <input id="qisutu-ticket-tool-merge-number" type="text" disabled>
+                                        </div>
+                                    </div>
+                                    <p class="qisutu-ticket-tools-placeholder">[% Translate.TicketToolsPlaceholder %]</p>
+                                </div>
+
+                                <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="history">
+                                    <h4>[% Translate.TicketToolHistory %]</h4>
+                                    <div class="qisutu-ticket-tools-history-placeholder">
+                                        <strong>[% TicketNumber %]</strong>
+                                        <span>[% Translate.TicketToolsHistoryPlaceholder %]</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="qisutu-ticket-articles" aria-labelledby="qisutu-ticket-articles-title">
+                            <div class="qisutu-ticket-articles-header">
+                                <h3 id="qisutu-ticket-articles-title">[% Translate.TicketArticlesTitle %]</h3>
+                                <div class="qisutu-ticket-article-controls">
+                                    <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-articles-open-all>[% Translate.TicketArticlesOpenAll %]</button>
+                                    <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-articles-close-all>[% Translate.TicketArticlesCloseAll %]</button>
+                                    <span class="qisutu-panel-counter">[% ArticleCount %]</span>
+                                </div>
+                            </div>
+
+                            <div class="qisutu-ticket-article-list">
+                                [% FOREACH Article IN ArticleList %]
+                                <article class="qisutu-ticket-article [% Article.article_open_class %] [% Article.article_sender_class %]" data-qisutu-ticket-article>
+                                    <div class="qisutu-ticket-article-shell">
+                                        <div class="qisutu-ticket-article-avatar" title="[% Article.sender_role_label %]">[% Article.sender_initials %]</div>
+
+                                        <div class="qisutu-ticket-article-bubble">
+                                            <div class="qisutu-ticket-article-summary">
+                                                <button class="qisutu-ticket-article-toggle" type="button" data-qisutu-article-toggle>
+                                                    <div class="qisutu-ticket-article-headline">
+                                                        <span class="qisutu-ticket-article-sender">[% Article.sender_name %]</span>
+                                                        <strong>[% Article.subject %]</strong>
+                                                        <span>[% Article.created_at_display %]</span>
+                                                    </div>
+                                                </button>
+
+                                                <div class="qisutu-ticket-article-side">
+                                                    <span class="qisutu-ticket-article-badges">
+                                                        <span class="qisutu-ticket-article-role">[% Article.sender_role_label %]</span>
+                                                        <span class="qisutu-ticket-article-label">[% Article.visibility_label %]</span>
+                                                    </span>
+
+                                                    <div class="qisutu-ticket-article-top-actions">
+                                                        <button class="qisutu-button qisutu-button-secondary qisutu-button-small [% Article.reply_button_class %]" type="button" data-qisutu-article-reply-button data-qisutu-reply-article-id="[% Article.id %]" data-qisutu-reply-to="[% Article.reply_to %]" data-qisutu-reply-cc="[% Article.reply_cc %]" data-qisutu-reply-subject="[% Article.reply_subject %]">[% Translate.TicketReplyCustomer %]</button>
+                                                        <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-article-forward-button data-qisutu-forward-article-id="[% Article.id %]" data-qisutu-forward-subject="[% Article.forward_subject %]" data-qisutu-forward-title="[% Translate.TicketToolForward %]" data-qisutu-forward-submit-label="[% Translate.TicketToolForwardSend %]">[% Translate.TicketToolForward %]</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <textarea class="qisutu-hidden" data-qisutu-article-reply-template>[% Article.reply_body_template %]</textarea>
+                                            <textarea class="qisutu-hidden" data-qisutu-article-forward-template>[% Article.forward_body_template %]</textarea>
+
+                                            <div class="qisutu-ticket-article-content">
+                                                <dl class="qisutu-ticket-article-meta">
+                                                    <dt>[% Translate.TicketArticleFrom %]</dt>
+                                                    <dd>[% Article.sender_name %]</dd>
+                                                    <dt>[% Translate.TicketArticleTo %]</dt>
+                                                    <dd>[% Article.recipient %]</dd>
+                                                    <dt>[% Translate.TicketArticleChannel %]</dt>
+                                                    <dd>[% Article.channel %]</dd>
+                                                </dl>
+
+                                                [% RAW.Article.attachments_html %]
+
+                                                <div class="qisutu-ticket-article-body qisutu-richtext-output">[% RAW.Article.body_html %]</div>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                                [% END %]
+                            </div>
+
+                            <div class="qisutu-empty qisutu-ticket-article-empty [% ArticleEmptyClass %]">
+                                <strong>[% Translate.TicketArticlesEmptyTitle %]</strong>
+                                <p>[% Translate.TicketArticlesEmptyText %]</p>
+                            </div>
+
+                            <div class="qisutu-ticket-articles-footer">
+                                <div class="qisutu-ticket-article-controls">
+                                    <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-articles-open-all>[% Translate.TicketArticlesOpenAll %]</button>
+                                    <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-articles-close-all>[% Translate.TicketArticlesCloseAll %]</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="qisutu-ticket-reply" aria-label="[% Translate.TicketReplyActionsTitle %]">
+                            <div class="qisutu-ticket-reply-actions">
+                                <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-reply-mode="note" data-qisutu-reply-title="[% Translate.TicketCreateNote %]" data-qisutu-submit-label="[% Translate.TicketArticleSaveNote %]">[% Translate.TicketCreateNote %]</button>
+                                <button class="qisutu-ticket-tools-button" type="button" aria-label="[% Translate.TicketToolsOpen %]" aria-expanded="[% TicketToolsButtonExpanded %]" data-qisutu-ticket-tools-open>
+                                    <span aria-hidden="true">⚙</span>
+                                </button>
+                            </div>
+
+                            <div class="qisutu-form-error [% ArticleCreateErrorClass %]">
+                                [% ArticleCreateError %]
+                            </div>
+
+                            <form class="qisutu-ticket-reply-form [% ArticleReplyFormClass %]" method="post" action="[% ArticleFormAction %]" enctype="multipart/form-data" data-qisutu-ticket-reply-form>
+                                <input type="hidden" name="Page" value="AgentTicketZoom">
+                                <input type="hidden" name="Step" value="ArticleCreate">
+                                <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                <input type="hidden" name="ArticleMode" value="[% DefaultArticleMode %]" data-qisutu-article-mode>
+                                <input type="hidden" name="ReplyArticleID" value="" data-qisutu-reply-article-id>
+
+                                <h3 class="qisutu-ticket-reply-form-title" data-qisutu-reply-form-title>[% ReplyFormDefaultTitle %]</h3>
+
+                                <div class="qisutu-form-field">
+                                    <label for="qisutu-article-subject">[% Translate.TicketArticleSubject %]</label>
+                                    <input id="qisutu-article-subject" type="text" name="Subject">
+                                </div>
+
+                                <div class="qisutu-ticket-reply-recipient-grid qisutu-hidden" data-qisutu-email-recipient-fields>
+                                    <div class="qisutu-form-field">
+                                        <label for="qisutu-article-reply-to">[% Translate.TicketArticleReplyTo %]</label>
+                                        <input id="qisutu-article-reply-to" type="text" name="ReplyTo" autocomplete="off" placeholder="name@example.com" data-qisutu-reply-to-input>
+                                        <p class="qisutu-form-help">[% Translate.TicketArticleReplyToHelp %]</p>
+                                    </div>
+                                    <div class="qisutu-form-field">
+                                        <label for="qisutu-article-reply-cc">[% Translate.TicketArticleReplyCc %]</label>
+                                        <input id="qisutu-article-reply-cc" type="text" name="ReplyCc" autocomplete="off" placeholder="name@example.com" data-qisutu-reply-cc-input>
+                                        <p class="qisutu-form-help">[% Translate.TicketArticleReplyCcHelp %]</p>
+                                    </div>
+                                </div>
+
+                                <div class="qisutu-form-field">
+                                    <label for="qisutu-ticket-status">[% Translate.TicketStatusAfterSubmit %]</label>
+                                    <select id="qisutu-ticket-status" name="StatusID" data-qisutu-ticket-status>
+                                        [% RAW.TicketStatusOptionsHTML %]
+                                    </select>
+                                </div>
+
+                                <div class="qisutu-form-field qisutu-hidden" data-qisutu-pending-until-field>
+                                    <label for="qisutu-ticket-pending-until">[% Translate.TicketPendingUntil %]</label>
+                                    <input id="qisutu-ticket-pending-until" type="datetime-local" name="PendingUntil">
+                                    <p class="qisutu-form-help">[% Translate.TicketPendingUntilHelp %]</p>
+                                </div>
+
+                                <div class="qisutu-form-field">
+                                    <label for="qisutu-article-body">[% Translate.TicketArticleBody %]</label>
+                                    <textarea id="qisutu-article-body" class="qisutu-richtext" name="Body" rows="7"></textarea>
+                                </div>
+
+                                <div class="qisutu-form-field qisutu-ticket-reply-attachments" data-qisutu-attachment-field>
+                                    <label for="qisutu-article-attachments">[% Translate.TicketArticleAttachments %]</label>
+                                    <input id="qisutu-article-attachments" type="file" name="ArticleAttachment" multiple data-qisutu-attachment-input data-qisutu-attachment-max-bytes="[% AttachmentMaxSizeBytes %]" data-qisutu-attachment-max-label="[% AttachmentMaxSizeMB %] MB">
+                                    <div class="qisutu-ticket-reply-attachment-list" data-qisutu-attachment-list data-qisutu-attachment-remove-label="[% Translate.TicketArticleAttachmentRemove %]">
+                                        <p class="qisutu-form-hint" data-qisutu-attachment-empty>[% Translate.TicketArticleAttachmentsEmpty %]</p>
+                                    </div>
+                                    <p class="qisutu-form-help">[% Translate.TicketArticleAttachmentsHelp %]</p>
+                                    <p class="qisutu-form-help">[% Translate.TicketArticleAttachmentLimitHelp %] [% AttachmentMaxSizeMB %] MB</p>
+                                </div>
+
+                                <div class="qisutu-form-field qisutu-hidden" data-qisutu-note-customer-visible-field>
+                                    <label class="qisutu-form-checkbox" for="qisutu-note-customer-visible">
+                                        <input id="qisutu-note-customer-visible" type="checkbox" name="CustomerVisible" value="1" data-qisutu-note-customer-visible>
+                                        <span>[% Translate.TicketArticleAlsoVisibleForCustomer %]</span>
+                                    </label>
+                                </div>
+
+                                <div class="qisutu-form-actions">
+                                    <button class="qisutu-button qisutu-button-primary" type="submit" data-qisutu-reply-submit data-qisutu-email-submit-label="[% Translate.TicketArticleSendEmail %]">[% ReplySubmitDefaultLabel %]</button>
+                                </div>
+                            </form>
+
+                            <div class="qisutu-attachment-limit-overlay" data-qisutu-attachment-limit-overlay hidden aria-hidden="true">
+                                <div class="qisutu-attachment-limit-dialog" role="alertdialog" aria-modal="true" aria-labelledby="qisutu-attachment-limit-title">
+                                    <h3 id="qisutu-attachment-limit-title">[% Translate.TicketArticleAttachmentTooLargeTitle %]</h3>
+                                    <p data-qisutu-attachment-limit-message data-qisutu-message-template="[% Translate.TicketArticleAttachmentTooLargeMessage %]"></p>
+                                    <p>[% Translate.TicketArticleAttachmentTooLargeAdmin %]</p>
+                                    <div class="qisutu-form-actions">
+                                        <button class="qisutu-button qisutu-button-primary" type="button" data-qisutu-attachment-limit-close>[% Translate.TicketArticleAttachmentDialogOK %]</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </article>
+
+                    <aside class="qisutu-panel qisutu-ticket-sidebar">
+                        <div class="qisutu-ticket-info-block qisutu-ticket-info-block-open" data-qisutu-ticket-info-section>
+                            <h3>
+                                <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="true" aria-controls="qisutu-ticket-info-customer" data-qisutu-ticket-info-toggle>
+                                    <span>[% Translate.TicketCustomer %]</span>
+                                    <span class="qisutu-ticket-info-chevron" aria-hidden="true"></span>
+                                </button>
+                            </h3>
+                            <div id="qisutu-ticket-info-customer" class="qisutu-ticket-info-content" data-qisutu-ticket-info-content>
+                                <dl class="qisutu-ticket-info-list">
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketCustomer %]</dt>
+                                        <dd>[% TicketCustomer %]</dd>
+                                    </div>
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketCustomerUser %]</dt>
+                                        <dd>[% TicketCustomerUser %]</dd>
+                                    </div>
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketCustomerEmail %]</dt>
+                                        <dd>[% TicketCustomerEmail %]</dd>
+                                    </div>
+                                </dl>
+                            </div>
+                        </div>
+
+                        <div class="qisutu-ticket-info-block qisutu-ticket-info-block-open" data-qisutu-ticket-info-section>
+                            <h3>
+                                <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="true" aria-controls="qisutu-ticket-info-people" data-qisutu-ticket-info-toggle>
+                                    <span>[% Translate.TicketPeople %]</span>
+                                    <span class="qisutu-ticket-info-chevron" aria-hidden="true"></span>
+                                </button>
+                            </h3>
+                            <div id="qisutu-ticket-info-people" class="qisutu-ticket-info-content" data-qisutu-ticket-info-content>
+                                <dl class="qisutu-ticket-info-list">
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketOwner %]</dt>
+                                        <dd>[% TicketOwner %]</dd>
+                                    </div>
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketResponsible %]</dt>
+                                        <dd>[% TicketResponsible %]</dd>
+                                    </div>
+                                </dl>
+                            </div>
+                        </div>
+
+                        <div class="qisutu-ticket-info-block" data-qisutu-ticket-info-section>
+                            <h3>
+                                <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="false" aria-controls="qisutu-ticket-info-dates" data-qisutu-ticket-info-toggle>
+                                    <span>[% Translate.TicketDates %]</span>
+                                    <span class="qisutu-ticket-info-chevron" aria-hidden="true"></span>
+                                </button>
+                            </h3>
+                            <div id="qisutu-ticket-info-dates" class="qisutu-ticket-info-content" data-qisutu-ticket-info-content hidden>
+                                <dl class="qisutu-ticket-info-list">
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketCreated %]</dt>
+                                        <dd>[% TicketCreatedAt %]</dd>
+                                    </div>
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketChanged %]</dt>
+                                        <dd>[% TicketChangedAt %]</dd>
+                                    </div>
+                                </dl>
+                            </div>
+                        </div>
+
+                        <div class="qisutu-ticket-info-block" data-qisutu-ticket-info-section>
+                            <h3>
+                                <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="false" aria-controls="qisutu-ticket-info-escalations" data-qisutu-ticket-info-toggle>
+                                    <span>[% Translate.TicketEscalations %]</span>
+                                    <span class="qisutu-ticket-info-chevron" aria-hidden="true"></span>
+                                </button>
+                            </h3>
+                            <div id="qisutu-ticket-info-escalations" class="qisutu-ticket-info-content" data-qisutu-ticket-info-content hidden>
+                                <dl class="qisutu-ticket-info-list">
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketEscalationState %]</dt>
+                                        <dd><span class="qisutu-escalation-badge [% TicketEscalationStateClass %]">[% TicketEscalationStateLabel %]</span></dd>
+                                    </div>
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketFirstResponseDueAt %]</dt>
+                                        <dd class="[% TicketFirstResponseDueClass %]">
+                                            [% TicketFirstResponseDueAt %]
+                                            [% IF TicketFirstResponseEscalated %]
+                                            <span class="qisutu-escalation-since">[% Translate.TicketEscalatedSince %] [% TicketFirstResponseEscalatedSince %]</span>
+                                            [% END %]
+                                        </dd>
+                                    </div>
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketFirstResponseAt %]</dt>
+                                        <dd>[% TicketFirstResponseAt %]</dd>
+                                    </div>
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketUpdateDueAt %]</dt>
+                                        <dd class="[% TicketUpdateDueClass %]">
+                                            [% TicketUpdateDueAt %]
+                                            [% IF TicketUpdateEscalated %]
+                                            <span class="qisutu-escalation-since">[% Translate.TicketEscalatedSince %] [% TicketUpdateEscalatedSince %]</span>
+                                            [% END %]
+                                        </dd>
+                                    </div>
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketSolutionDueAt %]</dt>
+                                        <dd class="[% TicketSolutionDueClass %]">
+                                            [% TicketSolutionDueAt %]
+                                            [% IF TicketSolutionEscalated %]
+                                            <span class="qisutu-escalation-since">[% Translate.TicketEscalatedSince %] [% TicketSolutionEscalatedSince %]</span>
+                                            [% END %]
+                                        </dd>
+                                    </div>
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketSolutionAt %]</dt>
+                                        <dd>[% TicketSolutionAt %]</dd>
+                                    </div>
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketPendingUntil %]</dt>
+                                        <dd class="[% TicketPendingUntilClass %]">
+                                            [% TicketPendingUntil %]
+                                            [% IF TicketPendingUntilReached %]
+                                            <span class="qisutu-escalation-since">[% TicketPendingUntilReachedSince %]</span>
+                                            [% END %]
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </div>
+                        </div>
+                    </aside>
+                </section>
+                [% ELSE %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-empty">
+                        <strong>[% Translate.TicketNotFoundTitle %]</strong>
+                        <p>[% Translate.TicketNotFoundText %]</p>
+                    </div>
+                </section>
+                [% END %]
+            </section>
+            <script>
+                window.QISUTU_STATIC_BASE = '[% StaticBase %]';
+            </script>
+            <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
+            <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
+            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071051"></script>

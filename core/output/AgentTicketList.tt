@@ -1,0 +1,82 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard qisutu-agent-ticket-list" aria-labelledby="qisutu-agent-ticket-list-title">
+                <div class="qisutu-dashboard-header qisutu-ticket-list-page-header">
+                    <div>
+                        <h1 id="qisutu-agent-ticket-list-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-alert qisutu-alert-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+                <section class="qisutu-panel qisutu-ticket-list-panel">
+                    <div class="qisutu-ticket-list-toolbar">
+                        <div class="qisutu-ticket-list-toolbar-left">
+                            <div class="qisutu-ticket-list-view-select" data-qisutu-ticket-list-view-select>
+                                <button class="qisutu-button qisutu-button-secondary qisutu-ticket-list-view-button" type="button" aria-expanded="false" data-qisutu-ticket-list-view-button>
+                                    <span>[% Translate.TicketListSelectView %]</span>
+                                    <strong>[% ActiveViewLabel %]</strong>
+                                    <span class="qisutu-ticket-list-view-chevron" aria-hidden="true"></span>
+                                </button>
+                                <div class="qisutu-ticket-list-view-menu" data-qisutu-ticket-list-view-menu hidden>
+                                    [% RAW.ViewMenuHTML %]
+                                </div>
+                            </div>
+
+                            <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-ticket-list-columns-open>
+                                [% Translate.TicketListSelectColumns %]
+                            </button>
+                        </div>
+
+                        <span class="qisutu-panel-counter">[% TicketCount %]</span>
+                    </div>
+
+                    [% RAW.FilterHTML %]
+
+                    [% IF HasTickets %]
+                    [% RAW.TableHTML %]
+                    [% ELSE %]
+                    <div class="qisutu-empty">
+                        <strong>[% Translate.TicketListEmptyTitle %]</strong>
+                        <p>[% Translate.TicketListEmptyText %]</p>
+                    </div>
+                    [% END %]
+                </section>
+
+                <div class="qisutu-ticket-list-column-overlay" data-qisutu-ticket-list-columns-overlay hidden>
+                    <section class="qisutu-ticket-list-column-dialog" role="dialog" aria-modal="true" aria-labelledby="qisutu-ticket-list-columns-title">
+                        <header class="qisutu-ticket-list-column-header">
+                            <div>
+                                <h2 id="qisutu-ticket-list-columns-title">[% Translate.TicketListSelectColumns %]</h2>
+                                <p>[% Translate.TicketListSelectColumnsHint %]</p>
+                            </div>
+                            <button class="qisutu-ticket-list-column-close" type="button" aria-label="[% Translate.AdminCancel %]" data-qisutu-ticket-list-columns-close>×</button>
+                        </header>
+                        [% RAW.ColumnChooserHTML %]
+                    </section>
+                </div>
+            </section>
+            <script src="[% StaticBase %]/js/qisutu-ticket-list.js?v=2026071050"></script>

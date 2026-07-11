@@ -1,0 +1,293 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-groups-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-admin-groups-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+                [% IF ShowList %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminAssignmentOverview %]</h2>
+                    </div>
+
+                    <div class="qisutu-admin-form-columns">
+                        <div class="qisutu-table-wrap">
+                            <table class="qisutu-table qisutu-table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>[% Translate.AdminAgents %]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    [% FOREACH Agent IN AgentList %]
+                                    <tr>
+                                        <td><a class="qisutu-table-link" href="index.pl?Page=AdminGroups;Action=Agent;UserAccountID=[% Agent.id %]">[% Agent.login %] [% Agent.firstname %] [% Agent.lastname %]</a></td>
+                                    </tr>
+                                    [% END %]
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="qisutu-table-wrap">
+                            <table class="qisutu-table qisutu-table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>[% Translate.AdminCustomerUsers %]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    [% FOREACH CustomerUser IN CustomerUserList %]
+                                    <tr>
+                                        <td><a class="qisutu-table-link" href="index.pl?Page=AdminGroups;Action=CustomerUser;UserAccountID=[% CustomerUser.user_account_id %]">[% CustomerUser.login %] [% CustomerUser.firstname %] [% CustomerUser.lastname %] - [% CustomerUser.customer_name %]</a></td>
+                                    </tr>
+                                    [% END %]
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="qisutu-table-wrap">
+                            <table class="qisutu-table qisutu-table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>[% Translate.AdminGroups %]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    [% FOREACH Group IN GroupList %]
+                                    <tr>
+                                        <td><a class="qisutu-table-link" href="index.pl?Page=AdminGroups;Action=Group;GroupID=[% Group.id %]">[% Group.name %] [% Group.title %]</a></td>
+                                    </tr>
+                                    [% END %]
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminGroupCreate %]</h2>
+                    </div>
+
+                    <form class="qisutu-admin-form" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminGroups">
+                        <input type="hidden" name="Step" value="GroupCreate">
+
+                        <div class="qisutu-form-field">
+                            <label>[% Translate.AdminName %]</label>
+                            <input type="text" name="Name" required>
+                        </div>
+                        <div class="qisutu-form-field">
+                            <label>[% Translate.AdminTitle %]</label>
+                            <input type="text" name="Title">
+                        </div>
+                        <div class="qisutu-form-field">
+                            <label>[% Translate.AdminGroupType %]</label>
+                            <select name="GroupType">
+                                <option value="agent">[% Translate.AdminGroupTypeAgent %]</option>
+                                <option value="customer">[% Translate.AdminGroupTypeCustomer %]</option>
+                                <option value="admin">[% Translate.AdminGroupTypeAdmin %]</option>
+                            </select>
+                        </div>
+                        <div class="qisutu-form-field">
+                            <label>[% Translate.AdminSortOrder %]</label>
+                            <input type="number" name="SortOrder" value="1000" min="1">
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowAgent %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminManageGroupsForAgent %] [% AgentName %]</h2>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminGroups">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminGroups">
+                        <input type="hidden" name="Step" value="AgentGroupMatrixUpdate">
+                        <input type="hidden" name="UserAccountID" value="[% UserAccountID %]">
+
+                        <div class="qisutu-table-wrap">
+                            <table class="qisutu-table qisutu-table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>[% Translate.AdminGroup %]</th>
+                                        <th>[% Translate.AdminAccessLevel %]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    [% FOREACH Row IN AgentGroupMatrix %]
+                                    <tr>
+                                        <td>[% Row.group_name %] [% Row.group_title %]</td>
+                                        <td>[% RAW.Row.permission_level_options %]</td>
+                                    </tr>
+                                    [% END %]
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminGroups">[% Translate.AdminCancel %]</a>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowCustomerUser %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminManageGroupsForCustomerUser %] [% CustomerUserName %]</h2>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminGroups">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminGroups">
+                        <input type="hidden" name="Step" value="CustomerUserGroupMatrixUpdate">
+                        <input type="hidden" name="UserAccountID" value="[% UserAccountID %]">
+
+                        <div class="qisutu-table-wrap">
+                            <table class="qisutu-table qisutu-table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>[% Translate.AdminGroup %]</th>
+                                        <th>[% Translate.AdminCustomerAccessLevel %]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    [% FOREACH Row IN CustomerUserGroupMatrix %]
+                                    <tr>
+                                        <td>[% Row.group_name %] [% Row.group_title %]</td>
+                                        <td>[% RAW.Row.permission_level_options %]</td>
+                                    </tr>
+                                    [% END %]
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminGroups">[% Translate.AdminCancel %]</a>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowGroup %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminManageAgentsForGroup %] [% GroupName %]</h2>
+                            <span class="qisutu-panel-subtitle">[% GroupTitle %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminGroups">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminGroups">
+                        <input type="hidden" name="Step" value="GroupAgentMatrixUpdate">
+                        <input type="hidden" name="GroupID" value="[% GroupID %]">
+
+                        <div class="qisutu-table-wrap">
+                            <table class="qisutu-table qisutu-table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>[% Translate.AdminAgent %]</th>
+                                        <th>[% Translate.AdminAccessLevel %]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    [% FOREACH Row IN GroupAgentMatrix %]
+                                    <tr>
+                                        <td>[% Row.user_label %]</td>
+                                        <td>[% RAW.Row.permission_level_options %]</td>
+                                    </tr>
+                                    [% END %]
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminManageCustomerUsersForGroup %] [% GroupName %]</h2>
+                            <span class="qisutu-panel-subtitle">[% GroupTitle %]</span>
+                        </div>
+                    </div>
+
+                    <form method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminGroups">
+                        <input type="hidden" name="Step" value="GroupCustomerUserMatrixUpdate">
+                        <input type="hidden" name="GroupID" value="[% GroupID %]">
+
+                        <div class="qisutu-table-wrap">
+                            <table class="qisutu-table qisutu-table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>[% Translate.AdminCustomerUser %]</th>
+                                        <th>[% Translate.AdminCustomerAccessLevel %]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    [% FOREACH Row IN GroupCustomerUserMatrix %]
+                                    <tr>
+                                        <td>[% Row.user_label %]</td>
+                                        <td>[% RAW.Row.permission_level_options %]</td>
+                                    </tr>
+                                    [% END %]
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminGroups">[% Translate.AdminCancel %]</a>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+            </section>

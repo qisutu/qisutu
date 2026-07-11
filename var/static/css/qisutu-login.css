@@ -1,0 +1,181 @@
+/*
+ * Qisutu - Open Source Ticket System
+ * Copyright (C) 2026 Franziska Steps
+ * Qisutu - Kim-KI, https://qisutu.de
+ *
+ * This file is part of Qisutu.
+ *
+ * Qisutu is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Qisutu is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-FileCopyrightText: 2026 Franziska Steps
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+.qisutu-login-page {
+    background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 32rem),
+        var(--qisutu-bg);
+}
+
+.qisutu-login {
+    min-height: calc(100vh - 56px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+}
+
+.qisutu-login-panel {
+    width: 100%;
+    max-width: 420px;
+    padding: 32px;
+    background: var(--qisutu-surface);
+    border: 1px solid var(--qisutu-border);
+    border-radius: var(--qisutu-radius);
+    box-shadow: var(--qisutu-shadow);
+}
+
+.qisutu-login-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+}
+
+.qisutu-login-logo {
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--qisutu-primary);
+    overflow: hidden;
+}
+
+.qisutu-login-logo img {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.qisutu-login h1 {
+    margin: 0;
+    font-size: 26px;
+    line-height: 1.2;
+}
+
+.qisutu-login p {
+    margin: 4px 0 0;
+    color: var(--qisutu-muted);
+}
+
+.qisutu-login-message {
+    min-height: 22px;
+    margin-bottom: 14px;
+    color: var(--qisutu-danger);
+    font-size: 14px;
+}
+
+.qisutu-login-form {
+    display: grid;
+    gap: 16px;
+}
+
+.qisutu-login-type {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.qisutu-login-type legend {
+    grid-column: 1 / -1;
+    margin-bottom: 2px;
+    font-weight: 700;
+}
+
+.qisutu-login-type label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 7px;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+.qisutu-login-type input {
+    margin: 0;
+}
+
+.qisutu-login-field {
+    display: grid;
+    gap: 6px;
+}
+
+.qisutu-login-field label {
+    font-weight: 700;
+    color: var(--qisutu-text);
+}
+
+.qisutu-login-field input {
+    width: 100%;
+    height: 42px;
+    padding: 8px 11px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 7px;
+    background: #ffffff;
+    color: var(--qisutu-text);
+    font: inherit;
+}
+
+.qisutu-login-field input:focus {
+    outline: 3px solid rgba(15, 118, 110, 0.16);
+    border-color: var(--qisutu-primary);
+}
+
+.qisutu-login-button {
+    height: 42px;
+    border: 0;
+    border-radius: 7px;
+    background: var(--qisutu-primary);
+    color: #ffffff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.qisutu-login-button:hover {
+    background: var(--qisutu-primary-hover);
+}
+
+@media (max-width: 520px) {
+    .qisutu-header {
+        padding: 0 16px;
+    }
+
+    .qisutu-login {
+        align-items: flex-start;
+        padding-top: 24px;
+    }
+
+    .qisutu-login-panel {
+        padding: 24px;
+    }
+}

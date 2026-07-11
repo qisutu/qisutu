@@ -1,0 +1,182 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+<div class="qisutu-dashboard">
+    <header class="qisutu-dashboard-header">
+        <div>
+            <h1 id="qisutu-agent-preferences-title">[% ProgramTitle %]</h1>
+            <p>[% ProgramDescription %]</p>
+        </div>
+    </header>
+
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+    <div class="qisutu-form-error qisutu-form-success [% SuccessClass %]">[% SuccessMessage %]</div>
+
+    <form class="qisutu-admin-form" method="post" action="[% FormAction %]">
+        <input type="hidden" name="Page" value="AgentPreferences">
+        <input type="hidden" name="Step" value="PreferenceSave">
+
+        <section class="qisutu-panel">
+            <div class="qisutu-panel-header">
+                <h2>[% Translate.PreferencesGeneral %]</h2>
+            </div>
+
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field">
+                    <label>[% Translate.PreferencesLanguage %]</label>
+                    <select name="PreferenceLanguage">
+                        [% RAW.LanguageOptions %]
+                    </select>
+                </div>
+
+                <div class="qisutu-form-field">
+                    <label>[% Translate.PreferencesTimezone %]</label>
+                    <select name="Timezone">
+                        [% RAW.TimezoneOptions %]
+                    </select>
+                </div>
+
+                <div class="qisutu-form-field">
+                    <label>[% Translate.PreferencesStartPage %]</label>
+                    <select name="StartPage">
+                        <option value="Dashboard" [% StartPageDashboardSelected %]>[% Translate.NavigationDashboard %]</option>
+                        <option value="AgentTicketList" [% StartPageTicketListSelected %]>[% Translate.AgentTicketListTitle %]</option>
+                    </select>
+                </div>
+
+                <div class="qisutu-form-field">
+                    <label>[% Translate.PreferencesTicketListLimit %]</label>
+                    <input type="number" name="TicketListLimit" value="[% TicketListLimit %]" min="10" max="200">
+                </div>
+            </div>
+        </section>
+
+        <section class="qisutu-panel">
+            <div class="qisutu-panel-header">
+                <div>
+                    <h2>[% Translate.PreferencesNotifications %]</h2>
+                    <span class="qisutu-panel-subtitle">[% Translate.PreferencesNotificationsHint %]</span>
+                </div>
+            </div>
+
+            <div class="qisutu-preference-checkbox-grid">
+                <label class="qisutu-form-checkbox">
+                    <input type="checkbox" name="NotificationNewTicket" value="1" [% NotificationNewTicketChecked %]>
+                    <span>[% Translate.PreferencesNotifyNewTicket %]</span>
+                </label>
+                <label class="qisutu-form-checkbox">
+                    <input type="checkbox" name="NotificationCustomerReply" value="1" [% NotificationCustomerReplyChecked %]>
+                    <span>[% Translate.PreferencesNotifyCustomerReply %]</span>
+                </label>
+                <label class="qisutu-form-checkbox">
+                    <input type="checkbox" name="NotificationAssignedTicket" value="1" [% NotificationAssignedTicketChecked %]>
+                    <span>[% Translate.PreferencesNotifyAssignedTicket %]</span>
+                </label>
+                <label class="qisutu-form-checkbox">
+                    <input type="checkbox" name="NotificationStatusChange" value="1" [% NotificationStatusChangeChecked %]>
+                    <span>[% Translate.PreferencesNotifyStatusChange %]</span>
+                </label>
+            </div>
+        </section>
+
+        <section class="qisutu-panel">
+            <div class="qisutu-panel-header">
+                <h2>[% Translate.PreferencesAbsence %]</h2>
+            </div>
+
+            <div class="qisutu-admin-form-columns">
+                <label class="qisutu-form-checkbox qisutu-form-field-wide">
+                    <input type="checkbox" name="AbsenceActive" value="1" [% AbsenceActiveChecked %]>
+                    <span>[% Translate.PreferencesAbsenceActive %]</span>
+                </label>
+
+                <div class="qisutu-form-field">
+                    <label>[% Translate.PreferencesAbsenceStart %]</label>
+                    <input type="datetime-local" name="AbsenceStart" value="[% AbsenceStart %]">
+                </div>
+
+                <div class="qisutu-form-field">
+                    <label>[% Translate.PreferencesAbsenceEnd %]</label>
+                    <input type="datetime-local" name="AbsenceEnd" value="[% AbsenceEnd %]">
+                </div>
+
+                <div class="qisutu-form-field qisutu-form-field-wide">
+                    <label>[% Translate.PreferencesReplacementAgent %]</label>
+                    <select name="AbsenceReplacementUserID">
+                        [% RAW.AbsenceReplacementOptions %]
+                    </select>
+                </div>
+
+                <div class="qisutu-form-field qisutu-form-field-wide">
+                    <label>[% Translate.PreferencesAbsenceNote %]</label>
+                    <textarea name="AbsenceNote">[% AbsenceNote %]</textarea>
+                </div>
+            </div>
+        </section>
+
+        <section class="qisutu-panel">
+            <div class="qisutu-panel-header">
+                <h2>[% Translate.PreferencesTicketWork %]</h2>
+            </div>
+
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field">
+                    <label>[% Translate.PreferencesAfterReplyAction %]</label>
+                    <select name="TicketAfterReplyAction">
+                        <option value="stay" [% AfterReplyStaySelected %]>[% Translate.PreferencesAfterReplyStay %]</option>
+                        <option value="list" [% AfterReplyListSelected %]>[% Translate.PreferencesAfterReplyList %]</option>
+                        <option value="next" [% AfterReplyNextSelected %]>[% Translate.PreferencesAfterReplyNext %]</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="qisutu-panel">
+            <div class="qisutu-panel-header">
+                <h2>[% Translate.PreferencesPassword %]</h2>
+            </div>
+
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field">
+                    <label>[% Translate.PreferencesCurrentPassword %]</label>
+                    <input type="password" name="CurrentPassword" value="" autocomplete="current-password">
+                </div>
+
+                <div class="qisutu-form-field">
+                    <label>[% Translate.PreferencesNewPassword %]</label>
+                    <input type="password" name="NewPassword" value="" autocomplete="new-password">
+                </div>
+
+                <div class="qisutu-form-field">
+                    <label>[% Translate.PreferencesNewPasswordRepeat %]</label>
+                    <input type="password" name="NewPasswordRepeat" value="" autocomplete="new-password">
+                </div>
+            </div>
+        </section>
+
+        <div class="qisutu-form-actions">
+            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+        </div>
+    </form>
+</div>

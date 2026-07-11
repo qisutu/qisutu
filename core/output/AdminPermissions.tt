@@ -1,0 +1,130 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-program-configs-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-admin-program-configs-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                    <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=Admin">[% Translate.AdminBackToList %]</a>
+                </div>
+
+                <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+                [% IF ShowList %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminProgramConfigs %]</h2>
+                    </div>
+
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminName %]</th>
+                                    <th>[% Translate.AdminTitle %]</th>
+                                    <th>[% Translate.AdminType %]</th>
+                                    <th>[% Translate.AdminVisibleFor %]</th>
+                                    <th>[% Translate.AdminActive %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% RAW.ProgramRowsHTML %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                [% END %]
+
+                [% IF ShowEdit %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminProgramConfigEdit %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminPermissions">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminPermissions">
+                        <input type="hidden" name="Step" value="ProgramConfigUpdate">
+                        <input type="hidden" name="OldName" value="[% ProgramOldName %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminName %]</label>
+                                <input type="text" name="Name" value="[% ProgramName %]" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminModule %]</label>
+                                <input type="text" name="Module" value="[% ProgramModule %]" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminTitle %]</label>
+                                <input type="text" name="Title" value="[% ProgramTitleField %]">
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminDescription %]</label>
+                                <input type="text" name="Description" value="[% ProgramDescriptionField %]">
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminIcon %]</label>
+                                <input type="text" name="Icon" value="[% ProgramIcon %]">
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminURL %]</label>
+                                <input type="text" name="URL" value="[% ProgramURL %]">
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminType %]</label>
+                                <select name="Type">
+                                    [% RAW.TypeOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminParent %]</label>
+                                <input type="text" name="Parent" value="[% ProgramParent %]">
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="Order" value="[% ProgramOrder %]" min="0">
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminVisibleFor %]</label>
+                                <div class="qisutu-admin-permission-options">
+                                    [% RAW.VisibleForOptionsHTML %]
+                                </div>
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="Active" value="1" [% ProgramActiveChecked %]>
+                                <span>[% Translate.AdminActive %]</span>
+                            </label>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+            </section>

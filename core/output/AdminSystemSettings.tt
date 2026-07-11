@@ -1,0 +1,106 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-system-settings-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-system-settings-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+                <div class="qisutu-form-error qisutu-form-success [% SuccessClass %]">[% SuccessMessage %]</div>
+
+                [% IF ShowList %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminSystemSettingsList %]</h2>
+                            <span class="qisutu-panel-subtitle">[% SettingCount %] [% Translate.AdminEntries %]</span>
+                        </div>
+                    </div>
+
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact qisutu-system-settings-table">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminName %]</th>
+                                    <th>[% Translate.AdminSystemSettingKey %]</th>
+                                    <th>[% Translate.AdminValue %]</th>
+                                    <th>[% Translate.AdminAction %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% RAW.SettingListHTML %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                [% END %]
+
+                [% IF ShowEdit %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminSystemSettingEdit %]</h2>
+                            <span class="qisutu-panel-subtitle">[% CurrentName %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminSystemSettings">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide qisutu-system-settings-edit-form" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminSystemSettings">
+                        <input type="hidden" name="Step" value="SystemSettingUpdate">
+                        <input type="hidden" name="Action" value="Edit">
+                        <input type="hidden" name="SettingKey" value="[% CurrentKey %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminName %]</label>
+                                <input type="text" value="[% CurrentName %]" readonly>
+                            </div>
+
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSystemSettingKey %]</label>
+                                <input type="text" value="[% CurrentKey %]" readonly>
+                            </div>
+                        </div>
+
+                        <div class="qisutu-system-setting-description">
+                            [% CurrentDescription %]
+                        </div>
+
+                        <div class="qisutu-form-field qisutu-system-settings-input qisutu-system-settings-input-full">
+                            <label>[% Translate.AdminValue %]</label>
+                            [% RAW.CurrentInputHTML %]
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+            </section>

@@ -1,0 +1,153 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-master-data-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-admin-master-data-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+                [% IF ShowList %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% ListTitle %]</h2>
+                            <span class="qisutu-panel-subtitle">[% ItemCount %] [% Translate.AdminEntries %]</span>
+                        </div>
+                        <div class="qisutu-panel-actions">
+                            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=[% PageName %];Action=Create">[% CreateTitle %]</a>
+                        </div>
+                    </div>
+
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminName %]</th>
+                                    <th>[% ValueLabel %]</th>
+                                    <th>[% Translate.AdminActive %]</th>
+                                    <th>[% Translate.AdminSortOrder %]</th>
+                                    <th>[% Translate.AdminAction %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% FOREACH Item IN ItemList %]
+                                <tr>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=[% PageName %];Action=Edit;ItemID=[% Item.id %]">[% Item.name %]</a></td>
+                                    <td>[% Item.value_preview %]</td>
+                                    <td>[% Item.active_label %]</td>
+                                    <td>[% Item.sort_order %]</td>
+                                    <td>
+                                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                                            <input type="hidden" name="Page" value="[% PageName %]">
+                                            <input type="hidden" name="Step" value="[% DeactivateStep %]">
+                                            <input type="hidden" name="ItemID" value="[% Item.id %]">
+                                            <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminDeactivate %]</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                [% END %]
+
+                [% IF ShowCreate %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% CreateTitle %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=[% PageName %]">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="[% PageName %]">
+                        <input type="hidden" name="Step" value="[% CreateStep %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminName %]</label>
+                                <input type="text" name="Name" required>
+                            </div>
+                            [% RAW.CreateValueFieldHTML %]
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="1000" min="1">
+                            </div>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowEdit %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% EditTitle %]</h2>
+                            <span class="qisutu-panel-subtitle">[% ItemName %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=[% PageName %]">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="[% PageName %]">
+                        <input type="hidden" name="Step" value="[% UpdateStep %]">
+                        <input type="hidden" name="ItemID" value="[% ItemID %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminName %]</label>
+                                <input type="text" name="Name" value="[% ItemName %]" required>
+                            </div>
+                            [% RAW.EditValueFieldHTML %]
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="[% ItemSortOrder %]" min="1">
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="Active" value="1" [% ItemActiveChecked %]>
+                                <span>[% Translate.AdminActive %]</span>
+                            </label>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+            </section>
+            <script>
+                window.QISUTU_STATIC_BASE = '[% StaticBase %]';
+            </script>
+            <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
+            <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>

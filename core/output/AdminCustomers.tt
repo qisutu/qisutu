@@ -1,0 +1,309 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-customers-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-admin-customers-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+                [% IF ShowList %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminCustomersList %]</h2>
+                            <span class="qisutu-panel-subtitle">[% CustomerCount %] [% Translate.AdminEntries %]</span>
+                        </div>
+                        <div class="qisutu-panel-actions">
+                            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCustomers;Action=FieldCreate">[% Translate.AdminCustomerFieldCreate %]</a>
+                            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminCustomers;Action=Create">[% Translate.AdminCustomerCreate %]</a>
+                        </div>
+                    </div>
+
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminCustomerNumber %]</th>
+                                    <th>[% Translate.AdminName %]</th>
+                                    <th>[% Translate.AdminCustomerUsers %]</th>
+                                    <th>[% Translate.AdminActive %]</th>
+                                    <th>[% Translate.AdminAction %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% FOREACH Customer IN CustomerList %]
+                                <tr>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminCustomers;Action=Edit;CustomerID=[% Customer.id %]">[% Customer.customer_number %]</a></td>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminCustomers;Action=Edit;CustomerID=[% Customer.id %]">[% Customer.name %]</a></td>
+                                    <td>[% Customer.user_count %]</td>
+                                    <td>[% Customer.active_label %]</td>
+                                    <td>
+                                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                                            <input type="hidden" name="Page" value="AdminCustomers">
+                                            <input type="hidden" name="Step" value="CustomerDeactivate">
+                                            <input type="hidden" name="CustomerID" value="[% Customer.id %]">
+                                            <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminDeactivate %]</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="qisutu-panel qisutu-admin-definition-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminCustomerFields %]</h2>
+                    </div>
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminDatabaseField %]</th>
+                                    <th>[% Translate.AdminDisplayName %]</th>
+                                    <th>[% Translate.AdminFieldType %]</th>
+                                    <th>[% Translate.AdminRequired %]</th>
+                                    <th>[% Translate.AdminActive %]</th>
+                                    <th>[% Translate.AdminSortOrder %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% FOREACH Field IN FieldList %]
+                                <tr>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminCustomers;Action=FieldEdit;FieldID=[% Field.id %]">[% Field.name %]</a></td>
+                                    <td>[% Field.label %]</td>
+                                    <td>[% Field.field_type %]</td>
+                                    <td>[% Field.is_required %]</td>
+                                    <td>[% Field.active_label %]</td>
+                                    <td>[% Field.sort_order %]</td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                [% END %]
+
+                [% IF ShowCreate %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminCustomerCreate %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCustomers">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminCustomers">
+                        <input type="hidden" name="Step" value="CustomerCreate">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminCustomerNumber %]</label>
+                                <input type="text" name="CustomerNumber" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminName %]</label>
+                                <input type="text" name="Name" required>
+                            </div>
+                        </div>
+
+                        [% RAW.CreateDynamicFieldsHTML %]
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowEdit %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminCustomerEdit %]</h2>
+                            <span class="qisutu-panel-subtitle">[% CustomerNumber %] [% CustomerName %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCustomers">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminCustomers">
+                        <input type="hidden" name="Step" value="CustomerUpdate">
+                        <input type="hidden" name="CustomerID" value="[% CustomerID %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminCustomerNumber %]</label>
+                                <input type="text" name="CustomerNumber" value="[% CustomerNumber %]" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminName %]</label>
+                                <input type="text" name="Name" value="[% CustomerName %]" required>
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="Active" value="1" [% CustomerActiveChecked %]>
+                                <span>[% Translate.AdminActive %]</span>
+                            </label>
+                        </div>
+
+                        [% RAW.EditDynamicFieldsHTML %]
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowFieldCreate %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminCustomerFieldCreate %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCustomers">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminCustomers">
+                        <input type="hidden" name="Step" value="CustomerDynamicFieldCreate">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminDatabaseField %]</label>
+                                <input type="text" name="Name" required>
+                                <span class="qisutu-form-hint">[% Translate.AdminDatabaseFieldHint %]</span>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminFieldType %]</label>
+                                <select name="FieldType">
+                                    [% RAW.FieldCreateTypeOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="1000" min="1">
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="IsRequired" value="1">
+                                <span>[% Translate.AdminRequired %]</span>
+                            </label>
+                        </div>
+
+                        <div class="qisutu-admin-form-block">
+                            <h3>[% Translate.AdminTranslations %]</h3>
+                            <input type="hidden" name="TranslationRowCount" value="[% CreateTranslationRowCount %]" data-qisutu-translation-count>
+                            <div class="qisutu-translation-rows" data-qisutu-translation-rows>
+                                [% RAW.CreateTranslationRowsHTML %]
+                            </div>
+                            <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-translation-add>[% Translate.AdminTranslationAdd %]</button>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowFieldEdit %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminCustomerFieldEdit %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCustomers">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminCustomers">
+                        <input type="hidden" name="Step" value="CustomerDynamicFieldUpdate">
+                        <input type="hidden" name="FieldID" value="[% FieldID %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminDatabaseField %]</label>
+                                <input type="text" value="[% FieldName %]" readonly>
+                                <span class="qisutu-form-hint">[% Translate.AdminDatabaseFieldReadonlyHint %]</span>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminFieldType %]</label>
+                                <select name="FieldType">
+                                    [% RAW.FieldEditTypeOptionsHTML %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="[% FieldSortOrder %]" min="1">
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="IsRequired" value="1" [% FieldRequiredChecked %]>
+                                <span>[% Translate.AdminRequired %]</span>
+                            </label>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="Active" value="1" [% FieldActiveChecked %]>
+                                <span>[% Translate.AdminActive %]</span>
+                            </label>
+                        </div>
+
+                        <div class="qisutu-admin-form-block">
+                            <h3>[% Translate.AdminTranslations %]</h3>
+                            <input type="hidden" name="TranslationRowCount" value="[% EditTranslationRowCount %]" data-qisutu-translation-count>
+                            <div class="qisutu-translation-rows" data-qisutu-translation-rows>
+                                [% RAW.EditTranslationRowsHTML %]
+                            </div>
+                            <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-translation-add>[% Translate.AdminTranslationAdd %]</button>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+
+                    <form class="qisutu-admin-delete-form" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminCustomers">
+                        <input type="hidden" name="Step" value="CustomerDynamicFieldDelete">
+                        <input type="hidden" name="FieldID" value="[% FieldID %]">
+                        <button class="qisutu-button qisutu-button-danger" type="submit">[% Translate.AdminDeleteField %]</button>
+                    </form>
+                </section>
+                [% END %]
+            </section>
+            <template id="qisutu-translation-row-template">
+                <div class="qisutu-translation-row" data-qisutu-translation-row>
+                    <div class="qisutu-form-field">
+                        <label>[% Translate.AdminTranslationLanguage %]</label>
+                        <select data-qisutu-translation-language>
+                            [% RAW.TranslationLanguageOptionsHTML %]
+                        </select>
+                    </div>
+                    <div class="qisutu-form-field">
+                        <label>[% Translate.AdminDisplayName %]</label>
+                        <input type="text" data-qisutu-translation-label>
+                    </div>
+                    <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-translation-remove>[% Translate.AdminRemove %]</button>
+                </div>
+            </template>
+            <script src="[% StaticBase %]/js/qisutu-admin-dynamic-fields.js"></script>

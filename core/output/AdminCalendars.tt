@@ -1,0 +1,255 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-calendars-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-admin-calendars-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-form-success [% MessageClass %]">[% Message %]</div>
+                <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+                [% IF ShowList %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminCalendarsList %]</h2>
+                            <span class="qisutu-panel-subtitle">[% ItemCount %] [% Translate.AdminEntries %]</span>
+                        </div>
+                        <div class="qisutu-panel-actions">
+                            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminCalendars;Action=Create">[% Translate.AdminCalendarCreate %]</a>
+                        </div>
+                    </div>
+
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminName %]</th>
+                                    <th>[% Translate.AdminTimezone %]</th>
+                                    <th>[% Translate.AdminActive %]</th>
+                                    <th>[% Translate.AdminSortOrder %]</th>
+                                    <th>[% Translate.AdminAction %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% FOREACH Item IN ItemList %]
+                                <tr>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminCalendars;Action=Edit;ItemID=[% Item.id %]">[% Item.name %]</a></td>
+                                    <td>[% Item.timezone %]</td>
+                                    <td>[% Item.active_label %]</td>
+                                    <td>[% Item.sort_order %]</td>
+                                    <td>
+                                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                                            <input type="hidden" name="Page" value="AdminCalendars">
+                                            <input type="hidden" name="Step" value="CalendarDeactivate">
+                                            <input type="hidden" name="ItemID" value="[% Item.id %]">
+                                            <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminDeactivate %]</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                [% END %]
+
+                [% IF ShowCreate %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <h2>[% Translate.AdminCalendarCreate %]</h2>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCalendars">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminCalendars">
+                        <input type="hidden" name="Step" value="CalendarCreate">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminName %]</label>
+                                <input type="text" name="Name" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminTimezone %]</label>
+                                <select name="Timezone" required>
+                                    [% RAW.TimezoneOptionsCreate %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="1000" min="1">
+                            </div>
+                        </div>
+
+                        <p class="qisutu-form-hint">[% Translate.CalendarCreateHint %]</p>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
+                [% IF ShowEdit %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminCalendarEdit %]</h2>
+                            <span class="qisutu-panel-subtitle">[% ItemName %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCalendars">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminCalendars">
+                        <input type="hidden" name="Step" value="CalendarUpdate">
+                        <input type="hidden" name="ItemID" value="[% ItemID %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminName %]</label>
+                                <input type="text" name="Name" value="[% ItemName %]" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminTimezone %]</label>
+                                <select name="Timezone" required>
+                                    [% RAW.TimezoneOptionsEdit %]
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="SortOrder" value="[% ItemSortOrder %]" min="1">
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="Active" value="1" [% ItemActiveChecked %]>
+                                <span>[% Translate.AdminActive %]</span>
+                            </label>
+                        </div>
+
+                        <section class="qisutu-admin-form-block qisutu-calendar-worktime-block">
+                            <h3>[% Translate.CalendarWorkingTimes %]</h3>
+                            <p class="qisutu-form-hint">[% Translate.CalendarWorkingTimesHint %]</p>
+                            <div class="qisutu-calendar-worktime-list">
+                                [% FOREACH Day IN WorkingTimeList %]
+                                <div class="qisutu-calendar-worktime-row">
+                                    <label class="qisutu-form-checkbox">
+                                        <input type="checkbox" name="WorkingActive[% Day.weekday %]" value="1" [% Day.active_checked %]>
+                                        <span>[% Day.weekday_label %]</span>
+                                    </label>
+                                    <div class="qisutu-form-field">
+                                        <label>[% Translate.CalendarWorkingFrom %]</label>
+                                        <input type="time" name="WorkingStart[% Day.weekday %]" value="[% Day.start_time %]">
+                                    </div>
+                                    <div class="qisutu-form-field">
+                                        <label>[% Translate.CalendarWorkingTo %]</label>
+                                        <input type="time" name="WorkingEnd[% Day.weekday %]" value="[% Day.end_time %]">
+                                    </div>
+                                </div>
+                                [% END %]
+                            </div>
+                        </section>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.CalendarHolidays %]</h2>
+                            <span class="qisutu-panel-subtitle">[% Translate.CalendarHolidaysHint %]</span>
+                        </div>
+                    </div>
+
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.AdminName %]</th>
+                                    <th>[% Translate.CalendarHolidayDate %]</th>
+                                    <th>[% Translate.CalendarHolidayType %]</th>
+                                    <th>[% Translate.AdminActive %]</th>
+                                    <th>[% Translate.AdminAction %]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [% FOREACH Holiday IN HolidayList %]
+                                <tr>
+                                    <td>[% Holiday.name_display %]</td>
+                                    <td>[% Holiday.date_display %]</td>
+                                    <td>[% Holiday.type_label %]</td>
+                                    <td>[% Holiday.active_label %]</td>
+                                    <td>
+                                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                                            <input type="hidden" name="Page" value="AdminCalendars">
+                                            <input type="hidden" name="Step" value="[% Holiday.active_step %]">
+                                            <input type="hidden" name="ItemID" value="[% ItemID %]">
+                                            <input type="hidden" name="HolidayID" value="[% Holiday.id %]">
+                                            <button class="qisutu-button [% Holiday.active_button_class %] qisutu-button-small" type="submit">[% Holiday.active_button_label %]</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-calendar-holiday-form" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminCalendars">
+                        <input type="hidden" name="Step" value="HolidayCreate">
+                        <input type="hidden" name="ItemID" value="[% ItemID %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminName %]</label>
+                                <input type="text" name="HolidayName" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.CalendarHolidayDate %]</label>
+                                <input type="text" name="HolidayDate" placeholder="[% Translate.CalendarHolidayDatePlaceholder %]" required>
+                            </div>
+                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                                <input type="checkbox" name="HolidayRecurringAnnual" value="1">
+                                <span>[% Translate.CalendarHolidayRecurringAnnual %]</span>
+                            </label>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminSortOrder %]</label>
+                                <input type="number" name="HolidaySortOrder" value="1000" min="1">
+                            </div>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.CalendarHolidayCreate %]</button>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+            </section>

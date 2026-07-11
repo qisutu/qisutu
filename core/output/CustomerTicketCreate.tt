@@ -1,0 +1,76 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-customer-ticket-create-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-customer-ticket-create-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                    <a class="qisutu-button qisutu-button-secondary" href="[% TicketListURL %]">[% Translate.TicketBackToList %]</a>
+                </div>
+
+                <section class="qisutu-panel">
+                    <div class="qisutu-form-error [% CreateErrorClass %]">[% CreateError %]</div>
+
+                    [% IF HasQueueOptions %]
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="CustomerTicketCreate">
+                        <input type="hidden" name="Step" value="CustomerTicketCreate">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.TicketArticleSubject %]</label>
+                                <input type="text" name="Title" required>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.TicketQueue %]</label>
+                                <select name="QueueID" required>
+                                    [% RAW.QueueOptionsHTML %]
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="qisutu-form-field">
+                            <label>[% Translate.TicketArticleBody %]</label>
+                            <textarea id="qisutu-customer-ticket-body" class="qisutu-richtext" name="Body" rows="8"></textarea>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketCreateSubmit %]</button>
+                        </div>
+                    </form>
+                    [% ELSE %]
+                    <div class="qisutu-empty">
+                        <strong>[% Translate.TicketListEmptyTitle %]</strong>
+                        <p>[% Translate.TicketListEmptyText %]</p>
+                    </div>
+                    [% END %]
+                </section>
+            </section>
+            <script>
+                window.QISUTU_STATIC_BASE = '[% StaticBase %]';
+            </script>
+            <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
+            <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
