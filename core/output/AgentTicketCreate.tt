@@ -58,7 +58,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                                 <div class="qisutu-form-field">
                                     <label for="qisutu-agent-ticket-create-service">[% Translate.TicketService %]</label>
-                                    <select id="qisutu-agent-ticket-create-service" name="ServiceID" data-qisutu-create-service data-qisutu-service-options-url="[% ServiceOptionsURL %]">
+                                    <select id="qisutu-agent-ticket-create-service" name="ServiceID" data-qisutu-create-service data-qisutu-service-tree data-qisutu-service-options-url="[% ServiceOptionsURL %]">
                                         [% RAW.ServiceOptionsHTML %]
                                     </select>
                                     <span class="qisutu-form-hint">[% Translate.TicketServiceOptional %]</span>
@@ -197,4 +197,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
-            <script src="[% StaticBase %]/js/qisutu-agent-ticket-create.js?v=2026071104"></script>
+            <script src="[% StaticBase %]/js/qisutu-agent-ticket-create.js?v=2026071201"></script>

@@ -561,6 +561,74 @@ sub AvailableServiceList {
     return $Rows;
 }
 
+sub AvailableServiceTreeList {
+    my ( $Self, %Param ) = @_;
+
+    my $CustomerID = $Self->_ID( $Param{CustomerID} );
+    return [] if !$CustomerID;
+
+    my $AvailableRows = $Self->AvailableServiceList( CustomerID => $CustomerID );
+    return [] if $Self->Error();
+
+    my $AllRows = $Self->ServiceList();
+    return [] if $Self->Error();
+
+    my %AllByID = map { ( $_->{id} || 0 ) => { %{$_} } } @{$AllRows};
+    my %SelectableByID = map { ( $_->{id} || 0 ) => { %{$_} } } @{$AvailableRows};
+
+    my $IncludeServiceID = $Self->_ID( $Param{IncludeServiceID} );
+    if ( $IncludeServiceID && !$SelectableByID{$IncludeServiceID} && $AllByID{$IncludeServiceID} ) {
+        $SelectableByID{$IncludeServiceID} = {
+            %{ $AllByID{$IncludeServiceID} },
+            assignment_source => 'existing_ticket',
+        };
+    }
+
+    my %Include;
+    for my $ServiceID ( keys %SelectableByID ) {
+        my $CurrentID = $ServiceID;
+        my %Visited;
+
+        while ( $CurrentID && !$Visited{$CurrentID}++ ) {
+            my $Row = $AllByID{$CurrentID};
+            last if !$Row;
+            $Include{$CurrentID} = 1;
+            $CurrentID = $Row->{parent_id} || 0;
+        }
+    }
+
+    my @Rows;
+    for my $ServiceID ( keys %Include ) {
+        my $Base = $AllByID{$ServiceID};
+        next if !$Base;
+
+        my $Selectable = $SelectableByID{$ServiceID};
+        push @Rows, {
+            %{$Base},
+            %{ $Selectable || {} },
+            selectable => $Selectable ? 1 : 0,
+        };
+    }
+
+    return $Self->_ServiceTreeOrder( Rows => \@Rows );
+}
+
+sub ServiceTreeList {
+    my ( $Self, %Param ) = @_;
+
+    my $Rows = $Self->ServiceList( ActiveOnly => $Param{ActiveOnly} ? 1 : 0 );
+    return [] if $Self->Error();
+
+    my @TreeRows = map {
+        {
+            %{$_},
+            selectable => 1,
+        }
+    } @{$Rows};
+
+    return $Self->_ServiceTreeOrder( Rows => \@TreeRows );
+}
+
 sub SLAResolve {
     my ( $Self, %Param ) = @_;
 
@@ -865,6 +933,69 @@ sub _SLASave {
     }
 
     return $SLAID || 1;
+}
+
+sub _ServiceTreeOrder {
+    my ( $Self, %Param ) = @_;
+
+    my $Rows = $Param{Rows} || [];
+    my %ByID = map { ( $_->{id} || 0 ) => { %{$_} } } @{$Rows};
+    my %Children;
+
+    for my $Row ( values %ByID ) {
+        my $ParentID = $Row->{parent_id} || 0;
+        $ParentID = 0 if !$ByID{$ParentID};
+        $Row->{tree_parent_id} = $ParentID;
+        push @{ $Children{$ParentID} }, $Row;
+    }
+
+    my $SortRows = sub {
+        my ($List) = @_;
+        return [
+            sort {
+                ( ( $a->{sort_order} || 0 ) <=> ( $b->{sort_order} || 0 ) )
+                    || lc( $a->{name} || $a->{full_name} || '' ) cmp lc( $b->{name} || $b->{full_name} || '' )
+                    || ( ( $a->{id} || 0 ) <=> ( $b->{id} || 0 ) )
+            } @{$List || []}
+        ];
+    };
+
+    my @Ordered;
+    my %Visited;
+    my $Walk;
+    $Walk = sub {
+        my ( $ParentID, $Depth ) = @_;
+        for my $Row ( @{ $SortRows->( $Children{$ParentID} ) } ) {
+            my $ID = $Row->{id} || 0;
+            next if !$ID || $Visited{$ID}++;
+
+            my $ChildRows = $Children{$ID} || [];
+            push @Ordered, {
+                %{$Row},
+                parent_id   => $Row->{tree_parent_id} || 0,
+                depth       => $Depth,
+                has_children => @{$ChildRows} ? 1 : 0,
+            };
+            $Walk->( $ID, $Depth + 1 );
+        }
+    };
+
+    $Walk->( 0, 0 );
+
+    # Protect the UI from malformed cyclic service data. Any unvisited row is
+    # still shown as a top-level entry instead of disappearing completely.
+    for my $Row ( @{ $SortRows->( [ values %ByID ] ) } ) {
+        my $ID = $Row->{id} || 0;
+        next if !$ID || $Visited{$ID}++;
+        push @Ordered, {
+            %{$Row},
+            parent_id    => 0,
+            depth        => 0,
+            has_children => 0,
+        };
+    }
+
+    return \@Ordered;
 }
 
 sub _ServiceFullName {

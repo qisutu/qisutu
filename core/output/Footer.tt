@@ -25,6 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         </main>
     </section>
 </div>
+<script src="[% StaticBase %]/js/qisutu-service-tree.js?v=2026071201"></script>
 <script src="[% StaticBase %]/js/qisutu-sidebar.js?v=2026071101"></script>
 </body>
 </html>

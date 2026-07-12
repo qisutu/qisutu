@@ -4755,3 +4755,303 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
         max-width: 120px;
     }
 }
+
+/* Response templates */
+.qisutu-response-template-attachment-block {
+    margin-top: 20px;
+}
+
+.qisutu-response-template-admin-attachments {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.qisutu-response-template-admin-attachment {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 12px;
+    border: 1px solid #d7e0ea;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.qisutu-response-template-reply-attachments {
+    margin: 10px 0 12px;
+    padding: 10px 12px;
+    border: 1px solid #bcd2ec;
+    border-radius: 8px;
+    background: #f2f7fd;
+}
+
+.qisutu-response-template-reply-attachments > strong {
+    display: block;
+    margin-bottom: 7px;
+    color: #244b74;
+}
+
+.qisutu-response-template-slot {
+    min-height: 1px;
+}
+
+@media (max-width: 720px) {
+    .qisutu-response-template-admin-attachment {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+/* Hierarchical service selector */
+.qisutu-service-tree-native {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    white-space: nowrap !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.qisutu-service-tree {
+    position: relative;
+    width: 100%;
+}
+
+.qisutu-service-tree-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 41px;
+    padding: 8px 12px;
+    border: 1px solid #ccd8e3;
+    border-radius: 8px;
+    background: #fff;
+    color: #1f2937;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.qisutu-service-tree-button:hover {
+    border-color: #8eb1c4;
+    background: #fbfdfe;
+}
+
+.qisutu-service-tree-button:focus-visible,
+.qisutu-service-tree-button[aria-expanded="true"] {
+    border-color: #00617a;
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(0, 97, 122, 0.13);
+}
+
+.qisutu-service-tree-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.66;
+}
+
+.qisutu-service-tree-button-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qisutu-service-tree-button-arrow {
+    flex: 0 0 auto;
+    color: #476274;
+    font-size: 12px;
+    transition: transform 0.16s ease;
+}
+
+.qisutu-service-tree-button[aria-expanded="true"] .qisutu-service-tree-button-arrow {
+    transform: rotate(180deg);
+}
+
+.qisutu-service-tree-panel {
+    position: absolute;
+    z-index: 1800;
+    top: calc(100% + 6px);
+    right: 0;
+    left: 0;
+    min-width: 290px;
+    max-height: min(460px, 62vh);
+    overflow: hidden;
+    border: 1px solid #c7d4de;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 18px 42px rgba(23, 44, 59, 0.2);
+}
+
+.qisutu-service-tree-panel[hidden] {
+    display: none;
+}
+
+.qisutu-service-tree-search-wrap {
+    padding: 11px;
+    border-bottom: 1px solid #e1e8ed;
+    background: #f7fafc;
+}
+
+.qisutu-service-tree-search {
+    width: 100%;
+    min-height: 38px;
+    padding: 7px 10px;
+    border: 1px solid #ccd8e3;
+    border-radius: 7px;
+    background: #fff;
+    color: #1f2937;
+    font: inherit;
+}
+
+.qisutu-service-tree-search:focus {
+    border-color: #00617a;
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(0, 97, 122, 0.11);
+}
+
+.qisutu-service-tree-list {
+    max-height: min(390px, 52vh);
+    overflow: auto;
+    padding: 7px;
+}
+
+.qisutu-service-tree-empty-option {
+    display: block;
+    width: 100%;
+    margin: 0 0 5px;
+    padding: 8px 10px;
+    border: 0;
+    border-bottom: 1px solid #e5ebef;
+    border-radius: 6px;
+    background: transparent;
+    color: #5d6d79;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.qisutu-service-tree-empty-option:hover {
+    background: #edf5f8;
+    color: #004f66;
+}
+
+.qisutu-service-tree-item {
+    min-width: 0;
+}
+
+.qisutu-service-tree-row {
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+    border-radius: 7px;
+}
+
+.qisutu-service-tree-row:hover {
+    background: #edf5f8;
+}
+
+.qisutu-service-tree-row-selected {
+    background: #dceef4;
+    color: #004f66;
+}
+
+.qisutu-service-tree-row-structural {
+    color: #536876;
+    font-weight: 600;
+}
+
+.qisutu-service-tree-node-toggle,
+.qisutu-service-tree-node-spacer {
+    display: inline-flex;
+    flex: 0 0 28px;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    min-height: 38px;
+}
+
+.qisutu-service-tree-node-toggle {
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #00617a;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.qisutu-service-tree-node-toggle:hover,
+.qisutu-service-tree-node-toggle:focus-visible {
+    background: rgba(0, 97, 122, 0.12);
+    outline: 0;
+}
+
+.qisutu-service-tree-node-label {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 9px 8px 2px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.qisutu-service-tree-node-label:disabled {
+    opacity: 1;
+    cursor: default;
+}
+
+.qisutu-service-tree-node-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qisutu-service-tree-node-meta {
+    flex: 0 0 auto;
+    max-width: 42%;
+    overflow: hidden;
+    color: #687985;
+    font-size: 12px;
+    font-weight: 400;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qisutu-service-tree-children {
+    margin-left: 18px;
+    padding-left: 5px;
+    border-left: 1px solid #d8e2e8;
+}
+
+.qisutu-service-tree-no-results {
+    padding: 18px 12px;
+    color: #677784;
+    text-align: center;
+}
+
+@media (max-width: 720px) {
+    .qisutu-service-tree-panel {
+        min-width: 100%;
+        max-height: 58vh;
+    }
+
+    .qisutu-service-tree-node-meta {
+        display: none;
+    }
+}

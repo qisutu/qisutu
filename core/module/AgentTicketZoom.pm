@@ -28,6 +28,7 @@ use utf8;
 use JSON::PP qw(encode_json);
 use Time::Local qw(timelocal);
 use QisutuService;
+use QisutuResponseTemplate;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -111,6 +112,55 @@ sub Run {
         );
     }
 
+    if ( ( $Request->{Step} || '' ) eq 'ResponseTemplateGet' ) {
+        my $User = $Param{User} || {};
+        my $AccessibleTicket = $TicketObject ? $TicketObject->TicketGet(
+            TicketID => $TicketID,
+            User     => $User,
+            Language => $Language,
+        ) : undef;
+        my $TemplateID = $Request->{ResponseTemplateID} || 0;
+        my $TemplateObject = $Self->_ResponseTemplateObject();
+        my $Template;
+
+        if (
+            $AccessibleTicket
+            && $TemplateObject
+            && $Self->_QueueAccessCheck(
+                User       => $User,
+                QueueID    => $AccessibleTicket->{queue_id},
+                Permission => 'ticket.edit',
+            )
+        ) {
+            $Template = $TemplateObject->TemplateForQueueGet(
+                TemplateID => $TemplateID,
+                QueueID    => $AccessibleTicket->{queue_id},
+            );
+        }
+
+        my @Attachments;
+        if ($Template) {
+            @Attachments = map {
+                {
+                    id           => 0 + ( $_->{id} || 0 ),
+                    filename     => $_->{filename} || 'attachment.bin',
+                    content_type => $_->{content_type} || 'application/octet-stream',
+                    content_size => 0 + ( $_->{content_size} || 0 ),
+                    size_display => $_->{size_display} || '',
+                }
+            } @{ $Template->{attachments} || [] };
+        }
+
+        return $Self->_JSONResponse(
+            Data => {
+                success     => $Template ? 1 : 0,
+                content     => $Template ? ( $Template->{content} || '' ) : '',
+                attachments => \@Attachments,
+                error       => $Template ? '' : 'TicketResponseTemplateLoadFailed',
+            },
+        );
+    }
+
     my $ToolActionError  = '';
     my $ToolActionActive = 'priority';
 
@@ -169,6 +219,27 @@ sub Run {
 
         if ( !$TicketForSubmit ) {
             $ArticleCreateError = $TicketObject->Error() || 'Translate:TicketArticleCreateFailed';
+        }
+
+        if ( !$ArticleCreateError && $ArticleMode eq 'email' && ( $Request->{ResponseTemplateID} || 0 ) ) {
+            my $TemplateObject = $Self->_ResponseTemplateObject();
+            my $AttachmentIDs  = $Self->_RequestIDList( Value => $Request->{ResponseTemplateAttachmentID} );
+            my $TemplateAttachments = $TemplateObject ? $TemplateObject->AttachmentsForArticle(
+                TemplateID   => $Request->{ResponseTemplateID},
+                QueueID      => $TicketForSubmit->{queue_id},
+                AttachmentIDs => $AttachmentIDs,
+                UseSelection => $Request->{ResponseTemplateAttachmentSelection} ? 1 : 0,
+            ) : undef;
+
+            if ( !$TemplateObject || !defined $TemplateAttachments ) {
+                $ArticleCreateError = 'Translate:TicketResponseTemplateLoadFailed';
+            }
+            elsif ( $TemplateObject->Error() ) {
+                $ArticleCreateError = 'Translate:TicketResponseTemplateLoadFailed';
+            }
+            else {
+                push @{$Attachments}, @{$TemplateAttachments};
+            }
         }
 
         my $Channel    = $ArticleMode eq 'note' ? 'note' : 'email';
@@ -424,6 +495,14 @@ sub Run {
     my $ArticleIndex        = 0;
     my $ArticleCount        = scalar @{$Articles};
     my $ReplyEmailTemplate  = $Self->_QueueReplyTemplate( TicketID => $Ticket->{id} );
+    my $ResponseTemplateObject = $Self->_ResponseTemplateObject();
+    my $ResponseTemplateList = $ResponseTemplateObject ? $ResponseTemplateObject->TemplateListForQueue(
+        QueueID => $Ticket->{queue_id},
+    ) : [];
+    my $SelectedResponseTemplateID = $ArticleCreateError ? ( $Request->{ResponseTemplateID} || 0 ) : 0;
+    for my $ResponseTemplate ( @{$ResponseTemplateList} ) {
+        $ResponseTemplate->{selected} = ( $ResponseTemplate->{id} || 0 ) == $SelectedResponseTemplateID ? 'selected' : '';
+    }
 
     for my $Article ( @{$Articles} ) {
         $ArticleIndex++;
@@ -641,6 +720,13 @@ sub Run {
             ArticleCreateErrorClass  => $ArticleCreateErrorClass,
             ArticleReplyFormClass    => $ArticleReplyFormClass,
             TicketReplyEmailTemplate => $ReplyEmailTemplate,
+            TicketResponseTemplateList => $ResponseTemplateList,
+            TicketResponseTemplateCount => scalar @{$ResponseTemplateList},
+            HasTicketResponseTemplates => @{$ResponseTemplateList} ? 1 : 0,
+            TicketSelectedResponseTemplateID => $ArticleCreateError ? ( $Request->{ResponseTemplateID} || 0 ) : 0,
+            SubmittedResponseTemplateAttachmentIDs => $ArticleCreateError ? $Self->_RequestIDList( Value => $Request->{ResponseTemplateAttachmentID} ) : [],
+            SubmittedResponseTemplateAttachmentSelection => $ArticleCreateError && $Request->{ResponseTemplateAttachmentSelection} ? 1 : 0,
+            ResponseTemplateFieldClass => $ArticleCreateError && ( $Request->{ArticleMode} || '' ) eq 'email' && @{$ResponseTemplateList} ? '' : 'qisutu-hidden',
             TicketStatusOptionsHTML  => $StatusOptionsHTML,
             TicketPriorityOptionsHTML => $PriorityOptionsHTML,
             TicketQueueOptionsHTML   => $QueueOptionsHTML,
@@ -658,9 +744,22 @@ sub Run {
             TicketToolsOverlayClass  => $TicketToolsOverlayClass,
             TicketToolsOverlayAriaHidden => $TicketToolsOverlayAriaHidden,
             TicketToolsButtonExpanded => $TicketToolsButtonExpanded,
-            DefaultArticleMode       => 'note',
-            ReplyFormDefaultTitle    => 'Translate:TicketCreateNote',
-            ReplySubmitDefaultLabel  => 'Translate:TicketArticleSaveNote',
+            DefaultArticleMode       => $ArticleCreateError ? ( $Request->{ArticleMode} || 'note' ) : 'note',
+            SubmittedArticleSubject => $ArticleCreateError ? ( $Request->{Subject} || '' ) : '',
+            SubmittedArticleBody    => $ArticleCreateError ? ( $Request->{Body} || '' ) : '',
+            SubmittedReplyTo        => $ArticleCreateError ? ( $Request->{ReplyTo} || '' ) : '',
+            SubmittedReplyCc        => $ArticleCreateError ? ( $Request->{ReplyCc} || '' ) : '',
+            SubmittedPendingUntil   => $ArticleCreateError ? ( $Request->{PendingUntil} || '' ) : '',
+            ReplyFormDefaultTitle    => $ArticleCreateError && ( $Request->{ArticleMode} || '' ) eq 'email'
+                ? 'Translate:TicketReplyCustomer'
+                : $ArticleCreateError && ( $Request->{ArticleMode} || '' ) eq 'forward'
+                    ? 'Translate:TicketToolForward'
+                    : 'Translate:TicketCreateNote',
+            ReplySubmitDefaultLabel  => $ArticleCreateError && ( $Request->{ArticleMode} || '' ) eq 'email'
+                ? 'Translate:TicketArticleSendEmail'
+                : $ArticleCreateError && ( $Request->{ArticleMode} || '' ) eq 'forward'
+                    ? 'Translate:TicketToolForwardSend'
+                    : 'Translate:TicketArticleSaveNote',
         },
     };
 }
@@ -2110,20 +2209,13 @@ sub _ServiceOptionsHTML {
         Config => $Self->{Config},
         DB     => $Self->{DB},
     );
-    my $Rows = $CustomerID ? $ServiceObject->AvailableServiceList( CustomerID => $CustomerID ) : [];
+    my $Rows = $CustomerID
+        ? $ServiceObject->AvailableServiceTreeList(
+            CustomerID      => $CustomerID,
+            IncludeServiceID => $CurrentServiceID,
+        )
+        : [];
     $Rows ||= [];
-
-    my %Included = map { ( $_->{id} || 0 ) => 1 } @{$Rows};
-    if ( $CurrentServiceID && !$Included{$CurrentServiceID} ) {
-        my $Current = $ServiceObject->ServiceGet( ServiceID => $CurrentServiceID );
-        if ($Current) {
-            unshift @{$Rows}, {
-                id        => $Current->{id},
-                full_name => $Current->{full_name},
-                sla_name  => '',
-            };
-        }
-    }
 
     my $EmptyLabel = $Language eq 'de'
         ? 'Kein Service / Queue-Eskalation verwenden'
@@ -2132,13 +2224,27 @@ sub _ServiceOptionsHTML {
         . $Self->_Escape($EmptyLabel) . '</option>';
 
     for my $Row ( @{$Rows} ) {
-        next if !( $Row->{id} || 0 );
-        my $Selected = ( $Row->{id} || 0 ) == $CurrentServiceID ? ' selected' : '';
-        my $Label = $Row->{full_name} || '';
-        $Label .= ' — ' . $Row->{sla_name} if $Row->{sla_name};
-        $HTML .= '<option value="' . $Self->_Escape( $Row->{id} ) . '"' . $Selected . '>'
-            . $Self->_Escape($Label)
-            . '</option>';
+        my $ID = $Row->{id} || 0;
+        next if !$ID;
+
+        my $Selected = $ID == $CurrentServiceID ? ' selected' : '';
+        my $Disabled = $Row->{selectable} ? '' : ' disabled';
+        my $Indent = ( "\x{00A0}\x{00A0}" x ( $Row->{depth} || 0 ) );
+        my $Name = $Row->{name} || $Row->{full_name} || '';
+        my $FallbackLabel = $Indent . $Name;
+        $FallbackLabel .= ' — ' . $Row->{sla_name} if $Row->{sla_name};
+
+        $HTML .= '<option value="' . $Self->_Escape($ID) . '"'
+            . $Selected . $Disabled
+            . ' data-qisutu-service-node="1"'
+            . ' data-parent-id="' . $Self->_Escape( $Row->{parent_id} || 0 ) . '"'
+            . ' data-service-name="' . $Self->_Escape($Name) . '"'
+            . ' data-service-full-name="' . $Self->_Escape( $Row->{full_name} || $Name ) . '"'
+            . ' data-service-meta="' . $Self->_Escape( $Row->{sla_name} || '' ) . '"'
+            . ' data-service-selectable="' . ( $Row->{selectable} ? 1 : 0 ) . '"'
+            . ' data-service-has-children="' . ( $Row->{has_children} ? 1 : 0 ) . '"'
+            . ' data-service-depth="' . $Self->_Escape( $Row->{depth} || 0 ) . '">'
+            . $Self->_Escape($FallbackLabel) . '</option>';
     }
 
     return $HTML;
@@ -2738,7 +2844,7 @@ sub _QueueReplyTemplate {
     my @Parts;
 
     push @Parts, $Salutation if $Salutation;
-    push @Parts, '<p><br></p><p><br></p>';
+    push @Parts, '<div class="qisutu-response-template-slot"><p><br></p><p><br></p></div>';
     push @Parts, $Self->_SystemSignatureWrap( Signature => $Signature ) if $Signature;
 
     return join "\n", @Parts;
@@ -3014,6 +3120,28 @@ sub _TicketStateText {
     return $EN{$Key} if $EN{$Key};
 
     return $State;
+}
+
+sub _ResponseTemplateObject {
+    my ($Self) = @_;
+
+    return if !$Self->{DB};
+
+    return QisutuResponseTemplate->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
+}
+
+sub _RequestIDList {
+    my ( $Self, %Param ) = @_;
+
+    my $Value = $Param{Value};
+    my @Values = ref $Value eq 'ARRAY' ? @{$Value} : ( defined $Value ? ($Value) : () );
+    my %Seen;
+    my @IDs = grep { defined $_ && $_ =~ m{\A\d+\z} && $_ > 0 && !$Seen{$_}++ } @Values;
+
+    return \@IDs;
 }
 
 sub _Escape {

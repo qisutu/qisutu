@@ -83,6 +83,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <strong>[% Translate.AdminAgentNotificationsTitle %]</strong>
                             <span>[% Translate.AdminAgentNotificationsDescription %]</span>
                         </a>
+                        <a class="qisutu-admin-start-item" href="index.pl?Page=AdminResponseTemplates">
+                            <strong>[% Translate.AdminResponseTemplatesTitle %]</strong>
+                            <span>[% Translate.AdminResponseTemplatesDescription %]</span>
+                        </a>
                         <a class="qisutu-admin-start-item" href="index.pl?Page=AdminAutomationTriggers">
                             <strong>[% Translate.AdminAutomationTriggersTitle %]</strong>
                             <span>[% Translate.AdminAutomationTriggersDescription %]</span>

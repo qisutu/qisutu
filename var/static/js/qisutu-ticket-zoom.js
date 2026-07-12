@@ -96,9 +96,25 @@
         var noteCustomerVisibleField = document.querySelector('[data-qisutu-note-customer-visible-field]');
         var noteCustomerVisibleCheckbox = document.querySelector('[data-qisutu-note-customer-visible]');
         var dynamicFields = document.querySelector('[data-qisutu-ticket-article-dynamic-fields]');
+        var responseTemplateField = document.querySelector('[data-qisutu-response-template-field]');
+        var responseTemplateSelect = document.querySelector('[data-qisutu-response-template-select]');
+        var responseTemplateError = document.querySelector('[data-qisutu-response-template-error]');
+        var responseTemplateHidden = document.querySelector('[data-qisutu-response-template-hidden-inputs]');
+        var responseTemplateAttachmentWrap = document.querySelector('[data-qisutu-response-template-attachment-wrap]');
+        var responseTemplateAttachmentList = document.querySelector('[data-qisutu-response-template-attachment-list]');
+        var responseTemplateAttachments = [];
+        var responseTemplateRequestSerial = 0;
 
         if (!form || !modeInput) {
             return;
+        }
+
+        function editorGetData() {
+            if (body && body.qisutuEditor && body.qisutuEditor.getData) {
+                return body.qisutuEditor.getData() || '';
+            }
+
+            return body ? (body.value || '') : '';
         }
 
         function editorSetData(value) {
@@ -147,9 +163,218 @@
             });
         }
 
+        function responseTemplateErrorToggle(show) {
+            if (responseTemplateError) {
+                responseTemplateError.classList.toggle('qisutu-hidden', !show);
+            }
+        }
+
+        function responseTemplateFieldToggle(show) {
+            if (!responseTemplateField || !responseTemplateSelect) {
+                return;
+            }
+
+            var hasTemplates = responseTemplateSelect.options.length > 1;
+            responseTemplateField.classList.toggle('qisutu-hidden', !(show && hasTemplates));
+            responseTemplateSelect.disabled = !(show && hasTemplates);
+        }
+
+        function responseTemplateSlotSet(content) {
+            var current = editorGetData();
+            var parser = new DOMParser();
+            var documentObject = parser.parseFromString('<div id="qisutu-response-template-root">' + current + '</div>', 'text/html');
+            var root = documentObject.getElementById('qisutu-response-template-root');
+            var slot;
+
+            if (!root) {
+                return;
+            }
+
+            slot = root.querySelector('.qisutu-response-template-slot');
+
+            if (!slot) {
+                slot = documentObject.createElement('div');
+                slot.className = 'qisutu-response-template-slot';
+
+                var signature = root.querySelector('.qisutu-mail-signature');
+                if (signature && signature.parentNode) {
+                    signature.parentNode.insertBefore(slot, signature);
+                }
+                else {
+                    var quote = root.querySelector('blockquote');
+                    if (quote && quote.parentNode) {
+                        var quoteHeader = quote.previousElementSibling;
+                        quote.parentNode.insertBefore(slot, quoteHeader || quote);
+                    }
+                    else {
+                        root.appendChild(slot);
+                    }
+                }
+            }
+
+            slot.innerHTML = content || '<p><br></p><p><br></p>';
+            editorSetData(root.innerHTML);
+        }
+
+        function responseTemplateHiddenRead() {
+            var ids = [];
+            var selectionIsExplicit = false;
+
+            if (!responseTemplateHidden) {
+                return { ids: ids, explicit: false };
+            }
+
+            responseTemplateHidden.querySelectorAll('input[name="ResponseTemplateAttachmentID"]').forEach(function (input) {
+                var id = Number(input.value || 0);
+                if (id > 0 && ids.indexOf(id) === -1) {
+                    ids.push(id);
+                }
+            });
+
+            selectionIsExplicit = !!responseTemplateHidden.querySelector('input[name="ResponseTemplateAttachmentSelection"]');
+
+            return { ids: ids, explicit: selectionIsExplicit };
+        }
+
+        function responseTemplateAttachmentsRender() {
+            if (responseTemplateHidden) {
+                responseTemplateHidden.innerHTML = '';
+
+                if (responseTemplateSelect && responseTemplateSelect.value) {
+                    var marker = document.createElement('input');
+                    marker.type = 'hidden';
+                    marker.name = 'ResponseTemplateAttachmentSelection';
+                    marker.value = '1';
+                    responseTemplateHidden.appendChild(marker);
+                }
+
+                responseTemplateAttachments.forEach(function (attachment) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'ResponseTemplateAttachmentID';
+                    input.value = String(attachment.id || '');
+                    responseTemplateHidden.appendChild(input);
+                });
+            }
+
+            if (!responseTemplateAttachmentWrap || !responseTemplateAttachmentList) {
+                return;
+            }
+
+            responseTemplateAttachmentList.innerHTML = '';
+            responseTemplateAttachmentWrap.classList.toggle('qisutu-hidden', !responseTemplateAttachments.length);
+
+            if (!responseTemplateAttachments.length) {
+                return;
+            }
+
+            var removeLabel = responseTemplateAttachmentList.getAttribute('data-qisutu-response-template-remove-label') || 'Nicht mitsenden';
+            var ul = document.createElement('ul');
+            ul.className = 'qisutu-ticket-reply-attachment-items';
+
+            responseTemplateAttachments.forEach(function (attachment, index) {
+                var li = document.createElement('li');
+                var info = document.createElement('span');
+                var remove = document.createElement('button');
+                var size = attachment.size_display || '';
+
+                info.textContent = (attachment.filename || 'attachment.bin') + (size ? ' (' + size + ')' : '');
+                remove.type = 'button';
+                remove.className = 'qisutu-ticket-reply-attachment-remove';
+                remove.textContent = removeLabel;
+                remove.addEventListener('click', function () {
+                    responseTemplateAttachments.splice(index, 1);
+                    responseTemplateAttachmentsRender();
+                });
+
+                li.appendChild(info);
+                li.appendChild(remove);
+                ul.appendChild(li);
+            });
+
+            responseTemplateAttachmentList.appendChild(ul);
+        }
+
+        function responseTemplateReset(clearEditorSlot) {
+            responseTemplateRequestSerial += 1;
+            responseTemplateAttachments = [];
+            responseTemplateErrorToggle(false);
+
+            if (responseTemplateSelect) {
+                responseTemplateSelect.value = '';
+            }
+
+            responseTemplateAttachmentsRender();
+
+            if (clearEditorSlot) {
+                responseTemplateSlotSet('');
+            }
+        }
+
+        function responseTemplateLoad(templateID, insertContent, preserveSubmittedSelection) {
+            var ticketID = responseTemplateSelect ? (responseTemplateSelect.getAttribute('data-qisutu-ticket-id') || '') : '';
+            var serial = ++responseTemplateRequestSerial;
+            var submitted = preserveSubmittedSelection ? responseTemplateHiddenRead() : { ids: [], explicit: false };
+
+            responseTemplateErrorToggle(false);
+
+            if (!templateID || !ticketID) {
+                responseTemplateAttachments = [];
+                responseTemplateAttachmentsRender();
+                if (insertContent) {
+                    responseTemplateSlotSet('');
+                }
+                return;
+            }
+
+            fetch('index.pl?Page=AgentTicketZoom&Step=ResponseTemplateGet&TicketID=' + encodeURIComponent(ticketID) + '&ResponseTemplateID=' + encodeURIComponent(templateID), {
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Response template request failed');
+                }
+                return response.json();
+            }).then(function (data) {
+                if (serial !== responseTemplateRequestSerial) {
+                    return;
+                }
+
+                if (!data || !data.success) {
+                    throw new Error('Response template could not be loaded');
+                }
+
+                if (insertContent) {
+                    responseTemplateSlotSet(data.content || '');
+                }
+
+                responseTemplateAttachments = Array.isArray(data.attachments) ? data.attachments.slice() : [];
+
+                if (preserveSubmittedSelection && submitted.explicit) {
+                    responseTemplateAttachments = responseTemplateAttachments.filter(function (attachment) {
+                        return submitted.ids.indexOf(Number(attachment.id || 0)) !== -1;
+                    });
+                }
+
+                responseTemplateAttachmentsRender();
+            }).catch(function () {
+                if (serial !== responseTemplateRequestSerial) {
+                    return;
+                }
+
+                responseTemplateAttachments = [];
+                responseTemplateAttachmentsRender();
+                responseTemplateErrorToggle(true);
+            });
+        }
+
         function noteModeOpen(button) {
             modeInput.value = 'note';
             dynamicFieldsToggle(true);
+            responseTemplateFieldToggle(false);
+            responseTemplateReset(false);
 
             if (replyArticleIDInput) {
                 replyArticleIDInput.value = '';
@@ -224,6 +449,8 @@
             }
 
             editorSetData(template ? template.value : '');
+            responseTemplateReset(false);
+            responseTemplateFieldToggle(true);
             emailFieldsToggle(true);
 
             if (noteCustomerVisibleField) {
@@ -267,6 +494,8 @@
 
             modeInput.value = 'forward';
             dynamicFieldsToggle(false);
+            responseTemplateFieldToggle(false);
+            responseTemplateReset(false);
 
             if (replyArticleIDInput) {
                 replyArticleIDInput.value = button.getAttribute('data-qisutu-forward-article-id') || '';
@@ -312,7 +541,36 @@
             }
         }
 
+        if (responseTemplateSelect) {
+            responseTemplateSelect.addEventListener('change', function () {
+                var templateID = responseTemplateSelect.value || '';
+
+                if (!templateID) {
+                    responseTemplateAttachments = [];
+                    responseTemplateAttachmentsRender();
+                    responseTemplateErrorToggle(false);
+                    responseTemplateSlotSet('');
+                    return;
+                }
+
+                responseTemplateLoad(templateID, true, false);
+            });
+        }
+
         dynamicFieldsToggle(modeInput.value !== 'forward');
+        emailFieldsToggle(modeInput.value === 'email' || modeInput.value === 'forward');
+        responseTemplateFieldToggle(modeInput.value === 'email');
+
+        if (modeInput.value === 'email' && responseTemplateSelect && responseTemplateSelect.value) {
+            responseTemplateLoad(responseTemplateSelect.value, false, true);
+        }
+        else {
+            responseTemplateAttachmentsRender();
+        }
+
+        if (modeInput.value === 'note' && noteCustomerVisibleField) {
+            noteCustomerVisibleField.classList.remove('qisutu-hidden');
+        }
 
         document.querySelectorAll('[data-qisutu-reply-mode="note"]').forEach(function (button) {
             button.addEventListener('click', function () {

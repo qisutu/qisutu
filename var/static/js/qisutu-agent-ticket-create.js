@@ -372,6 +372,12 @@
             text('[data-qisutu-sla-solution]', item.solution_minutes);
         }
 
+        function refreshServiceTree() {
+            if (window.QisutuServiceTree && typeof window.QisutuServiceTree.refresh === 'function') {
+                window.QisutuServiceTree.refresh(service);
+            }
+        }
+
         function clearOptions() {
             service.innerHTML = '';
             var option = document.createElement('option');
@@ -380,10 +386,17 @@
             service.appendChild(option);
             itemsByID = {};
             renderInfo(null);
+            refreshServiceTree();
         }
 
         function renderOptions(items, selectedID) {
-            clearOptions();
+            service.innerHTML = '';
+            var placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = placeholderText;
+            service.appendChild(placeholder);
+            itemsByID = {};
+
             (Array.isArray(items) ? items : []).forEach(function (item) {
                 var id = String(item.id || '');
                 if (!id) {
@@ -392,12 +405,20 @@
                 itemsByID[id] = item;
                 var option = document.createElement('option');
                 option.value = id;
-                option.textContent = item.label || '';
+                option.textContent = item.full_label || item.label || '';
+                option.disabled = !item.selectable;
+                option.setAttribute('data-qisutu-service-node', '1');
+                option.setAttribute('data-parent-id', String(item.parent_id || 0));
+                option.setAttribute('data-service-name', item.name || item.label || '');
+                option.setAttribute('data-service-full-name', item.full_label || item.label || '');
+                option.setAttribute('data-service-selectable', item.selectable ? '1' : '0');
+                option.setAttribute('data-service-has-children', item.has_children ? '1' : '0');
+                option.setAttribute('data-service-depth', String(item.depth || 0));
                 service.appendChild(option);
             });
 
             selectedID = String(selectedID || '');
-            if (selectedID && itemsByID[selectedID]) {
+            if (selectedID && itemsByID[selectedID] && itemsByID[selectedID].selectable) {
                 service.value = selectedID;
                 renderInfo(itemsByID[selectedID]);
             }
@@ -405,6 +426,7 @@
                 service.value = '';
                 renderInfo(null);
             }
+            refreshServiceTree();
         }
 
         function load(customerUserID, selectedID) {

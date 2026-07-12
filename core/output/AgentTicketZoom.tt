@@ -222,7 +222,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                         <div class="qisutu-ticket-tools-form-grid">
                                             <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
                                                 <label for="qisutu-ticket-tool-service">[% Translate.TicketService %]</label>
-                                                <select id="qisutu-ticket-tool-service" name="ServiceID">
+                                                <select id="qisutu-ticket-tool-service" name="ServiceID" data-qisutu-service-tree>
                                                     [% RAW.TicketServiceOptionsHTML %]
                                                 </select>
                                                 <p class="qisutu-form-help">[% Translate.TicketServiceOptional %]</p>
@@ -429,20 +429,41 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                                 <div class="qisutu-form-field">
                                     <label for="qisutu-article-subject">[% Translate.TicketArticleSubject %]</label>
-                                    <input id="qisutu-article-subject" type="text" name="Subject">
+                                    <input id="qisutu-article-subject" type="text" name="Subject" value="[% SubmittedArticleSubject %]">
                                 </div>
 
                                 <div class="qisutu-ticket-reply-recipient-grid qisutu-hidden" data-qisutu-email-recipient-fields>
                                     <div class="qisutu-form-field">
                                         <label for="qisutu-article-reply-to">[% Translate.TicketArticleReplyTo %]</label>
-                                        <input id="qisutu-article-reply-to" type="text" name="ReplyTo" autocomplete="off" placeholder="name@example.com" data-qisutu-reply-to-input>
+                                        <input id="qisutu-article-reply-to" type="text" name="ReplyTo" value="[% SubmittedReplyTo %]" autocomplete="off" placeholder="name@example.com" data-qisutu-reply-to-input>
                                         <p class="qisutu-form-help">[% Translate.TicketArticleReplyToHelp %]</p>
                                     </div>
                                     <div class="qisutu-form-field">
                                         <label for="qisutu-article-reply-cc">[% Translate.TicketArticleReplyCc %]</label>
-                                        <input id="qisutu-article-reply-cc" type="text" name="ReplyCc" autocomplete="off" placeholder="name@example.com" data-qisutu-reply-cc-input>
+                                        <input id="qisutu-article-reply-cc" type="text" name="ReplyCc" value="[% SubmittedReplyCc %]" autocomplete="off" placeholder="name@example.com" data-qisutu-reply-cc-input>
                                         <p class="qisutu-form-help">[% Translate.TicketArticleReplyCcHelp %]</p>
                                     </div>
+                                </div>
+
+                                <div class="qisutu-form-field [% ResponseTemplateFieldClass %]" data-qisutu-response-template-field>
+                                    <label for="qisutu-response-template-select">[% Translate.TicketResponseTemplate %]</label>
+                                    <select id="qisutu-response-template-select" name="ResponseTemplateID" data-qisutu-response-template-select data-qisutu-ticket-id="[% TicketID %]">
+                                        <option value="">[% Translate.TicketResponseTemplateNone %]</option>
+                                        [% FOREACH ResponseTemplate IN TicketResponseTemplateList %]
+                                        <option value="[% ResponseTemplate.id %]" [% ResponseTemplate.selected %]>[% ResponseTemplate.name %]</option>
+                                        [% END %]
+                                    </select>
+                                    <p class="qisutu-form-help">[% Translate.TicketResponseTemplateHelp %]</p>
+                                    <p class="qisutu-form-error qisutu-hidden" data-qisutu-response-template-error>[% Translate.TicketResponseTemplateLoadFailed %]</p>
+                                </div>
+
+                                <div data-qisutu-response-template-hidden-inputs>
+                                    [% IF SubmittedResponseTemplateAttachmentSelection %]
+                                    <input type="hidden" name="ResponseTemplateAttachmentSelection" value="1">
+                                    [% END %]
+                                    [% FOREACH AttachmentID IN SubmittedResponseTemplateAttachmentIDs %]
+                                    <input type="hidden" name="ResponseTemplateAttachmentID" value="[% AttachmentID %]">
+                                    [% END %]
                                 </div>
 
                                 <div class="qisutu-form-field">
@@ -454,7 +475,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                                 <div class="qisutu-form-field qisutu-hidden" data-qisutu-pending-until-field>
                                     <label for="qisutu-ticket-pending-until">[% Translate.TicketPendingUntil %]</label>
-                                    <input id="qisutu-ticket-pending-until" type="datetime-local" name="PendingUntil">
+                                    <input id="qisutu-ticket-pending-until" type="datetime-local" name="PendingUntil" value="[% SubmittedPendingUntil %]">
                                     <p class="qisutu-form-help">[% Translate.TicketPendingUntilHelp %]</p>
                                 </div>
 
@@ -462,12 +483,16 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                                 <div class="qisutu-form-field">
                                     <label for="qisutu-article-body">[% Translate.TicketArticleBody %]</label>
-                                    <textarea id="qisutu-article-body" class="qisutu-richtext" name="Body" rows="7"></textarea>
+                                    <textarea id="qisutu-article-body" class="qisutu-richtext" name="Body" rows="7">[% SubmittedArticleBody %]</textarea>
                                 </div>
 
                                 <div class="qisutu-form-field qisutu-ticket-reply-attachments" data-qisutu-attachment-field>
                                     <label for="qisutu-article-attachments">[% Translate.TicketArticleAttachments %]</label>
                                     <input id="qisutu-article-attachments" type="file" name="ArticleAttachment" multiple data-qisutu-attachment-input data-qisutu-attachment-max-bytes="[% AttachmentMaxSizeBytes %]" data-qisutu-attachment-max-label="[% AttachmentMaxSizeMB %] MB">
+                                    <div class="qisutu-response-template-reply-attachments qisutu-hidden" data-qisutu-response-template-attachment-wrap>
+                                        <strong>[% Translate.TicketResponseTemplateAttachmentsTitle %]</strong>
+                                        <div data-qisutu-response-template-attachment-list data-qisutu-response-template-remove-label="[% Translate.TicketResponseTemplateAttachmentRemove %]"></div>
+                                    </div>
                                     <div class="qisutu-ticket-reply-attachment-list" data-qisutu-attachment-list data-qisutu-attachment-remove-label="[% Translate.TicketArticleAttachmentRemove %]">
                                         <p class="qisutu-form-hint" data-qisutu-attachment-empty>[% Translate.TicketArticleAttachmentsEmpty %]</p>
                                     </div>
@@ -680,4 +705,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
-            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071101"></script>
+            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071202"></script>

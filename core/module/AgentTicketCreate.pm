@@ -812,14 +812,20 @@ sub _ServiceOptionsData {
 
     return { success => 0, items => [] } if !$CustomerID;
 
-    my $Rows = $ServiceObject->AvailableServiceList( CustomerID => $CustomerID );
+    my $Rows = $ServiceObject->AvailableServiceTreeList( CustomerID => $CustomerID );
     return { success => 0, items => [], error => $ServiceObject->Error() } if $ServiceObject->Error();
 
     my @Items;
     for my $Row ( @{$Rows} ) {
         push @Items, {
             id                     => $Row->{id},
-            label                  => $Row->{full_name} || '',
+            parent_id              => $Row->{parent_id} || 0,
+            depth                  => $Row->{depth} || 0,
+            has_children           => $Row->{has_children} ? 1 : 0,
+            selectable             => $Row->{selectable} ? 1 : 0,
+            name                   => $Row->{name} || $Row->{full_name} || '',
+            label                  => $Row->{name} || $Row->{full_name} || '',
+            full_label             => $Row->{full_name} || $Row->{name} || '',
             sla_id                 => $Row->{sla_id} || 0,
             sla_name               => $Row->{sla_name} || '',
             calendar_name          => $Row->{calendar_name} || '',
@@ -859,9 +865,24 @@ sub _ServiceOptionsHTML {
     ) . '</option>';
 
     for my $Item ( @{$Items} ) {
-        my $Selected = ( $Item->{id} || 0 ) == $CurrentServiceID ? ' selected' : '';
-        $HTML .= '<option value="' . $Self->_Escape( $Item->{id} || '' ) . '"' . $Selected . '>'
-            . $Self->_Escape( $Item->{label} || '' ) . '</option>';
+        my $ID = $Item->{id} || 0;
+        next if !$ID;
+
+        my $Selected = $ID == $CurrentServiceID ? ' selected' : '';
+        my $Disabled = $Item->{selectable} ? '' : ' disabled';
+        my $Indent = ( "\x{00A0}\x{00A0}" x ( $Item->{depth} || 0 ) );
+        my $FallbackLabel = $Indent . ( $Item->{name} || $Item->{full_label} || '' );
+
+        $HTML .= '<option value="' . $Self->_Escape($ID) . '"'
+            . $Selected . $Disabled
+            . ' data-qisutu-service-node="1"'
+            . ' data-parent-id="' . $Self->_Escape( $Item->{parent_id} || 0 ) . '"'
+            . ' data-service-name="' . $Self->_Escape( $Item->{name} || '' ) . '"'
+            . ' data-service-full-name="' . $Self->_Escape( $Item->{full_label} || '' ) . '"'
+            . ' data-service-selectable="' . ( $Item->{selectable} ? 1 : 0 ) . '"'
+            . ' data-service-has-children="' . ( $Item->{has_children} ? 1 : 0 ) . '"'
+            . ' data-service-depth="' . $Self->_Escape( $Item->{depth} || 0 ) . '">'
+            . $Self->_Escape($FallbackLabel) . '</option>';
     }
 
     return $HTML;
