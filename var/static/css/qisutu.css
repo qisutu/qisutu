@@ -3194,3 +3194,324 @@ body.qisutu-overlay-open {
         grid-template-columns: 1fr;
     }
 }
+
+/* Collapsible sidebar and compact navigation flyouts. */
+.qisutu-visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+.qisutu-app {
+    transition: grid-template-columns 180ms ease;
+}
+
+.qisutu-sidebar {
+    position: relative;
+    z-index: 30;
+    overflow: visible;
+    transition: width 180ms ease;
+}
+
+.qisutu-workspace {
+    position: relative;
+    z-index: 1;
+}
+
+.qisutu-sidebar-toggle {
+    position: absolute;
+    top: 50px;
+    right: 10px;
+    z-index: 120;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(1, 80, 104, 0.22);
+    border-radius: 50%;
+    background: #ffffff;
+    color: var(--qisutu-primary);
+    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.20);
+    cursor: pointer;
+    font: inherit;
+    line-height: 1;
+    transition:
+        background-color 140ms ease,
+        color 140ms ease,
+        border-color 140ms ease,
+        box-shadow 140ms ease;
+}
+
+.qisutu-sidebar-toggle:hover,
+.qisutu-sidebar-toggle:focus-visible {
+    background: #f4f7f9;
+    color: var(--qisutu-primary-hover);
+    border-color: rgba(1, 80, 104, 0.38);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.24);
+}
+
+.qisutu-sidebar-toggle:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.95);
+    outline-offset: 2px;
+}
+
+.qisutu-sidebar-toggle-icon {
+    display: block;
+    margin-top: -2px;
+    font-size: 25px;
+    font-weight: 400;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-sidebar-toggle {
+    right: -14px;
+}
+
+.qisutu-sidebar-user-avatar {
+    padding: 0;
+    border: 0;
+    font-family: inherit;
+    cursor: default;
+}
+
+.qisutu-sidebar-user-flyout {
+    display: none;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-app {
+    grid-template-columns: 68px minmax(0, 1fr);
+}
+
+html.qisutu-sidebar-collapsed .qisutu-sidebar {
+    width: 68px;
+    overflow: visible;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-sidebar-brand {
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-sidebar-name,
+html.qisutu-sidebar-collapsed .qisutu-nav-label,
+html.qisutu-sidebar-collapsed .qisutu-sidebar-user-text,
+html.qisutu-sidebar-collapsed .qisutu-sidebar-user-settings {
+    display: none;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-nav {
+    align-items: center;
+    overflow: visible;
+    padding: 16px 10px;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-nav-group {
+    position: relative;
+    width: 100%;
+    align-items: center;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-nav-item {
+    width: 44px;
+    min-width: 44px;
+    flex: 0 0 44px;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-nav-icon {
+    flex: 0 0 24px;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-nav-item-parent {
+    cursor: pointer;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-subnav,
+html.qisutu-sidebar-collapsed .qisutu-nav-group:hover .qisutu-subnav,
+html.qisutu-sidebar-collapsed .qisutu-nav-group:focus-within .qisutu-subnav,
+html.qisutu-sidebar-collapsed .qisutu-subnav-open {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 10px);
+    z-index: 110;
+    width: 282px;
+    max-height: calc(100vh - 24px);
+    margin: 0;
+    padding: 46px 8px 8px;
+    display: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 9px;
+    background: var(--qisutu-primary);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.28);
+}
+
+html.qisutu-sidebar-collapsed .qisutu-subnav::before {
+    content: attr(data-nav-title);
+    position: absolute;
+    top: 0;
+    right: 8px;
+    left: 8px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-nav-group.qisutu-flyout-open .qisutu-subnav {
+    display: flex;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-subnav-item {
+    width: 100%;
+    min-height: 36px;
+    padding: 7px 10px;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-sidebar-user {
+    position: relative;
+    justify-content: center;
+    gap: 0;
+    padding: 14px 0;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-sidebar-user-avatar {
+    flex: 0 0 36px;
+    cursor: pointer;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-sidebar-user-flyout {
+    position: absolute;
+    bottom: 10px;
+    left: calc(100% + 10px);
+    z-index: 110;
+    width: 230px;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 9px;
+    background: var(--qisutu-primary);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.28);
+}
+
+html.qisutu-sidebar-collapsed .qisutu-sidebar-user.qisutu-user-flyout-open .qisutu-sidebar-user-flyout {
+    display: grid;
+    gap: 4px;
+}
+
+.qisutu-sidebar-user-flyout-name {
+    padding: 4px 8px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.qisutu-sidebar-user-flyout-link {
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    padding: 5px 8px;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.qisutu-sidebar-user-flyout-link:hover {
+    background: rgba(255, 255, 255, 0.10);
+    color: #ffffff;
+    text-decoration: none;
+}
+
+@media (max-width: 900px) {
+    html.qisutu-sidebar-collapsed .qisutu-app {
+        grid-template-columns: 1fr;
+    }
+
+    html.qisutu-sidebar-collapsed .qisutu-sidebar {
+        width: auto;
+        overflow: visible;
+    }
+
+    html.qisutu-sidebar-collapsed .qisutu-sidebar-brand {
+        justify-content: flex-start;
+        gap: 12px;
+        padding: 0 20px;
+    }
+
+    html.qisutu-sidebar-collapsed .qisutu-sidebar-name,
+    html.qisutu-sidebar-collapsed .qisutu-nav-label,
+    html.qisutu-sidebar-collapsed .qisutu-sidebar-user-text,
+    html.qisutu-sidebar-collapsed .qisutu-sidebar-user-settings {
+        display: initial;
+    }
+
+    html.qisutu-sidebar-collapsed .qisutu-nav {
+        align-items: stretch;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    html.qisutu-sidebar-collapsed .qisutu-nav-group {
+        width: auto;
+        align-items: stretch;
+    }
+
+    html.qisutu-sidebar-collapsed .qisutu-nav-item {
+        width: auto;
+        min-width: 0;
+        flex: 0 0 auto;
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 0 12px;
+    }
+
+    html.qisutu-sidebar-collapsed .qisutu-subnav,
+    html.qisutu-sidebar-collapsed .qisutu-nav-group:hover .qisutu-subnav,
+    html.qisutu-sidebar-collapsed .qisutu-nav-group:focus-within .qisutu-subnav,
+    html.qisutu-sidebar-collapsed .qisutu-subnav-open {
+        position: static;
+        width: auto;
+        max-height: none;
+        margin: -1px 0 6px 42px;
+        padding: 0;
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        transform: none !important;
+    }
+
+    html.qisutu-sidebar-collapsed .qisutu-subnav::before {
+        display: none;
+    }
+
+    html.qisutu-sidebar-collapsed .qisutu-subnav-open,
+    html.qisutu-sidebar-collapsed .qisutu-nav-group:hover .qisutu-subnav,
+    html.qisutu-sidebar-collapsed .qisutu-nav-group:focus-within .qisutu-subnav {
+        display: flex;
+    }
+
+    .qisutu-sidebar-toggle {
+        display: none;
+    }
+
+    html.qisutu-sidebar-collapsed .qisutu-sidebar-user-flyout {
+        display: none !important;
+    }
+}

@@ -31,8 +31,21 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
     <title>[% PageTitle %]</title>
 
-    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu.css?v=2026071102">
+    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu.css?v=2026071202">
     <link rel="stylesheet" href="[% StaticBase %]/css/ckeditor5/ckeditor5.css">
     <link rel="stylesheet" href="[% StaticBase %]/css/[% PageCSS %]">
+
+    <script>
+        (function () {
+            try {
+                if (window.localStorage.getItem('qisutu.sidebar.collapsed') === '1') {
+                    document.documentElement.classList.add('qisutu-sidebar-collapsed');
+                }
+            }
+            catch (Error) {
+                // Use the expanded navigation when browser storage is unavailable.
+            }
+        }());
+    </script>
 </head>
 <body class="[% BodyClass %]">

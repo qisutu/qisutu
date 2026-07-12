@@ -225,11 +225,11 @@ sub NavigationHTML {
             }
 
             $HTML .= '<div class="' . $Output->HTMLEscape($GroupClass) . '">' . "\n";
-            $HTML .= '<div class="' . $Output->HTMLEscape($Class) . '" role="button" tabindex="0">';
-            $HTML .= '<span class="qisutu-nav-icon">' . $Output->HTMLEscape($Icon) . '</span>';
-            $HTML .= '<span>' . $Output->HTMLEscape($TitleText) . '</span>';
+            $HTML .= '<div class="' . $Output->HTMLEscape($Class) . '" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false" title="' . $Output->HTMLEscape($TitleText) . '" aria-label="' . $Output->HTMLEscape($TitleText) . '">';
+            $HTML .= '<span class="qisutu-nav-icon" aria-hidden="true">' . $Output->HTMLEscape($Icon) . '</span>';
+            $HTML .= '<span class="qisutu-nav-label">' . $Output->HTMLEscape($TitleText) . '</span>';
             $HTML .= '</div>' . "\n";
-            $HTML .= '<div class="' . $Output->HTMLEscape($SubClass) . '">' . "\n";
+            $HTML .= '<div class="' . $Output->HTMLEscape($SubClass) . '" data-nav-title="' . $Output->HTMLEscape($TitleText) . '">' . "\n";
 
             for my $SubProgram ( @{$SubNavigation} ) {
                 my $SubName  = $SubProgram->{Name}  || '';
@@ -247,7 +247,7 @@ sub NavigationHTML {
                 );
 
                 $HTML .= '<a class="' . $Output->HTMLEscape($SubItemClass) . '" href="' . $Output->HTMLEscape($SubURL) . '">';
-                $HTML .= '<span>' . $Output->HTMLEscape($SubTitleText) . '</span>';
+                $HTML .= '<span class="qisutu-subnav-label">' . $Output->HTMLEscape($SubTitleText) . '</span>';
                 $HTML .= '</a>' . "\n";
             }
 
@@ -255,9 +255,9 @@ sub NavigationHTML {
             $HTML .= '</div>' . "\n";
         }
         else {
-            $HTML .= '<a class="' . $Output->HTMLEscape($Class) . '" href="' . $Output->HTMLEscape($URL) . '">';
-            $HTML .= '<span class="qisutu-nav-icon">' . $Output->HTMLEscape($Icon) . '</span>';
-            $HTML .= '<span>' . $Output->HTMLEscape($TitleText) . '</span>';
+            $HTML .= '<a class="' . $Output->HTMLEscape($Class) . '" href="' . $Output->HTMLEscape($URL) . '" title="' . $Output->HTMLEscape($TitleText) . '" aria-label="' . $Output->HTMLEscape($TitleText) . '">';
+            $HTML .= '<span class="qisutu-nav-icon" aria-hidden="true">' . $Output->HTMLEscape($Icon) . '</span>';
+            $HTML .= '<span class="qisutu-nav-label">' . $Output->HTMLEscape($TitleText) . '</span>';
             $HTML .= '</a>' . "\n";
         }
     }

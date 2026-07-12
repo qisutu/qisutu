@@ -23,7 +23,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 %]
 
 <div class="qisutu-app">
-    <aside class="qisutu-sidebar" aria-label="[% Translate.Navigation %]">
+    <aside class="qisutu-sidebar" id="QisutuSidebar" aria-label="[% Translate.Navigation %]">
         <div class="qisutu-sidebar-brand">
             <span class="qisutu-sidebar-logo">
                 <img src="[% StaticBase %]/img/logo.png" alt="Qisutu">
@@ -31,12 +31,32 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <span class="qisutu-sidebar-name">[% SystemName %]</span>
         </div>
 
+        <button
+            class="qisutu-sidebar-toggle"
+            id="QisutuSidebarToggle"
+            type="button"
+            aria-expanded="true"
+            aria-label="[% Translate.NavigationCollapse %]"
+            title="[% Translate.NavigationCollapse %]"
+            data-collapse-label="[% Translate.NavigationCollapse %]"
+            data-expand-label="[% Translate.NavigationExpand %]"
+        >
+            <span class="qisutu-sidebar-toggle-icon" aria-hidden="true">‹</span>
+            <span class="qisutu-visually-hidden qisutu-sidebar-toggle-label">[% Translate.NavigationCollapse %]</span>
+        </button>
+
         <nav class="qisutu-nav">
             [% RAW.NavigationHTML %]
         </nav>
 
         <div class="qisutu-sidebar-user">
-            <div class="qisutu-sidebar-user-avatar">[% UserInitials %]</div>
+            <button
+                class="qisutu-sidebar-user-avatar"
+                type="button"
+                title="[% UserDisplayName %]"
+                aria-label="[% Translate.UserMenuOpen %]"
+                aria-expanded="false"
+            >[% UserInitials %]</button>
             <div class="qisutu-sidebar-user-text">
                 <div class="qisutu-sidebar-user-name">[% UserDisplayName %]</div>
                 <div class="qisutu-sidebar-user-links">
@@ -46,6 +66,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             [% IF UserHasPreferences %]
                 <a class="qisutu-sidebar-user-settings" href="[% UserPreferencesURL %]" title="[% UserPreferencesTitle %]" aria-label="[% UserPreferencesTitle %]">⚙</a>
             [% END %]
+
+            <div class="qisutu-sidebar-user-flyout" aria-label="[% UserDisplayName %]">
+                <div class="qisutu-sidebar-user-flyout-name">[% UserDisplayName %]</div>
+                <a class="qisutu-sidebar-user-flyout-link" href="index.pl?Page=Logout">[% Translate.StartLogout %]</a>
+                [% IF UserHasPreferences %]
+                    <a class="qisutu-sidebar-user-flyout-link" href="[% UserPreferencesURL %]">[% UserPreferencesTitle %]</a>
+                [% END %]
+            </div>
         </div>
     </aside>
 
