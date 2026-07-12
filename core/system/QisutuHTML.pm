@@ -87,6 +87,22 @@ sub Sanitize {
     return $HTML;
 }
 
+sub PlainTextSearch {
+    my ( $Class, $Content ) = @_;
+
+    $Content = '' if !defined $Content;
+    $Content =~ s{<!--.*?-->}{ }gs;
+    $Content =~ s{<\s*(script|style|iframe|object|embed)[^>]*>.*?<\s*/\s*\1\s*>}{ }gsi;
+    $Content =~ s{<\s*br\s*/?\s*>}{\n}gi;
+    $Content =~ s{<\s*/\s*(?:p|div|li|tr|h[1-6]|blockquote|pre)\s*>}{\n}gi;
+    $Content =~ s{<[^>]+>}{ }g;
+    $Content = $Class->_EntityDecode($Content);
+    $Content =~ s{\s+}{ }g;
+    $Content =~ s{\A\s+|\s+\z}{}g;
+
+    return $Content;
+}
+
 sub PlainTextPreview {
     my ( $Class, $HTML, $Limit ) = @_;
 

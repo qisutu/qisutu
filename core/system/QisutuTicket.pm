@@ -35,6 +35,7 @@ use QisutuHTML;
 use QisutuNotification;
 use QisutuService;
 use QisutuSystemSetting;
+use QisutuTicketSearch;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -71,6 +72,7 @@ sub TicketList {
     my $SortBy           = $Param{SortBy} || 'changed';
     my $SortDirection    = lc( $Param{SortDirection} || 'desc' );
     my $DynamicFields    = ref $Param{DynamicFields} eq 'ARRAY' ? $Param{DynamicFields} : [];
+    my $Search           = ref $Param{Search} eq 'HASH' ? $Param{Search} : {};
 
     if ( $ZoomPage =~ m{[^A-Za-z0-9_]} ) {
         $ZoomPage = ( ( $User->{account_type} || '' ) eq 'customer' ? 'CustomerTicketZoom' : 'AgentTicketZoom' );
@@ -95,6 +97,7 @@ sub TicketList {
         FilterCustomerID     => $FilterCustomerID,
         FilterCustomerUserID => $FilterCustomerUserID,
         FilterOwnerID        => $FilterOwnerID,
+        Search               => $Search,
     );
 
     return [] if $WhereData->{Denied};
@@ -283,6 +286,7 @@ sub TicketListCount {
         FilterCustomerID     => $Param{FilterCustomerID} || '',
         FilterCustomerUserID => $Param{FilterCustomerUserID} || '',
         FilterOwnerID        => $Param{FilterOwnerID} || '',
+        Search               => ref $Param{Search} eq 'HASH' ? $Param{Search} : {},
     );
 
     return 0 if $WhereData->{Denied};
@@ -313,6 +317,7 @@ sub _TicketListWhereData {
     my $FilterCustomerID     = $Param{FilterCustomerID} || '';
     my $FilterCustomerUserID = $Param{FilterCustomerUserID} || '';
     my $FilterOwnerID        = $Param{FilterOwnerID} || '';
+    my $Search               = ref $Param{Search} eq 'HASH' ? $Param{Search} : {};
 
     my @Where;
     my @Bind;
@@ -423,11 +428,46 @@ sub _TicketListWhereData {
         push @Bind, $FilterOwnerID;
     }
 
+    if ( $Search->{Active} ) {
+        my $SearchObject = QisutuTicketSearch->new(
+            Config     => $Self->{Config},
+            DB         => $Self->{DB},
+            Permission => $Self->{Permission},
+        );
+        my $SearchWhere = $SearchObject->WhereData( Search => $Search );
+        if ( $SearchObject->Error() ) {
+            $Self->{LastError} = $SearchObject->Error();
+        }
+        push @Where, @{ $SearchWhere->{Where} || [] };
+        push @Bind,  @{ $SearchWhere->{Bind}  || [] };
+    }
+
     return {
         Denied   => 0,
         WhereSQL => @Where ? 'WHERE ' . join( ' AND ', map { '(' . $_ . ')' } @Where ) : '',
         Bind     => \@Bind,
     };
+}
+
+sub TicketSearchOptions {
+    my ( $Self, %Param ) = @_;
+
+    my $SearchObject = QisutuTicketSearch->new(
+        Config     => $Self->{Config},
+        DB         => $Self->{DB},
+        Permission => $Self->{Permission},
+    );
+
+    my $Options = $SearchObject->Options(
+        User     => $Param{User} || {},
+        Language => $Param{Language} || 'en',
+    );
+
+    if ( $SearchObject->Error() ) {
+        $Self->{LastError} = $SearchObject->Error();
+    }
+
+    return $Options;
 }
 
 sub TicketListDynamicFieldList {
@@ -2929,6 +2969,8 @@ sub ArticleCreate {
         return;
     }
 
+    my $SearchText = QisutuHTML->PlainTextSearch($Body);
+
     my $Ticket;
 
     if ( !$SkipTicketAccessCheck ) {
@@ -2995,6 +3037,7 @@ sub ArticleCreate {
             cc,
             subject,
             body,
+            search_text,
             content_type,
             ' . $VisibilitySQL . '
             internal,
@@ -3003,7 +3046,7 @@ sub ArticleCreate {
             created_at,
             changed_at
         ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ' . $VisibilityMark . '?, ?, ?, NOW(), NOW()
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ' . $VisibilityMark . '?, ?, ?, NOW(), NOW()
         )',
         $TicketID,
         $ArticleNumber,
@@ -3016,6 +3059,7 @@ sub ArticleCreate {
         $Cc,
         $Subject,
         $Body,
+        $SearchText,
         $ContentType,
         @VisibilityBind,
         $Internal,

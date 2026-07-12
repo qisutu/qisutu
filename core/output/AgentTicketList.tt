@@ -49,6 +49,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-ticket-list-columns-open>
                                 [% Translate.TicketListSelectColumns %]
                             </button>
+
+                            <button class="qisutu-button qisutu-button-secondary qisutu-ticket-search-open-button" type="button" data-qisutu-ticket-search-open>
+                                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4.2-4.2"></path></svg>
+                                <span>[% Translate.TicketSearchTitle %]</span>
+                            </button>
                         </div>
 
                         <div class="qisutu-ticket-list-toolbar-right">
@@ -58,6 +63,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         </div>
                     </div>
 
+                    [% RAW.SearchStatusHTML %]
                     [% RAW.FilterHTML %]
 
                     [% IF HasTickets %]
@@ -87,5 +93,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         [% RAW.ColumnChooserHTML %]
                     </section>
                 </div>
+
+                [% RAW.SearchOverlayHTML %]
             </section>
-            <script src="[% StaticBase %]/js/qisutu-ticket-list.js?v=2026071201"></script>
+            <script src="[% StaticBase %]/js/qisutu-ticket-list.js?v=2026071202"></script>

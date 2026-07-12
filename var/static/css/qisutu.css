@@ -3653,3 +3653,452 @@ html.qisutu-sidebar-collapsed .qisutu-sidebar-user.qisutu-user-flyout-open .qisu
         overflow-x: auto;
     }
 }
+
+/* Ticket search */
+.qisutu-ticket-search-open-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.qisutu-ticket-search-open-button svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.qisutu-ticket-search-active {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--qisutu-border, #d5e0e8);
+    border-bottom: 1px solid var(--qisutu-border, #d5e0e8);
+    background: #eef8fb;
+}
+
+.qisutu-ticket-search-active > div:first-child {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+}
+
+.qisutu-ticket-search-active strong {
+    color: #005b73;
+}
+
+.qisutu-ticket-search-active span {
+    color: #5c6d7e;
+    font-size: 13px;
+}
+
+.qisutu-ticket-search-active-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.qisutu-ticket-search-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 248px;
+    z-index: 1800;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    padding: 28px;
+    background: rgba(15, 29, 41, 0.58);
+    backdrop-filter: blur(2px);
+    transition: left 180ms ease;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
+    left: 68px;
+}
+
+.qisutu-ticket-search-overlay[hidden] {
+    display: none;
+}
+
+.qisutu-ticket-search-dialog {
+    width: min(1380px, 100%);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #cbd8e2;
+    border-radius: 12px;
+    background: #f7f9fb;
+    box-shadow: 0 24px 70px rgba(8, 28, 43, 0.28);
+}
+
+.qisutu-ticket-search-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 20px 24px;
+    border-bottom: 1px solid #d5e0e8;
+    background: #fff;
+}
+
+.qisutu-ticket-search-header h2 {
+    margin: 0;
+    font-size: 24px;
+    color: #1d2935;
+}
+
+.qisutu-ticket-search-header p {
+    margin: 5px 0 0;
+    color: #647486;
+}
+
+.qisutu-ticket-search-close {
+    width: 38px;
+    height: 38px;
+    border: 1px solid #cbd8e2;
+    border-radius: 8px;
+    background: #fff;
+    color: #34495a;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.qisutu-ticket-search-close:hover,
+.qisutu-ticket-search-close:focus-visible {
+    border-color: #00657d;
+    color: #00657d;
+    outline: none;
+}
+
+.qisutu-ticket-search-form {
+    min-height: 0;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+}
+
+.qisutu-ticket-search-content {
+    min-height: 0;
+    overflow: auto;
+    padding: 20px 24px 28px;
+}
+
+.qisutu-ticket-search-section {
+    margin: 0 0 18px;
+    padding: 18px;
+    border: 1px solid #d5e0e8;
+    border-radius: 9px;
+    background: #fff;
+}
+
+.qisutu-ticket-search-section:last-child {
+    margin-bottom: 0;
+}
+
+.qisutu-ticket-search-section h3 {
+    margin: 0 0 14px;
+    font-size: 17px;
+    color: #24313d;
+}
+
+.qisutu-ticket-search-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.qisutu-ticket-search-section-title h3 {
+    margin: 0;
+}
+
+.qisutu-ticket-search-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px 16px;
+}
+
+.qisutu-ticket-search-grid-main {
+    grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
+}
+
+.qisutu-ticket-search-field {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.qisutu-ticket-search-field > span,
+.qisutu-ticket-search-range legend,
+.qisutu-ticket-search-range label span {
+    color: #263542;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.qisutu-ticket-search-field input,
+.qisutu-ticket-search-field select,
+.qisutu-ticket-search-range input,
+.qisutu-ticket-search-dynamic input,
+.qisutu-ticket-search-dynamic select {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid #cbd8e2;
+    border-radius: 7px;
+    background: #fff;
+    color: #1e2933;
+    font: inherit;
+}
+
+.qisutu-ticket-search-field input,
+.qisutu-ticket-search-range input,
+.qisutu-ticket-search-dynamic input,
+.qisutu-ticket-search-dynamic select:not([multiple]) {
+    min-height: 40px;
+    padding: 8px 10px;
+}
+
+.qisutu-ticket-search-field select {
+    padding: 7px 9px;
+}
+
+.qisutu-ticket-search-field select[multiple],
+.qisutu-ticket-search-dynamic select[multiple] {
+    min-height: 112px;
+}
+
+.qisutu-ticket-search-field input:focus,
+.qisutu-ticket-search-field select:focus,
+.qisutu-ticket-search-range input:focus,
+.qisutu-ticket-search-dynamic input:focus,
+.qisutu-ticket-search-dynamic select:focus {
+    border-color: #00657d;
+    box-shadow: 0 0 0 3px rgba(0, 101, 125, 0.12);
+    outline: none;
+}
+
+.qisutu-ticket-search-field small {
+    color: #697989;
+    font-size: 11px;
+}
+
+.qisutu-ticket-search-wide {
+    grid-column: span 1;
+}
+
+.qisutu-ticket-search-scope {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 9px 16px;
+    margin-top: 14px;
+}
+
+.qisutu-ticket-search-scope > span {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.qisutu-ticket-search-scope label,
+.qisutu-ticket-search-checkbox-grid label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+}
+
+.qisutu-ticket-search-scope input,
+.qisutu-ticket-search-checkbox-grid input {
+    width: 17px;
+    height: 17px;
+    accent-color: #00657d;
+}
+
+.qisutu-ticket-search-range-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.qisutu-ticket-search-range {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid #dbe4eb;
+    border-radius: 8px;
+}
+
+.qisutu-ticket-search-range legend {
+    padding: 0 5px;
+}
+
+.qisutu-ticket-search-range label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.qisutu-ticket-search-quick-periods {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.qisutu-ticket-search-quick-periods > span {
+    align-self: center;
+    color: #607083;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.qisutu-ticket-search-quick-periods button {
+    padding: 5px 9px;
+    border: 1px solid #cbd8e2;
+    border-radius: 6px;
+    background: #fff;
+    color: #005b73;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.qisutu-ticket-search-quick-periods button:hover,
+.qisutu-ticket-search-quick-periods button:focus-visible {
+    border-color: #00657d;
+    background: #eef8fb;
+    outline: none;
+}
+
+.qisutu-ticket-search-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px 16px;
+}
+
+.qisutu-ticket-search-dynamic-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.qisutu-ticket-search-dynamic {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid #dbe4eb;
+    border-radius: 8px;
+    background: #fbfcfd;
+}
+
+.qisutu-ticket-search-dynamic > strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #263542;
+    font-size: 13px;
+}
+
+.qisutu-ticket-search-dynamic-controls {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1.2fr) minmax(0, 1.2fr);
+    gap: 8px;
+    align-items: start;
+}
+
+.qisutu-ticket-search-dynamic-controls > :only-child {
+    grid-column: 1 / -1;
+}
+
+.qisutu-ticket-search-dynamic-no-value [data-qisutu-search-dynamic-value] {
+    opacity: 0.55;
+}
+
+.qisutu-ticket-search-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    padding: 14px 24px;
+    border-top: 1px solid #d5e0e8;
+    background: #fff;
+}
+
+@media (max-width: 1050px) {
+    .qisutu-ticket-search-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .qisutu-ticket-search-grid-main {
+        grid-template-columns: 1fr;
+    }
+
+    .qisutu-ticket-search-checkbox-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .qisutu-ticket-search-overlay,
+    html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
+        left: 0;
+    }
+}
+
+@media (max-width: 760px) {
+    .qisutu-ticket-search-overlay {
+        padding: 0;
+    }
+
+    .qisutu-ticket-search-dialog {
+        border: 0;
+        border-radius: 0;
+    }
+
+    .qisutu-ticket-search-header,
+    .qisutu-ticket-search-content,
+    .qisutu-ticket-search-actions {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    .qisutu-ticket-search-grid,
+    .qisutu-ticket-search-range-grid,
+    .qisutu-ticket-search-dynamic-list,
+    .qisutu-ticket-search-checkbox-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .qisutu-ticket-search-range {
+        grid-template-columns: 1fr;
+    }
+
+    .qisutu-ticket-search-section-title,
+    .qisutu-ticket-search-active {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .qisutu-ticket-search-quick-periods {
+        justify-content: flex-start;
+    }
+
+    .qisutu-ticket-search-dynamic-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .qisutu-ticket-search-actions {
+        flex-wrap: wrap;
+    }
+}

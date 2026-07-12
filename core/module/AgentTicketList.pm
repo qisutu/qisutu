@@ -53,6 +53,15 @@ sub Run {
         ? $PreferenceObject->AgentPreferenceGet( UserAccountID => $User->{user_account_id} )
         : {};
 
+    my $SearchOptions = $TicketObject
+        ? $TicketObject->TicketSearchOptions( User => $User, Language => $Language )
+        : $Self->_EmptySearchOptions();
+    my $Search = $Self->_SearchClean(
+        Request       => $Request,
+        DynamicFields => $SearchOptions->{DynamicFields},
+    );
+    my $SearchActive = $Search->{Active} ? 1 : 0;
+
     my $DynamicFields = $TicketObject
         ? $TicketObject->TicketListDynamicFieldList( Language => $Language )
         : [];
@@ -62,7 +71,7 @@ sub Run {
     );
     my $AllowedColumn = { map { $_->{key} => $_ } @{$ColumnDefinitions} };
 
-    my $View = $Self->_ViewClean( $Request->{View} );
+    my $View = $Self->_ViewClean( $Request->{View}, SearchActive => $SearchActive );
     my $FilterQueueID        = $Self->_FilterIDClean( $Request->{FilterQueueID} );
     my $FilterCustomerID     = $Self->_FilterIDClean( $Request->{FilterCustomerID} );
     my $FilterCustomerUserID = $Self->_FilterIDClean( $Request->{FilterCustomerUserID} );
@@ -108,6 +117,7 @@ sub Run {
                     SortDirection        => $SortDirection,
                     PerPage              => $PerPage,
                     ListPage             => $ListPage,
+                    Search               => $Search,
                 ),
             };
         }
@@ -146,6 +156,7 @@ sub Run {
             FilterCustomerID     => $FilterCustomerID,
             FilterCustomerUserID => $FilterCustomerUserID,
             FilterOwnerID        => $FilterOwnerID,
+            Search               => $Search,
         );
 
         my $TotalPages = $TicketCount > 0
@@ -171,6 +182,7 @@ sub Run {
                 SortBy               => $SortBy,
                 SortDirection        => $SortDirection,
                 DynamicFields        => \@VisibleDynamicFields,
+                Search               => $Search,
             );
         }
     }
@@ -189,6 +201,7 @@ sub Run {
         SortDirection        => $SortDirection,
         PerPage              => $PerPage,
         ListPage             => $ListPage,
+        Search               => $Search,
     };
 
     my $ErrorMessage = '';
@@ -216,10 +229,22 @@ sub Run {
             ErrorMessage       => $ErrorMessage,
             ErrorClass         => $ErrorMessage ? '' : 'qisutu-hidden',
             ViewMenuHTML       => $Self->_ViewMenuHTML( Context => $Context, Language => $Language ),
-            ActiveViewLabel    => $Self->_ViewLabel( View => $View, Language => $Language ),
+            ActiveViewLabel    => $Self->_ViewLabel( View => $View, Language => $Language, SearchActive => $SearchActive ),
             FilterHTML         => $Self->_FilterHTML(
                 Context       => $Context,
                 FilterOptions => $FilterOptions,
+                Language      => $Language,
+            ),
+            SearchActive      => $SearchActive,
+            SearchStatusHTML  => $Self->_SearchStatusHTML(
+                Context     => $Context,
+                TicketCount => $TicketCount,
+                Language    => $Language,
+            ),
+            SearchOverlayHTML => $Self->_SearchOverlayHTML(
+                Search        => $Search,
+                SearchOptions => $SearchOptions,
+                Context       => $Context,
                 Language      => $Language,
             ),
             PerPageHTML => $Self->_PerPageHTML(
@@ -366,6 +391,7 @@ sub _ViewMenuHTML {
         my %URLContext = %{$Context};
         $URLContext{View} = $Key;
         $URLContext{ListPage} = 1;
+        delete $URLContext{Search};
         my $URL = $Self->_ListURL(%URLContext);
         my $Active = ( $Context->{View} || '' ) eq $Key ? ' qisutu-ticket-list-view-active' : '';
         my $Current = ( $Context->{View} || '' ) eq $Key ? '<span aria-hidden="true">✓</span>' : '<span aria-hidden="true"></span>';
@@ -381,6 +407,13 @@ sub _ViewMenuHTML {
 
 sub _ViewLabel {
     my ( $Self, %Param ) = @_;
+
+    if ( $Param{SearchActive} ) {
+        return $Self->_Translate(
+            Key      => 'TicketSearchTitle',
+            Language => $Param{Language} || 'en',
+        );
+    }
 
     my %Key = (
         new       => 'TicketListViewNew',
@@ -409,6 +442,7 @@ sub _FilterHTML {
     $HTML .= '<input type="hidden" name="SortBy" value="' . $Self->_Escape( $Context->{SortBy} || 'changed' ) . '">';
     $HTML .= '<input type="hidden" name="SortDirection" value="' . $Self->_Escape( $Context->{SortDirection} || 'desc' ) . '">';
     $HTML .= '<input type="hidden" name="PerPage" value="' . $Self->_Escape( $Context->{PerPage} || 20 ) . '">';
+    $HTML .= $Self->_SearchHiddenHTML( Search => $Context->{Search} );
 
     $HTML .= $Self->_FilterSelectHTML(
         Name        => 'FilterQueueID',
@@ -505,6 +539,7 @@ sub _ColumnChooserHTML {
         my $Value = $Context->{$Name} || '';
         $HTML .= '<input type="hidden" name="' . $Self->_Escape($Name) . '" value="' . $Self->_Escape($Value) . '">';
     }
+    $HTML .= $Self->_SearchHiddenHTML( Search => $Context->{Search} );
 
     $HTML .= '<div class="qisutu-ticket-list-column-grid">';
     for my $Column ( @{$Columns} ) {
@@ -549,6 +584,7 @@ sub _PerPageHTML {
         next if $Value eq '' && $Name =~ m{\AFilter};
         $HTML .= '<input type="hidden" name="' . $Self->_Escape($Name) . '" value="' . $Self->_Escape($Value) . '">';
     }
+    $HTML .= $Self->_SearchHiddenHTML( Search => $Context->{Search} );
 
     $HTML .= '<label class="qisutu-ticket-list-per-page-label">';
     $HTML .= '<span>' . $Self->_Escape( $Self->_Translate( Key => 'TicketListPerPage', Language => $Language ) ) . '</span>';
@@ -759,11 +795,470 @@ sub _TicketColumnValue {
     return '-';
 }
 
+sub _EmptySearchOptions {
+    return {
+        Queues => [], States => [], Priorities => [], Customers => [], CustomerUsers => [],
+        Owners => [], Responsibles => [], Services => [], SLAs => [], DynamicFields => [],
+    };
+}
+
+sub _SearchClean {
+    my ( $Self, %Param ) = @_;
+
+    my $Request = $Param{Request} || {};
+    my $Active  = $Request->{SearchActive} ? 1 : 0;
+    my $Search = {
+        Active => $Active,
+        Text   => $Self->_SearchTextClean( $Request->{SearchText}, 500 ),
+        Mode   => ( defined $Request->{SearchMode} && $Request->{SearchMode} =~ m{\A(?:all|any|phrase)\z} )
+            ? $Request->{SearchMode}
+            : 'all',
+        TicketNumber => $Self->_SearchTextClean( $Request->{SearchTicketNumber}, 100 ),
+        Title        => $Self->_SearchTextClean( $Request->{SearchTitle}, 500 ),
+        Scopes       => {
+            title      => $Request->{SearchScopeTitle}      ? 1 : 0,
+            article    => $Request->{SearchScopeArticle}    ? 1 : 0,
+            people     => $Request->{SearchScopePeople}     ? 1 : 0,
+            attachment => $Request->{SearchScopeAttachment} ? 1 : 0,
+        },
+        QueueIDs        => $Self->_SearchValueListClean( $Request->{SearchQueueID}, 1 ),
+        StateIDs        => $Self->_SearchValueListClean( $Request->{SearchStateID}, 1 ),
+        PriorityIDs     => $Self->_SearchValueListClean( $Request->{SearchPriorityID}, 1 ),
+        CustomerIDs     => $Self->_SearchValueListClean( $Request->{SearchCustomerID}, 1 ),
+        CustomerUserIDs => $Self->_SearchValueListClean( $Request->{SearchCustomerUserID}, 1 ),
+        OwnerIDs        => $Self->_SearchValueListClean( $Request->{SearchOwnerID}, 1, AllowUnassigned => 1 ),
+        ResponsibleIDs  => $Self->_SearchValueListClean( $Request->{SearchResponsibleID}, 1, AllowUnassigned => 1 ),
+        ServiceIDs      => $Self->_SearchValueListClean( $Request->{SearchServiceID}, 1 ),
+        SLAIDs          => $Self->_SearchValueListClean( $Request->{SearchSLAID}, 1 ),
+        Escalation      => $Self->_SearchAllowedListClean(
+            Value   => $Request->{SearchEscalation},
+            Allowed => { map { $_ => 1 } qw(normal warning escalated no_sla first_open update_open solution_open) },
+        ),
+        Dynamic => [],
+    };
+
+    for my $Key (qw(
+        CreatedFrom CreatedTo ChangedFrom ChangedTo SolutionFrom SolutionTo PendingFrom PendingTo
+        FirstResponseDueFrom FirstResponseDueTo UpdateDueFrom UpdateDueTo SolutionDueFrom SolutionDueTo
+    )) {
+        $Search->{$Key} = $Self->_SearchDateTimeInputClean( $Request->{ 'Search' . $Key } );
+    }
+
+    my $HasScope = grep { $Search->{Scopes}->{$_} } keys %{ $Search->{Scopes} };
+    if ( !$HasScope ) {
+        $Search->{Scopes} = { title => 1, article => 1, people => 1, attachment => 1 };
+    }
+
+    for my $Field ( @{ $Param{DynamicFields} || [] } ) {
+        next if ref $Field ne 'HASH';
+        my $ID = $Field->{id} || 0;
+        next if !$ID;
+        my $Type = $Field->{field_type} || 'text';
+        my $Operator = $Self->_SearchTextClean( $Request->{ 'SearchDynamicOperator_' . $ID }, 30 );
+        my %Allowed;
+        if ( $Type eq 'number' ) {
+            %Allowed = map { $_ => 1 } qw(exact from to between empty not_empty);
+        }
+        elsif ( $Type eq 'date' ) {
+            %Allowed = map { $_ => 1 } qw(from to between empty not_empty);
+        }
+        elsif ( $Type eq 'dropdown' ) {
+            %Allowed = map { $_ => 1 } qw(any empty not_empty);
+        }
+        elsif ( $Type eq 'multiselect' ) {
+            %Allowed = map { $_ => 1 } qw(any all empty not_empty);
+        }
+        else {
+            %Allowed = map { $_ => 1 } qw(contains starts exact empty not_empty);
+        }
+        next if !$Allowed{$Operator};
+
+        my $Dynamic = {
+            id       => 0 + $ID,
+            type     => $Type,
+            operator => $Operator,
+            value    => $Type eq 'date'
+                ? $Self->_SearchDateTimeInputClean( $Request->{ 'SearchDynamicValue_' . $ID } )
+                : $Self->_SearchTextClean( $Request->{ 'SearchDynamicValue_' . $ID }, 1000 ),
+            value_to => $Type eq 'date'
+                ? $Self->_SearchDateTimeInputClean( $Request->{ 'SearchDynamicValueTo_' . $ID } )
+                : $Self->_SearchTextClean( $Request->{ 'SearchDynamicValueTo_' . $ID }, 1000 ),
+            values => $Self->_SearchValueListClean( $Request->{ 'SearchDynamicValues_' . $ID }, 0 ),
+        };
+
+        my $HasValue = $Dynamic->{value} ne '' || $Dynamic->{value_to} ne '' || @{ $Dynamic->{values} };
+        next if !$HasValue && $Operator !~ m{\A(?:empty|not_empty)\z};
+        push @{ $Search->{Dynamic} }, $Dynamic;
+    }
+
+    return $Search;
+}
+
+sub _SearchTextClean {
+    my ( $Self, $Value, $Limit ) = @_;
+    return '' if !defined $Value || ref $Value;
+    $Value =~ s{\x00}{}g;
+    $Value =~ s{\A\s+|\s+\z}{}g;
+    $Limit ||= 1000;
+    $Value = substr( $Value, 0, $Limit ) if length($Value) > $Limit;
+    return $Value;
+}
+
+sub _SearchDateTimeInputClean {
+    my ( $Self, $Value ) = @_;
+    $Value = $Self->_SearchTextClean( $Value, 30 );
+    return $Value if $Value =~ m{\A\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?)?\z};
+    return '';
+}
+
+sub _SearchValueListClean {
+    my ( $Self, $Value, $Numeric, %Param ) = @_;
+    my @Raw = !defined $Value ? () : ref $Value eq 'ARRAY' ? @{$Value} : ($Value);
+    my %Seen;
+    my @Clean;
+    for my $Item (@Raw) {
+        next if !defined $Item || ref $Item;
+        $Item = $Self->_SearchTextClean( $Item, 255 );
+        next if $Item eq '';
+        if ( $Numeric ) {
+            if ( $Param{AllowUnassigned} && $Item eq 'unassigned' ) {
+                next if $Seen{$Item}++;
+                push @Clean, $Item;
+                next;
+            }
+            next if $Item !~ m{\A\d+\z} || !$Item;
+            $Item = 0 + $Item;
+        }
+        next if $Seen{$Item}++;
+        push @Clean, $Item;
+    }
+    return \@Clean;
+}
+
+sub _SearchAllowedListClean {
+    my ( $Self, %Param ) = @_;
+    my $Allowed = $Param{Allowed} || {};
+    my @Raw = !defined $Param{Value} ? () : ref $Param{Value} eq 'ARRAY' ? @{ $Param{Value} } : ( $Param{Value} );
+    my %Seen;
+    return [ grep { $Allowed->{$_} && !$Seen{$_}++ } @Raw ];
+}
+
+sub _SearchStatusHTML {
+    my ( $Self, %Param ) = @_;
+    my $Context = $Param{Context} || {};
+    my $Search = $Context->{Search} || {};
+    return '' if !$Search->{Active};
+
+    my $Language = $Param{Language} || 'en';
+    my %Reset = %{$Context};
+    delete $Reset{Search};
+    $Reset{View} = 'new';
+    $Reset{ListPage} = 1;
+
+    my $HTML = '<div class="qisutu-ticket-search-active">';
+    $HTML .= '<div><strong>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchActive', Language => $Language ) ) . '</strong>';
+    $HTML .= '<span>' . $Self->_Escape( $Param{TicketCount} || 0 ) . ' ' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchHits', Language => $Language ) ) . '</span></div>';
+    $HTML .= '<div class="qisutu-ticket-search-active-actions">';
+    $HTML .= '<button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-ticket-search-open>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchEdit', Language => $Language ) ) . '</button>';
+    $HTML .= '<a class="qisutu-button qisutu-button-secondary" href="' . $Self->_Escape( $Self->_ListURL(%Reset) ) . '">' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchReset', Language => $Language ) ) . '</a>';
+    $HTML .= '</div></div>';
+    return $HTML;
+}
+
+sub _SearchOverlayHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Search  = $Param{Search} || {};
+    my $Options = $Param{SearchOptions} || $Self->_EmptySearchOptions();
+    my $Context = $Param{Context} || {};
+    my $Language = $Param{Language} || 'en';
+
+    my $HTML = '<div class="qisutu-ticket-search-overlay" data-qisutu-ticket-search-overlay hidden>';
+    $HTML .= '<section class="qisutu-ticket-search-dialog" role="dialog" aria-modal="true" aria-labelledby="qisutu-ticket-search-title">';
+    $HTML .= '<header class="qisutu-ticket-search-header"><div><h2 id="qisutu-ticket-search-title">' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchTitle', Language => $Language ) ) . '</h2>';
+    $HTML .= '<p>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchDescription', Language => $Language ) ) . '</p></div>';
+    $HTML .= '<button class="qisutu-ticket-search-close" type="button" aria-label="' . $Self->_Escape( $Self->_Translate( Key => 'AdminCancel', Language => $Language ) ) . '" data-qisutu-ticket-search-close>×</button></header>';
+
+    $HTML .= '<form class="qisutu-ticket-search-form" method="get" action="index.pl" data-qisutu-ticket-search-form>';
+    $HTML .= '<input type="hidden" name="Page" value="AgentTicketList">';
+    $HTML .= '<input type="hidden" name="SearchActive" value="1">';
+    $HTML .= '<input type="hidden" name="View" value="">';
+    $HTML .= '<input type="hidden" name="SortBy" value="' . $Self->_Escape( $Context->{SortBy} || 'changed' ) . '">';
+    $HTML .= '<input type="hidden" name="SortDirection" value="' . $Self->_Escape( $Context->{SortDirection} || 'desc' ) . '">';
+    $HTML .= '<input type="hidden" name="PerPage" value="' . $Self->_Escape( $Context->{PerPage} || 20 ) . '">';
+
+    $HTML .= '<div class="qisutu-ticket-search-content">';
+
+    $HTML .= '<section class="qisutu-ticket-search-section"><h3>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchFreeText', Language => $Language ) ) . '</h3>';
+    $HTML .= '<div class="qisutu-ticket-search-grid qisutu-ticket-search-grid-main">';
+    $HTML .= $Self->_SearchInputHTML(
+        Name => 'SearchText', LabelKey => 'TicketSearchTerm', Value => $Search->{Text}, Language => $Language,
+        Class => 'qisutu-ticket-search-wide', PlaceholderKey => 'TicketSearchTermPlaceholder',
+    );
+    $HTML .= $Self->_SearchSelectHTML(
+        Name => 'SearchMode', LabelKey => 'TicketSearchMode', Value => $Search->{Mode} || 'all', Language => $Language,
+        Options => [
+            [ all => 'TicketSearchModeAll' ], [ any => 'TicketSearchModeAny' ], [ phrase => 'TicketSearchModePhrase' ],
+        ],
+    );
+    $HTML .= '</div>';
+    $HTML .= '<div class="qisutu-ticket-search-scope"><span>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchIn', Language => $Language ) ) . '</span>';
+    for my $Scope (
+        [ title => 'SearchScopeTitle' => 'TicketSearchScopeTitle' ],
+        [ article => 'SearchScopeArticle' => 'TicketSearchScopeArticle' ],
+        [ people => 'SearchScopePeople' => 'TicketSearchScopePeople' ],
+        [ attachment => 'SearchScopeAttachment' => 'TicketSearchScopeAttachment' ],
+    ) {
+        my ( $Key, $Name, $LabelKey ) = @{$Scope};
+        my $Checked = $Search->{Scopes}->{$Key} ? ' checked' : '';
+        $HTML .= '<label><input type="checkbox" name="' . $Name . '" value="1"' . $Checked . '><span>' . $Self->_Escape( $Self->_Translate( Key => $LabelKey, Language => $Language ) ) . '</span></label>';
+    }
+    $HTML .= '</div></section>';
+
+    $HTML .= '<section class="qisutu-ticket-search-section"><h3>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchTicketData', Language => $Language ) ) . '</h3>';
+    $HTML .= '<div class="qisutu-ticket-search-grid">';
+    $HTML .= $Self->_SearchInputHTML( Name => 'SearchTicketNumber', LabelKey => 'TicketNumber', Value => $Search->{TicketNumber}, Language => $Language );
+    $HTML .= $Self->_SearchInputHTML( Name => 'SearchTitle', LabelKey => 'TicketTitle', Value => $Search->{Title}, Language => $Language );
+    $HTML .= $Self->_SearchMultiSelectHTML( Name => 'SearchQueueID', LabelKey => 'TicketQueue', Values => $Search->{QueueIDs}, Options => $Options->{Queues}, Language => $Language );
+    $HTML .= $Self->_SearchMultiSelectHTML( Name => 'SearchStateID', LabelKey => 'TicketState', Values => $Search->{StateIDs}, Options => $Options->{States}, Language => $Language, DisplayTranslate => 1 );
+    $HTML .= $Self->_SearchMultiSelectHTML( Name => 'SearchPriorityID', LabelKey => 'TicketPriority', Values => $Search->{PriorityIDs}, Options => $Options->{Priorities}, Language => $Language, DisplayTranslate => 1 );
+    $HTML .= $Self->_SearchMultiSelectHTML( Name => 'SearchCustomerID', LabelKey => 'TicketCustomer', Values => $Search->{CustomerIDs}, Options => $Options->{Customers}, Language => $Language );
+    $HTML .= $Self->_SearchMultiSelectHTML( Name => 'SearchCustomerUserID', LabelKey => 'TicketCustomerUser', Values => $Search->{CustomerUserIDs}, Options => $Options->{CustomerUsers}, Language => $Language );
+    $HTML .= $Self->_SearchMultiSelectHTML( Name => 'SearchOwnerID', LabelKey => 'TicketOwner', Values => $Search->{OwnerIDs}, Options => $Options->{Owners}, Language => $Language, IncludeUnassigned => 1 );
+    $HTML .= $Self->_SearchMultiSelectHTML( Name => 'SearchResponsibleID', LabelKey => 'TicketResponsible', Values => $Search->{ResponsibleIDs}, Options => $Options->{Responsibles}, Language => $Language, IncludeUnassigned => 1 );
+    $HTML .= $Self->_SearchMultiSelectHTML( Name => 'SearchServiceID', LabelKey => 'TicketService', Values => $Search->{ServiceIDs}, Options => $Options->{Services}, Language => $Language );
+    $HTML .= $Self->_SearchMultiSelectHTML( Name => 'SearchSLAID', LabelKey => 'TicketSLA', Values => $Search->{SLAIDs}, Options => $Options->{SLAs}, Language => $Language );
+    $HTML .= '</div></section>';
+
+    $HTML .= '<section class="qisutu-ticket-search-section"><div class="qisutu-ticket-search-section-title"><h3>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchPeriods', Language => $Language ) ) . '</h3>';
+    $HTML .= '<div class="qisutu-ticket-search-quick-periods" data-qisutu-search-quick-periods>';
+    $HTML .= '<span>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchQuickCreated', Language => $Language ) ) . '</span>';
+    for my $Quick ( [today=>'TicketSearchToday'], [yesterday=>'TicketSearchYesterday'], [7=>'TicketSearchLast7Days'], [30=>'TicketSearchLast30Days'], [year=>'TicketSearchThisYear'] ) {
+        $HTML .= '<button type="button" data-qisutu-search-period="' . $Quick->[0] . '">' . $Self->_Escape( $Self->_Translate( Key => $Quick->[1], Language => $Language ) ) . '</button>';
+    }
+    $HTML .= '</div></div><div class="qisutu-ticket-search-range-grid">';
+    for my $Range (
+        [ Created => 'TicketCreated' ], [ Changed => 'TicketChanged' ], [ Solution => 'TicketSearchSolved' ],
+        [ Pending => 'TicketPendingUntil' ], [ FirstResponseDue => 'TicketSearchFirstResponseDue' ],
+        [ UpdateDue => 'TicketSearchUpdateDue' ], [ SolutionDue => 'TicketSearchSolutionDue' ],
+    ) {
+        $HTML .= $Self->_SearchDateRangeHTML(
+            Prefix => $Range->[0], LabelKey => $Range->[1], Search => $Search, Language => $Language,
+        );
+    }
+    $HTML .= '</div></section>';
+
+    $HTML .= '<section class="qisutu-ticket-search-section"><h3>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchSLAEscalation', Language => $Language ) ) . '</h3>';
+    $HTML .= '<div class="qisutu-ticket-search-checkbox-grid">';
+    my %EscalationSelected = map { $_ => 1 } @{ $Search->{Escalation} || [] };
+    for my $Item (
+        [normal=>'TicketSearchEscalationNormal'], [warning=>'TicketSearchEscalationWarning'], [escalated=>'TicketSearchEscalationBreached'],
+        [no_sla=>'TicketSearchWithoutSLA'], [first_open=>'TicketSearchFirstResponseOpen'], [update_open=>'TicketSearchUpdateOpen'], [solution_open=>'TicketSearchSolutionOpen'],
+    ) {
+        my $Checked = $EscalationSelected{$Item->[0]} ? ' checked' : '';
+        $HTML .= '<label><input type="checkbox" name="SearchEscalation" value="' . $Item->[0] . '"' . $Checked . '><span>' . $Self->_Escape( $Self->_Translate( Key => $Item->[1], Language => $Language ) ) . '</span></label>';
+    }
+    $HTML .= '</div></section>';
+
+    if ( @{ $Options->{DynamicFields} || [] } ) {
+        $HTML .= '<section class="qisutu-ticket-search-section"><h3>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchDynamicFields', Language => $Language ) ) . '</h3>';
+        $HTML .= '<div class="qisutu-ticket-search-dynamic-list">';
+        my %Current = map { $_->{id} => $_ } @{ $Search->{Dynamic} || [] };
+        for my $Field ( @{ $Options->{DynamicFields} } ) {
+            $HTML .= $Self->_SearchDynamicFieldHTML(
+                Field => $Field, Current => $Current{ $Field->{id} } || {}, Language => $Language,
+            );
+        }
+        $HTML .= '</div></section>';
+    }
+
+    $HTML .= '</div>';
+    $HTML .= '<footer class="qisutu-ticket-search-actions">';
+    $HTML .= '<button class="qisutu-button qisutu-button-primary" type="submit">' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchSubmit', Language => $Language ) ) . '</button>';
+    $HTML .= '<button class="qisutu-button qisutu-button-secondary" type="reset" data-qisutu-ticket-search-clear>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchClearForm', Language => $Language ) ) . '</button>';
+    $HTML .= '<button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-ticket-search-close>' . $Self->_Escape( $Self->_Translate( Key => 'AdminCancel', Language => $Language ) ) . '</button>';
+    $HTML .= '</footer></form></section></div>';
+
+    return $HTML;
+}
+
+sub _SearchInputHTML {
+    my ( $Self, %Param ) = @_;
+    my $Language = $Param{Language} || 'en';
+    my $Class = $Param{Class} ? ' ' . $Param{Class} : '';
+    my $Placeholder = $Param{PlaceholderKey}
+        ? ' placeholder="' . $Self->_Escape( $Self->_Translate( Key => $Param{PlaceholderKey}, Language => $Language ) ) . '"'
+        : '';
+    return '<label class="qisutu-ticket-search-field' . $Class . '"><span>'
+        . $Self->_Escape( $Self->_Translate( Key => $Param{LabelKey}, Language => $Language ) )
+        . '</span><input type="text" name="' . $Self->_Escape( $Param{Name} ) . '" value="'
+        . $Self->_Escape( $Param{Value} || '' ) . '"' . $Placeholder . '></label>';
+}
+
+sub _SearchSelectHTML {
+    my ( $Self, %Param ) = @_;
+    my $Language = $Param{Language} || 'en';
+    my $HTML = '<label class="qisutu-ticket-search-field"><span>' . $Self->_Escape( $Self->_Translate( Key => $Param{LabelKey}, Language => $Language ) ) . '</span>';
+    $HTML .= '<select name="' . $Self->_Escape( $Param{Name} ) . '">';
+    for my $Option ( @{ $Param{Options} || [] } ) {
+        my $Selected = ( $Param{Value} || '' ) eq $Option->[0] ? ' selected' : '';
+        $HTML .= '<option value="' . $Self->_Escape( $Option->[0] ) . '"' . $Selected . '>' . $Self->_Escape( $Self->_Translate( Key => $Option->[1], Language => $Language ) ) . '</option>';
+    }
+    $HTML .= '</select></label>';
+    return $HTML;
+}
+
+sub _SearchMultiSelectHTML {
+    my ( $Self, %Param ) = @_;
+    my $Language = $Param{Language} || 'en';
+    my %Selected = map { ( "$_" => 1 ) } @{ $Param{Values} || [] };
+    my $HTML = '<label class="qisutu-ticket-search-field"><span>' . $Self->_Escape( $Self->_Translate( Key => $Param{LabelKey}, Language => $Language ) ) . '</span>';
+    $HTML .= '<select name="' . $Self->_Escape( $Param{Name} ) . '" multiple size="5">';
+    if ( $Param{IncludeUnassigned} ) {
+        $HTML .= '<option value="unassigned"' . ( $Selected{unassigned} ? ' selected' : '' ) . '>' . $Self->_Escape( $Self->_Translate( Key => 'TicketListUnassigned', Language => $Language ) ) . '</option>';
+    }
+    for my $Option ( @{ $Param{Options} || [] } ) {
+        next if ref $Option ne 'HASH';
+        my $ID = $Option->{id};
+        my $Label = $Option->{label} || $Option->{name} || $ID;
+        $Label = $Self->_DisplayValue( Value => $Label, Language => $Language ) if $Param{DisplayTranslate};
+        $HTML .= '<option value="' . $Self->_Escape($ID) . '"' . ( $Selected{"$ID"} ? ' selected' : '' ) . '>' . $Self->_Escape($Label) . '</option>';
+    }
+    $HTML .= '</select><small>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchMultiSelectHint', Language => $Language ) ) . '</small></label>';
+    return $HTML;
+}
+
+sub _SearchDateRangeHTML {
+    my ( $Self, %Param ) = @_;
+    my $Prefix = $Param{Prefix};
+    my $Language = $Param{Language} || 'en';
+    my $Search = $Param{Search} || {};
+    return '<fieldset class="qisutu-ticket-search-range"><legend>' . $Self->_Escape( $Self->_Translate( Key => $Param{LabelKey}, Language => $Language ) ) . '</legend>'
+        . '<label><span>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchFrom', Language => $Language ) ) . '</span><input type="datetime-local" name="Search' . $Prefix . 'From" value="' . $Self->_Escape( $Search->{ $Prefix . 'From' } || '' ) . '"></label>'
+        . '<label><span>' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchTo', Language => $Language ) ) . '</span><input type="datetime-local" name="Search' . $Prefix . 'To" value="' . $Self->_Escape( $Search->{ $Prefix . 'To' } || '' ) . '"></label></fieldset>';
+}
+
+sub _SearchDynamicFieldHTML {
+    my ( $Self, %Param ) = @_;
+    my $Field = $Param{Field} || {};
+    my $Current = $Param{Current} || {};
+    my $Language = $Param{Language} || 'en';
+    my $ID = $Field->{id} || 0;
+    my $Type = $Field->{field_type} || 'text';
+    my $Operator = $Current->{operator} || '';
+    my $HTML = '<div class="qisutu-ticket-search-dynamic" data-qisutu-search-dynamic><strong>' . $Self->_Escape( $Field->{label} || $Field->{name} || '' ) . '</strong>';
+    $HTML .= '<div class="qisutu-ticket-search-dynamic-controls"><select name="SearchDynamicOperator_' . $ID . '" data-qisutu-search-dynamic-operator>';
+    $HTML .= '<option value="">' . $Self->_Escape( $Self->_Translate( Key => 'TicketSearchNotRestricted', Language => $Language ) ) . '</option>';
+
+    my @Operators;
+    if ( $Type eq 'number' ) {
+        @Operators = ([exact=>'TicketSearchOperatorExact'],[from=>'TicketSearchOperatorFrom'],[to=>'TicketSearchOperatorTo'],[between=>'TicketSearchOperatorBetween'],[empty=>'TicketSearchOperatorEmpty'],[not_empty=>'TicketSearchOperatorNotEmpty']);
+    }
+    elsif ( $Type eq 'date' ) {
+        @Operators = ([from=>'TicketSearchOperatorFrom'],[to=>'TicketSearchOperatorTo'],[between=>'TicketSearchOperatorBetween'],[empty=>'TicketSearchOperatorEmpty'],[not_empty=>'TicketSearchOperatorNotEmpty']);
+    }
+    elsif ( $Type eq 'dropdown' ) {
+        @Operators = ([any=>'TicketSearchOperatorAnySelected'],[empty=>'TicketSearchOperatorEmpty'],[not_empty=>'TicketSearchOperatorNotEmpty']);
+    }
+    elsif ( $Type eq 'multiselect' ) {
+        @Operators = ([any=>'TicketSearchOperatorAnySelected'],[all=>'TicketSearchOperatorAllSelected'],[empty=>'TicketSearchOperatorEmpty'],[not_empty=>'TicketSearchOperatorNotEmpty']);
+    }
+    else {
+        @Operators = ([contains=>'TicketSearchOperatorContains'],[starts=>'TicketSearchOperatorStarts'],[exact=>'TicketSearchOperatorExact'],[empty=>'TicketSearchOperatorEmpty'],[not_empty=>'TicketSearchOperatorNotEmpty']);
+    }
+    for my $Item (@Operators) {
+        $HTML .= '<option value="' . $Item->[0] . '"' . ( $Operator eq $Item->[0] ? ' selected' : '' ) . '>' . $Self->_Escape( $Self->_Translate( Key => $Item->[1], Language => $Language ) ) . '</option>';
+    }
+    $HTML .= '</select>';
+
+    if ( $Type eq 'dropdown' || $Type eq 'multiselect' ) {
+        my %Selected = map { ( "$_" => 1 ) } @{ $Current->{values} || [] };
+        my $Multiple = ' multiple size="4"';
+        $HTML .= '<select name="SearchDynamicValues_' . $ID . '"' . $Multiple . ' data-qisutu-search-dynamic-value>';
+        for my $Option ( @{ $Field->{options} || [] } ) {
+            my $Key = defined $Option->{option_key} ? $Option->{option_key} : '';
+            $HTML .= '<option value="' . $Self->_Escape($Key) . '"' . ( $Selected{$Key} ? ' selected' : '' ) . '>' . $Self->_Escape( $Option->{option_value} || $Key ) . '</option>';
+        }
+        $HTML .= '</select>';
+    }
+    else {
+        my $InputType = $Type eq 'date' ? 'datetime-local' : $Type eq 'number' ? 'number' : 'text';
+        my $Step = $Type eq 'number' ? ' step="any"' : $Type eq 'date' ? ' step="60"' : '';
+        $HTML .= '<input type="' . $InputType . '" name="SearchDynamicValue_' . $ID . '" value="' . $Self->_Escape( $Current->{value} || '' ) . '"' . $Step . ' data-qisutu-search-dynamic-value>';
+        if ( $Type eq 'date' || $Type eq 'number' ) {
+            $HTML .= '<input type="' . $InputType . '" name="SearchDynamicValueTo_' . $ID . '" value="' . $Self->_Escape( $Current->{value_to} || '' ) . '"' . $Step . ' data-qisutu-search-dynamic-value-to>';
+        }
+    }
+    $HTML .= '</div></div>';
+    return $HTML;
+}
+
+sub _SearchURLParts {
+    my ( $Self, %Param ) = @_;
+    my $Search = ref $Param{Search} eq 'HASH' ? $Param{Search} : {};
+    return [] if !$Search->{Active};
+    my @Part;
+    for my $Pair ( @{ $Self->_SearchPairs( Search => $Search ) } ) {
+        push @Part, $Self->_URLEncode( $Pair->[0] ) . '=' . $Self->_URLEncode( $Pair->[1] );
+    }
+    return \@Part;
+}
+
+sub _SearchHiddenHTML {
+    my ( $Self, %Param ) = @_;
+    my $Search = ref $Param{Search} eq 'HASH' ? $Param{Search} : {};
+    return '' if !$Search->{Active};
+    my $HTML = '';
+    for my $Pair ( @{ $Self->_SearchPairs( Search => $Search ) } ) {
+        $HTML .= '<input type="hidden" name="' . $Self->_Escape( $Pair->[0] ) . '" value="' . $Self->_Escape( $Pair->[1] ) . '">';
+    }
+    return $HTML;
+}
+
+sub _SearchPairs {
+    my ( $Self, %Param ) = @_;
+    my $Search = $Param{Search} || {};
+    return [] if !$Search->{Active};
+    my @Pair = ( [ SearchActive => 1 ] );
+
+    my %Scalar = (
+        SearchText => 'Text', SearchMode => 'Mode', SearchTicketNumber => 'TicketNumber', SearchTitle => 'Title',
+        SearchCreatedFrom => 'CreatedFrom', SearchCreatedTo => 'CreatedTo', SearchChangedFrom => 'ChangedFrom', SearchChangedTo => 'ChangedTo',
+        SearchSolutionFrom => 'SolutionFrom', SearchSolutionTo => 'SolutionTo', SearchPendingFrom => 'PendingFrom', SearchPendingTo => 'PendingTo',
+        SearchFirstResponseDueFrom => 'FirstResponseDueFrom', SearchFirstResponseDueTo => 'FirstResponseDueTo',
+        SearchUpdateDueFrom => 'UpdateDueFrom', SearchUpdateDueTo => 'UpdateDueTo', SearchSolutionDueFrom => 'SolutionDueFrom', SearchSolutionDueTo => 'SolutionDueTo',
+    );
+    for my $Name ( sort keys %Scalar ) {
+        my $Value = $Search->{ $Scalar{$Name} };
+        push @Pair, [ $Name => $Value ] if defined $Value && $Value ne '';
+    }
+    for my $Scope ( [SearchScopeTitle=>'title'], [SearchScopeArticle=>'article'], [SearchScopePeople=>'people'], [SearchScopeAttachment=>'attachment'] ) {
+        push @Pair, [ $Scope->[0] => 1 ] if $Search->{Scopes}->{ $Scope->[1] };
+    }
+    my %Array = (
+        SearchQueueID=>'QueueIDs', SearchStateID=>'StateIDs', SearchPriorityID=>'PriorityIDs', SearchCustomerID=>'CustomerIDs',
+        SearchCustomerUserID=>'CustomerUserIDs', SearchOwnerID=>'OwnerIDs', SearchResponsibleID=>'ResponsibleIDs',
+        SearchServiceID=>'ServiceIDs', SearchSLAID=>'SLAIDs', SearchEscalation=>'Escalation',
+    );
+    for my $Name ( sort keys %Array ) {
+        push @Pair, map { [ $Name => $_ ] } @{ $Search->{ $Array{$Name} } || [] };
+    }
+    for my $Dynamic ( @{ $Search->{Dynamic} || [] } ) {
+        my $ID = $Dynamic->{id};
+        push @Pair, [ 'SearchDynamicOperator_' . $ID => $Dynamic->{operator} ];
+        push @Pair, [ 'SearchDynamicValue_' . $ID => $Dynamic->{value} ] if $Dynamic->{value} ne '';
+        push @Pair, [ 'SearchDynamicValueTo_' . $ID => $Dynamic->{value_to} ] if $Dynamic->{value_to} ne '';
+        push @Pair, map { [ 'SearchDynamicValues_' . $ID => $_ ] } @{ $Dynamic->{values} || [] };
+    }
+    return \@Pair;
+}
+
 sub _ListURL {
     my ( $Self, %Param ) = @_;
 
     my @Part = ('Page=AgentTicketList');
-    push @Part, 'View=' . $Self->_URLEncode( $Param{View} || 'new' );
+    my $SearchActive = ref $Param{Search} eq 'HASH' && $Param{Search}->{Active};
+    push @Part, 'View=' . $Self->_URLEncode( $Param{View} || ( $SearchActive ? '' : 'new' ) );
     push @Part, 'FilterQueueID=' . $Self->_URLEncode( $Param{FilterQueueID} ) if $Param{FilterQueueID};
     push @Part, 'FilterCustomerID=' . $Self->_URLEncode( $Param{FilterCustomerID} ) if $Param{FilterCustomerID};
     push @Part, 'FilterCustomerUserID=' . $Self->_URLEncode( $Param{FilterCustomerUserID} ) if $Param{FilterCustomerUserID};
@@ -772,13 +1267,15 @@ sub _ListURL {
     push @Part, 'SortDirection=' . $Self->_URLEncode( $Param{SortDirection} || 'desc' );
     push @Part, 'PerPage=' . $Self->_URLEncode( $Param{PerPage} || 20 );
     push @Part, 'ListPage=' . $Self->_URLEncode( $Param{ListPage} ) if ( $Param{ListPage} || 1 ) > 1;
+    push @Part, @{ $Self->_SearchURLParts( Search => $Param{Search} ) };
 
     return 'index.pl?' . join( ';', @Part );
 }
 
 sub _ViewClean {
-    my ( $Self, $View ) = @_;
+    my ( $Self, $View, %Param ) = @_;
 
+    return '' if $Param{SearchActive};
     return $View if defined $View && $View =~ m{\A(?:new|open|pending|escalated|my)\z};
     return 'new';
 }

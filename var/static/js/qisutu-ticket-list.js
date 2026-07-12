@@ -408,11 +408,196 @@
         tables.forEach(initResizableTicketList);
     }
 
+
+    function localDateTimeValue(date, endOfDay) {
+        var value = new Date(date.getTime());
+        if (endOfDay) {
+            value.setHours(23, 59, 0, 0);
+        }
+        else {
+            value.setHours(0, 0, 0, 0);
+        }
+
+        function two(number) {
+            return String(number).padStart(2, '0');
+        }
+
+        return value.getFullYear() + '-' + two(value.getMonth() + 1) + '-' + two(value.getDate())
+            + 'T' + two(value.getHours()) + ':' + two(value.getMinutes());
+    }
+
+    function updateDynamicSearchField(container) {
+        var operator = container.querySelector('[data-qisutu-search-dynamic-operator]');
+        if (!operator) {
+            return;
+        }
+
+        var values = container.querySelectorAll('[data-qisutu-search-dynamic-value]');
+        var valueTo = container.querySelector('[data-qisutu-search-dynamic-value-to]');
+        var noValue = operator.value === '' || operator.value === 'empty' || operator.value === 'not_empty';
+        var between = operator.value === 'between';
+
+        values.forEach(function (field) {
+            field.disabled = noValue;
+            field.closest('label');
+        });
+
+        if (valueTo) {
+            valueTo.disabled = noValue || !between;
+            valueTo.hidden = !between;
+        }
+
+        container.classList.toggle('qisutu-ticket-search-dynamic-no-value', noValue);
+    }
+
+    function initSearchOverlay() {
+        var overlay = document.querySelector('[data-qisutu-ticket-search-overlay]');
+        var openButtons = document.querySelectorAll('[data-qisutu-ticket-search-open]');
+        if (!overlay || !openButtons.length) {
+            return;
+        }
+
+        var dialog = overlay.querySelector('.qisutu-ticket-search-dialog');
+        var form = overlay.querySelector('[data-qisutu-ticket-search-form]');
+        var closeButtons = overlay.querySelectorAll('[data-qisutu-ticket-search-close]');
+        var clearButton = overlay.querySelector('[data-qisutu-ticket-search-clear]');
+        var lastOpenButton = null;
+
+        function openOverlay(event) {
+            if (event) {
+                event.preventDefault();
+                lastOpenButton = event.currentTarget;
+            }
+            overlay.hidden = false;
+            document.body.classList.add('qisutu-overlay-open');
+            var firstInput = overlay.querySelector('input[name="SearchText"]');
+            if (firstInput) {
+                window.setTimeout(function () {
+                    firstInput.focus();
+                    firstInput.select();
+                }, 0);
+            }
+        }
+
+        function closeOverlay() {
+            overlay.hidden = true;
+            document.body.classList.remove('qisutu-overlay-open');
+            if (lastOpenButton && document.contains(lastOpenButton)) {
+                lastOpenButton.focus();
+            }
+        }
+
+        openButtons.forEach(function (button) {
+            button.addEventListener('click', openOverlay);
+        });
+
+        closeButtons.forEach(function (button) {
+            button.addEventListener('click', closeOverlay);
+        });
+
+        overlay.addEventListener('click', function (event) {
+            if (event.target === overlay) {
+                closeOverlay();
+            }
+        });
+
+        if (dialog) {
+            dialog.addEventListener('click', function (event) {
+                event.stopPropagation();
+            });
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !overlay.hidden) {
+                closeOverlay();
+            }
+        });
+
+        var dynamicFields = overlay.querySelectorAll('[data-qisutu-search-dynamic]');
+        dynamicFields.forEach(function (container) {
+            var operator = container.querySelector('[data-qisutu-search-dynamic-operator]');
+            if (operator) {
+                operator.addEventListener('change', function () {
+                    updateDynamicSearchField(container);
+                });
+            }
+            updateDynamicSearchField(container);
+        });
+
+        var quickPeriods = overlay.querySelectorAll('[data-qisutu-search-period]');
+        quickPeriods.forEach(function (button) {
+            button.addEventListener('click', function () {
+                if (!form) {
+                    return;
+                }
+
+                var from = form.querySelector('[name="SearchCreatedFrom"]');
+                var to = form.querySelector('[name="SearchCreatedTo"]');
+                if (!from || !to) {
+                    return;
+                }
+
+                var now = new Date();
+                var start = new Date(now.getTime());
+                var end = new Date(now.getTime());
+                var period = button.getAttribute('data-qisutu-search-period') || '';
+
+                if (period === 'yesterday') {
+                    start.setDate(start.getDate() - 1);
+                    end.setDate(end.getDate() - 1);
+                }
+                else if (period === '7' || period === '30') {
+                    start.setDate(start.getDate() - (Number(period) - 1));
+                }
+                else if (period === 'year') {
+                    start = new Date(now.getFullYear(), 0, 1);
+                }
+
+                from.value = localDateTimeValue(start, false);
+                to.value = localDateTimeValue(end, true);
+            });
+        });
+
+        if (clearButton && form) {
+            clearButton.addEventListener('click', function (event) {
+                event.preventDefault();
+
+                form.querySelectorAll('input:not([type="hidden"])').forEach(function (input) {
+                    if (input.type === 'checkbox' || input.type === 'radio') {
+                        input.checked = input.name.indexOf('SearchScope') === 0;
+                    }
+                    else {
+                        input.value = '';
+                    }
+                });
+
+                form.querySelectorAll('select').forEach(function (select) {
+                    Array.prototype.forEach.call(select.options, function (option) {
+                        option.selected = false;
+                    });
+                    if (select.name === 'SearchMode') {
+                        select.value = 'all';
+                    }
+                    else if (!select.multiple) {
+                        select.selectedIndex = 0;
+                    }
+                });
+
+                dynamicFields.forEach(updateDynamicSearchField);
+                var firstInput = form.querySelector('input[name="SearchText"]');
+                if (firstInput) {
+                    firstInput.focus();
+                }
+            });
+        }
+    }
+
     function init() {
         initViewMenu();
         initFilters();
         initPerPageControls();
         initColumnOverlay();
+        initSearchOverlay();
         initResizableTicketLists();
     }
 
