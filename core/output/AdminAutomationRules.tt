@@ -133,6 +133,22 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 </div>
 
                 <div class="qisutu-automation-subsection">
+                    <h3>[% Translate.TicketChecklists %]</h3>
+                    <div class="qisutu-automation-grid-3">
+                        <div class="qisutu-form-field">
+                            <label>[% Translate.AutomationChecklistTemplates %]</label>
+                            <select name="ConditionChecklistTemplateID" multiple size="6">[% RAW.ConditionChecklistTemplateOptionsHTML %]</select>
+                        </div>
+                    </div>
+                    <div class="qisutu-automation-check-row">
+                        <label><input type="checkbox" name="ConditionChecklistHasOpen" value="1" [% ConditionChecklistHasOpenChecked %]> [% Translate.AutomationChecklistHasOpen %]</label>
+                        <label><input type="checkbox" name="ConditionChecklistHasCompleted" value="1" [% ConditionChecklistHasCompletedChecked %]> [% Translate.AutomationChecklistHasCompleted %]</label>
+                        <label><input type="checkbox" name="ConditionChecklistOpenRequired" value="1" [% ConditionChecklistOpenRequiredChecked %]> [% Translate.AutomationChecklistOpenRequired %]</label>
+                        <label><input type="checkbox" name="ConditionChecklistAllRequiredDone" value="1" [% ConditionChecklistAllRequiredDoneChecked %]> [% Translate.AutomationChecklistAllRequiredDone %]</label>
+                    </div>
+                </div>
+
+                <div class="qisutu-automation-subsection">
                     <h3>[% Translate.AutomationTimes %]</h3>
                     <div class="qisutu-automation-grid-3">
                         <fieldset class="qisutu-automation-range"><legend>[% Translate.TicketSearchCreatedAt %]</legend><input type="datetime-local" name="ConditionCreatedFrom" value="[% ConditionCreatedFrom %]"><input type="datetime-local" name="ConditionCreatedTo" value="[% ConditionCreatedTo %]"></fieldset>
@@ -191,6 +207,27 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 </div>
 
                 <div class="qisutu-automation-subsection">
+                    <h3>[% Translate.TicketChecklists %]</h3>
+                    <div class="qisutu-automation-grid-3">
+                        <div class="qisutu-form-field">
+                            <label>[% Translate.AutomationChecklistAdd %]</label>
+                            <select name="ActionChecklistAddTemplateID" multiple size="6">[% RAW.ActionChecklistAddTemplateOptionsHTML %]</select>
+                        </div>
+                        <div class="qisutu-form-field">
+                            <label>[% Translate.AutomationChecklistRemove %]</label>
+                            <select name="ActionChecklistRemoveTemplateID" multiple size="6">[% RAW.ActionChecklistRemoveTemplateOptionsHTML %]</select>
+                        </div>
+                        <div class="qisutu-automation-action-card">
+                            <label class="qisutu-form-checkbox"><input type="checkbox" name="ActionChecklistSetEnabled" value="1" [% ActionChecklistSetEnabledChecked %]><span>[% Translate.AutomationChecklistSetItem %]</span></label>
+                            <select name="ActionChecklistSetTemplateID"><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.ActionChecklistSetTemplateOptionsHTML %]</select>
+                            <select name="ActionChecklistSetTemplateItemID"><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.ActionChecklistSetItemOptionsHTML %]</select>
+                            <label class="qisutu-form-checkbox"><input type="checkbox" name="ActionChecklistSetDone" value="1" [% ActionChecklistSetDoneChecked %]><span>[% Translate.AutomationChecklistMarkDone %]</span></label>
+                            <p class="qisutu-form-hint">[% Translate.AutomationChecklistSetItemHelp %]</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="qisutu-automation-subsection">
                     <h3>[% Translate.AutomationCommunication %]</h3>
                     <div class="qisutu-automation-communication-grid">
                         <div class="qisutu-automation-action-card"><label class="qisutu-form-checkbox"><input type="checkbox" name="ActionNoteEnabled" value="1" [% ActionNoteEnabledChecked %]><span>[% Translate.AutomationAddNote %]</span></label><input type="text" name="ActionNoteSubject" value="[% ActionNoteSubject %]" placeholder="[% Translate.TicketSubject %]"><textarea name="ActionNoteBody" rows="6" placeholder="[% Translate.TicketArticleBody %]">[% ActionNoteBody %]</textarea><label class="qisutu-form-checkbox"><input type="checkbox" name="ActionNoteCustomerVisible" value="1" [% ActionNoteCustomerVisibleChecked %]><span>[% Translate.TicketNoteCustomerVisible %]</span></label></div>
@@ -223,6 +260,6 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
         </div>
     </form>
-    <script src="[% StaticBase %]/js/qisutu-automation.js?v=2026071204"></script>
+    <script src="[% StaticBase %]/js/qisutu-automation.js?v=2026071205"></script>
     [% END %]
 </section>

@@ -34,6 +34,7 @@ use File::Basename qw(basename);
 use File::Path qw(make_path remove_tree);
 
 use QisutuTicket;
+use QisutuChecklist;
 use QisutuTicketSearch;
 use QisutuDynamicField;
 
@@ -261,6 +262,13 @@ sub ConditionsFromRequest {
         LastAgentOlderMinutes    => $Self->_Unsigned( $Request->{ConditionLastAgentOlderMinutes} ),
         NoOwner                  => $Request->{ConditionNoOwner} ? 1 : 0,
         NoResponsible            => $Request->{ConditionNoResponsible} ? 1 : 0,
+        Checklist                => {
+            TemplateIDs    => $Self->_IDList( $Request->{ConditionChecklistTemplateID} ),
+            HasOpen        => $Request->{ConditionChecklistHasOpen} ? 1 : 0,
+            HasCompleted   => $Request->{ConditionChecklistHasCompleted} ? 1 : 0,
+            OpenRequired   => $Request->{ConditionChecklistOpenRequired} ? 1 : 0,
+            AllRequiredDone => $Request->{ConditionChecklistAllRequiredDone} ? 1 : 0,
+        },
     };
 }
 
@@ -308,6 +316,12 @@ sub ActionsFromRequest {
         AgentNotifyUserID => $Self->_Unsigned( $Request->{ActionAgentNotifyUserID} ),
         AgentNotifySubject => $Self->_Trim( $Request->{ActionAgentNotifySubject} ),
         AgentNotifyBody    => $Self->_Trim( $Request->{ActionAgentNotifyBody} ),
+        ChecklistAddTemplateIDs    => $Self->_IDList( $Request->{ActionChecklistAddTemplateID} ),
+        ChecklistRemoveTemplateIDs => $Self->_IDList( $Request->{ActionChecklistRemoveTemplateID} ),
+        ChecklistSetTemplateID      => $Self->_Unsigned( $Request->{ActionChecklistSetTemplateID} ),
+        ChecklistSetTemplateItemID  => $Self->_Unsigned( $Request->{ActionChecklistSetTemplateItemID} ),
+        ChecklistSetDone            => $Request->{ActionChecklistSetDone} ? 1 : 0,
+        ChecklistSetEnabled         => $Request->{ActionChecklistSetEnabled} ? 1 : 0,
         DeleteTickets    => $Request->{ActionDeleteTickets} ? 1 : 0,
         DeleteConfirmText => $Self->_Trim( $Request->{ActionDeleteConfirmText} ),
     };
@@ -339,6 +353,25 @@ sub Options {
     if ( $SearchObject->Error() ) {
         $Self->{LastError} = $SearchObject->Error();
     }
+
+    my $ChecklistObject = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    my $Templates = $ChecklistObject->TemplateList( IncludeInactive => 0 ) || [];
+    my @Items;
+    for my $Template ( @{$Templates} ) {
+        my $Full = $ChecklistObject->TemplateGet( TemplateID => $Template->{id} );
+        for my $Item ( @{ $Full->{items} || [] } ) {
+            push @Items, {
+                id          => $Item->{id},
+                template_id => $Template->{id},
+                name        => $Item->{name},
+                label       => ( $Template->{name} || '' ) . ' — ' . ( $Item->{name} || '' ),
+            };
+        }
+        $Template->{label} = $Template->{name};
+    }
+    $Options->{ChecklistTemplates} = $Templates;
+    $Options->{ChecklistItems} = \@Items;
+
     return $Options;
 }
 
@@ -788,6 +821,44 @@ sub ActionsApply {
         push @Done, 'service_clear';
     }
 
+    my $ChecklistObject = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    for my $TemplateID ( @{ $Actions->{ChecklistAddTemplateIDs} || [] } ) {
+        return $Self->_ActionError( $ChecklistObject ) if !$ChecklistObject->TicketChecklistAdd(
+            TicketID        => $TicketID,
+            TemplateID      => $TemplateID,
+            ChangedByUserID => $SystemUserID,
+            Source          => 'automation',
+        );
+        push @Done, 'checklist_add_' . $TemplateID;
+    }
+
+    for my $TemplateID ( @{ $Actions->{ChecklistRemoveTemplateIDs} || [] } ) {
+        my $Rows = $Self->{DB}->SelectAll(
+            'SELECT id FROM ticket_checklist WHERE ticket_id = ? AND template_id = ? AND removed_at IS NULL',
+            $TicketID,
+            $TemplateID,
+        ) || [];
+        for my $Row ( @{$Rows} ) {
+            return $Self->_ActionError( $ChecklistObject ) if !$ChecklistObject->TicketChecklistRemove(
+                TicketID          => $TicketID,
+                TicketChecklistID => $Row->{id},
+                ChangedByUserID   => $SystemUserID,
+            );
+        }
+        push @Done, 'checklist_remove_' . $TemplateID;
+    }
+
+    if ( $Actions->{ChecklistSetEnabled} && $Actions->{ChecklistSetTemplateID} && $Actions->{ChecklistSetTemplateItemID} ) {
+        return $Self->_ActionError( $ChecklistObject ) if !$ChecklistObject->TicketTemplateItemSet(
+            TicketID       => $TicketID,
+            TemplateID     => $Actions->{ChecklistSetTemplateID},
+            TemplateItemID => $Actions->{ChecklistSetTemplateItemID},
+            Done           => $Actions->{ChecklistSetDone},
+            ChangedByUserID => $SystemUserID,
+        );
+        push @Done, 'checklist_item';
+    }
+
     if ( $Actions->{StateID} ) {
         my $PendingUntil = '';
         if ( $Actions->{PendingMinutes} ) {
@@ -1158,6 +1229,8 @@ sub ConditionSummary {
     push @Part, 'Alter' if $C->{ChangedOlderMinutes} || $C->{LastCustomerOlderMinutes} || $C->{LastAgentOlderMinutes};
     push @Part, 'ohne Besitzer' if $C->{NoOwner};
     push @Part, 'ohne Verantwortlichen' if $C->{NoResponsible};
+    my $CL = $C->{Checklist} || {};
+    push @Part, 'Checklisten' if @{ $CL->{TemplateIDs} || [] } || $CL->{HasOpen} || $CL->{HasCompleted} || $CL->{OpenRequired} || $CL->{AllRequiredDone};
     return @Part ? join( ', ', @Part ) : 'Alle Tickets';
 }
 
@@ -1173,6 +1246,9 @@ sub ActionSummary {
     push @Part, 'Verantwortlicher' if ( $A->{ResponsibleMode} || 'keep' ) ne 'keep';
     push @Part, 'Service/SLA' if ( $A->{ServiceMode} || 'keep' ) ne 'keep';
     push @Part, 'Dynamische Felder' if @{ $A->{Dynamic} || [] };
+    push @Part, 'Checkliste hinzufügen' if @{ $A->{ChecklistAddTemplateIDs} || [] };
+    push @Part, 'Checkliste entfernen' if @{ $A->{ChecklistRemoveTemplateIDs} || [] };
+    push @Part, 'Checklistenpunkt' if $A->{ChecklistSetEnabled};
     push @Part, 'Notiz' if $A->{NoteEnabled};
     push @Part, 'Kunden-E-Mail' if $A->{EmailEnabled};
     push @Part, 'Agentenbenachrichtigung' if ( $A->{AgentNotifyMode} || 'none' ) ne 'none';
@@ -1268,6 +1344,22 @@ sub _RuleDataValidate {
         $Self->{LastError} = 'Translate:AutomationAgentNotifyBodyRequired';
         return;
     }
+    if ( $Actions->{ChecklistSetEnabled} ) {
+        if ( !$Actions->{ChecklistSetTemplateID} || !$Actions->{ChecklistSetTemplateItemID} ) {
+            $Self->{LastError} = 'Translate:AutomationChecklistItemRequired';
+            return;
+        }
+        my $ValidItem = $Self->{DB}->SelectRow(
+            'SELECT id FROM checklist_template_item WHERE id = ? AND template_id = ? AND active = 1 LIMIT 1',
+            $Actions->{ChecklistSetTemplateItemID},
+            $Actions->{ChecklistSetTemplateID},
+        );
+        if ( !$ValidItem ) {
+            $Self->{LastError} = 'Translate:AutomationChecklistItemInvalid';
+            return;
+        }
+    }
+
     if ( $Actions->{DeleteTickets} ) {
         if ( ( $Actions->{DeleteConfirmText} || '' ) ne 'DELETE' ) {
             $Self->{LastError} = 'Translate:AutomationDeleteConfirmationInvalid';
@@ -1283,6 +1375,9 @@ sub _RuleDataValidate {
             ( ( $Actions->{ResponsibleMode} || 'keep' ) ne 'keep' ),
             ( ( $Actions->{ServiceMode} || 'keep' ) ne 'keep' ),
             scalar @{ $Actions->{Dynamic} || [] },
+            scalar @{ $Actions->{ChecklistAddTemplateIDs} || [] },
+            scalar @{ $Actions->{ChecklistRemoveTemplateIDs} || [] },
+            $Actions->{ChecklistSetEnabled},
             $Actions->{NoteEnabled}, $Actions->{EmailEnabled},
             ( ( $Actions->{AgentNotifyMode} || 'none' ) ne 'none' );
         if (@Other) {
@@ -1343,6 +1438,11 @@ sub _TicketSelectionSQL {
     push @Where, 't.owner_user_id IS NULL' if $Conditions->{NoOwner};
     push @Where, 't.responsible_user_id IS NULL' if $Conditions->{NoResponsible};
 
+    my $ChecklistObject = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    my $ChecklistData = $ChecklistObject->TicketConditionSQL( Condition => $Conditions->{Checklist} || {} );
+    push @Where, @{ $ChecklistData->{Where} || [] };
+    push @Bind, @{ $ChecklistData->{Bind} || [] };
+
     return {
         Where => @Where ? join( ' AND ', map { '(' . $_ . ')' } @Where ) : '1=1',
         Bind  => \@Bind,
@@ -1356,6 +1456,9 @@ sub _ActionsHaveAction {
     return 1 if ( $A->{ResponsibleMode} || 'keep' ) ne 'keep';
     return 1 if ( $A->{ServiceMode} || 'keep' ) ne 'keep';
     return 1 if @{ $A->{Dynamic} || [] };
+    return 1 if @{ $A->{ChecklistAddTemplateIDs} || [] };
+    return 1 if @{ $A->{ChecklistRemoveTemplateIDs} || [] };
+    return 1 if $A->{ChecklistSetEnabled};
     return 1 if $A->{NoteEnabled} || $A->{EmailEnabled} || $A->{DeleteTickets};
     return 1 if ( $A->{AgentNotifyMode} || 'none' ) ne 'none';
     return 0;

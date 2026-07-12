@@ -30,6 +30,7 @@ use POSIX qw(strftime);
 use Time::Local qw(timelocal);
 
 use QisutuCalendar;
+use QisutuChecklist;
 use QisutuDynamicField;
 use QisutuHTML;
 use QisutuNotification;
@@ -49,6 +50,7 @@ sub new {
         LastAgentNotificationError => '',
         LastEmailImportAction      => '',
         LastEmailImportTicketID    => 0,
+        LastChecklistOpenItems     => [],
     };
 
     bless $Self, $Class;
@@ -1127,6 +1129,16 @@ sub TicketCreateFromEmail {
         return;
     }
 
+    my $ChecklistObject = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    if ( !$ChecklistObject->TicketAutoCreate(
+        TicketID        => $TicketID,
+        ChangedByUserID => $ChangedByUserID,
+    ) ) {
+        $Self->{LastError} = $ChecklistObject->Error() || 'Translate:TicketChecklistAutomaticCreateFailed';
+        $Self->{DB}->Rollback();
+        return;
+    }
+
     my $ArticleID = $Self->ArticleCreate(
         TicketID        => $TicketID,
         Subject         => $Title,
@@ -1380,6 +1392,16 @@ sub TicketCreateFromCustomer {
     my $TicketID = $Self->{DB}->LastInsertID('ticket');
     if (!$TicketID) {
         $Self->{LastError} = 'Ticket ID could not be loaded';
+        $Self->{DB}->Rollback();
+        return;
+    }
+
+    my $ChecklistObject = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    if ( !$ChecklistObject->TicketAutoCreate(
+        TicketID        => $TicketID,
+        ChangedByUserID => $UserID,
+    ) ) {
+        $Self->{LastError} = $ChecklistObject->Error() || 'Translate:TicketChecklistAutomaticCreateFailed';
         $Self->{DB}->Rollback();
         return;
     }
@@ -1839,6 +1861,16 @@ sub TicketCreateFromAgent {
         ChangedByUserID => $UserID,
     ) ) {
         $Self->{LastError} = $DynamicFieldObject->Error() || 'Translate:TicketDynamicFieldSaveFailed';
+        $Self->{DB}->Rollback();
+        return;
+    }
+
+    my $ChecklistObject = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    if ( !$ChecklistObject->TicketAutoCreate(
+        TicketID        => $TicketID,
+        ChangedByUserID => $UserID,
+    ) ) {
+        $Self->{LastError} = $ChecklistObject->Error() || 'Translate:TicketChecklistAutomaticCreateFailed';
         $Self->{DB}->Rollback();
         return;
     }
@@ -3191,6 +3223,8 @@ sub _AttachmentsValidate {
 sub TicketStatusUpdate {
     my ( $Self, %Param ) = @_;
 
+    $Self->{LastChecklistOpenItems} = [];
+
     my $TicketID        = $Param{TicketID} || 0;
     my $StatusID        = $Param{StatusID} || 0;
     my $ChangedByUserID = $Param{ChangedByUserID} || 1;
@@ -3244,6 +3278,23 @@ sub TicketStatusUpdate {
     if ( !$State ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Ticket state could not be loaded';
         return;
+    }
+
+    if ( ( $State->{state_type} || '' ) eq 'closed' ) {
+        my $ChecklistObject = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
+        my $CloseCheck = $ChecklistObject->TicketCanClose(
+            TicketID        => $TicketID,
+            ChangedByUserID => $Param{ChangedByUserID} || 1,
+        );
+        if ( !$CloseCheck ) {
+            $Self->{LastError} = $ChecklistObject->Error() || 'Translate:TicketChecklistCloseCheckFailed';
+            return;
+        }
+        if ( !$CloseCheck->{Allowed} ) {
+            $Self->{LastChecklistOpenItems} = $CloseCheck->{OpenItems} || [];
+            $Self->{LastError} = 'Translate:TicketChecklistCloseBlocked';
+            return;
+        }
     }
 
     my $Now = $Self->_NowDateTime();
@@ -5302,6 +5353,11 @@ sub LastAgentNotificationSummary {
     }
 
     return $Error ? '0 agent notification(s) sent: ' . $Error : '0 agent notification(s) sent';
+}
+
+sub LastChecklistOpenItems {
+    my ($Self) = @_;
+    return $Self->{LastChecklistOpenItems} || [];
 }
 
 sub Error {

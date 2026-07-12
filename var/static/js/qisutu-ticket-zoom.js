@@ -1297,3 +1297,44 @@
         init();
     }
 }());
+
+/* Qisutu ticket checklist interaction. */
+(function () {
+    'use strict';
+
+    document.addEventListener('change', function (event) {
+        var toggle = event.target.closest('[data-qisutu-checklist-item-toggle]');
+        if (!toggle) {
+            return;
+        }
+        var form = toggle.closest('[data-qisutu-checklist-item-form]');
+        if (form) {
+            toggle.disabled = true;
+            form.submit();
+        }
+    });
+
+    document.addEventListener('submit', function (event) {
+        var form = event.target.closest('[data-qisutu-checklist-remove-form]');
+        if (!form) {
+            return;
+        }
+        var message = form.getAttribute('data-confirm') || '';
+        if (message && !window.confirm(message)) {
+            event.preventDefault();
+        }
+    });
+
+    if (window.location.hash === '#qisutu-ticket-checklists') {
+        var block = document.getElementById('qisutu-ticket-checklists');
+        if (block) {
+            var button = block.querySelector('[data-qisutu-ticket-info-toggle]');
+            var content = block.querySelector('[data-qisutu-ticket-info-content]');
+            if (button && content) {
+                button.setAttribute('aria-expanded', 'true');
+                content.hidden = false;
+                block.classList.add('qisutu-ticket-info-block-open');
+            }
+        }
+    }
+}());

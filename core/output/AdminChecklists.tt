@@ -1,0 +1,167 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+<section class="qisutu-dashboard" aria-labelledby="qisutu-admin-checklists-title">
+    <div class="qisutu-dashboard-header">
+        <div>
+            <h1 id="qisutu-admin-checklists-title">[% ProgramTitle %]</h1>
+            <p>[% ProgramDescription %]</p>
+        </div>
+        [% IF ShowBackToList %]
+        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminChecklists">[% Translate.AdminBackToList %]</a>
+        [% END %]
+    </div>
+
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+    [% IF ShowList %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header">
+            <div>
+                <h2>[% Translate.AdminChecklistsList %]</h2>
+                <span class="qisutu-panel-subtitle">[% TemplateCount %]</span>
+            </div>
+            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminChecklists;Action=Create">[% Translate.AdminChecklistCreate %]</a>
+        </div>
+
+        [% IF TemplateCount %]
+        <div class="qisutu-admin-table-wrap">
+            <table class="qisutu-admin-table">
+                <thead>
+                    <tr>
+                        <th>[% Translate.AdminName %]</th>
+                        <th>[% Translate.AdminChecklistUsage %]</th>
+                        <th>[% Translate.AdminChecklistItems %]</th>
+                        <th>[% Translate.AdminChecklistRequiredItems %]</th>
+                        <th>[% Translate.AdminActive %]</th>
+                        <th>[% Translate.AdminActions %]</th>
+                    </tr>
+                </thead>
+                <tbody>[% RAW.TemplateRowsHTML %]</tbody>
+            </table>
+        </div>
+        [% ELSE %]
+        <div class="qisutu-empty"><strong>[% Translate.AdminChecklistNone %]</strong></div>
+        [% END %]
+    </section>
+
+    <section class="qisutu-panel qisutu-checklist-assignment-overview">
+        <div class="qisutu-panel-header">
+            <div>
+                <h2>[% Translate.AdminChecklistAssignments %]</h2>
+                <span class="qisutu-panel-subtitle">[% Translate.AdminChecklistAssignmentsDescription %]</span>
+            </div>
+        </div>
+        [% RAW.AssignmentOverviewHTML %]
+    </section>
+    [% END %]
+
+    [% IF ShowForm %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header">
+            <h2>[% FormTitle %]</h2>
+            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminChecklists">[% Translate.AdminBackToList %]</a>
+        </div>
+
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="index.pl" data-qisutu-checklist-admin-form>
+            <input type="hidden" name="Page" value="AdminChecklists">
+            <input type="hidden" name="Step" value="[% FormStep %]">
+            [% IF ShowEdit %]
+            <input type="hidden" name="TemplateID" value="[% FormTemplateID %]">
+            [% END %]
+
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field">
+                    <label for="qisutu-checklist-name">[% Translate.AdminName %] *</label>
+                    <input id="qisutu-checklist-name" type="text" name="Name" value="[% FormName %]" required>
+                </div>
+                <div class="qisutu-form-field">
+                    <label for="qisutu-checklist-usage">[% Translate.AdminChecklistUsage %]</label>
+                    <select id="qisutu-checklist-usage" name="UsageMode">
+                        <option value="automatic" [% UsageAutomaticSelected %]>[% Translate.AdminChecklistUsageAutomatic %]</option>
+                        <option value="manual" [% UsageManualSelected %]>[% Translate.AdminChecklistUsageManual %]</option>
+                        <option value="both" [% UsageBothSelected %]>[% Translate.AdminChecklistUsageBoth %]</option>
+                    </select>
+                </div>
+                <div class="qisutu-form-field">
+                    <label for="qisutu-checklist-sort">[% Translate.AdminSortOrder %]</label>
+                    <input id="qisutu-checklist-sort" type="number" name="SortOrder" value="[% FormSortOrder %]" min="1">
+                </div>
+                [% IF ShowEdit %]
+                <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
+                    <input type="checkbox" name="Active" value="1" [% FormActiveChecked %]>
+                    <span>[% Translate.AdminActive %]</span>
+                </label>
+                [% END %]
+            </div>
+
+            <div class="qisutu-form-field">
+                <label for="qisutu-checklist-description">[% Translate.AdminDescription %]</label>
+                <textarea id="qisutu-checklist-description" name="Description" rows="3">[% FormDescription %]</textarea>
+            </div>
+
+            <div class="qisutu-admin-form-block">
+                <div class="qisutu-checklist-item-header">
+                    <div>
+                        <h3>[% Translate.AdminChecklistItems %]</h3>
+                        <p class="qisutu-form-help">[% Translate.AdminChecklistItemsHelp %]</p>
+                    </div>
+                    <button class="qisutu-button qisutu-button-secondary" type="submit" name="FormAction" value="AddChecklistItem" formnovalidate data-qisutu-checklist-item-add>[% Translate.AdminChecklistItemAdd %]</button>
+                </div>
+                <div class="qisutu-checklist-admin-items" data-qisutu-checklist-item-list data-next-index="[% FormItemCount %]" data-label-item="[% Translate.AdminChecklistItemText %]" data-label-description="[% Translate.AdminChecklistItemDescription %]" data-label-sort="[% Translate.AdminSortOrder %]" data-label-required="[% Translate.AdminChecklistRequiredBeforeClose %]" data-label-remove="[% Translate.AdminRemove %]">
+                    [% RAW.FormItemsHTML %]
+                </div>
+                <div class="qisutu-checklist-item-footer">
+                    <button class="qisutu-button qisutu-button-secondary" type="submit" name="FormAction" value="AddChecklistItem" formnovalidate data-qisutu-checklist-item-add>[% Translate.AdminChecklistItemAdd %]</button>
+                </div>
+            </div>
+
+            <div class="qisutu-form-actions">
+                <button class="qisutu-button qisutu-button-primary" type="submit">[% FormSubmitLabel %]</button>
+                [% IF ShowEdit %]
+                <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminChecklists;Action=TemplateQueue;TemplateID=[% FormTemplateID %]">[% Translate.AdminChecklistAssignQueues %]</a>
+                <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminChecklists;Action=TemplateService;TemplateID=[% FormTemplateID %]">[% Translate.AdminChecklistAssignServices %]</a>
+                <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminChecklists;Action=TemplateCustomer;TemplateID=[% FormTemplateID %]">[% Translate.AdminChecklistAssignCustomers %]</a>
+                [% END %]
+            </div>
+        </form>
+    </section>
+    [% END %]
+
+    [% IF ShowAssignment %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header">
+            <div>
+                <h2>[% AssignmentTitle %]</h2>
+                <span class="qisutu-panel-subtitle">[% AssignmentSubtitle %]</span>
+            </div>
+            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminChecklists">[% Translate.AdminBackToList %]</a>
+        </div>
+        <form method="post" action="index.pl">
+            <input type="hidden" name="Page" value="AdminChecklists">
+            <input type="hidden" name="Step" value="[% AssignmentStep %]">
+            <input type="hidden" name="[% AssignmentPrimaryName %]" value="[% AssignmentPrimaryID %]">
+            <div class="qisutu-assignment-checkbox-grid qisutu-checklist-assignment-grid">
+                [% RAW.AssignmentRowsHTML %]
+            </div>
+            <div class="qisutu-form-actions">
+                <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+            </div>
+        </form>
+    </section>
+    [% END %]
+</section>
+

@@ -689,6 +689,24 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             </div>
                         </div>
                         [% END %]
+
+                        <div id="qisutu-ticket-checklists" class="qisutu-ticket-info-block qisutu-ticket-checklists-block" data-qisutu-ticket-info-section>
+                            <h3>
+                                <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="[% TicketChecklistExpandedAria %]" aria-controls="qisutu-ticket-info-checklists" data-qisutu-ticket-info-toggle>
+                                    <span>[% Translate.TicketChecklists %] · [% TicketChecklistDoneItems %] / [% TicketChecklistTotalItems %]</span>
+                                    <span class="qisutu-ticket-info-chevron" aria-hidden="true"></span>
+                                </button>
+                            </h3>
+                            <div id="qisutu-ticket-info-checklists" class="qisutu-ticket-info-content" data-qisutu-ticket-info-content [% TicketChecklistHiddenAttribute %]>
+                                <div class="qisutu-form-error [% TicketChecklistActionErrorClass %]">[% TicketChecklistActionError %]</div>
+                                <div class="qisutu-ticket-checklist-overall-progress" aria-label="[% Translate.TicketChecklistProgress %]">
+                                    <div class="qisutu-ticket-checklist-progress-track"><span style="width:[% TicketChecklistProgressPercent %]%"></span></div>
+                                    <strong>[% TicketChecklistDoneItems %] / [% TicketChecklistTotalItems %]</strong>
+                                </div>
+                                [% RAW.TicketChecklistListHTML %]
+                                [% RAW.TicketChecklistAddFormHTML %]
+                            </div>
+                        </div>
                     </aside>
                 </section>
                 [% ELSE %]
@@ -705,4 +723,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
-            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071202"></script>
+            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071204"></script>

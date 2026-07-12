@@ -28,6 +28,7 @@ use utf8;
 use JSON::PP qw(encode_json);
 use Time::Local qw(timelocal);
 use QisutuService;
+use QisutuChecklist;
 use QisutuResponseTemplate;
 
 sub new {
@@ -57,6 +58,7 @@ sub Run {
 
     my $TicketObject       = $Self->_TicketObject();
     my $DynamicFieldObject = $Self->_DynamicFieldObject();
+    my $ChecklistObject    = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
     my $AttachmentMaxSizeMB    = $Self->_AttachmentMaxSizeMB();
     my $AttachmentMaxSizeBytes = $AttachmentMaxSizeMB * 1024 * 1024;
 
@@ -159,6 +161,67 @@ sub Run {
                 error       => $Template ? '' : 'TicketResponseTemplateLoadFailed',
             },
         );
+    }
+
+    my $ChecklistActionError = '';
+    if ( $TicketObject && ( $Request->{Step} || '' ) =~ m{\AChecklist(?:ItemToggle|Add|Remove)\z} ) {
+        my $User = $Param{User} || {};
+        my $AccessibleTicket = $TicketObject->TicketGet(
+            TicketID => $TicketID,
+            User     => $User,
+            Language => $Language,
+        );
+        if ( !$AccessibleTicket || !$Self->_QueueAccessCheck(
+            User       => $User,
+            QueueID    => $AccessibleTicket->{queue_id} || 0,
+            Permission => 'ticket.edit',
+        ) ) {
+            $ChecklistActionError = 'Translate:TicketChecklistChangeDenied';
+        }
+        elsif ( ( $Request->{Step} || '' ) eq 'ChecklistItemToggle' ) {
+            if ( $ChecklistObject->TicketItemToggle(
+                TicketID        => $TicketID,
+                ItemID          => $Request->{ChecklistItemID},
+                Done            => $Request->{ChecklistItemDone},
+                ChangedByUserID => $User->{user_account_id} || 1,
+            ) ) {
+                return { Redirect => 'index.pl?Page=AgentTicketZoom&TicketID=' . $TicketID . '#qisutu-ticket-checklists' };
+            }
+            $ChecklistActionError = $ChecklistObject->Error() || 'Translate:TicketChecklistItemSaveFailed';
+        }
+        elsif ( ( $Request->{Step} || '' ) eq 'ChecklistAdd' ) {
+            my $TemplateID = $Request->{ChecklistTemplateID} || 0;
+            my %Allowed = map { ( $_->{id} || 0 ) => 1 } @{ $ChecklistObject->TicketManualTemplateList( TicketID => $TicketID ) || [] };
+            if ( !$Allowed{$TemplateID} ) {
+                $ChecklistActionError = 'Translate:TicketChecklistTemplateNotAvailable';
+            }
+            elsif ( $Self->{DB}->BeginWork() ) {
+                my $ID = $ChecklistObject->TicketChecklistAdd(
+                    TicketID        => $TicketID,
+                    TemplateID      => $TemplateID,
+                    ChangedByUserID => $User->{user_account_id} || 1,
+                    Source          => 'manual',
+                );
+                if ( $ID && $Self->{DB}->Commit() ) {
+                    return { Redirect => 'index.pl?Page=AgentTicketZoom&TicketID=' . $TicketID . '#qisutu-ticket-checklists' };
+                }
+                eval { $Self->{DB}->Rollback(); 1; };
+                $ChecklistActionError = $ChecklistObject->Error() || 'Translate:TicketChecklistAddFailed';
+            }
+            else {
+                $ChecklistActionError = 'Translate:TicketChecklistAddFailed';
+            }
+        }
+        else {
+            if ( $ChecklistObject->TicketChecklistRemove(
+                TicketID          => $TicketID,
+                TicketChecklistID => $Request->{TicketChecklistID},
+                ChangedByUserID   => $User->{user_account_id} || 1,
+            ) ) {
+                return { Redirect => 'index.pl?Page=AgentTicketZoom&TicketID=' . $TicketID . '#qisutu-ticket-checklists' };
+            }
+            $ChecklistActionError = $ChecklistObject->Error() || 'Translate:TicketChecklistRemoveFailed';
+        }
     }
 
     my $ToolActionError  = '';
@@ -416,6 +479,12 @@ sub Run {
                 )
             ) {
                 $ArticleCreateError = $TicketObject->Error() || 'Translate:TicketStatusUpdateFailed';
+                if ( $ArticleCreateError eq 'Translate:TicketChecklistCloseBlocked' ) {
+                    $ArticleCreateError = $Self->_ChecklistCloseError(
+                        Items    => $TicketObject->LastChecklistOpenItems(),
+                        Language => $Language,
+                    );
+                }
                 $Self->{DB}->Rollback();
             }
         }
@@ -470,6 +539,48 @@ sub Run {
             Language  => $Language,
         );
     }
+
+    my $TicketChecklists = [];
+    my $TicketChecklistTemplates = [];
+    my $ChecklistTotalItems = 0;
+    my $ChecklistDoneItems  = 0;
+    if ($Ticket) {
+        $TicketChecklists = $ChecklistObject->TicketChecklistList( TicketID => $TicketID ) || [];
+        $TicketChecklistTemplates = $ChecklistObject->TicketManualTemplateList( TicketID => $TicketID ) || [];
+        for my $Checklist ( @{$TicketChecklists} ) {
+            $ChecklistTotalItems += $Checklist->{item_count} || 0;
+            $ChecklistDoneItems  += $Checklist->{done_count} || 0;
+            $Checklist->{complete_class} = ( $Checklist->{item_count} || 0 ) == ( $Checklist->{done_count} || 0 )
+                ? 'qisutu-ticket-checklist-complete' : '';
+            for my $Item ( @{ $Checklist->{items} || [] } ) {
+                $Item->{checked} = $Item->{is_done} ? 'checked' : '';
+                $Item->{done_class} = $Item->{is_done} ? 'qisutu-ticket-checklist-item-done' : '';
+                $Item->{required_label} = $Item->{is_required} ? 'Translate:TicketChecklistRequired' : '';
+                $Item->{completed_by_name} = $Self->_UserName(
+                    User => {
+                        firstname => $Item->{completed_by_firstname},
+                        lastname  => $Item->{completed_by_lastname},
+                        login     => $Item->{completed_by_login},
+                    },
+                );
+                $Item->{completed_at_display} = $Self->_DateTimeFormat(
+                    DateTime => $Item->{completed_at},
+                    Language => $Language,
+                );
+            }
+        }
+    }
+
+    my $TicketChecklistListHTML = $Self->_TicketChecklistListHTML(
+        TicketID   => $TicketID,
+        Checklists => $TicketChecklists,
+        Language   => $Language,
+    );
+    my $TicketChecklistAddFormHTML = $Self->_TicketChecklistAddFormHTML(
+        TicketID  => $TicketID,
+        Templates => $TicketChecklistTemplates,
+        Language  => $Language,
+    );
 
     if ( !$Ticket ) {
         return {
@@ -709,6 +820,21 @@ sub Run {
             TicketSolutionDueClass => $Ticket->{solution_due_class} || '',
             TicketSolutionEscalated => $Ticket->{solution_escalated} || 0,
             TicketSolutionEscalatedSince => $Ticket->{solution_escalated_since} || '',
+
+            TicketChecklists         => $TicketChecklists,
+            TicketChecklistCount    => scalar @{$TicketChecklists},
+            TicketChecklistTemplates => $TicketChecklistTemplates,
+            TicketChecklistTemplateCount => scalar @{$TicketChecklistTemplates},
+            TicketChecklistTotalItems => $ChecklistTotalItems,
+            TicketChecklistDoneItems  => $ChecklistDoneItems,
+            TicketChecklistProgressPercent => $ChecklistTotalItems ? int( ( $ChecklistDoneItems * 100 ) / $ChecklistTotalItems ) : 100,
+            TicketChecklistActionError => $ChecklistActionError,
+            TicketChecklistActionErrorClass => $ChecklistActionError ? '' : 'qisutu-hidden',
+            TicketChecklistExpanded => $ChecklistActionError ? 1 : 0,
+            TicketChecklistExpandedAria => $ChecklistActionError ? 'true' : 'false',
+            TicketChecklistHiddenAttribute => $ChecklistActionError ? '' : 'hidden',
+            TicketChecklistListHTML => $TicketChecklistListHTML,
+            TicketChecklistAddFormHTML => $TicketChecklistAddFormHTML,
 
             ArticleList              => $Articles,
             ArticleCount             => $ArticleCount,
@@ -1905,6 +2031,12 @@ sub _TicketToolUpdate {
 
     if (!$UpdateOK) {
         my $Error = $TicketObject->Error() || 'Translate:TicketToolUpdateFailed';
+        if ( $Error eq 'Translate:TicketChecklistCloseBlocked' ) {
+            $Error = $Self->_ChecklistCloseError(
+                Items    => $TicketObject->LastChecklistOpenItems(),
+                Language => $Language,
+            );
+        }
         $Self->{DB}->Rollback();
         return {
             Success    => 0,
@@ -3142,6 +3274,130 @@ sub _RequestIDList {
     my @IDs = grep { defined $_ && $_ =~ m{\A\d+\z} && $_ > 0 && !$Seen{$_}++ } @Values;
 
     return \@IDs;
+}
+
+sub _TicketChecklistListHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $TicketID = int( $Param{TicketID} || 0 );
+    my $Language = $Param{Language} || 'en';
+    my $Checklists = ref $Param{Checklists} eq 'ARRAY' ? $Param{Checklists} : [];
+
+    if ( !@{$Checklists} ) {
+        my $None = $Self->{Output}->Translate( Key => 'TicketChecklistNone', Language => $Language );
+        return '<p class="qisutu-form-hint">' . $Self->_Escape($None) . '</p>';
+    }
+
+    my $RequiredLabel = $Self->{Output}->Translate( Key => 'TicketChecklistRequired', Language => $Language );
+    my $RemoveLabel = $Self->{Output}->Translate( Key => 'TicketChecklistRemove', Language => $Language );
+    my $RemoveConfirm = $Self->{Output}->Translate( Key => 'TicketChecklistRemoveConfirm', Language => $Language );
+
+    my $HTML = '<div class="qisutu-ticket-checklist-list">';
+    for my $Checklist ( @{$Checklists} ) {
+        my $ChecklistID = int( $Checklist->{id} || 0 );
+        my $ItemCount = int( $Checklist->{item_count} || 0 );
+        my $DoneCount = int( $Checklist->{done_count} || 0 );
+        my $Percent = $ItemCount ? int( ( $DoneCount * 100 ) / $ItemCount ) : 100;
+        $Percent = 0 if $Percent < 0;
+        $Percent = 100 if $Percent > 100;
+        my $CompleteClass = $ItemCount == $DoneCount ? ' qisutu-ticket-checklist-complete' : '';
+
+        $HTML .= '<details class="qisutu-ticket-checklist' . $CompleteClass . '" open>';
+        $HTML .= '<summary><span>' . $Self->_Escape( $Checklist->{name} || '' ) . '</span><span>' . $DoneCount . ' / ' . $ItemCount . '</span></summary>';
+        if ( $Checklist->{description} ) {
+            $HTML .= '<p class="qisutu-ticket-checklist-description">' . $Self->_Escape( $Checklist->{description} ) . '</p>';
+        }
+        $HTML .= '<div class="qisutu-ticket-checklist-progress-track"><span style="width:' . $Percent . '%"></span></div>';
+        $HTML .= '<div class="qisutu-ticket-checklist-items">';
+
+        for my $Item ( @{ $Checklist->{items} || [] } ) {
+            my $ItemID = int( $Item->{id} || 0 );
+            my $IsDone = $Item->{is_done} ? 1 : 0;
+            my $DoneClass = $IsDone ? ' qisutu-ticket-checklist-item-done' : '';
+            my $Checked = $IsDone ? ' checked' : '';
+            my $NextDone = $IsDone ? 0 : 1;
+
+            $HTML .= '<form class="qisutu-ticket-checklist-item-form' . $DoneClass . '" method="post" action="index.pl" data-qisutu-checklist-item-form>';
+            $HTML .= '<input type="hidden" name="Page" value="AgentTicketZoom">';
+            $HTML .= '<input type="hidden" name="Step" value="ChecklistItemToggle">';
+            $HTML .= '<input type="hidden" name="TicketID" value="' . $TicketID . '">';
+            $HTML .= '<input type="hidden" name="ChecklistItemID" value="' . $ItemID . '">';
+            $HTML .= '<input type="hidden" name="ChecklistItemDone" value="' . $NextDone . '">';
+            my $ItemDescription = $Self->_Escape( $Item->{description} || '' );
+            $ItemDescription =~ s{\r\n?}{\n}g;
+            $ItemDescription =~ s{\n}{<br>}g;
+
+            $HTML .= '<label><input type="checkbox"' . $Checked . ' data-qisutu-checklist-item-toggle><span class="qisutu-ticket-checklist-item-content"><span class="qisutu-ticket-checklist-item-text">' . $Self->_Escape( $Item->{name} || '' ) . '</span>';
+            if ($ItemDescription) {
+                $HTML .= '<span class="qisutu-ticket-checklist-item-description">' . $ItemDescription . '</span>';
+            }
+            $HTML .= '</span></label>';
+            if ( $Item->{is_required} ) {
+                $HTML .= '<span class="qisutu-ticket-checklist-required">' . $Self->_Escape($RequiredLabel) . '</span>';
+            }
+            if ( $IsDone && $Item->{completed_at_display} ) {
+                my $CompletedBy = $Item->{completed_by_name} || '';
+                my $CompletionText = $CompletedBy ? $CompletedBy . ' · ' . $Item->{completed_at_display} : $Item->{completed_at_display};
+                $HTML .= '<span class="qisutu-ticket-checklist-completion">' . $Self->_Escape($CompletionText) . '</span>';
+            }
+            $HTML .= '</form>';
+        }
+
+        $HTML .= '</div>';
+        $HTML .= '<form class="qisutu-ticket-checklist-remove-form" method="post" action="index.pl" data-qisutu-checklist-remove-form data-confirm="' . $Self->_Escape($RemoveConfirm) . '">';
+        $HTML .= '<input type="hidden" name="Page" value="AgentTicketZoom">';
+        $HTML .= '<input type="hidden" name="Step" value="ChecklistRemove">';
+        $HTML .= '<input type="hidden" name="TicketID" value="' . $TicketID . '">';
+        $HTML .= '<input type="hidden" name="TicketChecklistID" value="' . $ChecklistID . '">';
+        $HTML .= '<button class="qisutu-button qisutu-button-small qisutu-button-danger" type="submit">' . $Self->_Escape($RemoveLabel) . '</button>';
+        $HTML .= '</form>';
+        $HTML .= '</details>';
+    }
+    $HTML .= '</div>';
+
+    return $HTML;
+}
+
+sub _TicketChecklistAddFormHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Templates = ref $Param{Templates} eq 'ARRAY' ? $Param{Templates} : [];
+    return '' if !@{$Templates};
+
+    my $TicketID = int( $Param{TicketID} || 0 );
+    my $Language = $Param{Language} || 'en';
+    my $AddLabel = $Self->{Output}->Translate( Key => 'TicketChecklistAdd', Language => $Language );
+    my $NoSelection = $Self->{Output}->Translate( Key => 'AdminNoSelection', Language => $Language );
+    my $ButtonLabel = $Self->{Output}->Translate( Key => 'TicketChecklistAddButton', Language => $Language );
+
+    my $HTML = '<form class="qisutu-ticket-checklist-add-form" method="post" action="index.pl">';
+    $HTML .= '<input type="hidden" name="Page" value="AgentTicketZoom">';
+    $HTML .= '<input type="hidden" name="Step" value="ChecklistAdd">';
+    $HTML .= '<input type="hidden" name="TicketID" value="' . $TicketID . '">';
+    $HTML .= '<label for="qisutu-ticket-checklist-template">' . $Self->_Escape($AddLabel) . '</label>';
+    $HTML .= '<div class="qisutu-ticket-checklist-add-row"><select id="qisutu-ticket-checklist-template" name="ChecklistTemplateID" required>';
+    $HTML .= '<option value="">' . $Self->_Escape($NoSelection) . '</option>';
+    for my $Template ( @{$Templates} ) {
+        $HTML .= '<option value="' . int( $Template->{id} || 0 ) . '">' . $Self->_Escape( $Template->{name} || '' ) . '</option>';
+    }
+    $HTML .= '</select><button class="qisutu-button qisutu-button-primary qisutu-button-small" type="submit">' . $Self->_Escape($ButtonLabel) . '</button></div>';
+    $HTML .= '</form>';
+
+    return $HTML;
+}
+
+sub _ChecklistCloseError {
+    my ( $Self, %Param ) = @_;
+    my $Items = ref $Param{Items} eq 'ARRAY' ? $Param{Items} : [];
+    my $Language = $Param{Language} || 'en';
+    my $Prefix = $Language eq 'de'
+        ? 'Das Ticket kann nicht geschlossen werden. Offene Pflichtpunkte:'
+        : 'The ticket cannot be closed. Required checklist items are still open:';
+    my @Lines = map {
+        '- ' . ( $_->{checklist_name} || '' ) . ': ' . ( $_->{item_name} || '' )
+    } @{$Items};
+    return join( "
+", $Prefix, @Lines );
 }
 
 sub _Escape {

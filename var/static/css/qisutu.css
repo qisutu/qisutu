@@ -5055,3 +5055,290 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
         display: none;
     }
 }
+
+/* Checklists */
+.qisutu-checklist-item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.qisutu-checklist-item-header h3,
+.qisutu-checklist-item-header p {
+    margin-top: 0;
+}
+
+.qisutu-checklist-admin-items {
+    display: grid;
+    gap: 10px;
+}
+
+.qisutu-checklist-admin-item {
+    display: grid;
+    grid-template-columns: auto minmax(260px, 1fr) 120px auto auto;
+    grid-template-areas:
+        "drag name sort required remove"
+        "drag description description description remove";
+    align-items: end;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #d7e1e8;
+    border-radius: 8px;
+    background: #f8fbfd;
+}
+
+.qisutu-checklist-admin-item-name {
+    grid-area: name;
+}
+
+.qisutu-checklist-admin-item-description {
+    grid-area: description;
+}
+
+.qisutu-checklist-admin-item-description textarea {
+    min-height: 78px;
+    resize: vertical;
+}
+
+.qisutu-checklist-admin-item-sort {
+    grid-area: sort;
+}
+
+.qisutu-checklist-admin-item-remove {
+    grid-area: remove;
+    align-self: center;
+}
+
+.qisutu-checklist-drag-handle {
+    grid-area: drag;
+    align-self: center;
+    color: #748492;
+    font-size: 18px;
+}
+
+.qisutu-checklist-admin-item[draggable="true"] .qisutu-checklist-drag-handle {
+    cursor: grab;
+}
+
+.qisutu-checklist-admin-item-dragging {
+    opacity: 0.55;
+    outline: 2px solid #08738c;
+}
+
+.qisutu-checklist-required-checkbox {
+    grid-area: required;
+    align-self: center;
+    margin-bottom: 8px;
+    white-space: nowrap;
+}
+
+.qisutu-checklist-assignment-columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.qisutu-checklist-assignment-columns > div {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #d7e1e8;
+    border-radius: 8px;
+    background: #f8fbfd;
+}
+
+.qisutu-checklist-assignment-columns h3 {
+    margin: 0 0 10px;
+}
+
+.qisutu-checklist-assignment-link {
+    display: block;
+    padding: 7px 9px;
+    border-radius: 6px;
+    color: #005a73;
+    text-decoration: none;
+}
+
+.qisutu-checklist-assignment-link:hover {
+    background: #e7f2f6;
+}
+
+.qisutu-ticket-checklist-overall-progress,
+.qisutu-ticket-checklist-add-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.qisutu-ticket-checklist-overall-progress {
+    margin-bottom: 12px;
+}
+
+.qisutu-ticket-checklist-progress-track {
+    flex: 1 1 auto;
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #dce7ec;
+}
+
+.qisutu-ticket-checklist-progress-track > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #08738c;
+    transition: width 0.2s ease;
+}
+
+.qisutu-ticket-checklist-list {
+    display: grid;
+    gap: 10px;
+}
+
+.qisutu-ticket-checklist {
+    border: 1px solid #d7e1e8;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.qisutu-ticket-checklist summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 11px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.qisutu-ticket-checklist-complete summary {
+    color: #1c7337;
+}
+
+.qisutu-ticket-checklist-description {
+    margin: 0;
+    padding: 0 11px 9px;
+    color: #607080;
+    font-size: 12px;
+}
+
+.qisutu-ticket-checklist > .qisutu-ticket-checklist-progress-track {
+    margin: 0 11px 10px;
+}
+
+.qisutu-ticket-checklist-items {
+    border-top: 1px solid #e3ebef;
+}
+
+.qisutu-ticket-checklist-item-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 3px 8px;
+    padding: 9px 11px;
+    border-bottom: 1px solid #edf2f5;
+}
+
+.qisutu-ticket-checklist-item-form label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.qisutu-ticket-checklist-item-form input[type="checkbox"] {
+    margin-top: 2px;
+}
+
+.qisutu-ticket-checklist-item-content {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.qisutu-ticket-checklist-item-text {
+    font-weight: 700;
+}
+
+.qisutu-ticket-checklist-item-description {
+    color: #607080;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.qisutu-ticket-checklist-item-done .qisutu-ticket-checklist-item-text {
+    color: #6c7a84;
+    text-decoration: line-through;
+}
+
+.qisutu-ticket-checklist-item-done .qisutu-ticket-checklist-item-description {
+    color: #82909a;
+}
+
+.qisutu-ticket-checklist-required {
+    align-self: start;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #fff0e7;
+    color: #a33f00;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.qisutu-ticket-checklist-completion {
+    grid-column: 1 / -1;
+    padding-left: 26px;
+    color: #71808b;
+    font-size: 10px;
+}
+
+.qisutu-ticket-checklist-remove-form {
+    display: flex;
+    justify-content: flex-end;
+    padding: 9px 11px;
+}
+
+.qisutu-ticket-checklist-add-form {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #d7e1e8;
+}
+
+.qisutu-ticket-checklist-add-form > label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 700;
+}
+
+.qisutu-ticket-checklist-add-row select {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+@media (max-width: 900px) {
+    .qisutu-checklist-admin-item {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "name"
+            "description"
+            "sort"
+            "required"
+            "remove";
+        align-items: stretch;
+    }
+
+    .qisutu-checklist-drag-handle {
+        display: none;
+    }
+
+    .qisutu-checklist-assignment-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
+.qisutu-checklist-item-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
