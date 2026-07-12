@@ -1,0 +1,22 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+<section class="qisutu-dashboard qisutu-automation-admin" aria-labelledby="qisutu-automation-jobs-title">
+    <div class="qisutu-dashboard-header"><div><h1 id="qisutu-automation-jobs-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div></div>
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header">
+            <div><h2>[% Translate.AdminAutomationJobsList %]</h2><span class="qisutu-panel-subtitle">[% JobCount %]</span></div>
+            <form method="get" action="index.pl" class="qisutu-automation-job-filter"><input type="hidden" name="Page" value="AdminAutomationJobs"><select name="Status" onchange="this.form.submit()"><option value="" [% StatusAllSelected %]>[% Translate.AutomationAllStatuses %]</option><option value="pending" [% StatusPendingSelected %]>[% Translate.AutomationStatusPending %]</option><option value="running" [% StatusRunningSelected %]>[% Translate.AutomationStatusRunning %]</option><option value="successful" [% StatusSuccessfulSelected %]>[% Translate.AutomationStatusSuccessful %]</option><option value="failed" [% StatusFailedSelected %]>[% Translate.AutomationStatusFailed %]</option><option value="cancelled" [% StatusCancelledSelected %]>[% Translate.AutomationStatusCancelled %]</option></select></form>
+        </div>
+        [% IF JobCount %]
+        <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table"><thead><tr><th>ID</th><th>[% Translate.AutomationRule %]</th><th>[% Translate.AutomationJobType %]</th><th>Ticket</th><th>[% Translate.AutomationStatus %]</th><th>[% Translate.AutomationAttempts %]</th><th>[% Translate.AutomationScheduledAt %]</th><th>[% Translate.AutomationFinishedAt %]</th><th>[% Translate.AutomationError %]</th><th>[% Translate.AdminActions %]</th></tr></thead><tbody>
+        [% RAW.JobsRowsHTML %]
+        </tbody></table></div>
+        [% ELSE %]<div class="qisutu-empty"><strong>[% Translate.AutomationJobsEmpty %]</strong></div>[% END %]
+    </section>
+</section>

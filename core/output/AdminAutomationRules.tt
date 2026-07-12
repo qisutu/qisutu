@@ -1,0 +1,228 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+<section class="qisutu-dashboard qisutu-automation-admin" aria-labelledby="qisutu-automation-title">
+    <div class="qisutu-dashboard-header">
+        <div>
+            <h1 id="qisutu-automation-title">[% ProgramTitle %]</h1>
+            <p>[% ProgramDescription %]</p>
+        </div>
+        [% IF ShowForm %]
+            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=[% PageName %]">[% Translate.AdminBackToList %]</a>
+        [% END %]
+    </div>
+
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+    [% IF ShowList %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header">
+            <div><h2>[% ListTitle %]</h2><span class="qisutu-panel-subtitle">[% RuleCount %]</span></div>
+            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=[% PageName %];Action=Create">[% CreateTitle %]</a>
+        </div>
+        [% IF RuleCount %]
+        <div class="qisutu-admin-table-wrap">
+            <table class="qisutu-admin-table">
+                <thead>
+                    <tr>
+                        <th>[% Translate.AutomationName %]</th>
+                        [% IF RuleTypeIsTrigger %]<th>[% Translate.AutomationEvent %]</th>[% END %]
+                        [% IF RuleTypeIsSchedule %]<th>[% Translate.AutomationSchedule %]</th><th>[% Translate.AutomationNextRun %]</th>[% END %]
+                        <th>[% Translate.AutomationTicketSelection %]</th>
+                        <th>[% Translate.AutomationTicketChanges %]</th>
+                        <th>[% Translate.AdminActive %]</th>
+                        <th>[% Translate.AdminActions %]</th>
+                    </tr>
+                </thead>
+                <tbody>[% RAW.RulesRowsHTML %]                </tbody>
+            </table>
+        </div>
+        [% ELSE %]
+            <div class="qisutu-empty"><strong>[% Translate.AutomationRulesEmpty %]</strong></div>
+        [% END %]
+    </section>
+    [% END %]
+
+    [% IF ShowForm %]
+    <form class="qisutu-admin-form qisutu-admin-form-wide qisutu-automation-form" method="post" action="index.pl"
+        data-qisutu-multiselect-empty="[% Translate.AutomationMultiSelectEmpty %]"
+        data-qisutu-multiselect-choose="[% Translate.AutomationMultiSelectChoose %]"
+        data-qisutu-multiselect-selected="[% Translate.AutomationMultiSelectSelected %]"
+        data-qisutu-multiselect-more="[% Translate.AutomationMultiSelectMore %]"
+        data-qisutu-multiselect-search="[% Translate.AutomationMultiSelectSearch %]"
+        data-qisutu-multiselect-select-all="[% Translate.AutomationMultiSelectSelectAll %]"
+        data-qisutu-multiselect-clear="[% Translate.AutomationMultiSelectClear %]"
+        data-qisutu-multiselect-apply="[% Translate.AutomationMultiSelectApply %]"
+        data-qisutu-multiselect-cancel="[% Translate.AutomationMultiSelectCancel %]"
+        data-qisutu-multiselect-close="[% Translate.AutomationMultiSelectClose %]"
+        data-qisutu-multiselect-dialog-title="[% Translate.AutomationMultiSelectDialogTitle %]">
+        <input type="hidden" name="Page" value="[% PageName %]">
+        <input type="hidden" name="Step" value="[% FormStep %]" data-qisutu-automation-step>
+        <input type="hidden" name="RuleID" value="[% FormRuleID %]">
+
+        <section class="qisutu-panel">
+            <div class="qisutu-panel-header"><h2>[% FormTitle %]</h2></div>
+            <div class="qisutu-automation-base-grid">
+                <div class="qisutu-form-field"><label>[% Translate.AutomationName %] *</label><input type="text" name="Name" value="[% FormName %]" maxlength="255" required></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSortOrder %]</label><input type="number" name="SortOrder" value="[% FormSortOrder %]" min="1"></div>
+                [% IF RuleTypeIsTrigger %]
+                <div class="qisutu-form-field"><label>[% Translate.AutomationEvent %] *</label><select name="EventName" required><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.EventOptionsHTML %]</select></div>
+                [% END %]
+                <div class="qisutu-form-field qisutu-automation-description"><label>[% Translate.AdminDescription %]</label><textarea name="Description" rows="3">[% FormDescription %]</textarea></div>
+                <label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="Active" value="1" [% FormActiveChecked %]><span>[% Translate.AdminActive %]</span></label>
+            </div>
+        </section>
+
+        [% IF RuleTypeIsSchedule %]
+        <details class="qisutu-panel qisutu-automation-section" open>
+            <summary><span>[% Translate.AutomationSchedule %]</span><span class="qisutu-automation-summary-hint">[% Translate.AutomationExpandCollapse %]</span></summary>
+            <div class="qisutu-automation-section-content">
+                <div class="qisutu-automation-grid-4">
+                    <div class="qisutu-form-field"><label>[% Translate.AutomationScheduleType %]</label><select name="ScheduleType" data-qisutu-schedule-type><option value="every_minutes" [% ScheduleTypeEveryMinutesSelected %]>[% Translate.AutomationEveryMinutes %]</option><option value="hourly" [% ScheduleTypeHourlySelected %]>[% Translate.AutomationHourly %]</option><option value="daily" [% ScheduleTypeDailySelected %]>[% Translate.AutomationDaily %]</option><option value="weekly" [% ScheduleTypeWeeklySelected %]>[% Translate.AutomationWeekly %]</option><option value="monthly" [% ScheduleTypeMonthlySelected %]>[% Translate.AutomationMonthly %]</option></select></div>
+                    <div class="qisutu-form-field" data-qisutu-schedule-field="every_minutes"><label>[% Translate.AutomationIntervalMinutes %]</label><input type="number" name="ScheduleIntervalMinutes" value="[% ScheduleIntervalMinutes %]" min="1" max="1440"></div>
+                    <div class="qisutu-form-field" data-qisutu-schedule-field="hourly"><label>[% Translate.AutomationMinuteOfHour %]</label><input type="number" name="ScheduleMinute" value="[% ScheduleMinute %]" min="0" max="59"></div>
+                    <div class="qisutu-form-field" data-qisutu-schedule-field="daily weekly monthly"><label>[% Translate.AutomationTime %]</label><input type="time" name="ScheduleTime" value="[% ScheduleTime %]"></div>
+                    <div class="qisutu-form-field" data-qisutu-schedule-field="weekly"><label>[% Translate.AutomationWeekday %]</label><select name="ScheduleWeekday"><option value="1" [% ScheduleWeekday1Selected %]>[% Translate.AutomationMonday %]</option><option value="2" [% ScheduleWeekday2Selected %]>[% Translate.AutomationTuesday %]</option><option value="3" [% ScheduleWeekday3Selected %]>[% Translate.AutomationWednesday %]</option><option value="4" [% ScheduleWeekday4Selected %]>[% Translate.AutomationThursday %]</option><option value="5" [% ScheduleWeekday5Selected %]>[% Translate.AutomationFriday %]</option><option value="6" [% ScheduleWeekday6Selected %]>[% Translate.AutomationSaturday %]</option><option value="7" [% ScheduleWeekday7Selected %]>[% Translate.AutomationSunday %]</option></select></div>
+                    <div class="qisutu-form-field" data-qisutu-schedule-field="monthly"><label>[% Translate.AutomationMonthday %]</label><input type="number" name="ScheduleMonthday" value="[% ScheduleMonthday %]" min="1" max="28"></div>
+                </div>
+            </div>
+        </details>
+        [% END %]
+
+        <details class="qisutu-panel qisutu-automation-section" open>
+            <summary><span>1. [% Translate.AutomationTicketSelection %]</span><span class="qisutu-automation-summary-hint">[% Translate.AutomationExpandCollapse %]</span></summary>
+            <div class="qisutu-automation-section-content">
+                <div class="qisutu-automation-subsection">
+                    <h3>[% Translate.AutomationFreeText %]</h3>
+                    <div class="qisutu-automation-grid-3">
+                        <div class="qisutu-form-field"><label>[% Translate.TicketSearchText %]</label><input type="text" name="ConditionText" value="[% ConditionText %]"></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketSearchMode %]</label><select name="ConditionTextMode"><option value="all" [% ConditionTextModeAllSelected %]>[% Translate.TicketSearchModeAll %]</option><option value="any" [% ConditionTextModeAnySelected %]>[% Translate.TicketSearchModeAny %]</option><option value="phrase" [% ConditionTextModePhraseSelected %]>[% Translate.TicketSearchModePhrase %]</option></select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketNumber %]</label><input type="text" name="ConditionTicketNumber" value="[% ConditionTicketNumber %]"></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketTitle %]</label><input type="text" name="ConditionTitle" value="[% ConditionTitle %]"></div>
+                    </div>
+                    <div class="qisutu-automation-check-row">
+                        <label><input type="checkbox" name="ConditionScopeTitle" value="1" [% ConditionScopeTitleChecked %]> [% Translate.TicketSearchScopeTitle %]</label>
+                        <label><input type="checkbox" name="ConditionScopeArticle" value="1" [% ConditionScopeArticleChecked %]> [% Translate.TicketSearchScopeArticle %]</label>
+                        <label><input type="checkbox" name="ConditionScopePeople" value="1" [% ConditionScopePeopleChecked %]> [% Translate.TicketSearchScopePeople %]</label>
+                        <label><input type="checkbox" name="ConditionScopeAttachment" value="1" [% ConditionScopeAttachmentChecked %]> [% Translate.TicketSearchScopeAttachment %]</label>
+                    </div>
+                </div>
+
+                <div class="qisutu-automation-subsection">
+                    <h3>[% Translate.AutomationTicketData %]</h3>
+                    <div class="qisutu-automation-grid-3">
+                        <div class="qisutu-form-field"><label>[% Translate.TicketQueue %]</label><select name="ConditionQueueID" multiple size="6">[% RAW.QueueOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketStatus %]</label><select name="ConditionStateID" multiple size="6">[% RAW.StateOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketPriority %]</label><select name="ConditionPriorityID" multiple size="6">[% RAW.PriorityOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketCustomer %]</label><select name="ConditionCustomerID" multiple size="6">[% RAW.CustomerOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketCustomerUser %]</label><select name="ConditionCustomerUserID" multiple size="6">[% RAW.CustomerUserOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketOwner %]</label><select name="ConditionOwnerID" multiple size="6">[% RAW.OwnerConditionOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketResponsible %]</label><select name="ConditionResponsibleID" multiple size="6">[% RAW.ResponsibleConditionOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketService %]</label><select name="ConditionServiceID" multiple size="6">[% RAW.ServiceOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketSLA %]</label><select name="ConditionSLAID" multiple size="6">[% RAW.SLAOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketSearchEscalation %]</label><select name="ConditionEscalation" multiple size="6">[% RAW.EscalationOptionsHTML %]</select></div>
+                    </div>
+                    <div class="qisutu-automation-check-row">
+                        <label><input type="checkbox" name="ConditionNoOwner" value="1" [% ConditionNoOwnerChecked %]> [% Translate.AutomationNoOwner %]</label>
+                        <label><input type="checkbox" name="ConditionNoResponsible" value="1" [% ConditionNoResponsibleChecked %]> [% Translate.AutomationNoResponsible %]</label>
+                    </div>
+                </div>
+
+                <div class="qisutu-automation-subsection">
+                    <h3>[% Translate.AutomationTimes %]</h3>
+                    <div class="qisutu-automation-grid-3">
+                        <fieldset class="qisutu-automation-range"><legend>[% Translate.TicketSearchCreatedAt %]</legend><input type="datetime-local" name="ConditionCreatedFrom" value="[% ConditionCreatedFrom %]"><input type="datetime-local" name="ConditionCreatedTo" value="[% ConditionCreatedTo %]"></fieldset>
+                        <fieldset class="qisutu-automation-range"><legend>[% Translate.TicketSearchChangedAt %]</legend><input type="datetime-local" name="ConditionChangedFrom" value="[% ConditionChangedFrom %]"><input type="datetime-local" name="ConditionChangedTo" value="[% ConditionChangedTo %]"></fieldset>
+                        <fieldset class="qisutu-automation-range"><legend>[% Translate.TicketPendingUntil %]</legend><input type="datetime-local" name="ConditionPendingFrom" value="[% ConditionPendingFrom %]"><input type="datetime-local" name="ConditionPendingTo" value="[% ConditionPendingTo %]"></fieldset>
+                        <fieldset class="qisutu-automation-range"><legend>[% Translate.TicketSearchSolvedAt %]</legend><input type="datetime-local" name="ConditionSolutionFrom" value="[% ConditionSolutionFrom %]"><input type="datetime-local" name="ConditionSolutionTo" value="[% ConditionSolutionTo %]"></fieldset>
+                        <fieldset class="qisutu-automation-range"><legend>[% Translate.TicketFirstResponseDue %]</legend><input type="datetime-local" name="ConditionFirstResponseDueFrom" value="[% ConditionFirstResponseDueFrom %]"><input type="datetime-local" name="ConditionFirstResponseDueTo" value="[% ConditionFirstResponseDueTo %]"></fieldset>
+                        <fieldset class="qisutu-automation-range"><legend>[% Translate.TicketUpdateDue %]</legend><input type="datetime-local" name="ConditionUpdateDueFrom" value="[% ConditionUpdateDueFrom %]"><input type="datetime-local" name="ConditionUpdateDueTo" value="[% ConditionUpdateDueTo %]"></fieldset>
+                        <fieldset class="qisutu-automation-range"><legend>[% Translate.TicketSolutionDue %]</legend><input type="datetime-local" name="ConditionSolutionDueFrom" value="[% ConditionSolutionDueFrom %]"><input type="datetime-local" name="ConditionSolutionDueTo" value="[% ConditionSolutionDueTo %]"></fieldset>
+                        <div class="qisutu-form-field"><label>[% Translate.AutomationChangedOlderMinutes %]</label><input type="number" name="ConditionChangedOlderMinutes" value="[% ConditionChangedOlderMinutes %]" min="0"></div>
+                        <div class="qisutu-form-field"><label>[% Translate.AutomationCustomerReplyOlderMinutes %]</label><input type="number" name="ConditionLastCustomerOlderMinutes" value="[% ConditionLastCustomerOlderMinutes %]" min="0"></div>
+                        <div class="qisutu-form-field"><label>[% Translate.AutomationAgentReplyOlderMinutes %]</label><input type="number" name="ConditionLastAgentOlderMinutes" value="[% ConditionLastAgentOlderMinutes %]" min="0"></div>
+                    </div>
+                </div>
+
+                <div class="qisutu-automation-subsection">
+                    <h3>[% Translate.TicketDynamicFields %]</h3>
+                    <div class="qisutu-automation-dynamic-list">[% RAW.DynamicConditionHTML %]</div>
+                </div>
+
+                <div class="qisutu-form-actions qisutu-automation-preview-actions">
+                    <button class="qisutu-button qisutu-button-secondary" type="submit" data-qisutu-automation-preview data-preview-step="RulePreview">[% Translate.AutomationPreview %]</button>
+                </div>
+                [% IF PreviewVisible %]
+                <div class="qisutu-automation-preview">
+                    <h3>[% Translate.AutomationPreview %]: [% PreviewCount %] [% Translate.AutomationTicketsFound %]</h3>
+                    [% IF PreviewHasTickets %]
+                    <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table"><thead><tr><th>[% Translate.TicketNumber %]</th><th>[% Translate.TicketTitle %]</th><th>[% Translate.TicketQueue %]</th><th>[% Translate.TicketStatus %]</th><th>[% Translate.TicketPriority %]</th></tr></thead><tbody>
+                    [% RAW.PreviewRowsHTML %]
+                    </tbody></table></div>
+                    [% END %]
+                </div>
+                [% END %]
+            </div>
+        </details>
+
+        <details class="qisutu-panel qisutu-automation-section" open>
+            <summary><span>2. [% Translate.AutomationTicketChanges %]</span><span class="qisutu-automation-summary-hint">[% Translate.AutomationExpandCollapse %]</span></summary>
+            <div class="qisutu-automation-section-content">
+                <div class="qisutu-automation-subsection">
+                    <h3>[% Translate.AutomationFieldChanges %]</h3>
+                    <div class="qisutu-automation-grid-3">
+                        <div class="qisutu-form-field"><label>[% Translate.TicketQueue %]</label><select name="ActionQueueID"><option value="">[% Translate.AutomationKeepValue %]</option>[% RAW.ActionQueueOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketStatus %]</label><select name="ActionStateID"><option value="">[% Translate.AutomationKeepValue %]</option>[% RAW.ActionStateOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketPendingUntil %] ([% Translate.AutomationRelativeMinutes %])</label><input type="number" name="ActionPendingMinutes" value="[% ActionPendingMinutes %]" min="0"></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketPriority %]</label><select name="ActionPriorityID"><option value="">[% Translate.AutomationKeepValue %]</option>[% RAW.ActionPriorityOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketOwner %]</label><select name="ActionOwnerMode" data-qisutu-action-mode><option value="keep" [% ActionOwnerKeepSelected %]>[% Translate.AutomationKeepValue %]</option><option value="set" [% ActionOwnerSetSelected %]>[% Translate.AutomationSetValue %]</option><option value="clear" [% ActionOwnerClearSelected %]>[% Translate.AutomationClearValue %]</option></select><select name="ActionOwnerID">[% RAW.ActionOwnerOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketResponsible %]</label><select name="ActionResponsibleMode" data-qisutu-action-mode><option value="keep" [% ActionResponsibleKeepSelected %]>[% Translate.AutomationKeepValue %]</option><option value="set" [% ActionResponsibleSetSelected %]>[% Translate.AutomationSetValue %]</option><option value="clear" [% ActionResponsibleClearSelected %]>[% Translate.AutomationClearValue %]</option></select><select name="ActionResponsibleID">[% RAW.ActionResponsibleOptionsHTML %]</select></div>
+                        <div class="qisutu-form-field"><label>[% Translate.TicketService %] / [% Translate.TicketSLA %]</label><select name="ActionServiceMode" data-qisutu-action-mode><option value="keep" [% ActionServiceKeepSelected %]>[% Translate.AutomationKeepValue %]</option><option value="set" [% ActionServiceSetSelected %]>[% Translate.AutomationSetValue %]</option><option value="clear" [% ActionServiceClearSelected %]>[% Translate.AutomationClearValue %]</option></select><select name="ActionServiceID">[% RAW.ActionServiceOptionsHTML %]</select></div>
+                    </div>
+                </div>
+
+                <div class="qisutu-automation-subsection">
+                    <h3>[% Translate.TicketDynamicFields %]</h3>
+                    <div class="qisutu-automation-dynamic-list">[% RAW.DynamicActionHTML %]</div>
+                </div>
+
+                <div class="qisutu-automation-subsection">
+                    <h3>[% Translate.AutomationCommunication %]</h3>
+                    <div class="qisutu-automation-communication-grid">
+                        <div class="qisutu-automation-action-card"><label class="qisutu-form-checkbox"><input type="checkbox" name="ActionNoteEnabled" value="1" [% ActionNoteEnabledChecked %]><span>[% Translate.AutomationAddNote %]</span></label><input type="text" name="ActionNoteSubject" value="[% ActionNoteSubject %]" placeholder="[% Translate.TicketSubject %]"><textarea name="ActionNoteBody" rows="6" placeholder="[% Translate.TicketArticleBody %]">[% ActionNoteBody %]</textarea><label class="qisutu-form-checkbox"><input type="checkbox" name="ActionNoteCustomerVisible" value="1" [% ActionNoteCustomerVisibleChecked %]><span>[% Translate.TicketNoteCustomerVisible %]</span></label></div>
+                        <div class="qisutu-automation-action-card"><label class="qisutu-form-checkbox"><input type="checkbox" name="ActionEmailEnabled" value="1" [% ActionEmailEnabledChecked %]><span>[% Translate.AutomationSendCustomerEmail %]</span></label><input type="text" name="ActionEmailSubject" value="[% ActionEmailSubject %]" placeholder="[% Translate.TicketSubject %]"><textarea name="ActionEmailBody" rows="6" placeholder="[% Translate.TicketArticleBody %]">[% ActionEmailBody %]</textarea></div>
+                        <div class="qisutu-automation-action-card">
+                            <label>[% Translate.AutomationAgentNotify %]</label>
+                            <select name="ActionAgentNotifyMode" data-qisutu-agent-notify-mode>
+                                <option value="none" [% ActionAgentNotifyModeNoneSelected %]>[% Translate.AutomationAgentNotifyNone %]</option>
+                                <option value="queue" [% ActionAgentNotifyModeQueueSelected %]>[% Translate.AutomationAgentNotifyQueue %]</option>
+                                <option value="agent" [% ActionAgentNotifyModeAgentSelected %]>[% Translate.AutomationAgentNotifyAgent %]</option>
+                            </select>
+                            <select name="ActionAgentNotifyUserID" data-qisutu-agent-notify-user><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.ActionAgentNotifyUserOptionsHTML %]</select>
+                            <input type="text" name="ActionAgentNotifySubject" value="[% ActionAgentNotifySubject %]" placeholder="[% Translate.TicketSubject %]">
+                            <textarea name="ActionAgentNotifyBody" rows="6" placeholder="[% Translate.TicketArticleBody %]">[% ActionAgentNotifyBody %]</textarea>
+                            <p class="qisutu-form-hint">[% Translate.AutomationAgentNotifyPlaceholders %]</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="qisutu-automation-delete-box">
+                    <h3>[% Translate.AutomationDeleteTickets %]</h3>
+                    <p>[% Translate.AutomationDeleteWarning %]</p>
+                    <label class="qisutu-form-checkbox"><input type="checkbox" name="ActionDeleteTickets" value="1" [% ActionDeleteTicketsChecked %]><span>[% Translate.AutomationDeleteEnable %]</span></label>
+                    <div class="qisutu-form-field"><label>[% Translate.AutomationDeleteConfirm %]</label><input type="text" name="ActionDeleteConfirmText" value="[% ActionDeleteConfirmText %]" autocomplete="off" placeholder="DELETE"></div>
+                </div>
+            </div>
+        </details>
+
+        <div class="qisutu-form-actions qisutu-automation-save-actions">
+            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+        </div>
+    </form>
+    <script src="[% StaticBase %]/js/qisutu-automation.js?v=2026071204"></script>
+    [% END %]
+</section>

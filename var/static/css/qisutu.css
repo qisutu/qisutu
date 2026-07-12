@@ -4102,3 +4102,656 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
         flex-wrap: wrap;
     }
 }
+
+/* Automation administration */
+.qisutu-automation-form {
+    display: grid;
+    gap: 16px;
+}
+
+.qisutu-automation-base-grid,
+.qisutu-automation-grid-3,
+.qisutu-automation-grid-4 {
+    display: grid;
+    gap: 14px;
+}
+
+.qisutu-automation-base-grid,
+.qisutu-automation-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.qisutu-automation-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.qisutu-automation-description {
+    grid-column: span 2;
+}
+
+.qisutu-automation-section {
+    padding: 0;
+    overflow: hidden;
+}
+
+.qisutu-automation-section > summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    color: #20313d;
+    font-size: 17px;
+    font-weight: 800;
+    cursor: pointer;
+    list-style: none;
+}
+
+.qisutu-automation-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.qisutu-automation-section > summary::after {
+    content: '▾';
+    color: #00657d;
+    font-size: 18px;
+    transition: transform 0.16s ease;
+}
+
+.qisutu-automation-section:not([open]) > summary::after {
+    transform: rotate(-90deg);
+}
+
+.qisutu-automation-summary-hint {
+    margin-left: auto;
+    color: #71808c;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.qisutu-automation-section-content {
+    display: grid;
+    gap: 18px;
+    padding: 0 20px 20px;
+    border-top: 1px solid #e1e8ed;
+}
+
+.qisutu-automation-subsection {
+    padding-top: 18px;
+}
+
+.qisutu-automation-subsection h3,
+.qisutu-automation-delete-box h3,
+.qisutu-automation-preview h3 {
+    margin: 0 0 12px;
+    color: #263743;
+    font-size: 15px;
+}
+
+.qisutu-automation-check-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    margin-top: 12px;
+}
+
+.qisutu-automation-check-row label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.qisutu-automation-check-row input,
+.qisutu-automation-dynamic-row input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    accent-color: #00657d;
+}
+
+.qisutu-automation-range {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid #d7e1e8;
+    border-radius: 8px;
+}
+
+.qisutu-automation-range legend {
+    padding: 0 5px;
+    color: #263743;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.qisutu-automation-dynamic-list {
+    display: grid;
+    gap: 10px;
+}
+
+.qisutu-automation-dynamic-row {
+    display: grid;
+    grid-template-columns: minmax(190px, 0.8fr) minmax(140px, 0.55fr) minmax(180px, 1fr) minmax(180px, 1fr);
+    align-items: start;
+    gap: 9px;
+    padding: 10px;
+    border: 1px solid #dce5eb;
+    border-radius: 8px;
+    background: #fbfcfd;
+}
+
+.qisutu-automation-dynamic-row .qisutu-form-checkbox {
+    margin-top: 9px;
+}
+
+.qisutu-automation-dynamic-row select,
+.qisutu-automation-dynamic-row input,
+.qisutu-automation-communication-grid input,
+.qisutu-automation-communication-grid textarea,
+.qisutu-automation-delete-box input,
+.qisutu-automation-job-filter select,
+.qisutu-automation-range input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid #cbd8e2;
+    border-radius: 7px;
+    background: #fff;
+    color: #1e2933;
+    font: inherit;
+}
+
+.qisutu-automation-dynamic-row select,
+.qisutu-automation-dynamic-row input,
+.qisutu-automation-communication-grid input,
+.qisutu-automation-delete-box input,
+.qisutu-automation-job-filter select,
+.qisutu-automation-range input {
+    min-height: 40px;
+    padding: 8px 10px;
+}
+
+.qisutu-automation-communication-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.qisutu-automation-action-card {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid #dce5eb;
+    border-radius: 8px;
+    background: #fbfcfd;
+}
+
+.qisutu-automation-action-card textarea {
+    min-height: 130px;
+    padding: 10px;
+    resize: vertical;
+}
+
+.qisutu-automation-delete-box {
+    padding: 16px;
+    border: 2px solid #c43e3e;
+    border-radius: 9px;
+    background: #fff4f4;
+}
+
+.qisutu-automation-delete-box p {
+    margin: 0 0 12px;
+    color: #7c2020;
+    font-weight: 700;
+}
+
+.qisutu-automation-delete-box .qisutu-form-field {
+    max-width: 360px;
+    margin-top: 12px;
+}
+
+.qisutu-automation-preview-actions,
+.qisutu-automation-save-actions {
+    justify-content: flex-end;
+}
+
+.qisutu-automation-preview {
+    padding: 15px;
+    border: 1px solid #a9ccd5;
+    border-radius: 8px;
+    background: #f2fafc;
+}
+
+.qisutu-automation-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.qisutu-automation-status-pending {
+    background: #fff2c9;
+    color: #785900;
+}
+
+.qisutu-automation-status-running {
+    background: #dcefff;
+    color: #14527a;
+}
+
+.qisutu-automation-status-successful {
+    background: #dff3e5;
+    color: #176331;
+}
+
+.qisutu-automation-status-failed {
+    background: #ffe0e0;
+    color: #8b2020;
+}
+
+.qisutu-automation-status-cancelled {
+    background: #e8ecef;
+    color: #4d5963;
+}
+
+.qisutu-automation-job-error {
+    max-width: 320px;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.qisutu-automation-job-filter select {
+    min-width: 190px;
+}
+
+.qisutu-inline-form {
+    display: inline-block;
+    margin: 2px;
+}
+
+[data-qisutu-schedule-field][hidden],
+.qisutu-form-field select[hidden] {
+    display: none !important;
+}
+
+@media (max-width: 1150px) {
+    .qisutu-automation-base-grid,
+    .qisutu-automation-grid-3,
+    .qisutu-automation-grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .qisutu-automation-dynamic-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .qisutu-automation-base-grid,
+    .qisutu-automation-grid-3,
+    .qisutu-automation-grid-4,
+    .qisutu-automation-communication-grid,
+    .qisutu-automation-dynamic-row,
+    .qisutu-automation-range {
+        grid-template-columns: 1fr;
+    }
+
+    .qisutu-automation-description {
+        grid-column: auto;
+    }
+
+    .qisutu-automation-summary-hint {
+        display: none;
+    }
+}
+
+/* Reusable readable multiple selection for automation forms */
+.qisutu-smart-multiselect {
+    width: 100%;
+    min-width: 0;
+}
+
+.qisutu-smart-multiselect-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 48px;
+    padding: 7px 10px;
+    border: 1px solid #cbd8e2;
+    border-radius: 8px;
+    background: #fff;
+    color: #1e2933;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.qisutu-smart-multiselect-trigger:hover {
+    border-color: #7ea8b6;
+    background: #fbfdfe;
+}
+
+.qisutu-smart-multiselect-trigger:focus-visible {
+    outline: none;
+    border-color: #00657d;
+    box-shadow: 0 0 0 3px rgba(0, 101, 125, 0.14);
+}
+
+.qisutu-smart-multiselect-summary {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.qisutu-smart-multiselect-placeholder {
+    color: #6f7d88;
+    white-space: nowrap;
+}
+
+.qisutu-smart-multiselect-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 190px;
+    min-height: 28px;
+    padding: 4px 8px;
+    border: 1px solid #bfd5dc;
+    border-radius: 999px;
+    background: #edf7fa;
+    color: #005a70;
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qisutu-smart-multiselect-chip-more {
+    flex: 0 0 auto;
+    background: #f2f4f6;
+    border-color: #d8e0e5;
+    color: #53616c;
+}
+
+.qisutu-smart-multiselect-meta {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+    color: #00657d;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.qisutu-smart-multiselect-chevron {
+    font-size: 18px;
+    line-height: 1;
+    transform: translateY(-1px);
+}
+
+.qisutu-smart-multiselect-trigger[aria-expanded="true"] .qisutu-smart-multiselect-chevron {
+    transform: rotate(180deg) translateY(1px);
+}
+
+.qisutu-smart-multiselect-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 4600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(22, 35, 45, 0.56);
+    backdrop-filter: blur(2px);
+}
+
+.qisutu-smart-multiselect-overlay[hidden] {
+    display: none;
+}
+
+.qisutu-smart-multiselect-dialog {
+    display: grid;
+    grid-template-rows: auto auto auto minmax(180px, 1fr) auto;
+    width: min(680px, 100%);
+    max-height: min(760px, calc(100vh - 48px));
+    overflow: hidden;
+    border: 1px solid #cbd8e2;
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 24px 70px rgba(19, 38, 50, 0.28);
+}
+
+.qisutu-smart-multiselect-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 19px 20px 16px;
+    border-bottom: 1px solid #e1e8ed;
+}
+
+.qisutu-smart-multiselect-header-text {
+    min-width: 0;
+}
+
+.qisutu-smart-multiselect-eyebrow {
+    display: block;
+    margin-bottom: 3px;
+    color: #71808c;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.qisutu-smart-multiselect-header h2 {
+    margin: 0;
+    color: #1e2933;
+    font-size: 21px;
+    line-height: 1.25;
+}
+
+.qisutu-smart-multiselect-close {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 1px solid #cbd8e2;
+    border-radius: 8px;
+    background: #fff;
+    color: #40515d;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.qisutu-smart-multiselect-close:hover,
+.qisutu-smart-multiselect-close:focus-visible {
+    border-color: #00657d;
+    color: #00657d;
+    outline: none;
+}
+
+.qisutu-smart-multiselect-search {
+    position: relative;
+    padding: 15px 20px 10px;
+}
+
+.qisutu-smart-multiselect-search input {
+    width: 100%;
+    min-height: 44px;
+    padding: 9px 12px 9px 40px;
+    border: 1px solid #cbd8e2;
+    border-radius: 8px;
+    background: #fff;
+    color: #1e2933;
+    font: inherit;
+}
+
+.qisutu-smart-multiselect-search input:focus {
+    outline: none;
+    border-color: #00657d;
+    box-shadow: 0 0 0 3px rgba(0, 101, 125, 0.12);
+}
+
+.qisutu-smart-multiselect-search-icon {
+    position: absolute;
+    left: 34px;
+    top: 50%;
+    color: #667784;
+    font-size: 22px;
+    transform: translateY(-36%);
+    pointer-events: none;
+}
+
+.qisutu-smart-multiselect-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 20px 12px;
+}
+
+.qisutu-smart-multiselect-dialog-count {
+    color: #42535f;
+    font-size: 13px;
+}
+
+.qisutu-smart-multiselect-toolbar-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.qisutu-smart-multiselect-list {
+    min-height: 180px;
+    margin: 0 20px;
+    overflow: auto;
+    border: 1px solid #d8e2e8;
+    border-radius: 9px;
+    background: #fbfcfd;
+}
+
+.qisutu-smart-multiselect-option {
+    position: relative;
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-height: 45px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e6ecef;
+    color: #24343f;
+    cursor: pointer;
+}
+
+.qisutu-smart-multiselect-option:last-child {
+    border-bottom: 0;
+}
+
+.qisutu-smart-multiselect-option:hover {
+    background: #edf7fa;
+}
+
+.qisutu-smart-multiselect-option[aria-selected="true"] {
+    background: #e5f4f8;
+    color: #004f63;
+    font-weight: 750;
+}
+
+.qisutu-smart-multiselect-option input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.qisutu-smart-multiselect-checkmark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 21px;
+    height: 21px;
+    border: 2px solid #aebdc7;
+    border-radius: 5px;
+    background: #fff;
+    color: transparent;
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.qisutu-smart-multiselect-option[aria-selected="true"] .qisutu-smart-multiselect-checkmark {
+    border-color: #00657d;
+    background: #00657d;
+    color: #fff;
+}
+
+.qisutu-smart-multiselect-option:focus-within {
+    outline: 2px solid #76aebe;
+    outline-offset: -2px;
+}
+
+.qisutu-smart-multiselect-option-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.qisutu-smart-multiselect-no-results {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    padding: 20px;
+    color: #71808c;
+    text-align: center;
+}
+
+.qisutu-smart-multiselect-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px 19px;
+    border-top: 1px solid #e1e8ed;
+}
+
+@media (max-width: 760px) {
+    .qisutu-smart-multiselect-overlay {
+        align-items: flex-end;
+        padding: 10px;
+    }
+
+    .qisutu-smart-multiselect-dialog {
+        max-height: calc(100vh - 20px);
+        border-radius: 13px 13px 9px 9px;
+    }
+
+    .qisutu-smart-multiselect-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .qisutu-smart-multiselect-toolbar-buttons {
+        justify-content: flex-start;
+    }
+
+    .qisutu-smart-multiselect-chip {
+        max-width: 120px;
+    }
+}
