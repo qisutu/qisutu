@@ -67,7 +67,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                 <div class="qisutu-form-field">
                     <label>[% Translate.PreferencesTicketListLimit %]</label>
-                    <input type="number" name="TicketListLimit" value="[% TicketListLimit %]" min="10" max="200">
+                    <select name="TicketListLimit">
+                        <option value="10" [% IF TicketListLimit == 10 %]selected[% END %]>10</option>
+                        <option value="20" [% IF TicketListLimit == 20 %]selected[% END %]>20</option>
+                        <option value="30" [% IF TicketListLimit == 30 %]selected[% END %]>30</option>
+                        <option value="40" [% IF TicketListLimit == 40 %]selected[% END %]>40</option>
+                        <option value="50" [% IF TicketListLimit == 50 %]selected[% END %]>50</option>
+                    </select>
                 </div>
             </div>
         </section>

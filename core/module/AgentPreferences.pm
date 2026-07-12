@@ -85,7 +85,7 @@ sub Run {
             ),
             StartPageDashboardSelected       => ( ( $Preference->{start_page} || '' ) eq 'Dashboard' ? 'selected' : '' ),
             StartPageTicketListSelected      => ( ( $Preference->{start_page} || '' ) eq 'AgentTicketList' ? 'selected' : '' ),
-            TicketListLimit                  => $Preference->{ticket_list_limit} || 25,
+            TicketListLimit                  => $Preference->{ticket_list_limit} || 20,
             AfterReplyStaySelected           => ( ( $Preference->{ticket_after_reply_action} || '' ) eq 'stay' ? 'selected' : '' ),
             AfterReplyListSelected           => ( ( $Preference->{ticket_after_reply_action} || '' ) eq 'list' ? 'selected' : '' ),
             AfterReplyNextSelected           => ( ( $Preference->{ticket_after_reply_action} || '' ) eq 'next' ? 'selected' : '' ),

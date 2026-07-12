@@ -51,13 +51,22 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             </button>
                         </div>
 
-                        <span class="qisutu-panel-counter">[% TicketCount %]</span>
+                        <div class="qisutu-ticket-list-toolbar-right">
+                            [% RAW.PerPageHTML %]
+                            [% RAW.PaginationTopHTML %]
+                            <span class="qisutu-panel-counter" title="[% Translate.TicketListTotalTickets %]">[% TicketCount %]</span>
+                        </div>
                     </div>
 
                     [% RAW.FilterHTML %]
 
                     [% IF HasTickets %]
                     [% RAW.TableHTML %]
+                    [% IF PaginationBottomHTML %]
+                    <div class="qisutu-ticket-list-pagination-bottom">
+                        [% RAW.PaginationBottomHTML %]
+                    </div>
+                    [% END %]
                     [% ELSE %]
                     <div class="qisutu-empty">
                         <strong>[% Translate.TicketListEmptyTitle %]</strong>
@@ -79,4 +88,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     </section>
                 </div>
             </section>
-            <script src="[% StaticBase %]/js/qisutu-ticket-list.js?v=2026071050"></script>
+            <script src="[% StaticBase %]/js/qisutu-ticket-list.js?v=2026071201"></script>

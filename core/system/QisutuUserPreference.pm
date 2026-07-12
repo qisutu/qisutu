@@ -461,7 +461,7 @@ sub _DefaultAgentPreferences {
         language                      => $Self->_LanguageClean( $Self->{Config}->{Language}->{Default} || 'en' ),
         timezone                      => 'Europe/Berlin',
         start_page                    => 'Dashboard',
-        ticket_list_limit             => 25,
+        ticket_list_limit             => 20,
         ticket_after_reply_action     => 'stay',
         ticket_list_columns            => 'ticket_number,title,queue,state,priority,customer,customer_user,owner,escalation_state,next_escalation,pending_until,changed',
         notification_new_ticket       => 1,
@@ -508,11 +508,8 @@ sub _StartPageClean {
 sub _TicketListLimitClean {
     my ( $Self, $Limit ) = @_;
 
-    $Limit = 25 if !defined $Limit || $Limit !~ m{\A\d+\z};
-    $Limit = 10 if $Limit < 10;
-    $Limit = 200 if $Limit > 200;
-
-    return $Limit;
+    return int($Limit) if defined $Limit && $Limit =~ m{\A(?:10|20|30|40|50)\z};
+    return 20;
 }
 
 sub _AfterReplyActionClean {

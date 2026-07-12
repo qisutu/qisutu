@@ -67,11 +67,17 @@ sub Run {
     my $FilterCustomerID     = $Self->_FilterIDClean( $Request->{FilterCustomerID} );
     my $FilterCustomerUserID = $Self->_FilterIDClean( $Request->{FilterCustomerUserID} );
     my $FilterOwnerID        = $Self->_OwnerFilterClean( $Request->{FilterOwnerID} );
-    my $SortBy           = $Self->_SortByClean(
+    my $SortBy = $Self->_SortByClean(
         SortBy        => $Request->{SortBy},
         AllowedColumn => $AllowedColumn,
     );
-    my $SortDirection    = $Self->_SortDirectionClean( $Request->{SortDirection} );
+    my $SortDirection = $Self->_SortDirectionClean( $Request->{SortDirection} );
+    my $PerPageExplicit = $Self->_PerPageIsValid( $Request->{PerPage} );
+    my $PerPage = $Self->_PerPageClean(
+        Value   => $Request->{PerPage},
+        Default => $Self->_TicketListLimit( User => $User, Preference => $Preference ),
+    );
+    my $ListPage = $Self->_ListPageClean( $Request->{ListPage} );
 
     if ( $PreferenceObject && ( $Request->{Step} || '' ) eq 'TicketListColumnsSave' ) {
         my @Selected;
@@ -93,13 +99,15 @@ sub Run {
         if ( !$PreferenceObject->Error() ) {
             return {
                 Redirect => $Self->_ListURL(
-                    View             => $View,
-                    FilterQueueID    => $FilterQueueID,
+                    View                 => $View,
+                    FilterQueueID        => $FilterQueueID,
                     FilterCustomerID     => $FilterCustomerID,
                     FilterCustomerUserID => $FilterCustomerUserID,
                     FilterOwnerID        => $FilterOwnerID,
-                    SortBy           => $SortBy,
-                    SortDirection    => $SortDirection,
+                    SortBy               => $SortBy,
+                    SortDirection        => $SortDirection,
+                    PerPage              => $PerPage,
+                    ListPage             => $ListPage,
                 ),
             };
         }
@@ -118,6 +126,7 @@ sub Run {
     }
 
     my $Tickets = [];
+    my $TicketCount = 0;
     my $FilterOptions = {
         Queues        => [],
         Customers     => [],
@@ -130,32 +139,56 @@ sub Run {
             User => $User,
         );
 
-        my @VisibleDynamicFields = grep { $_->{dynamic} } @VisibleColumns;
-
-        $Tickets = $TicketObject->TicketList(
-            Limit            => $Self->_TicketListLimit( User => $User, Preference => $Preference ),
-            User             => $User,
-            ZoomPage         => 'AgentTicketZoom',
-            Language         => $Language,
-            View             => $View,
-            FilterQueueID    => $FilterQueueID,
+        $TicketCount = $TicketObject->TicketListCount(
+            User                 => $User,
+            View                 => $View,
+            FilterQueueID        => $FilterQueueID,
             FilterCustomerID     => $FilterCustomerID,
             FilterCustomerUserID => $FilterCustomerUserID,
             FilterOwnerID        => $FilterOwnerID,
-            SortBy           => $SortBy,
-            SortDirection    => $SortDirection,
-            DynamicFields    => \@VisibleDynamicFields,
         );
+
+        my $TotalPages = $TicketCount > 0
+            ? int( ( $TicketCount + $PerPage - 1 ) / $PerPage )
+            : 1;
+        $ListPage = $TotalPages if $ListPage > $TotalPages;
+        $ListPage = 1 if $ListPage < 1;
+
+        my @VisibleDynamicFields = grep { $_->{dynamic} } @VisibleColumns;
+
+        if ($TicketCount) {
+            $Tickets = $TicketObject->TicketList(
+                Limit                => $PerPage,
+                Offset               => ( $ListPage - 1 ) * $PerPage,
+                User                 => $User,
+                ZoomPage             => 'AgentTicketZoom',
+                Language             => $Language,
+                View                 => $View,
+                FilterQueueID        => $FilterQueueID,
+                FilterCustomerID     => $FilterCustomerID,
+                FilterCustomerUserID => $FilterCustomerUserID,
+                FilterOwnerID        => $FilterOwnerID,
+                SortBy               => $SortBy,
+                SortDirection        => $SortDirection,
+                DynamicFields        => \@VisibleDynamicFields,
+            );
+        }
     }
 
+    my $TotalPages = $TicketCount > 0
+        ? int( ( $TicketCount + $PerPage - 1 ) / $PerPage )
+        : 1;
+
     my $Context = {
-        View             => $View,
-        FilterQueueID    => $FilterQueueID,
+        View                 => $View,
+        FilterQueueID        => $FilterQueueID,
         FilterCustomerID     => $FilterCustomerID,
         FilterCustomerUserID => $FilterCustomerUserID,
         FilterOwnerID        => $FilterOwnerID,
-        SortBy           => $SortBy,
-        SortDirection    => $SortDirection,
+        SortBy               => $SortBy,
+        SortDirection        => $SortDirection,
+        PerPage              => $PerPage,
+        ListPage             => $ListPage,
     };
 
     my $ErrorMessage = '';
@@ -166,13 +199,20 @@ sub Run {
         $ErrorMessage = $TicketObject->Error();
     }
 
+    my $PaginationHTML = $Self->_PaginationHTML(
+        Context      => $Context,
+        CurrentPage  => $ListPage,
+        TotalPages   => $TotalPages,
+        Language     => $Language,
+    );
+
     return {
         Template => 'AgentTicketList.tt',
         Data     => {
             PageTitle          => 'Translate:AgentTicketListTitle',
             ProgramTitle       => 'Translate:AgentTicketListTitle',
             ProgramDescription => 'Translate:ProgramTicketsDescription',
-            TicketCount        => scalar @{$Tickets},
+            TicketCount        => $TicketCount,
             ErrorMessage       => $ErrorMessage,
             ErrorClass         => $ErrorMessage ? '' : 'qisutu-hidden',
             ViewMenuHTML       => $Self->_ViewMenuHTML( Context => $Context, Language => $Language ),
@@ -182,13 +222,22 @@ sub Run {
                 FilterOptions => $FilterOptions,
                 Language      => $Language,
             ),
+            PerPageHTML => $Self->_PerPageHTML(
+                Context          => $Context,
+                Language         => $Language,
+                UserAccountID    => $User->{user_account_id} || 0,
+                PerPageExplicit  => $PerPageExplicit,
+                ListType         => 'agent',
+            ),
+            PaginationTopHTML    => $PaginationHTML,
+            PaginationBottomHTML => $PaginationHTML,
             ColumnChooserHTML => $Self->_ColumnChooserHTML(
                 Columns        => $ColumnDefinitions,
                 SelectedColumn => \%SelectedColumn,
                 Context        => $Context,
                 Language       => $Language,
             ),
-            TableHTML         => $Self->_TableHTML(
+            TableHTML => $Self->_TableHTML(
                 Tickets       => $Tickets,
                 Columns       => \@VisibleColumns,
                 Context       => $Context,
@@ -316,6 +365,7 @@ sub _ViewMenuHTML {
         my ( $Key, $LabelKey ) = @{$View};
         my %URLContext = %{$Context};
         $URLContext{View} = $Key;
+        $URLContext{ListPage} = 1;
         my $URL = $Self->_ListURL(%URLContext);
         my $Active = ( $Context->{View} || '' ) eq $Key ? ' qisutu-ticket-list-view-active' : '';
         my $Current = ( $Context->{View} || '' ) eq $Key ? '<span aria-hidden="true">✓</span>' : '<span aria-hidden="true"></span>';
@@ -358,6 +408,7 @@ sub _FilterHTML {
     $HTML .= '<input type="hidden" name="View" value="' . $Self->_Escape( $Context->{View} || 'new' ) . '">';
     $HTML .= '<input type="hidden" name="SortBy" value="' . $Self->_Escape( $Context->{SortBy} || 'changed' ) . '">';
     $HTML .= '<input type="hidden" name="SortDirection" value="' . $Self->_Escape( $Context->{SortDirection} || 'desc' ) . '">';
+    $HTML .= '<input type="hidden" name="PerPage" value="' . $Self->_Escape( $Context->{PerPage} || 20 ) . '">';
 
     $HTML .= $Self->_FilterSelectHTML(
         Name        => 'FilterQueueID',
@@ -397,6 +448,7 @@ sub _FilterHTML {
         $ResetContext{FilterCustomerID} = '';
         $ResetContext{FilterCustomerUserID} = '';
         $ResetContext{FilterOwnerID} = '';
+        $ResetContext{ListPage} = 1;
         $HTML .= '<a class="qisutu-button qisutu-button-secondary qisutu-ticket-list-filter-reset" href="' . $Self->_Escape( $Self->_ListURL(%ResetContext) ) . '">';
         $HTML .= $Self->_Escape( $Self->_Translate( Key => 'TicketListResetFilters', Language => $Language ) );
         $HTML .= '</a>';
@@ -449,7 +501,7 @@ sub _ColumnChooserHTML {
     $HTML .= '<input type="hidden" name="Page" value="AgentTicketList">';
     $HTML .= '<input type="hidden" name="Step" value="TicketListColumnsSave">';
 
-    for my $Name (qw(View FilterQueueID FilterCustomerID FilterCustomerUserID FilterOwnerID SortBy SortDirection)) {
+    for my $Name (qw(View FilterQueueID FilterCustomerID FilterCustomerUserID FilterOwnerID SortBy SortDirection PerPage ListPage)) {
         my $Value = $Context->{$Name} || '';
         $HTML .= '<input type="hidden" name="' . $Self->_Escape($Name) . '" value="' . $Self->_Escape($Value) . '">';
     }
@@ -468,6 +520,114 @@ sub _ColumnChooserHTML {
     $HTML .= '<button class="qisutu-button qisutu-button-primary" type="submit">' . $Self->_Escape( $Self->_Translate( Key => 'AdminSave', Language => $Language ) ) . '</button>';
     $HTML .= '<button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-ticket-list-columns-close>' . $Self->_Escape( $Self->_Translate( Key => 'AdminCancel', Language => $Language ) ) . '</button>';
     $HTML .= '</div></form>';
+
+    return $HTML;
+}
+
+sub _PerPageHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Context         = $Param{Context} || {};
+    my $Language        = $Param{Language} || 'en';
+    my $UserAccountID   = $Param{UserAccountID} || 0;
+    my $PerPageExplicit = $Param{PerPageExplicit} ? 1 : 0;
+    my $ListType        = $Param{ListType} || 'agent';
+    my $Selected        = $Self->_PerPageClean(
+        Value   => $Context->{PerPage},
+        Default => 20,
+    );
+    my $StorageKey = 'qisutu.ticketList.perPage.' . $ListType . '.' . $UserAccountID;
+
+    my $HTML = '<form class="qisutu-ticket-list-per-page-form" method="get" action="index.pl"';
+    $HTML .= ' data-qisutu-ticket-list-per-page-form';
+    $HTML .= ' data-qisutu-ticket-list-per-page-storage="' . $Self->_Escape($StorageKey) . '"';
+    $HTML .= ' data-qisutu-ticket-list-per-page-explicit="' . $PerPageExplicit . '">';
+    $HTML .= '<input type="hidden" name="Page" value="AgentTicketList">';
+
+    for my $Name (qw(View FilterQueueID FilterCustomerID FilterCustomerUserID FilterOwnerID SortBy SortDirection)) {
+        my $Value = $Context->{$Name} || '';
+        next if $Value eq '' && $Name =~ m{\AFilter};
+        $HTML .= '<input type="hidden" name="' . $Self->_Escape($Name) . '" value="' . $Self->_Escape($Value) . '">';
+    }
+
+    $HTML .= '<label class="qisutu-ticket-list-per-page-label">';
+    $HTML .= '<span>' . $Self->_Escape( $Self->_Translate( Key => 'TicketListPerPage', Language => $Language ) ) . '</span>';
+    $HTML .= '<select name="PerPage" data-qisutu-ticket-list-per-page>';
+
+    for my $Value ( 10, 20, 30, 40, 50 ) {
+        my $SelectedAttribute = $Value == $Selected ? ' selected' : '';
+        $HTML .= '<option value="' . $Value . '"' . $SelectedAttribute . '>' . $Value . '</option>';
+    }
+
+    $HTML .= '</select></label></form>';
+
+    return $HTML;
+}
+
+sub _PaginationHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Context     = $Param{Context} || {};
+    my $CurrentPage = $Self->_ListPageClean( $Param{CurrentPage} );
+    my $TotalPages  = $Self->_ListPageClean( $Param{TotalPages} );
+    my $Language    = $Param{Language} || 'en';
+
+    return '' if $TotalPages <= 1;
+
+    $CurrentPage = $TotalPages if $CurrentPage > $TotalPages;
+
+    my @PageItems;
+    if ( $TotalPages <= 7 ) {
+        @PageItems = ( 1 .. $TotalPages );
+    }
+    else {
+        my %Page = ( 1 => 1, $TotalPages => 1 );
+        for my $Number ( $CurrentPage - 2 .. $CurrentPage + 2 ) {
+            next if $Number < 1 || $Number > $TotalPages;
+            $Page{$Number} = 1;
+        }
+
+        my $Previous = 0;
+        for my $Number ( sort { $a <=> $b } keys %Page ) {
+            push @PageItems, 'ellipsis' if $Previous && $Number > $Previous + 1;
+            push @PageItems, $Number;
+            $Previous = $Number;
+        }
+    }
+
+    my $Label = $Self->_Translate( Key => 'TicketListPaginationLabel', Language => $Language );
+    my $HTML = '<nav class="qisutu-ticket-list-pagination" aria-label="' . $Self->_Escape($Label) . '">';
+    $HTML .= '<span class="qisutu-ticket-list-pagination-label">' . $Self->_Escape( $Self->_Translate( Key => 'TicketListPage', Language => $Language ) ) . '</span>';
+
+    if ( $CurrentPage > 1 ) {
+        my %PreviousContext = %{$Context};
+        $PreviousContext{ListPage} = $CurrentPage - 1;
+        $HTML .= '<a class="qisutu-ticket-list-page-link qisutu-ticket-list-page-direction" href="' . $Self->_Escape( $Self->_ListURL(%PreviousContext) ) . '" aria-label="' . $Self->_Escape( $Self->_Translate( Key => 'TicketListPreviousPage', Language => $Language ) ) . '">‹</a>';
+    }
+
+    for my $Item (@PageItems) {
+        if ( $Item eq 'ellipsis' ) {
+            $HTML .= '<span class="qisutu-ticket-list-page-ellipsis" aria-hidden="true">…</span>';
+            next;
+        }
+
+        if ( $Item == $CurrentPage ) {
+            $HTML .= '<span class="qisutu-ticket-list-page-link qisutu-ticket-list-page-active" aria-current="page">' . $Item . '</span>';
+            next;
+        }
+
+        my %PageContext = %{$Context};
+        $PageContext{ListPage} = $Item;
+        $HTML .= '<a class="qisutu-ticket-list-page-link" href="' . $Self->_Escape( $Self->_ListURL(%PageContext) ) . '">' . $Item . '</a>';
+    }
+
+    if ( $CurrentPage < $TotalPages ) {
+        my %NextContext = %{$Context};
+        $NextContext{ListPage} = $CurrentPage + 1;
+        $HTML .= '<a class="qisutu-ticket-list-page-link qisutu-ticket-list-page-direction" href="' . $Self->_Escape( $Self->_ListURL(%NextContext) ) . '" aria-label="' . $Self->_Escape( $Self->_Translate( Key => 'TicketListNextPage', Language => $Language ) ) . '">›</a>';
+    }
+
+    $HTML .= '</nav>';
 
     return $HTML;
 }
@@ -499,6 +659,7 @@ sub _TableHTML {
         my %SortContext = %{$Context};
         $SortContext{SortBy} = $Key;
         $SortContext{SortDirection} = $Direction;
+        $SortContext{ListPage} = 1;
         my $Indicator = '';
         if ($Current) {
             $Indicator = ( $Context->{SortDirection} || '' ) eq 'asc' ? '▲' : '▼';
@@ -609,6 +770,8 @@ sub _ListURL {
     push @Part, 'FilterOwnerID=' . $Self->_URLEncode( $Param{FilterOwnerID} ) if $Param{FilterOwnerID};
     push @Part, 'SortBy=' . $Self->_URLEncode( $Param{SortBy} || 'changed' );
     push @Part, 'SortDirection=' . $Self->_URLEncode( $Param{SortDirection} || 'desc' );
+    push @Part, 'PerPage=' . $Self->_URLEncode( $Param{PerPage} || 20 );
+    push @Part, 'ListPage=' . $Self->_URLEncode( $Param{ListPage} ) if ( $Param{ListPage} || 1 ) > 1;
 
     return 'index.pl?' . join( ';', @Part );
 }
@@ -655,7 +818,34 @@ sub _TicketListLimit {
     my ( $Self, %Param ) = @_;
 
     my $Preference = $Param{Preference} || {};
-    return $Preference->{ticket_list_limit} || 25;
+    return $Self->_PerPageClean(
+        Value   => $Preference->{ticket_list_limit},
+        Default => 20,
+    );
+}
+
+sub _PerPageIsValid {
+    my ( $Self, $Value ) = @_;
+
+    return defined $Value && $Value =~ m{\A(?:10|20|30|40|50)\z} ? 1 : 0;
+}
+
+sub _PerPageClean {
+    my ( $Self, %Param ) = @_;
+
+    my $Value   = $Param{Value};
+    my $Default = $Param{Default};
+
+    return int($Value) if $Self->_PerPageIsValid($Value);
+    return int($Default) if $Self->_PerPageIsValid($Default);
+    return 20;
+}
+
+sub _ListPageClean {
+    my ( $Self, $Value ) = @_;
+
+    return 1 if !defined $Value || $Value !~ m{\A\d+\z} || $Value < 1;
+    return int($Value);
 }
 
 sub _TicketObject {

@@ -59,6 +59,7 @@ sub TicketList {
     my ( $Self, %Param ) = @_;
 
     my $Limit            = $Param{Limit} || 100;
+    my $Offset           = defined $Param{Offset} ? $Param{Offset} : 0;
     my $User             = $Param{User}  || {};
     my $ZoomPage         = $Param{ZoomPage} || ( ( $User->{account_type} || '' ) eq 'customer' ? 'CustomerTicketZoom' : 'AgentTicketZoom' );
     my $Language         = $Param{Language} || 'en';
@@ -81,117 +82,26 @@ sub TicketList {
     $Limit = 1 if $Limit < 1;
     $Limit = 500 if $Limit > 500;
 
+    if ( !defined $Offset || $Offset !~ m{\A\d+\z} ) {
+        $Offset = 0;
+    }
+
     $SortDirection = $SortDirection eq 'asc' ? 'ASC' : 'DESC';
 
-    my @Where;
-    my @Bind;
+    my $WhereData = $Self->_TicketListWhereData(
+        User                 => $User,
+        View                 => $View,
+        FilterQueueID        => $FilterQueueID,
+        FilterCustomerID     => $FilterCustomerID,
+        FilterCustomerUserID => $FilterCustomerUserID,
+        FilterOwnerID        => $FilterOwnerID,
+    );
 
-    my $CustomerAccess = $Self->_CustomerAccessData( User => $User );
+    return [] if $WhereData->{Denied};
 
-    if ($CustomerAccess) {
-        my $QueueRule = $Self->_CustomerQueueRuleHash(
-            User       => $User,
-            Permission => 'ticket.view',
-        );
+    my $WhereSQL = $WhereData->{WhereSQL} || '';
+    my @Bind     = @{ $WhereData->{Bind} || [] };
 
-        my @OwnQueueIDs;
-        my @OrganizationQueueIDs;
-
-        for my $QueueID ( sort { $a <=> $b } keys %{$QueueRule} ) {
-            if ( ( $QueueRule->{$QueueID} || '' ) eq 'organization' ) {
-                push @OrganizationQueueIDs, $QueueID;
-            }
-            else {
-                push @OwnQueueIDs, $QueueID;
-            }
-        }
-
-        return [] if !@OwnQueueIDs && !@OrganizationQueueIDs;
-
-        my @CustomerWhere;
-
-        if ( @OwnQueueIDs && $CustomerAccess->{customer_user_id} ) {
-            my $Placeholder = join ', ', map {'?'} @OwnQueueIDs;
-            push @CustomerWhere, '(t.queue_id IN (' . $Placeholder . ') AND t.customer_user_id = ?)';
-            push @Bind, @OwnQueueIDs, $CustomerAccess->{customer_user_id};
-        }
-
-        if ( @OrganizationQueueIDs && $CustomerAccess->{customer_id} ) {
-            my $Placeholder = join ', ', map {'?'} @OrganizationQueueIDs;
-            push @CustomerWhere, '(t.queue_id IN (' . $Placeholder . ') AND t.customer_id = ?)';
-            push @Bind, @OrganizationQueueIDs, $CustomerAccess->{customer_id};
-        }
-
-        return [] if !@CustomerWhere;
-        push @Where, '(' . join( ' OR ', @CustomerWhere ) . ')';
-    }
-    elsif ( $Self->{Permission} ) {
-        my $QueueIDs = $Self->{Permission}->QueueIDList(
-            UserID     => $User->{user_account_id},
-            Permission => 'ticket.view',
-        );
-
-        return [] if !@{$QueueIDs};
-
-        my $Placeholder = join ', ', map {'?'} @{$QueueIDs};
-        push @Where, 't.queue_id IN (' . $Placeholder . ')';
-        push @Bind, @{$QueueIDs};
-    }
-
-    if ($View) {
-        if ( $View eq 'new' ) {
-            push @Where, 'LOWER(TRIM(s.name)) = ?';
-            push @Bind, 'new';
-        }
-        elsif ( $View eq 'open' ) {
-            push @Where, 's.state_type = ? AND LOWER(TRIM(s.name)) <> ?';
-            push @Bind, 'open', 'new';
-        }
-        elsif ( $View eq 'pending' ) {
-            push @Where, 's.state_type = ?';
-            push @Bind, 'pending';
-        }
-        elsif ( $View eq 'escalated' ) {
-            push @Where,
-                's.state_type <> ?
-                 AND s.sla_pause = 0
-                 AND (
-                    (t.first_response_due_at IS NOT NULL AND t.first_response_at IS NULL AND t.first_response_due_at <= NOW())
-                    OR (t.update_due_at IS NOT NULL AND t.update_due_at <= NOW())
-                    OR (t.solution_due_at IS NOT NULL AND t.solution_at IS NULL AND t.solution_due_at <= NOW())
-                 )';
-            push @Bind, 'closed';
-        }
-        elsif ( $View eq 'my' ) {
-            push @Where, 't.owner_user_id = ?';
-            push @Bind, $User->{user_account_id} || 0;
-        }
-    }
-
-    if ( $FilterQueueID =~ m{\A\d+\z} && $FilterQueueID > 0 ) {
-        push @Where, 't.queue_id = ?';
-        push @Bind, $FilterQueueID;
-    }
-
-    if ( $FilterCustomerID =~ m{\A\d+\z} && $FilterCustomerID > 0 ) {
-        push @Where, 't.customer_id = ?';
-        push @Bind, $FilterCustomerID;
-    }
-
-    if ( $FilterCustomerUserID =~ m{\A\d+\z} && $FilterCustomerUserID > 0 ) {
-        push @Where, 't.customer_user_id = ?';
-        push @Bind, $FilterCustomerUserID;
-    }
-
-    if ( $FilterOwnerID eq 'unassigned' ) {
-        push @Where, 't.owner_user_id IS NULL';
-    }
-    elsif ( $FilterOwnerID =~ m{\A\d+\z} && $FilterOwnerID > 0 ) {
-        push @Where, 't.owner_user_id = ?';
-        push @Bind, $FilterOwnerID;
-    }
-
-    my $WhereSQL = @Where ? 'WHERE ' . join( ' AND ', map { '(' . $_ . ')' } @Where ) : '';
     my $OrderExpression = $Self->_TicketListOrderExpression(
         SortBy        => $SortBy,
         DynamicFields => $DynamicFields,
@@ -285,7 +195,7 @@ sub TicketList {
          LEFT JOIN user_account created_account ON created_account.id = t.created_by_user_id
          ' . $WhereSQL . '
          ORDER BY ' . $OrderExpression . ' ' . $OrderDirection . ', t.id ' . $OrderDirection . '
-         LIMIT ' . $Limit,
+         LIMIT ' . $Limit . ' OFFSET ' . $Offset,
         @Bind
     );
 
@@ -361,6 +271,163 @@ sub TicketList {
     );
 
     return $Tickets;
+}
+
+sub TicketListCount {
+    my ( $Self, %Param ) = @_;
+
+    my $WhereData = $Self->_TicketListWhereData(
+        User                 => $Param{User} || {},
+        View                 => $Param{View} || '',
+        FilterQueueID        => $Param{FilterQueueID} || '',
+        FilterCustomerID     => $Param{FilterCustomerID} || '',
+        FilterCustomerUserID => $Param{FilterCustomerUserID} || '',
+        FilterOwnerID        => $Param{FilterOwnerID} || '',
+    );
+
+    return 0 if $WhereData->{Denied};
+
+    my $Row = $Self->{DB}->SelectRow(
+        'SELECT COUNT(*) AS ticket_count
+         FROM ticket t
+         INNER JOIN ticket_state s ON s.id = t.state_id
+         ' . ( $WhereData->{WhereSQL} || '' ),
+        @{ $WhereData->{Bind} || [] },
+    );
+
+    if ( !$Row ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Ticket count could not be loaded';
+        return 0;
+    }
+
+    my $Count = $Row->{ticket_count} || 0;
+    return $Count =~ m{\A\d+\z} ? int($Count) : 0;
+}
+
+sub _TicketListWhereData {
+    my ( $Self, %Param ) = @_;
+
+    my $User                 = $Param{User} || {};
+    my $View                 = $Param{View} || '';
+    my $FilterQueueID        = $Param{FilterQueueID} || '';
+    my $FilterCustomerID     = $Param{FilterCustomerID} || '';
+    my $FilterCustomerUserID = $Param{FilterCustomerUserID} || '';
+    my $FilterOwnerID        = $Param{FilterOwnerID} || '';
+
+    my @Where;
+    my @Bind;
+
+    my $CustomerAccess = $Self->_CustomerAccessData( User => $User );
+
+    if ($CustomerAccess) {
+        my $QueueRule = $Self->_CustomerQueueRuleHash(
+            User       => $User,
+            Permission => 'ticket.view',
+        );
+
+        my @OwnQueueIDs;
+        my @OrganizationQueueIDs;
+
+        for my $QueueID ( sort { $a <=> $b } keys %{$QueueRule} ) {
+            if ( ( $QueueRule->{$QueueID} || '' ) eq 'organization' ) {
+                push @OrganizationQueueIDs, $QueueID;
+            }
+            else {
+                push @OwnQueueIDs, $QueueID;
+            }
+        }
+
+        return { Denied => 1, WhereSQL => '', Bind => [] }
+            if !@OwnQueueIDs && !@OrganizationQueueIDs;
+
+        my @CustomerWhere;
+
+        if ( @OwnQueueIDs && $CustomerAccess->{customer_user_id} ) {
+            my $Placeholder = join ', ', map {'?'} @OwnQueueIDs;
+            push @CustomerWhere, '(t.queue_id IN (' . $Placeholder . ') AND t.customer_user_id = ?)';
+            push @Bind, @OwnQueueIDs, $CustomerAccess->{customer_user_id};
+        }
+
+        if ( @OrganizationQueueIDs && $CustomerAccess->{customer_id} ) {
+            my $Placeholder = join ', ', map {'?'} @OrganizationQueueIDs;
+            push @CustomerWhere, '(t.queue_id IN (' . $Placeholder . ') AND t.customer_id = ?)';
+            push @Bind, @OrganizationQueueIDs, $CustomerAccess->{customer_id};
+        }
+
+        return { Denied => 1, WhereSQL => '', Bind => [] } if !@CustomerWhere;
+        push @Where, '(' . join( ' OR ', @CustomerWhere ) . ')';
+    }
+    elsif ( $Self->{Permission} ) {
+        my $QueueIDs = $Self->{Permission}->QueueIDList(
+            UserID     => $User->{user_account_id},
+            Permission => 'ticket.view',
+        );
+
+        return { Denied => 1, WhereSQL => '', Bind => [] } if !@{$QueueIDs};
+
+        my $Placeholder = join ', ', map {'?'} @{$QueueIDs};
+        push @Where, 't.queue_id IN (' . $Placeholder . ')';
+        push @Bind, @{$QueueIDs};
+    }
+
+    if ($View) {
+        if ( $View eq 'new' ) {
+            push @Where, 'LOWER(TRIM(s.name)) = ?';
+            push @Bind, 'new';
+        }
+        elsif ( $View eq 'open' ) {
+            push @Where, 's.state_type = ? AND LOWER(TRIM(s.name)) <> ?';
+            push @Bind, 'open', 'new';
+        }
+        elsif ( $View eq 'pending' ) {
+            push @Where, 's.state_type = ?';
+            push @Bind, 'pending';
+        }
+        elsif ( $View eq 'escalated' ) {
+            push @Where,
+                's.state_type <> ?
+                 AND s.sla_pause = 0
+                 AND (
+                    (t.first_response_due_at IS NOT NULL AND t.first_response_at IS NULL AND t.first_response_due_at <= NOW())
+                    OR (t.update_due_at IS NOT NULL AND t.update_due_at <= NOW())
+                    OR (t.solution_due_at IS NOT NULL AND t.solution_at IS NULL AND t.solution_due_at <= NOW())
+                 )';
+            push @Bind, 'closed';
+        }
+        elsif ( $View eq 'my' ) {
+            push @Where, 't.owner_user_id = ?';
+            push @Bind, $User->{user_account_id} || 0;
+        }
+    }
+
+    if ( $FilterQueueID =~ m{\A\d+\z} && $FilterQueueID > 0 ) {
+        push @Where, 't.queue_id = ?';
+        push @Bind, $FilterQueueID;
+    }
+
+    if ( $FilterCustomerID =~ m{\A\d+\z} && $FilterCustomerID > 0 ) {
+        push @Where, 't.customer_id = ?';
+        push @Bind, $FilterCustomerID;
+    }
+
+    if ( $FilterCustomerUserID =~ m{\A\d+\z} && $FilterCustomerUserID > 0 ) {
+        push @Where, 't.customer_user_id = ?';
+        push @Bind, $FilterCustomerUserID;
+    }
+
+    if ( $FilterOwnerID eq 'unassigned' ) {
+        push @Where, 't.owner_user_id IS NULL';
+    }
+    elsif ( $FilterOwnerID =~ m{\A\d+\z} && $FilterOwnerID > 0 ) {
+        push @Where, 't.owner_user_id = ?';
+        push @Bind, $FilterOwnerID;
+    }
+
+    return {
+        Denied   => 0,
+        WhereSQL => @Where ? 'WHERE ' . join( ' AND ', map { '(' . $_ . ')' } @Where ) : '',
+        Bind     => \@Bind,
+    };
 }
 
 sub TicketListDynamicFieldList {

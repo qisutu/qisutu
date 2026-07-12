@@ -87,6 +87,63 @@
         });
     }
 
+    function initPerPageControls() {
+        var forms = document.querySelectorAll('[data-qisutu-ticket-list-per-page-form]');
+        var allowed = {10: true, 20: true, 30: true, 40: true, 50: true};
+
+        forms.forEach(function (form) {
+            var select = form.querySelector('[data-qisutu-ticket-list-per-page]');
+            if (!select) {
+                return;
+            }
+
+            var storageKey = form.getAttribute('data-qisutu-ticket-list-per-page-storage') || '';
+            var explicit = form.getAttribute('data-qisutu-ticket-list-per-page-explicit') === '1';
+            var saved = '';
+
+            if (storageKey) {
+                try {
+                    saved = window.localStorage.getItem(storageKey) || '';
+                }
+                catch (error) {
+                    saved = '';
+                }
+            }
+
+            if (!explicit && allowed[saved] && select.value !== saved) {
+                select.value = saved;
+                form.submit();
+                return;
+            }
+
+            if (storageKey && allowed[select.value]) {
+                try {
+                    window.localStorage.setItem(storageKey, select.value);
+                }
+                catch (error) {
+                    // The list remains usable when browser storage is unavailable.
+                }
+            }
+
+            select.addEventListener('change', function () {
+                if (!allowed[select.value]) {
+                    return;
+                }
+
+                if (storageKey) {
+                    try {
+                        window.localStorage.setItem(storageKey, select.value);
+                    }
+                    catch (error) {
+                        // Submit even when browser storage is unavailable.
+                    }
+                }
+
+                form.submit();
+            });
+        });
+    }
+
     function initColumnOverlay() {
         var overlay = document.querySelector('[data-qisutu-ticket-list-columns-overlay]');
         var openButton = document.querySelector('[data-qisutu-ticket-list-columns-open]');
@@ -354,6 +411,7 @@
     function init() {
         initViewMenu();
         initFilters();
+        initPerPageControls();
         initColumnOverlay();
         initResizableTicketLists();
     }

@@ -2791,7 +2791,7 @@ body.qisutu-overlay-open {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    max-height: calc(100vh - 315px);
+    max-height: max(240px, calc(100vh - 365px));
     overflow-x: auto;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -3513,5 +3513,143 @@ html.qisutu-sidebar-collapsed .qisutu-sidebar-user.qisutu-user-flyout-open .qisu
 
     html.qisutu-sidebar-collapsed .qisutu-sidebar-user-flyout {
         display: none !important;
+    }
+}
+
+/* Ticket list pagination and page size selection */
+.qisutu-ticket-list-toolbar-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.qisutu-ticket-list-per-page-form {
+    margin: 0;
+}
+
+.qisutu-ticket-list-per-page-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--qisutu-muted);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.qisutu-ticket-list-per-page-label select {
+    min-width: 68px;
+    height: 36px;
+    padding: 0 28px 0 10px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 7px;
+    background-color: #ffffff;
+    color: var(--qisutu-text);
+    font: inherit;
+    cursor: pointer;
+}
+
+.qisutu-ticket-list-per-page-label select:focus {
+    border-color: var(--qisutu-primary);
+    outline: 2px solid rgba(0, 93, 117, 0.16);
+    outline-offset: 1px;
+}
+
+.qisutu-ticket-list-pagination {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.qisutu-ticket-list-pagination-label {
+    margin-right: 2px;
+    color: var(--qisutu-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.qisutu-ticket-list-page-link,
+.qisutu-ticket-list-page-ellipsis {
+    min-width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.qisutu-ticket-list-page-link {
+    border: 1px solid var(--qisutu-border);
+    background: #ffffff;
+    color: var(--qisutu-primary);
+    text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.qisutu-ticket-list-page-link:hover,
+.qisutu-ticket-list-page-link:focus-visible {
+    border-color: var(--qisutu-primary);
+    background: var(--qisutu-primary-soft);
+    outline: none;
+}
+
+.qisutu-ticket-list-page-active {
+    border-color: var(--qisutu-primary);
+    background: var(--qisutu-primary);
+    color: #ffffff;
+}
+
+.qisutu-ticket-list-page-direction {
+    font-size: 20px;
+}
+
+.qisutu-ticket-list-page-ellipsis {
+    min-width: 20px;
+    color: var(--qisutu-muted);
+}
+
+.qisutu-ticket-list-pagination-bottom {
+    display: flex;
+    justify-content: flex-end;
+    padding: 14px 20px 20px;
+    border-top: 1px solid var(--qisutu-border);
+}
+
+.qisutu-ticket-list-panel {
+    margin-bottom: 32px;
+}
+
+@media (max-width: 900px) {
+    .qisutu-ticket-list-toolbar-right {
+        width: 100%;
+        justify-content: space-between;
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .qisutu-ticket-list-toolbar-right {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .qisutu-ticket-list-per-page-label {
+        justify-content: space-between;
+    }
+
+    .qisutu-ticket-list-pagination {
+        flex-wrap: wrap;
+    }
+
+    .qisutu-ticket-list-pagination-bottom {
+        justify-content: flex-start;
+        overflow-x: auto;
     }
 }
