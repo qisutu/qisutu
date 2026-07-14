@@ -429,7 +429,7 @@ a:hover {
 
 .qisutu-table th,
 .qisutu-table td {
-    padding: 12px 10px;
+    padding: 3px 3px;
     border-bottom: 1px solid var(--qisutu-border);
     text-align: left;
     vertical-align: top;

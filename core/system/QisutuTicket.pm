@@ -390,6 +390,10 @@ sub _TicketListWhereData {
             push @Where, 's.state_type = ?';
             push @Bind, 'pending';
         }
+        elsif ( $View eq 'closed' ) {
+            push @Where, 's.state_type = ?';
+            push @Bind, 'closed';
+        }
         elsif ( $View eq 'escalated' ) {
             push @Where,
                 's.state_type <> ?

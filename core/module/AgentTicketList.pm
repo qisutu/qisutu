@@ -381,6 +381,7 @@ sub _ViewMenuHTML {
         [ new       => 'TicketListViewNew' ],
         [ open      => 'TicketListViewOpen' ],
         [ pending   => 'TicketListViewPending' ],
+        [ closed    => 'TicketListViewClosed' ],
         [ escalated => 'TicketListViewEscalated' ],
         [ my        => 'TicketListViewMyTickets' ],
     );
@@ -393,6 +394,7 @@ sub _ViewMenuHTML {
         $URLContext{ListPage} = 1;
         delete $URLContext{Search};
         my $URL = $Self->_ListURL(%URLContext);
+        $URL =~ s{;}{&}g;
         my $Active = ( $Context->{View} || '' ) eq $Key ? ' qisutu-ticket-list-view-active' : '';
         my $Current = ( $Context->{View} || '' ) eq $Key ? '<span aria-hidden="true">✓</span>' : '<span aria-hidden="true"></span>';
 
@@ -419,6 +421,7 @@ sub _ViewLabel {
         new       => 'TicketListViewNew',
         open      => 'TicketListViewOpen',
         pending   => 'TicketListViewPending',
+        closed    => 'TicketListViewClosed',
         escalated => 'TicketListViewEscalated',
         my        => 'TicketListViewMyTickets',
     );
@@ -1276,7 +1279,7 @@ sub _ViewClean {
     my ( $Self, $View, %Param ) = @_;
 
     return '' if $Param{SearchActive};
-    return $View if defined $View && $View =~ m{\A(?:new|open|pending|escalated|my)\z};
+    return $View if defined $View && $View =~ m{\A(?:new|open|pending|closed|escalated|my)\z};
     return 'new';
 }
 

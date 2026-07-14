@@ -296,6 +296,7 @@ use utf8;
     TicketListViewNew                => 'Nuovi',
     TicketListViewOpen               => 'Aperti',
     TicketListViewPending            => 'In attesa',
+    TicketListViewClosed             => 'Ticket chiusi',
     TicketListViewEscalated          => 'In escalation',
     TicketListViewMyTickets          => 'I miei ticket',
     TicketListAllQueues              => 'Tutte le code',
