@@ -20,24 +20,24 @@
 # SPDX-FileCopyrightText: 2026 Franziska Steps
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Qisutu instance: __QISUTU_INSTANCE__
-Alias __QISUTU_WEB_PATH__/static/ "__QISUTU_ROOT__/var/static/"
+[Unit]
+Description=Qisutu Automation Daemon (__QISUTU_INSTANCE__)
+After=network-online.target
+Wants=network-online.target
 
-<Directory "__QISUTU_ROOT__/var/static/">
-    Options -Indexes
-    AllowOverride None
-    Require all granted
-</Directory>
+[Service]
+Type=simple
+User=__QISUTU_APACHE_USER__
+Group=__QISUTU_APACHE_GROUP__
+WorkingDirectory=__QISUTU_ROOT__
+Environment=QISUTU_HOME=__QISUTU_ROOT__
+ExecStart=/usr/bin/perl __QISUTU_ROOT__/bin/qisutu-daemon.pl --sleep 3 --max-jobs 100
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
 
-ScriptAlias __QISUTU_WEB_PATH__/ "__QISUTU_ROOT__/bin/cgi-bin/"
-
-<Directory "__QISUTU_ROOT__/bin/cgi-bin/">
-    Options +ExecCGI -Indexes
-    AllowOverride None
-    AddHandler cgi-script .pl
-    DirectoryIndex index.pl
-    Require all granted
-    SetEnv QISUTU_HOME __QISUTU_ROOT__
-</Directory>
-
-RedirectMatch 301 ^__QISUTU_WEB_PATH__$ __QISUTU_WEB_PATH__/
+[Install]
+WantedBy=multi-user.target

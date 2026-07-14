@@ -4,11 +4,17 @@ var/log/*
 var/cache/*
 var/tmp/*
 var/sessions/*
+var/install/session-*.json
+var/install/database-bootstrap.conf
+var/install/instance.conf
+var/install/installed.lock
 *.log
 *.pid
 
-# Local configuration overrides and backups
-core/config/QisutuConfigLocal.pm
+# Generated installation files
+scriptfiles/*-apache-runtime.conf
+
+# Local backups
 *.bak
 *.orig
 *~

@@ -20,24 +20,13 @@
 # SPDX-FileCopyrightText: 2026 Franziska Steps
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Qisutu instance: __QISUTU_INSTANCE__
-Alias __QISUTU_WEB_PATH__/static/ "__QISUTU_ROOT__/var/static/"
+[Unit]
+Description=Finalize Qisutu installation (__QISUTU_INSTANCE__)
+After=network-online.target
 
-<Directory "__QISUTU_ROOT__/var/static/">
-    Options -Indexes
-    AllowOverride None
-    Require all granted
-</Directory>
-
-ScriptAlias __QISUTU_WEB_PATH__/ "__QISUTU_ROOT__/bin/cgi-bin/"
-
-<Directory "__QISUTU_ROOT__/bin/cgi-bin/">
-    Options +ExecCGI -Indexes
-    AllowOverride None
-    AddHandler cgi-script .pl
-    DirectoryIndex index.pl
-    Require all granted
-    SetEnv QISUTU_HOME __QISUTU_ROOT__
-</Directory>
-
-RedirectMatch 301 ^__QISUTU_WEB_PATH__$ __QISUTU_WEB_PATH__/
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl enable --now __QISUTU_DAEMON_SERVICE__
+ExecStart=/bin/systemctl disable --now __QISUTU_INSTALL_COMPLETE_PATH__
+ExecStart=/bin/rm -f /etc/systemd/system/__QISUTU_INSTALL_COMPLETE_PATH__ /etc/systemd/system/__QISUTU_INSTALL_COMPLETE_SERVICE__
+ExecStart=/bin/systemctl daemon-reload

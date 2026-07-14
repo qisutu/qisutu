@@ -51,6 +51,7 @@ sub Run {
     my $SettingKey = $Request->{SettingKey} || '';
     my $Error      = '';
     my $Success    = '';
+    my $ShowDatabasePassword = ( ( $Request->{Step} || '' ) eq 'DatabasePasswordShow' ) ? 1 : 0;
 
     my $SettingObject = $Self->_SettingObject();
 
@@ -165,6 +166,14 @@ sub Run {
             ErrorClass         => $Error ? '' : 'qisutu-hidden',
             SuccessMessage     => $Success,
             SuccessClass       => $Success ? '' : 'qisutu-hidden',
+            DatabaseHost       => $Self->{Config}->{Database}->{Host} || '',
+            DatabasePort       => $Self->{Config}->{Database}->{Port} || '',
+            DatabaseName       => $Self->{Config}->{Database}->{Name} || '',
+            DatabaseUser       => $Self->{Config}->{Database}->{User} || '',
+            DatabasePassword   => $ShowDatabasePassword
+                ? ( $Self->{Config}->{Database}->{Password} || '' )
+                : '••••••••••••••••',
+            ShowDatabasePassword => $ShowDatabasePassword,
             FormAction         => 'index.pl',
         },
     };

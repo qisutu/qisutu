@@ -408,7 +408,7 @@ sub _PasswordChange {
         'UPDATE user_account
          SET password_hash = ?,
              password_changed_at = NOW(),
-             changed_at = NOW()
+             updated_at = NOW()
          WHERE id = ?
             AND account_type = ?',
         $PasswordHash,

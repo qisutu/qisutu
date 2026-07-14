@@ -1,0 +1,171 @@
+/*
+ * Qisutu - Open Source Ticket System
+ * Copyright (C) 2026 Franziska Steps
+ * Qisutu - Kim-KI, https://qisutu.de
+ *
+ * This file is part of Qisutu.
+ *
+ * Qisutu is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Qisutu is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-FileCopyrightText: 2026 Franziska Steps
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+:root {
+    color-scheme: light;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #eef2f6;
+    color: #172033;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: linear-gradient(180deg, #e8edf3 0, #f7f9fb 100%); }
+a { color: #0c5c9f; }
+button, input, select { font: inherit; }
+
+.qisutu-install-shell {
+    width: min(860px, calc(100% - 32px));
+    margin: 34px auto;
+    background: #fff;
+    border: 1px solid #d7dee8;
+    border-radius: 14px;
+    box-shadow: 0 18px 48px rgba(31, 48, 72, .14);
+    overflow: hidden;
+}
+
+.qisutu-install-shell > header {
+    min-height: 74px;
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    color: #fff;
+    background: #163d63;
+}
+
+.brand { display: flex; align-items: center; gap: 13px; font-size: 20px; }
+.brand img { width: 46px; height: 46px; object-fit: contain; background: #fff; border-radius: 8px; padding: 3px; }
+.step-text { font-size: 14px; opacity: .88; white-space: nowrap; }
+
+.qisutu-install-progress {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    padding: 18px 22px 15px;
+    background: #f7f9fc;
+    border-bottom: 1px solid #dce3ec;
+}
+
+.qisutu-install-progress div { position: relative; text-align: center; color: #7b8798; }
+.qisutu-install-progress div::before {
+    content: "";
+    position: absolute;
+    height: 2px;
+    left: -50%;
+    right: 50%;
+    top: 15px;
+    background: #ccd4df;
+}
+.qisutu-install-progress div:first-child::before { display: none; }
+.qisutu-install-progress span {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin: 0 auto 7px;
+    border-radius: 50%;
+    background: #dbe2ea;
+    color: #536174;
+    font-weight: 700;
+}
+.qisutu-install-progress small { font-size: 12px; }
+.qisutu-install-progress .active span, .qisutu-install-progress .done span { background: #1f70ad; color: #fff; }
+.qisutu-install-progress .active, .qisutu-install-progress .done { color: #173d61; }
+.qisutu-install-progress .done::before, .qisutu-install-progress .active::before { background: #1f70ad; }
+
+main { padding: 28px 32px 34px; }
+h1 { margin: 0 0 20px; font-size: 28px; color: #163d63; }
+h2 { margin-top: 0; color: #163d63; }
+h3 { margin: 26px 0 12px; color: #2a4562; }
+p { line-height: 1.55; }
+footer { padding: 15px 22px; text-align: center; font-size: 12px; color: #6e7989; background: #f7f9fb; border-top: 1px solid #e0e5ec; }
+
+.qisutu-install-welcome { display: grid; grid-template-columns: 1fr 260px; gap: 24px; align-items: start; }
+.qisutu-install-company { padding: 18px; border-radius: 10px; background: #f2f6fa; line-height: 1.45; }
+.qisutu-install-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; }
+.qisutu-install-field { display: flex; flex-direction: column; gap: 7px; }
+.qisutu-install-field label { font-weight: 650; font-size: 14px; color: #263b52; }
+.qisutu-install-field input, .qisutu-install-field select {
+    width: 100%;
+    min-height: 43px;
+    border: 1px solid #b9c5d3;
+    border-radius: 7px;
+    padding: 9px 11px;
+    background: #fff;
+    color: #172033;
+}
+.qisutu-install-field input:focus, .qisutu-install-field select:focus { outline: 3px solid rgba(31, 112, 173, .18); border-color: #1f70ad; }
+.qisutu-install-field input[readonly] { background: #f3f5f7; color: #667285; }
+
+.qisutu-install-actions { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
+button, .button { border: 0; border-radius: 7px; padding: 11px 18px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+button.primary, .button.primary { background: #1f70ad; color: #fff; }
+button.secondary, .button.secondary { background: #e3e9ef; color: #263b52; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+
+.qisutu-install-error, .qisutu-install-success, .qisutu-install-note {
+    border-radius: 8px;
+    padding: 13px 15px;
+    margin: 0 0 20px;
+    line-height: 1.45;
+}
+.qisutu-install-error { background: #fff0f0; border: 1px solid #e8aaaa; color: #8b2222; }
+.qisutu-install-success { background: #eaf8ee; border: 1px solid #a8d8b5; color: #1e6d35; }
+.qisutu-install-note { margin-top: 20px; background: #fff8e6; border: 1px solid #e6cf8c; color: #67511b; }
+
+.qisutu-install-table-wrap { overflow-x: auto; border: 1px solid #dbe1e8; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 11px 13px; text-align: left; border-bottom: 1px solid #e1e6ec; vertical-align: top; }
+th { background: #f4f7fa; color: #344a61; font-size: 13px; }
+tr:last-child td { border-bottom: 0; }
+.qisutu-install-status { display: inline-block; min-width: 64px; text-align: center; border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 700; }
+.qisutu-install-status.ok { background: #dff3e5; color: #236b36; }
+.qisutu-install-status.warning { background: #fff1cb; color: #775b0c; }
+.qisutu-install-status.error { background: #f9dede; color: #922828; }
+
+.qisutu-install-license { margin-top: 18px; }
+.qisutu-install-license pre { max-height: 280px; overflow: auto; white-space: pre-wrap; border: 1px solid #d6dde6; background: #f6f8fa; border-radius: 8px; padding: 15px; font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.qisutu-install-check { display: flex; align-items: flex-start; gap: 9px; margin-top: 20px; font-weight: 650; line-height: 1.4; }
+.qisutu-install-check input { margin-top: 3px; }
+
+.qisutu-install-credentials { display: grid; gap: 1px; border: 1px solid #d5dde7; border-radius: 9px; overflow: hidden; background: #d5dde7; }
+.qisutu-install-credentials > div { display: grid; grid-template-columns: 210px 1fr; gap: 18px; padding: 13px 15px; background: #fff; }
+.qisutu-install-credentials span { color: #5c6979; }
+.qisutu-install-credentials strong { overflow-wrap: anywhere; }
+.qisutu-install-credentials .credential { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; background: #f4f6f8; border-radius: 5px; padding: 4px 7px; }
+.qisutu-install-mail-section { margin-top: 20px; border: 1px solid #d8e0e9; border-radius: 9px; padding: 18px; }
+.qisutu-install-mail-section .qisutu-install-check { margin-top: 0; margin-bottom: 18px; color: #173d61; }
+code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+@media (max-width: 720px) {
+    .qisutu-install-shell { width: min(100% - 16px, 860px); margin: 8px auto; border-radius: 9px; }
+    main { padding: 22px 18px 28px; }
+    .qisutu-install-progress { padding-inline: 8px; }
+    .qisutu-install-progress small { display: none; }
+    .qisutu-install-welcome, .qisutu-install-grid { grid-template-columns: 1fr; }
+    .qisutu-install-credentials > div { grid-template-columns: 1fr; gap: 5px; }
+    .step-text { display: none; }
+}

@@ -38,7 +38,7 @@ sub Load {
             Port     => 3306,
             Name     => 'qisutu',
             User     => 'qisutu',
-            Password => 'qisutu!',
+            Password => 'CHANGE-ME-DURING-INSTALLATION',
             Charset  => 'utf8mb4',
         },
 
@@ -48,7 +48,7 @@ sub Load {
         },
 
         Language => {
-            Default => 'en',
+            Default => 'de',
         },
 
         Paths => {
@@ -64,12 +64,14 @@ sub Load {
             Log       => "$RootPath/var/log",
             Cache     => "$RootPath/var/cache",
             Static    => "$RootPath/var/static",
-            StaticURL => '/static',
+            StaticURL => '/qisutu/static',
         },
 
         System => {
-            Name    => 'Qisutu',
-            Version => '0.0.1',
+            Name       => 'Qisutu',
+            Version    => '0.0.1',
+            InstanceID => 'qisutu',
+            WebPath    => '/qisutu',
             BaseURL    => $ENV{QISUTU_BASE_URL} || '',
             TicketHook => 'Qisutu',
         },

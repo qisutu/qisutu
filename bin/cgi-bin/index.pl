@@ -35,6 +35,14 @@ my $QisutuHome = $ENV{QISUTU_HOME} || abs_path( File::Spec->catdir( $FindBin::Bi
 
 $ENV{QISUTU_HOME} ||= $QisutuHome;
 
+if ( $ENV{GATEWAY_INTERFACE} ) {
+    my $InstallLock = File::Spec->catfile( $QisutuHome, 'var', 'install', 'installed.lock' );
+    if ( !-f $InstallLock ) {
+        print "Status: 302 Found\r\nLocation: install.pl\r\nCache-Control: no-store\r\n\r\n";
+        exit;
+    }
+}
+
 unshift @INC,
     File::Spec->catdir( $QisutuHome, 'core', 'config' ),
     File::Spec->catdir( $QisutuHome, 'core', 'system' ),
