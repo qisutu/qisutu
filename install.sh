@@ -302,6 +302,13 @@ fi
 
 validate_instance_values
 
+if [[ -f "$LOCK_FILE" ]]; then
+    echo "Diese Qisutu-Instanz ist bereits vollständig installiert." >&2
+    echo "Für ein Update entpacke das neue Qisutu-Release in ein separates Verzeichnis und führe dort aus:" >&2
+    echo "  sudo ./update.sh $ROOT_PATH" >&2
+    exit 1
+fi
+
 printf '\nQisutu-Systemvorbereitung\n'
 if [[ "$INSTANCE_CONFIG_LOADED" -eq 1 ]]; then
     printf 'Die vorhandene Instanzkonfiguration wird unverändert verwendet.\n'
@@ -531,8 +538,13 @@ mkdir -p \
 
 find "$ROOT_PATH" -type d -exec chmod 0755 {} +
 find "$ROOT_PATH" -type f -exec chmod 0644 {} +
-chmod 0755 "$ROOT_PATH/install.sh"
+chmod 0755 "$ROOT_PATH/install.sh" "$ROOT_PATH/update.sh"
 find "$ROOT_PATH/bin" -type f -name '*.pl' -exec chmod 0755 {} +
+chmod 0775 \
+    "$ROOT_PATH/bin/qisutu-daemon.pl" \
+    "$ROOT_PATH/bin/qisutu-mail-fetch.pl" \
+    "$ROOT_PATH/bin/qisutu-search-index-rebuild.pl" \
+    "$ROOT_PATH/bin/qisutu-ticket-escalation-check.pl"
 
 chown -R root:"$APACHE_GROUP" "$ROOT_PATH"
 chown -R "$APACHE_USER":"$APACHE_GROUP" \
@@ -545,6 +557,10 @@ chmod 0770 \
     "$ROOT_PATH/var/cache" \
     "$ROOT_PATH/var/tmp" \
     "$ROOT_PATH/var/install"
+
+mkdir -p /run/lock/qisutu
+chown root:"$APACHE_GROUP" /run/lock/qisutu
+chmod 0770 /run/lock/qisutu
 
 chown root:"$APACHE_GROUP" "$ROOT_PATH/core/config/QisutuConfig.pm"
 chmod 0660 "$ROOT_PATH/core/config/QisutuConfig.pm"

@@ -167,3 +167,66 @@ Passwörter werden nicht in das Installationsprotokoll geschrieben.
 ## Temporäre Abschlussdienste
 
 Während der Webinstallation wartet eine instanzbezogene systemd-Path-Unit auf `var/install/installed.lock`. Nach erfolgreichem Abschluss startet die zugehörige einmalige Service-Unit den Qisutu-Daemon. Anschließend werden beide temporären Abschluss-Units automatisch deaktiviert und aus `/etc/systemd/system` entfernt. Dauerhaft aktiv bleibt ausschließlich der jeweilige Qisutu-Daemon.
+## Updates einer vorhandenen Qisutu-Instanz
+
+Ein neues Qisutu-Release wird immer in ein separates Verzeichnis entpackt.
+Das neue Paket darf nicht direkt über eine bestehende Installation entpackt
+werden. Anschließend wird `update.sh` aus dem neuen Paket mit dem Pfad der zu
+aktualisierenden Instanz aufgerufen.
+
+Produktivinstanz aktualisieren:
+
+    cd /tmp/qisutu-neue-version/qisutu
+    sudo ./update.sh /opt/qisutu
+
+Zusätzliche Instanz aktualisieren:
+
+    cd /tmp/qisutu-neue-version/qisutu
+    sudo ./update.sh /opt/qisutu-test
+
+Das Updateprogramm liest die vorhandene `var/install/instance.conf` und zeigt
+vor der Bestätigung den Installationspfad, die Instanzkennung, den Webpfad, die
+Datenbank und den systemd-Dienst an. Dadurch wird ausschließlich die explizit
+angegebene Qisutu-Instanz aktualisiert. Weitere Installationen auf demselben
+Server bleiben in Betrieb.
+
+Während des Updates führt das Programm folgende Schritte aus:
+
+1. Release-Prüfsummen, Versionen und Perl-Syntax prüfen.
+2. Den vorhandenen Programmstand sichern und in der Konsole fragen, ob auch
+   eine vollständige Datenbanksicherung angelegt werden soll. Das Programm
+   weist dabei darauf hin, dass bei großen Installationen genügend freier
+   Speicherplatz unter `/var/backups` vorhanden sein muss.
+3. Für genau diese Instanz den Wartungsmodus aktivieren.
+4. Den zugehörigen Qisutu-Daemon kontrolliert stoppen.
+5. Einen bereits laufenden Mailabruf beenden lassen und neue Cronläufe dieser
+   Instanz während des Updates überspringen.
+6. Erforderliche Änderungen an der bestehenden Datenbank ausführen. Die
+   Datenbank wird weder ersetzt noch in eine andere Datenbank übertragen.
+7. Die Programmdateien vollständig austauschen, ohne die bestehende
+   `QisutuConfig.pm`, `instance.conf`, Protokolle oder temporären Instanzdaten
+   zu überschreiben.
+8. Apache, Perl-Dateien, Datenbankstand und Daemon prüfen.
+9. Bei einem Fehler den vorherigen Programmstand automatisch wiederherstellen.
+   Der Datenbankstand kann nur dann automatisch wiederhergestellt werden, wenn
+   die Datenbanksicherung vor dem Update bestätigt wurde.
+
+Die Programm- und gegebenenfalls Datenbanksicherungen werden instanzbezogen
+abgelegt unter:
+
+    /var/backups/qisutu/INSTANZKENNUNG/JJJJ-MM-TT_HHMMSS/
+
+Wird die Datenbanksicherung abgelehnt, enthält dieses Verzeichnis weiterhin
+die Sicherung des Programmstands und der instanzbezogenen Konfiguration. Ein
+Datenbankdump wird dann nicht erstellt. Bei Verwendung von `--yes` wird die
+Datenbanksicherung ohne weitere Rückfrage angelegt.
+
+Falls eine neue Version Tabellen, Felder, Indizes oder vorhandene Daten ändern
+muss, liegen die dafür vorgesehenen Dateien im Updatepaket unter:
+
+    install/update/database/VERSION/
+
+Unterstützt werden geordnet ausgeführte `.sql`- und `.pl`-Dateien. Die bereits
+vorhandene Tabelle `database_version` dokumentiert dabei nur, welche dieser
+Datenbankänderungen schon ausgeführt wurden.
+

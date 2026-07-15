@@ -46,6 +46,7 @@ sub main {
     require QisutuConfig;
     require QisutuDB;
     require QisutuAutomation;
+    require QisutuRuntimeLock;
     require QisutuTicket;
 
     my $Once = 0;
@@ -73,6 +74,23 @@ sub main {
     local $SIG{INT}  = sub { $Stop = 1 };
     local $SIG{HUP}  = sub { };
 
+    if ( QisutuRuntimeLock::MaintenanceActive( RootPath => $QisutuHome ) ) {
+        _Log('Update lock is active. Automation daemon will not start.');
+        return;
+    }
+
+    my $RuntimeLock = QisutuRuntimeLock::SharedAcquire(
+        RootPath => $QisutuHome,
+    );
+    if ( !$RuntimeLock->{Success} ) {
+        die( ( $RuntimeLock->{Error} || 'Runtime lock could not be acquired.' ) . "\n" );
+    }
+
+    if ( QisutuRuntimeLock::MaintenanceActive( RootPath => $QisutuHome ) ) {
+        _Log('Update lock became active. Automation daemon will not start.');
+        return;
+    }
+
     my $Config = QisutuConfig::Load();
     my $DB = QisutuDB->new( Config => $Config );
     if ( !$DB->Connect() ) {
@@ -87,6 +105,11 @@ sub main {
     _Log("Automation daemon started as $Worker");
 
     while ( !$Stop ) {
+        if ( QisutuRuntimeLock::MaintenanceActive( RootPath => $QisutuHome ) ) {
+            _Log('Update lock detected. Automation daemon is stopping.');
+            last;
+        }
+
         my $Recovered = $Automation->JobRecoverStale();
         if ( !defined $Recovered ) {
             _Log( 'ERROR: ' . ( $Automation->Error() || 'stale job recovery failed' ) );

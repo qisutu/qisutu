@@ -34,7 +34,7 @@ Environment=QISUTU_HOME=__QISUTU_ROOT__
 ExecStart=/usr/bin/perl __QISUTU_ROOT__/bin/qisutu-daemon.pl --sleep 3 --max-jobs 100
 Restart=always
 RestartSec=5
-TimeoutStopSec=30
+TimeoutStopSec=120
 KillSignal=SIGTERM
 NoNewPrivileges=true
 PrivateTmp=true

@@ -45,6 +45,20 @@ zufällig erzeugte Datenbankpasswort wird direkt in
 Ausführliche Hinweise und ein vollständiges Beispiel für zwei parallele
 Instanzen stehen in `INSTALL.md`.
 
+## Update
+
+Ein neues Release wird separat entpackt und mit dem Pfad der gewünschten
+Installation gestartet:
+
+    sudo ./update.sh /opt/qisutu
+    sudo ./update.sh /opt/qisutu-test
+
+Der Updater erkennt die Instanz über `var/install/instance.conf`, stoppt nur
+deren Daemon und sperrt deren Mailabruf. Vor der vollständigen
+Datenbanksicherung fragt er in der Konsole nach und weist auf den erforderlichen
+freien Speicherplatz hin. Bei Bedarf führt er anschließend definierte
+Änderungen an der bestehenden Datenbank aus. Details stehen in `INSTALL.md`.
+
 ## Verzeichnisstruktur
 
 - `bin/` – CGI-Einstieg, Hintergrundprozesse und Kommandozeilenprogramme

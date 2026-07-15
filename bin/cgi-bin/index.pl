@@ -41,6 +41,12 @@ if ( $ENV{GATEWAY_INTERFACE} ) {
         print "Status: 302 Found\r\nLocation: install.pl\r\nCache-Control: no-store\r\n\r\n";
         exit;
     }
+
+    my $UpdateLock = File::Spec->catfile( $QisutuHome, 'var', 'install', 'update.lock' );
+    if ( -e $UpdateLock ) {
+        print _MaintenanceResponse();
+        exit;
+    }
 }
 
 unshift @INC,
@@ -50,6 +56,24 @@ unshift @INC,
     File::Spec->catdir( $QisutuHome, 'core', 'module' );
 
 main();
+
+
+sub _MaintenanceResponse {
+    return join '',
+        "Status: 503 Service Unavailable\r\n",
+        "Content-Type: text/html; charset=UTF-8\r\n",
+        "Cache-Control: no-store, no-cache, must-revalidate\r\n",
+        "Retry-After: 120\r\n\r\n",
+        '<!doctype html><html lang="de"><head><meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width,initial-scale=1">',
+        '<title>Qisutu wird aktualisiert</title>',
+        '<style>body{margin:0;background:#f4f6f8;color:#1f2933;font-family:Arial,sans-serif}',
+        '.box{max-width:680px;margin:12vh auto;padding:36px;background:#fff;border:1px solid #d9e0e7;border-radius:8px}',
+        'h1{margin-top:0;font-size:28px}p{font-size:17px;line-height:1.55}</style></head><body>',
+        '<main class="box"><h1>Qisutu wird aktualisiert</h1>',
+        '<p>Diese Qisutu-Instanz ist während des Updates vorübergehend nicht verfügbar.</p>',
+        '<p>Bitte rufe die Seite nach Abschluss des Updates erneut auf.</p></main></body></html>';
+}
 
 sub main {
     my $Param = _RequestParams();

@@ -45,7 +45,31 @@ sub main {
     require QisutuDB;
     require QisutuAdmin;
     require QisutuMail;
+    require QisutuRuntimeLock;
     require QisutuTicket;
+
+    if ( QisutuRuntimeLock::MaintenanceActive( RootPath => $QisutuHome ) ) {
+        print "Qisutu update is active. Mail fetch skipped.\n";
+        return;
+    }
+
+    my $RuntimeLock = QisutuRuntimeLock::SharedAcquire(
+        RootPath    => $QisutuHome,
+        NonBlocking => 1,
+    );
+    if ( !$RuntimeLock->{Success} ) {
+        if ( $RuntimeLock->{Busy} ) {
+            print "Qisutu runtime is exclusively locked. Mail fetch skipped.\n";
+            return;
+        }
+        print( ( $RuntimeLock->{Error} || 'Runtime lock could not be acquired.' ) . "\n" );
+        return;
+    }
+
+    if ( QisutuRuntimeLock::MaintenanceActive( RootPath => $QisutuHome ) ) {
+        print "Qisutu update became active. Mail fetch skipped.\n";
+        return;
+    }
 
     my $Config = QisutuConfig::Load();
 
