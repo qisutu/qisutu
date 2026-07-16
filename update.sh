@@ -345,73 +345,188 @@ installation_permissions_apply() {
 }
 
 database_current_version_get() {
-    "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" --batch --skip-column-names "$DB_NAME" \
-        -e 'SELECT version FROM database_version ORDER BY id DESC LIMIT 1' | head -n 1
-}
+    local table_exists current_version
 
-database_updates_apply() {
-    local current_version="$1"
-    local updates_root="$SOURCE_ROOT/install/update/database"
-    local version_directory update_version update_file file_count
+    table_exists="$(
+        "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" --batch --skip-column-names "$DB_NAME" \
+            -e "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'database_version' AND TABLE_TYPE = 'BASE TABLE'"
+    )"
 
-    if [[ "$current_version" == "$TARGET_DATABASE_VERSION" ]]; then
-        echo "Die Datenbank benötigt für dieses Update keine Strukturänderung."
+    if [[ "$table_exists" != "1" ]]; then
+        printf '0.0.0\n'
         return
     fi
 
-    if version_gt "$current_version" "$TARGET_DATABASE_VERSION"; then
-        fail "Die vorhandene Datenbankversion $current_version ist neuer als die vom Update erwartete Version $TARGET_DATABASE_VERSION."
+    current_version="$(
+        "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" --batch --skip-column-names "$DB_NAME" \
+            -e 'SELECT version FROM database_version ORDER BY id DESC LIMIT 1' | head -n 1
+    )"
+
+    if [[ -z "$current_version" ]]; then
+        printf '0.0.0\n'
+    else
+        printf '%s\n' "$current_version"
     fi
+}
 
-    [[ -d "$updates_root" ]] || fail "Verzeichnis für Datenbank-Updates fehlt: $updates_root"
+database_schema_synchronize() {
+    local schema_file="$STAGE_ROOT/install/sql/schema.sql"
+    local sync_program="$STAGE_ROOT/install/update/QisutuSchemaSync.pl"
+    local status_file="$TEMP_ROOT/schema-sync.status"
+    local status_key status_value schema_changed=""
 
-    while IFS= read -r update_version; do
-        [[ -n "$update_version" ]] || continue
-        version_is_valid "$update_version" || fail "Ungültiges Datenbank-Updateverzeichnis: $update_version"
+    [[ -r "$schema_file" ]] || fail "Die aktuelle Datenbank-Sollstruktur fehlt: $schema_file"
+    [[ -r "$sync_program" ]] || fail "Das Programm für den Datenbankabgleich fehlt: $sync_program"
 
-        if version_lt "$current_version" "$update_version" && version_le "$update_version" "$TARGET_DATABASE_VERSION"; then
-            version_directory="$updates_root/$update_version"
-            file_count=0
-            echo "Datenbank wird auf Stand $update_version aktualisiert."
+    rm -f "$status_file"
 
-            while IFS= read -r update_file; do
-                [[ -n "$update_file" ]] || continue
-                file_count=$(( file_count + 1 ))
-                DB_CHANGED=1
+    # Vor dem Aufruf wird DB_CHANGED vorsorglich gesetzt. Falls der Abgleich
+    # nach bereits ausgeführten DDL-Anweisungen fehlschlägt, kann die
+    # Fehlerbehandlung die Datenbanksicherung zuverlässig zurückspielen.
+    DB_CHANGED=1
 
-                case "$update_file" in
-                    *.sql)
-                        echo "  SQL: $(basename "$update_file")"
-                        "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" "$DB_NAME" < "$update_file"
-                        ;;
-                    *.pl)
-                        echo "  Perl: $(basename "$update_file")"
-                        QISUTU_HOME="$STAGE_ROOT" \
-                        QISUTU_DATABASE_UPDATE_VERSION="$update_version" \
-                        perl \
-                            -I"$STAGE_ROOT/core/config" \
-                            -I"$STAGE_ROOT/core/system" \
-                            -I"$STAGE_ROOT/core/cpan-lib" \
-                            "$update_file"
-                        ;;
-                    *)
-                        fail "Nicht unterstützte Datenbank-Update-Datei: $update_file"
-                        ;;
-                esac
-            done < <(find "$version_directory" -maxdepth 1 -type f \( -name '*.sql' -o -name '*.pl' \) -print | sort -V)
+    QISUTU_HOME="$STAGE_ROOT" perl \
+        -I"$STAGE_ROOT/core/config" \
+        -I"$STAGE_ROOT/core/system" \
+        -I"$STAGE_ROOT/core/cpan-lib" \
+        "$sync_program" \
+        --schema "$schema_file" \
+        --status-file "$status_file"
 
-            if (( file_count == 0 )); then
-                fail "Das Datenbank-Updateverzeichnis $version_directory enthält keine .sql- oder .pl-Datei."
+    [[ -r "$status_file" ]] || fail "Der Datenbankabgleich hat keine Statusdatei erzeugt."
+
+    while IFS='=' read -r status_key status_value; do
+        case "$status_key" in
+            changed) schema_changed="$status_value" ;;
+        esac
+    done < "$status_file"
+
+    case "$schema_changed" in
+        0) DB_CHANGED=0 ;;
+        1) DB_CHANGED=1 ;;
+        *) fail "Der Änderungsstatus des Datenbankabgleichs ist ungültig." ;;
+    esac
+}
+
+
+sql_literal_escape() {
+    local value="$1"
+    value="${value//\'/\'\'}"
+    printf '%s' "$value"
+}
+
+database_migrations_apply() {
+    local installed_database_version="$1"
+    local migrations_root="$STAGE_ROOT/install/update/database"
+    local version_directory migration_version migration_file migration_name
+    local migration_key migration_checksum stored_record stored_checksum stored_mode
+    local escaped_key escaped_version escaped_checksum
+    local executed_count=0 baseline_count=0 skipped_count=0 file_count=0
+
+    [[ -d "$migrations_root" ]] || fail "Verzeichnis für kumulative Datenmigrationen fehlt: $migrations_root"
+
+    echo "Prüfe die dauerhaft mitgelieferten Datenmigrationen."
+
+    while IFS= read -r migration_version; do
+        [[ -n "$migration_version" ]] || continue
+        version_is_valid "$migration_version" || fail "Ungültiges Datenmigrationsverzeichnis: $migration_version"
+        version_le "$migration_version" "$TARGET_DATABASE_VERSION" || fail "Die Datenmigration $migration_version ist neuer als der erwartete Datenbankstand $TARGET_DATABASE_VERSION."
+
+        version_directory="$migrations_root/$migration_version"
+        file_count=0
+
+        while IFS= read -r -d '' migration_file; do
+            file_count=$(( file_count + 1 ))
+            migration_name="$(basename "$migration_file")"
+
+            [[ "$migration_name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*\.(sql|pl)$ ]] \
+                || fail "Ungültiger Dateiname einer Datenmigration: $migration_file"
+
+            migration_key="$migration_version/$migration_name"
+            (( ${#migration_key} <= 255 )) || fail "Der Schlüssel der Datenmigration ist zu lang: $migration_key"
+
+            migration_checksum="$(sha256sum "$migration_file" | awk '{print $1}')"
+            [[ "$migration_checksum" =~ ^[0-9a-f]{64}$ ]] || fail "Die Prüfsumme der Datenmigration ist ungültig: $migration_key"
+
+            escaped_key="$(sql_literal_escape "$migration_key")"
+            stored_record="$(
+                "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" --batch --skip-column-names "$DB_NAME" \
+                    -e "SELECT CONCAT(checksum_sha256, CHAR(9), execution_mode) FROM database_migration WHERE migration_key = '$escaped_key' LIMIT 1"
+            )"
+
+            if [[ -n "$stored_record" ]]; then
+                IFS=$'\t' read -r stored_checksum stored_mode <<< "$stored_record"
+                [[ "$stored_checksum" == "$migration_checksum" ]] \
+                    || fail "Die bereits registrierte Datenmigration $migration_key besitzt im Updatepaket eine andere Prüfsumme. Alte Migrationen dürfen nachträglich nicht verändert werden."
+                echo "  Bereits erledigt: $migration_key ($stored_mode)"
+                skipped_count=$(( skipped_count + 1 ))
+                continue
             fi
 
-            "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" "$DB_NAME" \
-                -e "INSERT INTO database_version (version) VALUES ('$update_version')"
-            current_version="$update_version"
-        fi
-    done < <(find "$updates_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V)
+            escaped_version="$(sql_literal_escape "$migration_version")"
+            escaped_checksum="$(sql_literal_escape "$migration_checksum")"
 
-    if [[ "$current_version" != "$TARGET_DATABASE_VERSION" ]]; then
-        fail "Es fehlt ein vollständiger Datenbank-Updatepfad von $current_version auf $TARGET_DATABASE_VERSION."
+            if version_le "$migration_version" "$installed_database_version"; then
+                echo "  Historischen Stand übernehmen: $migration_key"
+                DB_CHANGED=1
+                "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" "$DB_NAME" \
+                    -e "INSERT INTO database_migration (migration_key, database_version, checksum_sha256, execution_mode) VALUES ('$escaped_key', '$escaped_version', '$escaped_checksum', 'legacy')"
+                baseline_count=$(( baseline_count + 1 ))
+                continue
+            fi
+
+            DB_CHANGED=1
+            case "$migration_file" in
+                *.sql)
+                    echo "  SQL ausführen: $migration_key"
+                    "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" "$DB_NAME" < "$migration_file"
+                    ;;
+                *.pl)
+                    echo "  Perl ausführen: $migration_key"
+                    QISUTU_HOME="$STAGE_ROOT" \
+                    QISUTU_DATABASE_MIGRATION_VERSION="$migration_version" \
+                    QISUTU_DATABASE_MIGRATION_KEY="$migration_key" \
+                    perl \
+                        -I"$STAGE_ROOT/core/config" \
+                        -I"$STAGE_ROOT/core/system" \
+                        -I"$STAGE_ROOT/core/cpan-lib" \
+                        "$migration_file"
+                    ;;
+                *)
+                    fail "Nicht unterstützte Datenmigration: $migration_file"
+                    ;;
+            esac
+
+            "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" "$DB_NAME" \
+                -e "INSERT INTO database_migration (migration_key, database_version, checksum_sha256, execution_mode) VALUES ('$escaped_key', '$escaped_version', '$escaped_checksum', 'executed')"
+            executed_count=$(( executed_count + 1 ))
+        done < <(find "$version_directory" -maxdepth 1 -type f \( -name '*.sql' -o -name '*.pl' \) -print0 | sort -zV)
+
+        if (( file_count == 0 )); then
+            fail "Das Datenmigrationsverzeichnis $version_directory enthält keine .sql- oder .pl-Datei."
+        fi
+    done < <(find "$migrations_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V)
+
+    printf 'Datenmigrationen: %d ausgeführt, %d historisch übernommen, %d bereits erledigt.\n' \
+        "$executed_count" "$baseline_count" "$skipped_count"
+}
+
+database_target_version_record() {
+    local version_exists escaped_version
+
+    escaped_version="$(sql_literal_escape "$TARGET_DATABASE_VERSION")"
+    version_exists="$(
+        "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" --batch --skip-column-names "$DB_NAME" \
+            -e "SELECT COUNT(*) FROM database_version WHERE version = '$escaped_version'"
+    )"
+
+    if [[ "$version_exists" == "0" ]]; then
+        echo "Trage den erfolgreich erreichten Datenbankstand $TARGET_DATABASE_VERSION ein."
+        DB_CHANGED=1
+        "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" "$DB_NAME" \
+            -e "INSERT INTO database_version (version) VALUES ('$escaped_version')"
+    elif [[ "$version_exists" != "1" ]]; then
+        fail "Der Datenbankstand $TARGET_DATABASE_VERSION konnte nicht eindeutig geprüft werden."
     fi
 }
 
@@ -818,7 +933,9 @@ fi
 
 stage_prepare
 perl_syntax_check "$STAGE_ROOT"
-database_updates_apply "$CURRENT_DATABASE_VERSION"
+database_schema_synchronize
+database_migrations_apply "$CURRENT_DATABASE_VERSION"
+database_target_version_record
 
 rm -rf "$OLD_ROOT"
 mv "$TARGET_ROOT" "$OLD_ROOT"

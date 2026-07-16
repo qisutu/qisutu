@@ -1118,7 +1118,7 @@ sub Load {
 
         System => {
             Name       => 'Qisutu',
-            Version    => '0.0.2',
+            Version    => '0.0.8',
             InstanceID => '$ConfiguredInstanceID',
             WebPath    => '$ConfiguredWebPath',
             BaseURL    => '$BaseURL',

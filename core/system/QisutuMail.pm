@@ -136,6 +136,7 @@ sub SMTPSend {
     my $EnvelopeFrom = $Self->_EmailClean( $Param{EnvelopeFrom} || $FromEmail );
     my $Subject      = $Self->_HeaderValueClean( $Param{Subject} || '' );
     my $Body         = $Param{Body} || '';
+    my $PlainBody    = defined $Param{PlainBody} ? $Param{PlainBody} : '';
     my $InlineImages = ref $Param{InlineImages} eq 'ARRAY' ? $Param{InlineImages} : [];
     my $Attachments  = ref $Param{Attachments}  eq 'ARRAY' ? $Param{Attachments}  : [];
 
@@ -223,6 +224,7 @@ sub SMTPSend {
         Cc        => join( ', ', @CcEmails ),
         Subject      => $Subject,
         Body         => $Body,
+        PlainBody    => $PlainBody,
         ReplyToName  => $ReplyToName,
         ReplyToEmail => $ReplyToEmail,
         InlineImages => $InlineImages,
@@ -1552,6 +1554,7 @@ sub _SMTPMessageBuild {
     my $ReplyToEmail = $Self->_EmailClean( $Param{ReplyToEmail} || '' );
     my $Subject      = $Self->_HeaderValueClean( $Param{Subject} || '' );
     my $Body         = $Param{Body} || '';
+    my $PlainBody    = defined $Param{PlainBody} ? $Param{PlainBody} : '';
     my $InlineImages = ref $Param{InlineImages} eq 'ARRAY' ? $Param{InlineImages} : [];
     my $Attachments  = ref $Param{Attachments}  eq 'ARRAY' ? $Param{Attachments}  : [];
     my $Date         = $Self->_MailDateRFC2822();
@@ -1581,6 +1584,12 @@ sub _SMTPMessageBuild {
     my $EncodedBody = encode_base64( encode( 'UTF-8', $Body ), "\r\n" );
     $EncodedBody =~ s{\r?\n\z}{};
 
+    my $EncodedPlainBody = '';
+    if ( length $PlainBody ) {
+        $EncodedPlainBody = encode_base64( encode( 'UTF-8', $PlainBody ), "\r\n" );
+        $EncodedPlainBody =~ s{\r?\n\z}{};
+    }
+
     if ( @{$Attachments} ) {
         my $MixedBoundary = $Self->_MIMEBoundary();
         push @Header, 'Content-Type: multipart/mixed; boundary="' . $MixedBoundary . '"';
@@ -1590,8 +1599,15 @@ sub _SMTPMessageBuild {
 
         if ( @{$InlineImages} ) {
             push @Part, $Self->_SMTPRelatedPart(
-                EncodedBody  => $EncodedBody,
-                InlineImages => $InlineImages,
+                EncodedBody      => $EncodedBody,
+                EncodedPlainBody => $EncodedPlainBody,
+                InlineImages     => $InlineImages,
+            );
+        }
+        elsif ($EncodedPlainBody) {
+            push @Part, $Self->_SMTPAlternativePart(
+                EncodedBody      => $EncodedBody,
+                EncodedPlainBody => $EncodedPlainBody,
             );
         }
         else {
@@ -1612,12 +1628,21 @@ sub _SMTPMessageBuild {
 
     if ( @{$InlineImages} ) {
         my $RelatedBoundary = $Self->_MIMEBoundary();
-        push @Header, 'Content-Type: multipart/related; type="text/html"; boundary="' . $RelatedBoundary . '"';
+        my $RelatedType = $EncodedPlainBody ? 'multipart/alternative' : 'text/html';
+        push @Header, 'Content-Type: multipart/related; type="' . $RelatedType . '"; boundary="' . $RelatedBoundary . '"';
 
         my @Part;
-        push @Part,
-            '--' . $RelatedBoundary,
-            $Self->_SMTPHTMLPart( EncodedBody => $EncodedBody );
+        push @Part, '--' . $RelatedBoundary;
+
+        if ($EncodedPlainBody) {
+            push @Part, $Self->_SMTPAlternativePart(
+                EncodedBody      => $EncodedBody,
+                EncodedPlainBody => $EncodedPlainBody,
+            );
+        }
+        else {
+            push @Part, $Self->_SMTPHTMLPart( EncodedBody => $EncodedBody );
+        }
 
         for my $Image ( @{$InlineImages} ) {
             my $ImagePart = $Self->_SMTPInlineImagePart($Image);
@@ -1632,11 +1657,55 @@ sub _SMTPMessageBuild {
         return join( "\r\n", @Header ) . "\r\n\r\n" . join( "\r\n", @Part ) . "\r\n";
     }
 
+    if ($EncodedPlainBody) {
+        my $AlternativeBoundary = $Self->_MIMEBoundary();
+        push @Header, 'Content-Type: multipart/alternative; boundary="' . $AlternativeBoundary . '"';
+
+        my @Part = (
+            '--' . $AlternativeBoundary,
+            $Self->_SMTPTextPart( EncodedBody => $EncodedPlainBody ),
+            '--' . $AlternativeBoundary,
+            $Self->_SMTPHTMLPart( EncodedBody => $EncodedBody ),
+            '--' . $AlternativeBoundary . '--',
+        );
+
+        return join( "\r\n", @Header ) . "\r\n\r\n" . join( "\r\n", @Part ) . "\r\n";
+    }
+
     push @Header,
         'Content-Type: text/html; charset=UTF-8',
         'Content-Transfer-Encoding: base64';
 
     return join( "\r\n", @Header ) . "\r\n\r\n" . $EncodedBody . "\r\n";
+}
+
+sub _SMTPTextPart {
+    my ( $Self, %Param ) = @_;
+
+    my $EncodedBody = $Param{EncodedBody} || '';
+
+    return join "\r\n",
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: base64',
+        '',
+        $EncodedBody;
+}
+
+sub _SMTPAlternativePart {
+    my ( $Self, %Param ) = @_;
+
+    my $EncodedBody      = $Param{EncodedBody} || '';
+    my $EncodedPlainBody = $Param{EncodedPlainBody} || '';
+    my $Boundary         = $Self->_MIMEBoundary();
+
+    return join "\r\n",
+        'Content-Type: multipart/alternative; boundary="' . $Boundary . '"',
+        '',
+        '--' . $Boundary,
+        $Self->_SMTPTextPart( EncodedBody => $EncodedPlainBody ),
+        '--' . $Boundary,
+        $Self->_SMTPHTMLPart( EncodedBody => $EncodedBody ),
+        '--' . $Boundary . '--';
 }
 
 sub _SMTPHTMLPart {
@@ -1654,16 +1723,28 @@ sub _SMTPHTMLPart {
 sub _SMTPRelatedPart {
     my ( $Self, %Param ) = @_;
 
-    my $EncodedBody  = $Param{EncodedBody} || '';
-    my $InlineImages = ref $Param{InlineImages} eq 'ARRAY' ? $Param{InlineImages} : [];
-    my $Boundary     = $Self->_MIMEBoundary();
+    my $EncodedBody      = $Param{EncodedBody} || '';
+    my $EncodedPlainBody = $Param{EncodedPlainBody} || '';
+    my $InlineImages     = ref $Param{InlineImages} eq 'ARRAY' ? $Param{InlineImages} : [];
+    my $Boundary         = $Self->_MIMEBoundary();
     my @Part;
 
+    my $RelatedType = $EncodedPlainBody ? 'multipart/alternative' : 'text/html';
+
     push @Part,
-        'Content-Type: multipart/related; type="text/html"; boundary="' . $Boundary . '"',
+        'Content-Type: multipart/related; type="' . $RelatedType . '"; boundary="' . $Boundary . '"',
         '',
-        '--' . $Boundary,
-        $Self->_SMTPHTMLPart( EncodedBody => $EncodedBody );
+        '--' . $Boundary;
+
+    if ($EncodedPlainBody) {
+        push @Part, $Self->_SMTPAlternativePart(
+            EncodedBody      => $EncodedBody,
+            EncodedPlainBody => $EncodedPlainBody,
+        );
+    }
+    else {
+        push @Part, $Self->_SMTPHTMLPart( EncodedBody => $EncodedBody );
+    }
 
     for my $Image ( @{$InlineImages} ) {
         my $ImagePart = $Self->_SMTPInlineImagePart($Image);

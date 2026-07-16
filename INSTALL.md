@@ -221,12 +221,20 @@ die Sicherung des Programmstands und der instanzbezogenen Konfiguration. Ein
 Datenbankdump wird dann nicht erstellt. Bei Verwendung von `--yes` wird die
 Datenbanksicherung ohne weitere Rückfrage angelegt.
 
-Falls eine neue Version Tabellen, Felder, Indizes oder vorhandene Daten ändern
-muss, liegen die dafür vorgesehenen Dateien im Updatepaket unter:
+Die aktuelle Tabellenstruktur wird bei jedem Update mit
+`install/sql/schema.sql` abgeglichen. Fehlende Tabellen, Spalten, Indizes und
+Fremdschlüssel werden dabei ergänzt, ohne zusätzliche vorhandene Strukturen zu
+löschen.
 
-    install/update/database/VERSION/
+Einmalige Datenänderungen wie `INSERT`, `UPDATE` oder Datenumwandlungen liegen
+kumulativ unter:
 
-Unterstützt werden geordnet ausgeführte `.sql`- und `.pl`-Dateien. Die bereits
-vorhandene Tabelle `database_version` dokumentiert dabei nur, welche dieser
-Datenbankänderungen schon ausgeführt wurden.
+    install/update/database/DATENBANKVERSION/
+
+Alle veröffentlichten `.sql`- und `.pl`-Migrationen bleiben dauerhaft in jedem
+späteren Updatepaket enthalten. Die Tabelle `database_migration` protokolliert
+jede einzelne Datei mit Prüfsumme, sodass sie genau einmal ausgeführt wird und
+ein direkter Sprung von einem alten auf den aktuellen Datenbankstand möglich
+bleibt. Die Tabelle `database_version` dokumentiert erst nach erfolgreichem
+Strukturabgleich und allen fehlenden Migrationen den erreichten Gesamtstand.
 

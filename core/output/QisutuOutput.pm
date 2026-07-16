@@ -74,6 +74,23 @@ sub Render {
     return $Content;
 }
 
+sub RenderSingle {
+    my ( $Self, %Param ) = @_;
+
+    my $Template = $Param{Template} || '';
+    my $Data     = $Param{Data}     || {};
+
+    if ( !$Template ) {
+        $Self->{LastError} = 'Template is required';
+        return;
+    }
+
+    return $Self->_TemplateLoad(
+        Template => $Template,
+        Data     => $Data,
+    );
+}
+
 sub Response {
     my ( $Self, %Param ) = @_;
 

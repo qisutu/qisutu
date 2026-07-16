@@ -191,7 +191,19 @@ sub main {
         }
     }
 
-    if ( $CurrentUser && !( ( $Param->{Step} || '' ) eq 'Login' ) ) {
+    my %PublicLoginStep = map { $_ => 1 } qw(
+        Login
+        PasswordForgot
+        PasswordForgotSubmit
+        PasswordReset
+        PasswordResetSubmit
+        CustomerRegistration
+        CustomerRegistrationSubmit
+        CustomerRegistrationPassword
+        CustomerRegistrationPasswordSubmit
+    );
+
+    if ( $CurrentUser && !$PublicLoginStep{ $Param->{Step} || '' } ) {
         print $Dispatcher->Run(
             Request => $Param,
             User    => $CurrentUser,

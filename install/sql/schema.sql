@@ -1474,6 +1474,63 @@ CREATE TABLE `user_account` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `password_reset_token`
+--
+
+DROP TABLE IF EXISTS `password_reset_token`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `password_reset_token` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `user_account_id` bigint(20) unsigned NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `requested_ip` varchar(45) DEFAULT NULL,
+  `user_agent` varchar(255) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `expires_at` datetime NOT NULL,
+  `used_at` datetime DEFAULT NULL,
+  `invalidated_at` datetime DEFAULT NULL,
+  `mail_sent_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `password_reset_token_hash_unique` (`token_hash`),
+  KEY `password_reset_token_user_created` (`user_account_id`,`created_at`),
+  KEY `password_reset_token_expires_at` (`expires_at`),
+  KEY `password_reset_token_requested_ip` (`requested_ip`,`created_at`),
+  CONSTRAINT `password_reset_token_user_account_fk` FOREIGN KEY (`user_account_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `customer_registration_request`
+--
+
+DROP TABLE IF EXISTS `customer_registration_request`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `customer_registration_request` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `firstname` varchar(100) NOT NULL,
+  `lastname` varchar(100) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `company` varchar(255) NOT NULL,
+  `language` varchar(10) NOT NULL DEFAULT 'en',
+  `token_hash` char(64) NOT NULL,
+  `requested_ip` varchar(45) DEFAULT NULL,
+  `user_agent` varchar(255) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `expires_at` datetime NOT NULL,
+  `used_at` datetime DEFAULT NULL,
+  `invalidated_at` datetime DEFAULT NULL,
+  `mail_sent_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `customer_registration_token_unique` (`token_hash`),
+  KEY `customer_registration_email_created` (`email`,`created_at`),
+  KEY `customer_registration_expires_at` (`expires_at`),
+  KEY `customer_registration_ip_created` (`requested_ip`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `user_dynamic_field`
 --
 
@@ -1675,6 +1732,19 @@ CREATE TABLE `user_session` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+-- Qisutu database migration history
+CREATE TABLE IF NOT EXISTS `database_migration` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `migration_key` varchar(255) NOT NULL,
+  `database_version` varchar(50) NOT NULL,
+  `checksum_sha256` char(64) NOT NULL,
+  `execution_mode` varchar(20) NOT NULL DEFAULT 'executed',
+  `applied_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `database_migration_key_unique` (`migration_key`),
+  KEY `database_migration_version_idx` (`database_version`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Qisutu schema version
 CREATE TABLE IF NOT EXISTS `database_version` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -1684,7 +1754,7 @@ CREATE TABLE IF NOT EXISTS `database_version` (
   UNIQUE KEY `database_version_version_unique` (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `database_version` (`version`) VALUES ('0.0.1');
+INSERT INTO `database_version` (`version`) VALUES ('0.0.4');
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

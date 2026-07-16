@@ -1,0 +1,78 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<body style="margin:0;padding:0;background:#f4f7f9;font-family:Arial,Helvetica,sans-serif;color:#1f2933;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;margin:0;padding:0;background:#f4f7f9;border-collapse:collapse;">
+        <tr>
+            <td align="center" style="padding:0 12px 24px 12px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:760px;background:#ffffff;border:1px solid #d8e0e7;border-radius:8px;border-collapse:separate;overflow:hidden;">
+                    <tr>
+                        <td style="background:#015068;padding:12px 18px;">
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                                <tr>
+                                    <td style="width:34px;padding:0 10px 0 0;vertical-align:middle;">
+                                        <img src="cid:qisutu-logo" alt="Qisutu" style="height:28px;max-height:28px;width:auto;display:block;border:0;outline:none;text-decoration:none;">
+                                    </td>
+                                    <td style="vertical-align:middle;color:#ffffff;font-size:20px;font-weight:bold;line-height:28px;">[% SystemName %]</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:24px 28px;font-size:15px;line-height:1.55;">
+                            <p style="margin:0 0 16px 0;">[% Greeting %]</p>
+                            <p style="margin:0 0 18px 0;">[% IntroText %]</p>
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px 0;border-collapse:collapse;">
+                                <tr>
+                                    <td style="padding:8px 10px;background:#f4f7f9;border:1px solid #d8e0e7;"><strong>[% CompanyLabel %]</strong></td>
+                                    <td style="padding:8px 10px;background:#ffffff;border:1px solid #d8e0e7;">[% Company %]</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px 10px;background:#f4f7f9;border:1px solid #d8e0e7;"><strong>[% UsernameLabel %]</strong></td>
+                                    <td style="padding:8px 10px;background:#ffffff;border:1px solid #d8e0e7;">[% Email %]</td>
+                                </tr>
+                            </table>
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 20px 0;">
+                                <tr>
+                                    <td style="background:#015068;border-radius:6px;">
+                                        <a href="[% RegistrationURL %]" style="display:inline-block;padding:12px 20px;color:#ffffff;text-decoration:none;font-weight:bold;font-size:15px;line-height:20px;">[% ButtonLabel %]</a>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="margin:0 0 12px 0;">[% Validity %]</p>
+                            <p style="margin:0 0 18px 0;">[% IgnoreText %]</p>
+                            <p style="margin:0 0 6px 0;font-size:13px;color:#52606d;">[% LinkHint %]</p>
+                            <p style="margin:0;word-break:break-all;font-size:13px;line-height:1.45;"><a href="[% RegistrationURL %]" style="color:#015068;">[% RegistrationURL %]</a></p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

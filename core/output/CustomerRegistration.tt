@@ -1,0 +1,104 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+        <section class="qisutu-login" aria-labelledby="qisutu-customer-registration-title">
+            <div class="qisutu-login-panel">
+                <div class="qisutu-login-brand">
+                    <div class="qisutu-login-logo">
+                        <img src="[% StaticBase %]/img/logo.png" style="height: 100%;" alt="Qisutu">
+                    </div>
+                    <div>
+                        <h1 id="qisutu-customer-registration-title">[% Translate.CustomerRegistrationTitle %]</h1>
+                        <p>[% Translate.CustomerRegistrationIntro %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-login-message" role="alert">
+                    [% ErrorMessage %]
+                </div>
+
+                <form class="qisutu-login-form" method="post" action="[% FormAction %]" autocomplete="on">
+                    <input type="hidden" name="Step" value="CustomerRegistrationSubmit">
+
+                    <div class="qisutu-login-field">
+                        <label for="qisutu-registration-firstname">[% Translate.CustomerRegistrationFirstname %]</label>
+                        <input
+                            id="qisutu-registration-firstname"
+                            type="text"
+                            name="Firstname"
+                            value="[% Firstname %]"
+                            autocomplete="given-name"
+                            maxlength="100"
+                            required
+                            autofocus>
+                    </div>
+
+                    <div class="qisutu-login-field">
+                        <label for="qisutu-registration-lastname">[% Translate.CustomerRegistrationLastname %]</label>
+                        <input
+                            id="qisutu-registration-lastname"
+                            type="text"
+                            name="Lastname"
+                            value="[% Lastname %]"
+                            autocomplete="family-name"
+                            maxlength="100"
+                            required>
+                    </div>
+
+                    <div class="qisutu-login-field">
+                        <label for="qisutu-registration-email">[% Translate.CustomerRegistrationEmail %]</label>
+                        <input
+                            id="qisutu-registration-email"
+                            type="email"
+                            name="Email"
+                            value="[% Email %]"
+                            autocomplete="email"
+                            maxlength="255"
+                            required>
+                    </div>
+
+                    <div class="qisutu-login-field">
+                        <label for="qisutu-registration-company">[% Translate.CustomerRegistrationCompany %]</label>
+                        <input
+                            id="qisutu-registration-company"
+                            type="text"
+                            name="Company"
+                            value="[% Company %]"
+                            autocomplete="organization"
+                            maxlength="255"
+                            required>
+                    </div>
+
+                    <p class="qisutu-login-hint">[% Translate.CustomerRegistrationLoginHint %]</p>
+
+                    <button class="qisutu-login-button" type="submit">
+                        [% Translate.CustomerRegistrationSubmit %]
+                    </button>
+
+                    <div class="qisutu-login-links">
+                        <a class="qisutu-login-link" href="index.pl">[% Translate.PasswordBackToLogin %]</a>
+                    </div>
+                </form>
+            </div>
+        </section>

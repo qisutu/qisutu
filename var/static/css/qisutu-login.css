@@ -179,3 +179,87 @@
         padding: 24px;
     }
 }
+
+.qisutu-login-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 24px;
+    text-align: center;
+}
+
+.qisutu-login-links-separated {
+    margin-top: 22px;
+}
+
+.qisutu-login-link {
+    color: var(--qisutu-primary);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.qisutu-login-link:hover,
+.qisutu-login-link:focus {
+    text-decoration: underline;
+}
+
+.qisutu-login-hint {
+    margin: -4px 0 0;
+    color: var(--qisutu-muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.qisutu-login-notice {
+    padding: 14px 16px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 7px;
+    background: #ffffff;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.qisutu-login-notice p {
+    margin: 0;
+    color: inherit;
+}
+
+.qisutu-login-notice p + p {
+    margin-top: 10px;
+}
+
+.qisutu-login-notice-success {
+    border-color: #9fcfbc;
+    background: #eef9f4;
+    color: #17603f;
+}
+
+.qisutu-login-notice-error {
+    border-color: #e5b3b3;
+    background: #fff3f3;
+    color: var(--qisutu-danger);
+}
+
+.qisutu-login-button-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+.qisutu-login-actions {
+    display: grid;
+    gap: 16px;
+    margin-top: 22px;
+    text-align: center;
+}
+
+
+.qisutu-login-links-stack {
+    flex-direction: column;
+    gap: 8px;
+}
+
+.qisutu-login-registration-summary {
+    margin-bottom: 14px;
+}
