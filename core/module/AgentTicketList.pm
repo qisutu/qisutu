@@ -26,6 +26,8 @@ use strict;
 use warnings;
 use utf8;
 
+use QisutuBulkAction;
+
 sub new {
     my ( $Class, %Param ) = @_;
 
@@ -48,6 +50,10 @@ sub Run {
     my $User         = $Param{User}    || {};
     my $Language     = $Request->{Language} || 'en';
     my $TicketObject = $Self->_TicketObject();
+    my $BulkActionObject = QisutuBulkAction->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
     my $PreferenceObject = $Self->_PreferenceObject();
     my $Preference = $PreferenceObject
         ? $PreferenceObject->AgentPreferenceGet( UserAccountID => $User->{user_account_id} )
@@ -204,6 +210,76 @@ sub Run {
         Search               => $Search,
     };
 
+    my $BulkActionOptions = $BulkActionObject->Options(
+        User => $User,
+    );
+    my $BulkActionError = '';
+    my $BulkActionOpen  = 0;
+    my $SelectedBulkTicketIDs = $Self->_BulkTicketIDListClean(
+        Value => $Request->{BulkTicketID},
+        Limit => 50,
+    );
+
+    if ( ( $Request->{Step} || '' ) eq 'TicketBulkActionExecute' ) {
+        $BulkActionOpen = 1;
+
+        my %VisibleTicketID = map { ( $_->{id} || 0 ) => 1 } @{$Tickets};
+        my $SelectionValid = @{$SelectedBulkTicketIDs} ? 1 : 0;
+        for my $SelectedTicketID ( @{$SelectedBulkTicketIDs} ) {
+            if ( !$VisibleTicketID{$SelectedTicketID} ) {
+                $SelectionValid = 0;
+                last;
+            }
+        }
+
+        my $BulkInput = $Self->_BulkActionInputClean(
+            Request => $Request,
+            Options => $BulkActionOptions,
+        );
+
+        if (!$SelectionValid) {
+            $BulkActionError = $Self->_Translate(
+                Key      => 'TicketBulkActionSelectionInvalid',
+                Language => $Language,
+            );
+        }
+        elsif ( !$BulkInput->{Valid} ) {
+            $BulkActionError = $Self->_DisplayValue(
+                Value    => $BulkInput->{Error},
+                Language => $Language,
+            );
+        }
+        else {
+            my $BulkResult = $BulkActionObject->Execute(
+                TicketIDs => $SelectedBulkTicketIDs,
+                Changes   => $BulkInput->{Changes},
+                Reason    => $BulkInput->{Reason},
+                User      => $User,
+                Language  => $Language,
+            );
+
+            if ($BulkResult) {
+                return {
+                    Redirect => $Self->_ListURL(%{$Context})
+                        . ';BulkActionID=' . int( $BulkResult->{OperationID} || 0 ),
+                };
+            }
+
+            $BulkActionError = $Self->_DisplayValue(
+                Value    => $BulkActionObject->Error() || 'Translate:TicketBulkActionFailed',
+                Language => $Language,
+            );
+        }
+    }
+
+    my $BulkActionResult;
+    if ( ( $Request->{BulkActionID} || '' ) =~ m{\A\d+\z} ) {
+        $BulkActionResult = $BulkActionObject->ResultGet(
+            OperationID => $Request->{BulkActionID},
+            UserID      => $User->{user_account_id} || 0,
+        );
+    }
+
     my $ErrorMessage = '';
     if ($PreferenceObject && $PreferenceObject->Error()) {
         $ErrorMessage = $PreferenceObject->Error();
@@ -247,6 +323,18 @@ sub Run {
                 Context       => $Context,
                 Language      => $Language,
             ),
+            BulkActionResultHTML => $Self->_BulkActionResultHTML(
+                Result   => $BulkActionResult,
+                Language => $Language,
+            ),
+            BulkActionOverlayHTML => $Self->_BulkActionOverlayHTML(
+                Context       => $Context,
+                Options       => $BulkActionOptions,
+                Request       => $BulkActionOpen ? $Request : {},
+                Error         => $BulkActionError,
+                Open          => $BulkActionOpen,
+                Language      => $Language,
+            ),
             PerPageHTML => $Self->_PerPageHTML(
                 Context          => $Context,
                 Language         => $Language,
@@ -268,6 +356,7 @@ sub Run {
                 Context       => $Context,
                 Language      => $Language,
                 UserAccountID => $User->{user_account_id} || 0,
+                SelectedTicketIDs => $SelectedBulkTicketIDs,
             ),
             HasTickets => scalar @{$Tickets} ? 1 : 0,
         },
@@ -671,6 +760,282 @@ sub _PaginationHTML {
     return $HTML;
 }
 
+sub _BulkTicketIDListClean {
+    my ( $Self, %Param ) = @_;
+
+    my $Value = $Param{Value};
+    my $Limit = $Param{Limit} || 50;
+    my @Raw = !defined $Value ? () : ref $Value eq 'ARRAY' ? @{$Value} : ($Value);
+    my @TicketID;
+    my %Seen;
+
+    for my $Item (@Raw) {
+        next if !defined $Item || ref $Item;
+        next if $Item !~ m{\A\d+\z} || !$Item;
+        $Item = 0 + $Item;
+        next if $Seen{$Item}++;
+        push @TicketID, $Item;
+        last if @TicketID >= $Limit;
+    }
+
+    return \@TicketID;
+}
+
+sub _BulkActionInputClean {
+    my ( $Self, %Param ) = @_;
+
+    my $Request = $Param{Request} || {};
+    my $Options = $Param{Options} || {};
+    my %AllowedQueue       = map { ( $_->{id} || 0 ) => 1 } @{ $Options->{Queues} || [] };
+    my %AllowedState       = map { ( $_->{id} || 0 ) => $_ } @{ $Options->{States} || [] };
+    my %AllowedPriority    = map { ( $_->{id} || 0 ) => 1 } @{ $Options->{Priorities} || [] };
+    my %AllowedOwner       = map { ( $_->{id} || 0 ) => 1 } @{ $Options->{Owners} || [] };
+    my %AllowedResponsible = map { ( $_->{id} || 0 ) => 1 } @{ $Options->{Responsibles} || [] };
+    my %Changes;
+
+    my $QueueID = $Self->_BulkActionIDValue( $Request->{BulkQueueID} );
+    return { Valid => 0, Error => 'Translate:TicketBulkActionInvalidSelection' }
+        if !defined $QueueID || ( $QueueID && !$AllowedQueue{$QueueID} );
+    $Changes{QueueID} = $QueueID if $QueueID;
+
+    my $OwnerValue = $Self->_BulkActionIDValue( $Request->{BulkOwnerUserID} );
+    return { Valid => 0, Error => 'Translate:TicketBulkActionInvalidSelection' }
+        if !defined $OwnerValue || ( $OwnerValue && !$AllowedOwner{$OwnerValue} );
+    if ( $Self->_ScalarValue( $Request->{BulkOwnerUserID} ) ne '' ) {
+        $Changes{OwnerChange} = 1;
+        $Changes{OwnerUserID} = $OwnerValue;
+    }
+
+    my $ResponsibleValue = $Self->_BulkActionIDValue( $Request->{BulkResponsibleUserID} );
+    return { Valid => 0, Error => 'Translate:TicketBulkActionInvalidSelection' }
+        if !defined $ResponsibleValue || ( $ResponsibleValue && !$AllowedResponsible{$ResponsibleValue} );
+    if ( $Self->_ScalarValue( $Request->{BulkResponsibleUserID} ) ne '' ) {
+        $Changes{ResponsibleChange} = 1;
+        $Changes{ResponsibleUserID} = $ResponsibleValue;
+    }
+
+    my $StateID = $Self->_BulkActionIDValue( $Request->{BulkStateID} );
+    return { Valid => 0, Error => 'Translate:TicketBulkActionInvalidSelection' }
+        if !defined $StateID || ( $StateID && !$AllowedState{$StateID} );
+    if ($StateID) {
+        $Changes{StateID} = $StateID;
+        if ( ( $AllowedState{$StateID}->{state_type} || '' ) eq 'pending' ) {
+            my $PendingUntil = $Self->_SearchDateTimeInputClean( $Request->{BulkPendingUntil} );
+            return { Valid => 0, Error => 'Translate:TicketPendingUntilRequired' } if !$PendingUntil;
+            $Changes{PendingUntil} = $PendingUntil;
+        }
+    }
+
+    my $PriorityID = $Self->_BulkActionIDValue( $Request->{BulkPriorityID} );
+    return { Valid => 0, Error => 'Translate:TicketBulkActionInvalidSelection' }
+        if !defined $PriorityID || ( $PriorityID && !$AllowedPriority{$PriorityID} );
+    $Changes{PriorityID} = $PriorityID if $PriorityID;
+
+    if ( !$Changes{QueueID} && !$Changes{OwnerChange} && !$Changes{ResponsibleChange} && !$Changes{StateID} && !$Changes{PriorityID} ) {
+        return { Valid => 0, Error => 'Translate:TicketBulkActionActionRequired' };
+    }
+
+    my $Reason = $Self->_SearchTextClean( $Request->{BulkChangeReason}, 1000 );
+
+    return {
+        Valid   => 1,
+        Changes => \%Changes,
+        Reason  => $Reason,
+    };
+}
+
+sub _BulkActionIDValue {
+    my ( $Self, $Value ) = @_;
+
+    $Value = $Self->_ScalarValue($Value);
+    return 0 if $Value eq '';
+    return if $Value !~ m{\A\d+\z};
+    return 0 + $Value;
+}
+
+sub _ScalarValue {
+    my ( $Self, $Value ) = @_;
+    return '' if !defined $Value || ref $Value;
+    return $Value;
+}
+
+sub _BulkActionOverlayHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Context  = $Param{Context} || {};
+    my $Options  = $Param{Options} || {};
+    my $Request  = $Param{Request} || {};
+    my $Language = $Param{Language} || 'en';
+    my $Hidden   = $Param{Open} ? '' : ' hidden';
+    my $HTML = '<div class="qisutu-ticket-bulk-overlay" data-qisutu-ticket-bulk-overlay'
+        . ( $Param{Open} ? ' data-qisutu-ticket-bulk-open-on-load="1"' : '' ) . $Hidden . '>';
+    $HTML .= '<section class="qisutu-ticket-bulk-dialog" role="dialog" aria-modal="true" aria-labelledby="qisutu-ticket-bulk-title">';
+    $HTML .= '<header class="qisutu-ticket-bulk-header"><div>';
+    $HTML .= '<h2 id="qisutu-ticket-bulk-title">' . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionTitle', Language => $Language ) ) . '</h2>';
+    $HTML .= '<p>' . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionHint', Language => $Language ) ) . '</p>';
+    $HTML .= '</div><button class="qisutu-ticket-bulk-close" type="button" aria-label="'
+        . $Self->_Escape( $Self->_Translate( Key => 'AdminCancel', Language => $Language ) )
+        . '" data-qisutu-ticket-bulk-close>×</button></header>';
+
+    if ( $Param{Error} ) {
+        $HTML .= '<div class="qisutu-alert qisutu-alert-error">' . $Self->_Escape( $Param{Error} ) . '</div>';
+    }
+
+    $HTML .= '<form id="qisutu-ticket-bulk-form" class="qisutu-ticket-bulk-form" method="post" action="index.pl" data-qisutu-ticket-bulk-form'
+        . ' data-qisutu-ticket-bulk-confirm="' . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionConfirm', Language => $Language ) ) . '">';
+    $HTML .= '<input type="hidden" name="Page" value="AgentTicketList">';
+    $HTML .= '<input type="hidden" name="Step" value="TicketBulkActionExecute">';
+
+    for my $Name (qw(View FilterQueueID FilterCustomerID FilterCustomerUserID FilterOwnerID SortBy SortDirection PerPage ListPage)) {
+        my $Value = $Context->{$Name} || '';
+        $HTML .= '<input type="hidden" name="' . $Self->_Escape($Name) . '" value="' . $Self->_Escape($Value) . '">';
+    }
+    $HTML .= $Self->_SearchHiddenHTML( Search => $Context->{Search} );
+
+    $HTML .= '<div class="qisutu-ticket-bulk-selection-summary"><strong><span data-qisutu-ticket-bulk-count>0</span> '
+        . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionSelectedTickets', Language => $Language ) )
+        . '</strong><span>' . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionCurrentPageOnly', Language => $Language ) ) . '</span></div>';
+
+    $HTML .= '<div class="qisutu-ticket-bulk-grid">';
+    $HTML .= $Self->_BulkSelectHTML(
+        Name       => 'BulkQueueID',
+        LabelKey   => 'TicketQueue',
+        Options    => $Options->{Queues},
+        Selected   => $Request->{BulkQueueID},
+        Language   => $Language,
+    );
+    $HTML .= $Self->_BulkSelectHTML(
+        Name              => 'BulkOwnerUserID',
+        LabelKey          => 'TicketOwner',
+        Options           => $Options->{Owners},
+        Selected          => $Request->{BulkOwnerUserID},
+        IncludeUnassigned => 1,
+        Language          => $Language,
+    );
+    $HTML .= $Self->_BulkSelectHTML(
+        Name              => 'BulkResponsibleUserID',
+        LabelKey          => 'TicketResponsible',
+        Options           => $Options->{Responsibles},
+        Selected          => $Request->{BulkResponsibleUserID},
+        IncludeUnassigned => 1,
+        Language          => $Language,
+    );
+    $HTML .= $Self->_BulkSelectHTML(
+        Name       => 'BulkStateID',
+        LabelKey   => 'TicketState',
+        Options    => $Options->{States},
+        Selected   => $Request->{BulkStateID},
+        StateTypes => 1,
+        Language   => $Language,
+    );
+    $HTML .= '<label class="qisutu-form-field qisutu-ticket-bulk-pending" data-qisutu-ticket-bulk-pending hidden>';
+    $HTML .= '<span>' . $Self->_Escape( $Self->_Translate( Key => 'TicketPendingUntil', Language => $Language ) ) . '</span>';
+    $HTML .= '<input type="datetime-local" name="BulkPendingUntil" value="'
+        . $Self->_Escape( $Self->_ScalarValue( $Request->{BulkPendingUntil} ) ) . '" step="60" disabled></label>';
+    $HTML .= $Self->_BulkSelectHTML(
+        Name       => 'BulkPriorityID',
+        LabelKey   => 'TicketPriority',
+        Options    => $Options->{Priorities},
+        Selected   => $Request->{BulkPriorityID},
+        Language   => $Language,
+    );
+    $HTML .= '<label class="qisutu-form-field qisutu-ticket-bulk-reason"><span>'
+        . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionReason', Language => $Language ) ) . '</span>';
+    $HTML .= '<textarea name="BulkChangeReason" rows="3" maxlength="1000" placeholder="'
+        . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionReasonPlaceholder', Language => $Language ) ) . '">'
+        . $Self->_Escape( $Self->_ScalarValue( $Request->{BulkChangeReason} ) ) . '</textarea>';
+    $HTML .= '<small>' . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionReasonHint', Language => $Language ) ) . '</small></label>';
+    $HTML .= '</div>';
+
+    $HTML .= '<div class="qisutu-ticket-bulk-notice">'
+        . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionNotificationHint', Language => $Language ) )
+        . '</div>';
+    $HTML .= '<div class="qisutu-ticket-bulk-actions">';
+    $HTML .= '<button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-ticket-bulk-close>'
+        . $Self->_Escape( $Self->_Translate( Key => 'AdminCancel', Language => $Language ) ) . '</button>';
+    $HTML .= '<button class="qisutu-button qisutu-button-primary" type="submit" data-qisutu-ticket-bulk-submit>'
+        . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionApplyPrefix', Language => $Language ) )
+        . ' <span data-qisutu-ticket-bulk-submit-count>0</span> '
+        . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionApplySuffix', Language => $Language ) ) . '</button>';
+    $HTML .= '</div></form></section></div>';
+
+    return $HTML;
+}
+
+sub _BulkSelectHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Language = $Param{Language} || 'en';
+    my $Selected = $Self->_ScalarValue( $Param{Selected} );
+    my $HTML = '<label class="qisutu-form-field"><span>'
+        . $Self->_Escape( $Self->_Translate( Key => $Param{LabelKey}, Language => $Language ) ) . '</span>';
+    $HTML .= '<select name="' . $Self->_Escape( $Param{Name} ) . '"'
+        . ( $Param{Name} eq 'BulkStateID' ? ' data-qisutu-ticket-bulk-state' : '' ) . '>';
+    $HTML .= '<option value="">' . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionKeep', Language => $Language ) ) . '</option>';
+
+    if ( $Param{IncludeUnassigned} ) {
+        my $SelectedAttribute = $Selected eq '0' ? ' selected' : '';
+        $HTML .= '<option value="0"' . $SelectedAttribute . '>'
+            . $Self->_Escape( $Self->_Translate( Key => 'TicketListUnassigned', Language => $Language ) ) . '</option>';
+    }
+
+    for my $Option ( @{ $Param{Options} || [] } ) {
+        my $ID = $Option->{id} || 0;
+        next if !$ID;
+        my $SelectedAttribute = $Selected ne '' && $Selected =~ m{\A\d+\z} && $Selected == $ID ? ' selected' : '';
+        my $StateType = $Param{StateTypes}
+            ? ' data-state-type="' . $Self->_Escape( $Option->{state_type} || '' ) . '"'
+            : '';
+        my $Label = $Self->_DisplayValue(
+            Value    => $Option->{label} || $ID,
+            Language => $Language,
+        );
+        $HTML .= '<option value="' . $ID . '"' . $StateType . $SelectedAttribute . '>' . $Self->_Escape($Label) . '</option>';
+    }
+
+    $HTML .= '</select></label>';
+    return $HTML;
+}
+
+sub _BulkActionResultHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Result = $Param{Result};
+    return '' if !$Result;
+
+    my $Language = $Param{Language} || 'en';
+    my $Success = $Result->{success_count} || 0;
+    my $Skipped = $Result->{skipped_count} || 0;
+    my $Failed  = $Result->{failed_count}  || 0;
+    my $Class = $Failed ? 'qisutu-ticket-bulk-result-warning' : 'qisutu-ticket-bulk-result-success';
+    my $HTML = '<section class="qisutu-ticket-bulk-result ' . $Class . '" aria-labelledby="qisutu-ticket-bulk-result-title">';
+    $HTML .= '<div><h2 id="qisutu-ticket-bulk-result-title">'
+        . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionResultTitle', Language => $Language ) ) . '</h2>';
+    $HTML .= '<p><strong>' . $Success . '</strong> ' . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionSuccessful', Language => $Language ) )
+        . ' · <strong>' . $Skipped . '</strong> ' . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionSkipped', Language => $Language ) )
+        . ' · <strong>' . $Failed . '</strong> ' . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionFailedCount', Language => $Language ) ) . '</p></div>';
+
+    my @Problem = grep { ( $_->{result} || '' ) ne 'success' } @{ $Result->{items} || [] };
+    if (@Problem) {
+        $HTML .= '<details><summary>' . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionShowDetails', Language => $Language ) ) . '</summary><ul>';
+        for my $Item (@Problem) {
+            my $Number = $Item->{ticket_number_snapshot} || ( $Item->{ticket_id} || '-' );
+            my $NumberHTML = $Item->{ticket_id}
+                ? '<a href="index.pl?Page=AgentTicketZoom&amp;TicketID=' . int( $Item->{ticket_id} ) . '">' . $Self->_Escape($Number) . '</a>'
+                : $Self->_Escape($Number);
+            my $Error = $Self->_DisplayValue(
+                Value    => $Item->{error_message} || 'Translate:TicketBulkActionFailed',
+                Language => $Language,
+            );
+            $HTML .= '<li><strong>' . $NumberHTML . '</strong><span>' . $Self->_Escape($Error) . '</span></li>';
+        }
+        $HTML .= '</ul></details>';
+    }
+
+    $HTML .= '</section>';
+    return $HTML;
+}
+
 sub _TableHTML {
     my ( $Self, %Param ) = @_;
 
@@ -679,17 +1044,23 @@ sub _TableHTML {
     my $Context       = $Param{Context} || {};
     my $Language      = $Param{Language} || 'en';
     my $UserAccountID = $Param{UserAccountID} || 0;
+    my %SelectedTicketID = map { $_ => 1 } @{ $Param{SelectedTicketIDs} || [] };
 
     return '' if !@{$Tickets};
 
     my $HTML = '<div class="qisutu-table-wrap qisutu-ticket-list-wrap">';
     $HTML .= '<table class="qisutu-table qisutu-ticket-list-table qisutu-ticket-list-table-agent qisutu-ticket-list-table-flexible" data-qisutu-ticket-list-resizable data-qisutu-ticket-list-user-id="' . $Self->_Escape($UserAccountID) . '">';
     $HTML .= '<colgroup>';
+    $HTML .= '<col class="qisutu-ticket-list-select-col" data-qisutu-ticket-list-select-col>';
     for my $Column ( @{$Columns} ) {
         my $Key = $Column->{key} || '';
         $HTML .= '<col data-qisutu-ticket-list-col="' . $Self->_Escape($Key) . '">';
     }
     $HTML .= '</colgroup><thead><tr>';
+    $HTML .= '<th scope="col" class="qisutu-ticket-list-select-heading">';
+    $HTML .= '<input type="checkbox" data-qisutu-ticket-bulk-select-all aria-label="'
+        . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionSelectPage', Language => $Language ) ) . '">';
+    $HTML .= '</th>';
 
     for my $Column ( @{$Columns} ) {
         my $Key = $Column->{key};
@@ -716,7 +1087,17 @@ sub _TableHTML {
     $HTML .= '</tr></thead><tbody>';
 
     for my $Ticket ( @{$Tickets} ) {
-        $HTML .= '<tr class="qisutu-ticket-list-row">';
+        my $TicketID = $Ticket->{id} || 0;
+        my $Checked = $SelectedTicketID{$TicketID} ? ' checked' : '';
+        my $SelectedClass = $Checked ? ' qisutu-ticket-list-row-selected' : '';
+        my $TicketNumber = $Ticket->{ticket_number} || $TicketID;
+        $HTML .= '<tr class="qisutu-ticket-list-row' . $SelectedClass . '" data-qisutu-ticket-bulk-row>';
+        $HTML .= '<td class="qisutu-ticket-list-select-cell" data-label="'
+            . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionSelect', Language => $Language ) ) . '">';
+        $HTML .= '<input type="checkbox" name="BulkTicketID" value="' . $TicketID
+            . '" form="qisutu-ticket-bulk-form" data-qisutu-ticket-bulk-ticket aria-label="'
+            . $Self->_Escape( $Self->_Translate( Key => 'TicketBulkActionSelect', Language => $Language ) . ' ' . $TicketNumber )
+            . '"' . $Checked . '></td>';
         for my $Column ( @{$Columns} ) {
             my $Key   = $Column->{key};
             my $Label = $Column->{label} || $Key;

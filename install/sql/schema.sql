@@ -123,6 +123,7 @@ CREATE TABLE `automation_event` (
   `source_job_id` bigint(20) unsigned DEFAULT NULL,
   `depth` int(10) unsigned NOT NULL DEFAULT 0,
   `payload_json` longtext DEFAULT NULL,
+  `suppress_notifications` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `processed_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -156,6 +157,7 @@ CREATE TABLE `automation_job` (
   `attempts` int(10) unsigned NOT NULL DEFAULT 0,
   `max_attempts` int(10) unsigned NOT NULL DEFAULT 3,
   `depth` int(10) unsigned NOT NULL DEFAULT 0,
+  `suppress_notifications` tinyint(1) NOT NULL DEFAULT 0,
   `locked_by` varchar(255) DEFAULT NULL,
   `locked_until` datetime DEFAULT NULL,
   `error_message` text DEFAULT NULL,
@@ -975,10 +977,11 @@ AFTER INSERT ON `ticket`
 FOR EACH ROW
 BEGIN
     INSERT INTO `automation_event` (
-        `event_name`, `ticket_id`, `source_rule_id`, `source_job_id`, `depth`, `created_at`
+        `event_name`, `ticket_id`, `source_rule_id`, `source_job_id`, `depth`, `suppress_notifications`, `created_at`
     ) VALUES (
         'ticket_created', NEW.`id`, NULLIF(@qisutu_automation_rule_id, 0),
-        NULLIF(@qisutu_automation_job_id, 0), COALESCE(@qisutu_automation_depth, 0) + 1, NOW()
+        NULLIF(@qisutu_automation_job_id, 0), COALESCE(@qisutu_automation_depth, 0) + 1,
+        COALESCE(@qisutu_suppress_notifications, 0), NOW()
     );
 END */;;
 DELIMITER ;
@@ -1006,55 +1009,56 @@ BEGIN
     SELECT `state_type` INTO new_state_type FROM `ticket_state` WHERE `id` = NEW.`state_id` LIMIT 1;
 
     INSERT INTO `automation_event` (
-        `event_name`, `ticket_id`, `source_rule_id`, `source_job_id`, `depth`, `created_at`
+        `event_name`, `ticket_id`, `source_rule_id`, `source_job_id`, `depth`, `suppress_notifications`, `created_at`
     ) VALUES (
         'ticket_changed', NEW.`id`, NULLIF(@qisutu_automation_rule_id, 0),
-        NULLIF(@qisutu_automation_job_id, 0), COALESCE(@qisutu_automation_depth, 0) + 1, NOW()
+        NULLIF(@qisutu_automation_job_id, 0), COALESCE(@qisutu_automation_depth, 0) + 1,
+        COALESCE(@qisutu_suppress_notifications, 0), NOW()
     );
 
     IF NOT (OLD.`state_id` <=> NEW.`state_id`) THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('status_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('status_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF NOT (OLD.`queue_id` <=> NEW.`queue_id`) THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('queue_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('queue_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF NOT (OLD.`priority_id` <=> NEW.`priority_id`) THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('priority_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('priority_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF NOT (OLD.`owner_user_id` <=> NEW.`owner_user_id`) THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('owner_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('owner_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF NOT (OLD.`responsible_user_id` <=> NEW.`responsible_user_id`) THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('responsible_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('responsible_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF NOT (OLD.`service_id` <=> NEW.`service_id`) THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('service_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('service_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF NOT (OLD.`sla_id` <=> NEW.`sla_id`) THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('sla_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('sla_changed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF old_state_type <> 'closed' AND new_state_type = 'closed' THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('ticket_closed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('ticket_closed',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF old_state_type = 'closed' AND new_state_type <> 'closed' THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('ticket_reopened',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('ticket_reopened',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF NOT (OLD.`escalation_state` <=> NEW.`escalation_state`) AND NEW.`escalation_state` = 'warning' THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('sla_warning',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('sla_warning',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF NOT (OLD.`escalation_state` <=> NEW.`escalation_state`) AND NEW.`escalation_state` = 'escalated' THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('sla_breached',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('sla_breached',NEW.`id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
 END */;;
 DELIMITER ;
@@ -1114,23 +1118,24 @@ AFTER INSERT ON `ticket_article`
 FOR EACH ROW
 BEGIN
     INSERT INTO `automation_event` (
-        `event_name`, `ticket_id`, `source_rule_id`, `source_job_id`, `depth`, `created_at`
+        `event_name`, `ticket_id`, `source_rule_id`, `source_job_id`, `depth`, `suppress_notifications`, `created_at`
     ) VALUES (
         'article_created', NEW.`ticket_id`, NULLIF(@qisutu_automation_rule_id, 0),
-        NULLIF(@qisutu_automation_job_id, 0), COALESCE(@qisutu_automation_depth, 0) + 1, NOW()
+        NULLIF(@qisutu_automation_job_id, 0), COALESCE(@qisutu_automation_depth, 0) + 1,
+        COALESCE(@qisutu_suppress_notifications, 0), NOW()
     );
 
     IF NEW.`sender_type` = 'customer' THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('customer_article_created',NEW.`ticket_id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('customer_article_created',NEW.`ticket_id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF NEW.`sender_type` = 'agent' AND NEW.`channel` = 'email' THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('agent_article_created',NEW.`ticket_id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('agent_article_created',NEW.`ticket_id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
     IF NEW.`channel` = 'note' THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('note_created',NEW.`ticket_id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('note_created',NEW.`ticket_id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
 END */;;
 DELIMITER ;
@@ -1400,8 +1405,8 @@ DELIMITER ;;
 AFTER INSERT ON `ticket_dynamic_field_value`
 FOR EACH ROW
 BEGIN
-    INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-    VALUES ('dynamic_field_changed',NEW.`ticket_id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+    INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+    VALUES ('dynamic_field_changed',NEW.`ticket_id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
 END */;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -1422,8 +1427,8 @@ AFTER UPDATE ON `ticket_dynamic_field_value`
 FOR EACH ROW
 BEGIN
     IF NOT (OLD.`value_text` <=> NEW.`value_text`) THEN
-        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`created_at`)
-        VALUES ('dynamic_field_changed',NEW.`ticket_id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,NOW());
+        INSERT INTO `automation_event` (`event_name`,`ticket_id`,`source_rule_id`,`source_job_id`,`depth`,`suppress_notifications`,`created_at`)
+        VALUES ('dynamic_field_changed',NEW.`ticket_id`,NULLIF(@qisutu_automation_rule_id,0),NULLIF(@qisutu_automation_job_id,0),COALESCE(@qisutu_automation_depth,0)+1,COALESCE(@qisutu_suppress_notifications,0),NOW());
     END IF;
 END */;;
 DELIMITER ;
@@ -1915,6 +1920,41 @@ CREATE TABLE `ticket_time_accounting_cancellation` (
   CONSTRAINT `ticket_time_accounting_cancellation_user_fk` FOREIGN KEY (`cancelled_by_user_id`) REFERENCES `user_account` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `ticket_bulk_action` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `created_by_user_id` bigint(20) unsigned NOT NULL,
+  `change_reason` text DEFAULT NULL,
+  `requested_changes_json` longtext NOT NULL,
+  `selected_count` int(10) unsigned NOT NULL DEFAULT 0,
+  `success_count` int(10) unsigned NOT NULL DEFAULT 0,
+  `skipped_count` int(10) unsigned NOT NULL DEFAULT 0,
+  `failed_count` int(10) unsigned NOT NULL DEFAULT 0,
+  `status` varchar(30) NOT NULL DEFAULT 'running',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `completed_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `ticket_bulk_action_user_created` (`created_by_user_id`,`created_at`,`id`),
+  KEY `ticket_bulk_action_status_created` (`status`,`created_at`),
+  CONSTRAINT `ticket_bulk_action_user_fk` FOREIGN KEY (`created_by_user_id`) REFERENCES `user_account` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `ticket_bulk_action_item` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `bulk_action_id` bigint(20) unsigned NOT NULL,
+  `ticket_id` bigint(20) unsigned DEFAULT NULL,
+  `ticket_number_snapshot` varchar(50) NOT NULL DEFAULT '',
+  `result` varchar(30) NOT NULL,
+  `error_message` text DEFAULT NULL,
+  `changes_json` longtext NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `ticket_bulk_action_item_action` (`bulk_action_id`,`id`),
+  KEY `ticket_bulk_action_item_ticket` (`ticket_id`,`created_at`,`id`),
+  KEY `ticket_bulk_action_item_result` (`result`,`created_at`),
+  CONSTRAINT `ticket_bulk_action_item_action_fk` FOREIGN KEY (`bulk_action_id`) REFERENCES `ticket_bulk_action` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `ticket_bulk_action_item_ticket_fk` FOREIGN KEY (`ticket_id`) REFERENCES `ticket` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 DELIMITER ;;
 CREATE TRIGGER `qisutu_time_accounting_immutable_update`
 BEFORE UPDATE ON `ticket_time_accounting`
@@ -1964,7 +2004,7 @@ CREATE TABLE IF NOT EXISTS `database_version` (
   UNIQUE KEY `database_version_version_unique` (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `database_version` (`version`) VALUES ('0.0.6');
+INSERT INTO `database_version` (`version`) VALUES ('0.0.7');
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

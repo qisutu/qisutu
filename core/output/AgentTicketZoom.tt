@@ -352,10 +352,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                                 <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="history">
                                     <h4>[% Translate.TicketToolHistory %]</h4>
-                                    <div class="qisutu-ticket-tools-history-placeholder">
-                                        <strong>[% TicketNumber %]</strong>
-                                        <span>[% Translate.TicketToolsHistoryPlaceholder %]</span>
-                                    </div>
+                                    [% RAW.TicketBulkHistoryHTML %]
                                 </div>
                             </div>
                         </section>
@@ -767,4 +764,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
-            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071204"></script>
+            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071705"></script>

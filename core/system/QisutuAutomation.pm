@@ -514,8 +514,9 @@ sub ProcessEvents {
             my $Result = $Self->{DB}->Do(
                 'INSERT IGNORE INTO automation_job (
                     job_key, rule_id, event_id, ticket_id, job_type, status,
-                    scheduled_at, attempts, max_attempts, depth, created_at, changed_at
-                 ) VALUES (?, ?, ?, ?, ?, ?, NOW(), 0, 3, ?, NOW(), NOW())',
+                    scheduled_at, attempts, max_attempts, depth, suppress_notifications,
+                    created_at, changed_at
+                 ) VALUES (?, ?, ?, ?, ?, ?, NOW(), 0, 3, ?, ?, NOW(), NOW())',
                 $Key,
                 $Rule->{id},
                 $Event->{id},
@@ -523,6 +524,7 @@ sub ProcessEvents {
                 'trigger_action',
                 'pending',
                 $Event->{depth} || 0,
+                $Event->{suppress_notifications} ? 1 : 0,
             );
             if ( !defined $Result ) {
                 $Self->{LastError} = $Self->{DB}->Error() || 'Trigger job could not be created';
@@ -695,6 +697,7 @@ sub JobProcess {
             $DBH->do( 'SET @qisutu_automation_job_id = ' . int($JobID) );
             $DBH->do( 'SET @qisutu_automation_rule_id = ' . int( $Rule->{id} || 0 ) );
             $DBH->do( 'SET @qisutu_automation_depth = ' . int( $Job->{depth} || 0 ) );
+            $DBH->do( 'SET @qisutu_suppress_notifications = ' . ( $Job->{suppress_notifications} ? 1 : 0 ) );
         };
     }
 
@@ -757,6 +760,7 @@ sub ActionsApply {
     my $Rule     = $Param{Rule} || {};
     my $Job      = $Param{Job} || {};
     my $SystemUserID = $Self->_SystemUserID();
+    my $SuppressNotifications = $Job->{suppress_notifications} ? 1 : 0;
 
     if ( $Actions->{DeleteTickets} ) {
         return $Self->TicketDeleteComplete(
@@ -789,6 +793,7 @@ sub ActionsApply {
     if ( ( $Actions->{OwnerMode} || '' ) eq 'set' && $Actions->{OwnerID} ) {
         return $Self->_ActionError( $TicketObject ) if !$TicketObject->TicketOwnerUpdate(
             TicketID => $TicketID, OwnerUserID => $Actions->{OwnerID}, ChangedByUserID => $SystemUserID,
+            SuppressNotification => $SuppressNotifications,
         );
         push @Done, 'owner';
     }
@@ -866,7 +871,7 @@ sub ActionsApply {
         }
         return $Self->_ActionError( $TicketObject ) if !$TicketObject->TicketStatusUpdate(
             TicketID => $TicketID, StatusID => $Actions->{StateID}, PendingUntil => $PendingUntil,
-            ChangedByUserID => $SystemUserID,
+            ChangedByUserID => $SystemUserID, SuppressNotification => $SuppressNotifications,
         );
         push @Done, 'state';
     }
@@ -903,7 +908,7 @@ sub ActionsApply {
         push @Done, 'note';
     }
 
-    if ( $Actions->{EmailEnabled} && $Actions->{EmailBody} ) {
+    if ( $Actions->{EmailEnabled} && $Actions->{EmailBody} && !$SuppressNotifications ) {
         my $EmailResult = $Self->_CustomerEmailSend(
             TicketID => $TicketID,
             Subject  => $Actions->{EmailSubject},
@@ -914,8 +919,11 @@ sub ActionsApply {
         return if !$EmailResult;
         push @Done, 'email';
     }
+    elsif ( $Actions->{EmailEnabled} && $Actions->{EmailBody} ) {
+        push @Done, 'email_suppressed';
+    }
 
-    if ( ( $Actions->{AgentNotifyMode} || 'none' ) ne 'none' ) {
+    if ( ( $Actions->{AgentNotifyMode} || 'none' ) ne 'none' && !$SuppressNotifications ) {
         my $NotifyResult = $Self->_AgentNotificationSend(
             TicketID => $TicketID,
             Mode     => $Actions->{AgentNotifyMode},
@@ -926,6 +934,9 @@ sub ActionsApply {
         );
         return if !$NotifyResult;
         push @Done, 'agent_notification';
+    }
+    elsif ( ( $Actions->{AgentNotifyMode} || 'none' ) ne 'none' ) {
+        push @Done, 'agent_notification_suppressed';
     }
 
     return { applied => \@Done };

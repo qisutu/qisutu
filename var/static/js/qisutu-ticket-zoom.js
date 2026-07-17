@@ -1278,6 +1278,50 @@
         });
     }
 
+    function initTimeAccountingCorrectionDialogs() {
+        document.querySelectorAll('[data-qisutu-time-correction-open]').forEach(function (button) {
+            var dialogID = button.getAttribute('data-qisutu-time-correction-open') || '';
+            var dialog = dialogID ? document.getElementById(dialogID) : null;
+
+            if (!dialog) {
+                return;
+            }
+
+            function dialogClose() {
+                if (typeof dialog.close === 'function') {
+                    dialog.close();
+                }
+                else {
+                    dialog.removeAttribute('open');
+                }
+                button.focus();
+            }
+
+            button.addEventListener('click', function () {
+                if (dialog.hasAttribute('open')) {
+                    return;
+                }
+
+                if (typeof dialog.showModal === 'function') {
+                    dialog.showModal();
+                }
+                else {
+                    dialog.setAttribute('open', '');
+                }
+            });
+
+            dialog.querySelectorAll('[data-qisutu-time-correction-close]').forEach(function (closeButton) {
+                closeButton.addEventListener('click', dialogClose);
+            });
+
+            dialog.addEventListener('click', function (event) {
+                if (event.target === dialog) {
+                    dialogClose();
+                }
+            });
+        });
+    }
+
     function init() {
         initArticles();
         initTicketInfoSections();
@@ -1288,6 +1332,7 @@
         initTicketToolAutocomplete();
         initTicketToolDynamicFields();
         initDynamicMultiSelects();
+        initTimeAccountingCorrectionDialogs();
     }
 
     if (document.readyState === 'loading') {

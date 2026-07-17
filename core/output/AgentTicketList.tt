@@ -31,6 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 </div>
 
                 <div class="qisutu-alert qisutu-alert-error [% ErrorClass %]">[% ErrorMessage %]</div>
+                [% RAW.BulkActionResultHTML %]
 
                 <section class="qisutu-panel qisutu-ticket-list-panel">
                     <div class="qisutu-ticket-list-toolbar">
@@ -48,6 +49,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                             <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-ticket-list-columns-open>
                                 [% Translate.TicketListSelectColumns %]
+                            </button>
+
+                            <button class="qisutu-button qisutu-button-secondary qisutu-ticket-bulk-open-button" type="button" data-qisutu-ticket-bulk-open disabled aria-disabled="true">
+                                <span>[% Translate.TicketBulkActionTitle %]</span>
+                                <strong>(<span data-qisutu-ticket-bulk-button-count>0</span>)</strong>
+                            </button>
+                            <button class="qisutu-button qisutu-button-secondary qisutu-ticket-bulk-clear-button" type="button" data-qisutu-ticket-bulk-clear hidden>
+                                [% Translate.TicketBulkActionClearSelection %]
                             </button>
 
                             <button class="qisutu-button qisutu-button-secondary qisutu-ticket-search-open-button" type="button" data-qisutu-ticket-search-open>
@@ -95,5 +104,6 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 </div>
 
                 [% RAW.SearchOverlayHTML %]
+                [% RAW.BulkActionOverlayHTML %]
             </section>
-            <script src="[% StaticBase %]/js/qisutu-ticket-list.js?v=2026071202"></script>
+            <script src="[% StaticBase %]/js/qisutu-ticket-list.js?v=2026071702"></script>

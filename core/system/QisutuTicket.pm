@@ -4478,32 +4478,35 @@ sub TicketOwnerUpdate {
     my $User                = $Param{User} || {};
     my $ChangedByUserID     = $Param{ChangedByUserID} || 1;
     my $SuppressNotification = $Param{SuppressNotification} ? 1 : 0;
+    my $AllowUnassigned     = $Param{AllowUnassigned} ? 1 : 0;
 
     if ( $TicketID !~ m{\A\d+\z} || !$TicketID ) {
         $Self->{LastError} = 'Valid TicketID is required';
         return;
     }
 
-    if ( $OwnerUserID !~ m{\A\d+\z} || !$OwnerUserID ) {
+    if ( $OwnerUserID !~ m{\A\d+\z} || ( !$OwnerUserID && !$AllowUnassigned ) ) {
         $Self->{LastError} = 'Valid OwnerUserID is required';
         return;
     }
 
-    my $Agent = $Self->{DB}->SelectRow(
-        'SELECT id
-         FROM user_account
-         WHERE id = ?
-            AND account_type = ?
-            AND is_active = 1
-            AND is_system_user = 0
-         LIMIT 1',
-        $OwnerUserID,
-        'agent',
-    );
+    if ($OwnerUserID) {
+        my $Agent = $Self->{DB}->SelectRow(
+            'SELECT id
+             FROM user_account
+             WHERE id = ?
+                AND account_type = ?
+                AND is_active = 1
+                AND is_system_user = 0
+             LIMIT 1',
+            $OwnerUserID,
+            'agent',
+        );
 
-    if ( !$Agent ) {
-        $Self->{LastError} = 'Agent was not found';
-        return;
+        if ( !$Agent ) {
+            $Self->{LastError} = 'Agent was not found';
+            return;
+        }
     }
 
     my $Ticket = $Self->{DB}->SelectRow(
@@ -4530,7 +4533,7 @@ sub TicketOwnerUpdate {
              changed_by_user_id = ?,
              changed_at = NOW()
          WHERE id = ?',
-        $OwnerUserID,
+        $OwnerUserID || undef,
         $ChangedByUserID,
         $TicketID,
     );
@@ -4559,32 +4562,35 @@ sub TicketResponsibleUpdate {
     my $ResponsibleUserID    = $Param{ResponsibleUserID} || 0;
     my $User                 = $Param{User} || {};
     my $ChangedByUserID      = $Param{ChangedByUserID} || 1;
+    my $AllowUnassigned      = $Param{AllowUnassigned} ? 1 : 0;
 
     if ( $TicketID !~ m{\A\d+\z} || !$TicketID ) {
         $Self->{LastError} = 'Valid TicketID is required';
         return;
     }
 
-    if ( $ResponsibleUserID !~ m{\A\d+\z} || !$ResponsibleUserID ) {
+    if ( $ResponsibleUserID !~ m{\A\d+\z} || ( !$ResponsibleUserID && !$AllowUnassigned ) ) {
         $Self->{LastError} = 'Valid ResponsibleUserID is required';
         return;
     }
 
-    my $Agent = $Self->{DB}->SelectRow(
-        'SELECT id
-         FROM user_account
-         WHERE id = ?
-            AND account_type = ?
-            AND is_active = 1
-            AND is_system_user = 0
-         LIMIT 1',
-        $ResponsibleUserID,
-        'agent',
-    );
+    if ($ResponsibleUserID) {
+        my $Agent = $Self->{DB}->SelectRow(
+            'SELECT id
+             FROM user_account
+             WHERE id = ?
+                AND account_type = ?
+                AND is_active = 1
+                AND is_system_user = 0
+             LIMIT 1',
+            $ResponsibleUserID,
+            'agent',
+        );
 
-    if ( !$Agent ) {
-        $Self->{LastError} = 'Agent was not found';
-        return;
+        if ( !$Agent ) {
+            $Self->{LastError} = 'Agent was not found';
+            return;
+        }
     }
 
     my $Ticket = $Self->{DB}->SelectRow(
@@ -4611,7 +4617,7 @@ sub TicketResponsibleUpdate {
              changed_by_user_id = ?,
              changed_at = NOW()
          WHERE id = ?',
-        $ResponsibleUserID,
+        $ResponsibleUserID || undef,
         $ChangedByUserID,
         $TicketID,
     );

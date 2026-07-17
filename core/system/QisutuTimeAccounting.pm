@@ -458,7 +458,16 @@ sub TicketSummaryHTML {
             $HTML .= '<strong>' . $Self->_E( $Self->_T('TimeAccountingCancelled', $Language) ) . '</strong><br><small>' . $Self->_E($Entry->{cancellation_reason}) . '</small>';
         }
         elsif ( $CanCorrect && ( $IsAdmin || ( $Entry->{agent_user_id} || 0 ) == ( $Param{UserID} || 0 ) ) ) {
-            $HTML .= '<details><summary>' . $Self->_E( $Self->_T('TimeAccountingCorrect', $Language) ) . '</summary><form class="qisutu-time-accounting-correction" method="post" action="index.pl">';
+            my $DialogID = 'qisutu-time-correction-dialog-' . $Entry->{id};
+            my $DialogTitleID = $DialogID . '-title';
+            my $CorrectLabel = $Self->_E( $Self->_T('TimeAccountingCorrect', $Language) );
+            my $CancelLabel = $Self->_E( $Self->_T('AdminCancel', $Language) );
+
+            $HTML .= '<button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-time-correction-open="' . $Self->_E($DialogID) . '" aria-haspopup="dialog">' . $CorrectLabel . '</button>';
+            $HTML .= '<dialog id="' . $Self->_E($DialogID) . '" class="qisutu-time-accounting-dialog" aria-labelledby="' . $Self->_E($DialogTitleID) . '" data-qisutu-time-correction-dialog>';
+            $HTML .= '<div class="qisutu-time-accounting-dialog-shell"><header class="qisutu-time-accounting-dialog-header"><h3 id="' . $Self->_E($DialogTitleID) . '">' . $CorrectLabel . '</h3>';
+            $HTML .= '<button class="qisutu-time-accounting-dialog-close" type="button" aria-label="' . $CancelLabel . '" data-qisutu-time-correction-close>&times;</button></header>';
+            $HTML .= '<form class="qisutu-time-accounting-correction" method="post" action="index.pl">';
             $HTML .= '<input type="hidden" name="Page" value="AgentTicketZoom"><input type="hidden" name="Step" value="TimeAccountingCorrect"><input type="hidden" name="TicketID" value="' . $Self->_E($TicketID) . '"><input type="hidden" name="TimeAccountingID" value="' . $Self->_E($Entry->{id}) . '">';
             $HTML .= '<div class="qisutu-form-field"><label>' . $Self->_E( $Self->_T('TimeAccountingCorrectionReason', $Language) ) . '</label><textarea name="TimeAccountingCorrectionReason" required></textarea></div>';
             $HTML .= '<div class="qisutu-form-field"><label>' . $Self->_E( $Self->_T('TimeAccountingDescription', $Language) ) . '</label><textarea name="ReplacementTimeAccountingDescription">' . $Self->_E($Entry->{description} || '') . '</textarea></div>';
@@ -469,7 +478,8 @@ sub TicketSummaryHTML {
                 ReplacementTimeAccountingBillable => $Entry->{is_billable} ? 1 : 0,
             };
             $HTML .= $Self->FormHTML( Language => $Language, Request => $CorrectionRequest, NamePrefix => 'Replacement', IDPrefix => 'qisutu-time-correction-' . $Entry->{id} );
-            $HTML .= '<button class="qisutu-button qisutu-button-primary qisutu-button-small" type="submit">' . $Self->_E( $Self->_T('TimeAccountingCreateCorrection', $Language) ) . '</button></form></details>';
+            $HTML .= '<div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-time-correction-close>' . $CancelLabel . '</button>';
+            $HTML .= '<button class="qisutu-button qisutu-button-primary" type="submit">' . $Self->_E( $Self->_T('TimeAccountingCreateCorrection', $Language) ) . '</button></div></form></div></dialog>';
         }
         $HTML .= '</div></article>';
     }

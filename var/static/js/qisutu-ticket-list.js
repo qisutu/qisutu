@@ -296,6 +296,10 @@
                 return sum + (widths[key] || columnMinimumWidth(key));
             }, 0);
 
+            if (table.querySelector('[data-qisutu-ticket-list-select-col]')) {
+                total += 48;
+            }
+
             table.style.width = total + 'px';
             table.style.minWidth = total + 'px';
         }
@@ -592,12 +596,182 @@
         }
     }
 
+    function initBulkAction() {
+        var overlay = document.querySelector('[data-qisutu-ticket-bulk-overlay]');
+        var openButton = document.querySelector('[data-qisutu-ticket-bulk-open]');
+        var clearButton = document.querySelector('[data-qisutu-ticket-bulk-clear]');
+        var selectAll = document.querySelector('[data-qisutu-ticket-bulk-select-all]');
+        var ticketCheckboxes = Array.prototype.slice.call(document.querySelectorAll('[data-qisutu-ticket-bulk-ticket]'));
+
+        if (!overlay || !openButton || !ticketCheckboxes.length) {
+            return;
+        }
+
+        var dialog = overlay.querySelector('.qisutu-ticket-bulk-dialog');
+        var form = overlay.querySelector('[data-qisutu-ticket-bulk-form]');
+        var closeButtons = overlay.querySelectorAll('[data-qisutu-ticket-bulk-close]');
+        var stateSelect = overlay.querySelector('[data-qisutu-ticket-bulk-state]');
+        var pendingField = overlay.querySelector('[data-qisutu-ticket-bulk-pending]');
+        var pendingInput = pendingField ? pendingField.querySelector('input') : null;
+        var buttonCount = document.querySelector('[data-qisutu-ticket-bulk-button-count]');
+        var overlayCounts = overlay.querySelectorAll('[data-qisutu-ticket-bulk-count], [data-qisutu-ticket-bulk-submit-count]');
+
+        function selectedCount() {
+            return ticketCheckboxes.filter(function (checkbox) {
+                return checkbox.checked;
+            }).length;
+        }
+
+        function updateSelection() {
+            var count = selectedCount();
+
+            ticketCheckboxes.forEach(function (checkbox) {
+                var row = checkbox.closest('[data-qisutu-ticket-bulk-row]');
+                if (row) {
+                    row.classList.toggle('qisutu-ticket-list-row-selected', checkbox.checked);
+                }
+            });
+
+            if (buttonCount) {
+                buttonCount.textContent = String(count);
+            }
+            overlayCounts.forEach(function (element) {
+                element.textContent = String(count);
+            });
+
+            openButton.disabled = count === 0;
+            openButton.setAttribute('aria-disabled', count === 0 ? 'true' : 'false');
+            if (clearButton) {
+                clearButton.hidden = count === 0;
+            }
+
+            if (selectAll) {
+                selectAll.checked = count > 0 && count === ticketCheckboxes.length;
+                selectAll.indeterminate = count > 0 && count < ticketCheckboxes.length;
+            }
+        }
+
+        function updatePendingField() {
+            if (!stateSelect || !pendingField || !pendingInput) {
+                return;
+            }
+
+            var option = stateSelect.options[stateSelect.selectedIndex];
+            var pending = option && option.getAttribute('data-state-type') === 'pending';
+            pendingField.hidden = !pending;
+            pendingInput.disabled = !pending;
+            pendingInput.required = pending;
+            if (!pending) {
+                pendingInput.value = '';
+            }
+        }
+
+        function openOverlay(event) {
+            if (event) {
+                event.preventDefault();
+            }
+            if (!selectedCount()) {
+                return;
+            }
+            overlay.hidden = false;
+            document.body.classList.add('qisutu-overlay-open');
+            updateSelection();
+            updatePendingField();
+            var firstSelect = overlay.querySelector('select');
+            if (firstSelect) {
+                window.setTimeout(function () {
+                    firstSelect.focus();
+                }, 0);
+            }
+        }
+
+        function closeOverlay() {
+            overlay.hidden = true;
+            document.body.classList.remove('qisutu-overlay-open');
+            openButton.focus();
+        }
+
+        ticketCheckboxes.forEach(function (checkbox) {
+            checkbox.addEventListener('change', updateSelection);
+        });
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                ticketCheckboxes.forEach(function (checkbox) {
+                    checkbox.checked = selectAll.checked;
+                });
+                updateSelection();
+            });
+        }
+
+        if (clearButton) {
+            clearButton.addEventListener('click', function () {
+                ticketCheckboxes.forEach(function (checkbox) {
+                    checkbox.checked = false;
+                });
+                updateSelection();
+            });
+        }
+
+        openButton.addEventListener('click', openOverlay);
+        closeButtons.forEach(function (button) {
+            button.addEventListener('click', closeOverlay);
+        });
+
+        overlay.addEventListener('click', function (event) {
+            if (event.target === overlay) {
+                closeOverlay();
+            }
+        });
+
+        if (dialog) {
+            dialog.addEventListener('click', function (event) {
+                event.stopPropagation();
+            });
+        }
+
+        if (stateSelect) {
+            stateSelect.addEventListener('change', updatePendingField);
+        }
+
+        if (form) {
+            form.addEventListener('submit', function (event) {
+                var count = selectedCount();
+                if (!count) {
+                    event.preventDefault();
+                    closeOverlay();
+                    return;
+                }
+
+                var message = form.getAttribute('data-qisutu-ticket-bulk-confirm') || '';
+                message = message.replace('{count}', String(count));
+                if (message && !window.confirm(message)) {
+                    event.preventDefault();
+                }
+            });
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !overlay.hidden) {
+                closeOverlay();
+            }
+        });
+
+        updateSelection();
+        updatePendingField();
+
+        if (overlay.getAttribute('data-qisutu-ticket-bulk-open-on-load') === '1') {
+            openOverlay();
+        }
+    }
+
     function init() {
         initViewMenu();
         initFilters();
         initPerPageControls();
         initColumnOverlay();
         initSearchOverlay();
+        initBulkAction();
         initResizableTicketLists();
     }
 

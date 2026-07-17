@@ -27,6 +27,7 @@ use warnings;
 use utf8;
 use JSON::PP qw(encode_json);
 use Time::Local qw(timelocal);
+use QisutuBulkAction;
 use QisutuService;
 use QisutuChecklist;
 use QisutuResponseTemplate;
@@ -61,6 +62,7 @@ sub Run {
     my $DynamicFieldObject = $Self->_DynamicFieldObject();
     my $ChecklistObject    = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
     my $TimeAccountingObject = QisutuTimeAccounting->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
+    my $BulkActionObject = QisutuBulkAction->new( Config => $Self->{Config}, DB => $Self->{DB} );
     my $AttachmentMaxSizeMB    = $Self->_AttachmentMaxSizeMB();
     my $AttachmentMaxSizeBytes = $AttachmentMaxSizeMB * 1024 * 1024;
 
@@ -670,6 +672,14 @@ sub Run {
         };
     }
 
+    my $TicketBulkHistoryHTML = $Self->_TicketBulkHistoryHTML(
+        Entries  => $BulkActionObject->TicketHistoryList(
+            TicketID => $Ticket->{id},
+            Limit    => 100,
+        ),
+        Language => $Language,
+    );
+
     $Articles = $TicketObject->ArticleList(
         TicketID => $Ticket->{id},
         User     => $Param{User} || {},
@@ -859,6 +869,7 @@ sub Run {
             TicketID              => $Ticket->{id},
             TicketNumber          => $Ticket->{ticket_number},
             TicketTitle           => $Ticket->{title},
+            TicketBulkHistoryHTML => $TicketBulkHistoryHTML,
             TicketQueue           => $Ticket->{queue_full_name} || $Ticket->{queue_name},
             TicketServiceID       => $Ticket->{service_id} || 0,
             TicketService         => $Ticket->{service_name} || '-',
@@ -3528,6 +3539,60 @@ sub _TicketChecklistAddFormHTML {
     $HTML .= '</select><button class="qisutu-button qisutu-button-primary qisutu-button-small" type="submit">' . $Self->_Escape($ButtonLabel) . '</button></div>';
     $HTML .= '</form>';
 
+    return $HTML;
+}
+
+sub _TicketBulkHistoryHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Entries  = ref $Param{Entries} eq 'ARRAY' ? $Param{Entries} : [];
+    my $Language = $Param{Language} || 'en';
+
+    if ( !@{$Entries} ) {
+        return '<div class="qisutu-ticket-tools-history-placeholder"><span>'
+            . $Self->_Escape( $Self->{Output}->Translate( Key => 'TicketBulkActionHistoryEmpty', Language => $Language ) )
+            . '</span></div>';
+    }
+
+    my $Title = $Self->{Output}->Translate( Key => 'TicketBulkActionTitle', Language => $Language );
+    my $By    = $Self->{Output}->Translate( Key => 'TicketBulkActionHistoryBy', Language => $Language );
+    my $ReasonLabel = $Self->{Output}->Translate( Key => 'TicketBulkActionHistoryReason', Language => $Language );
+    my $HTML = '<div class="qisutu-ticket-bulk-history">';
+
+    for my $Entry ( @{$Entries} ) {
+        my $DateTime = $Self->_DateTimeFormat(
+            DateTime => $Entry->{created_at},
+            Language => $Language,
+        );
+        $HTML .= '<article class="qisutu-ticket-bulk-history-entry">';
+        $HTML .= '<header><strong>' . $Self->_Escape($Title) . ' #' . int( $Entry->{bulk_action_id} || 0 ) . '</strong>';
+        $HTML .= '<time>' . $Self->_Escape($DateTime) . '</time></header>';
+        $HTML .= '<div class="qisutu-ticket-bulk-history-agent"><span>' . $Self->_Escape($By) . '</span><strong>'
+            . $Self->_Escape( $Entry->{agent_name} || '-' ) . '</strong></div>';
+
+        if ( @{ $Entry->{changes} || [] } ) {
+            $HTML .= '<ul>';
+            for my $Change ( @{ $Entry->{changes} } ) {
+                next if ref $Change ne 'HASH';
+                my $Label = $Self->{Output}->Translate(
+                    Key      => $Change->{label_key} || '',
+                    Language => $Language,
+                );
+                $HTML .= '<li><span>' . $Self->_Escape($Label) . '</span><strong>'
+                    . $Self->_Escape( $Change->{old_value} || '-' ) . ' → '
+                    . $Self->_Escape( $Change->{new_value} || '-' ) . '</strong></li>';
+            }
+            $HTML .= '</ul>';
+        }
+
+        if ( defined $Entry->{change_reason} && $Entry->{change_reason} ne '' ) {
+            $HTML .= '<div class="qisutu-ticket-bulk-history-reason"><span>' . $Self->_Escape($ReasonLabel)
+                . '</span><p>' . $Self->_Escape( $Entry->{change_reason} ) . '</p></div>';
+        }
+        $HTML .= '</article>';
+    }
+
+    $HTML .= '</div>';
     return $HTML;
 }
 

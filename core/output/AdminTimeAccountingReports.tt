@@ -1,0 +1,52 @@
+[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
+<section class="qisutu-dashboard qisutu-time-report" aria-labelledby="qisutu-admin-time-report-title">
+    <div class="qisutu-dashboard-header">
+        <div>
+            <h1 id="qisutu-admin-time-report-title">[% ProgramTitle %]</h1>
+            <p>[% ProgramDescription %]</p>
+        </div>
+        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=Admin">[% Translate.AdminBackToList %]</a>
+    </div>
+
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><h2>[% Translate.AdminTimeAccountingReportFilter %]</h2></div>
+        <form class="qisutu-time-report-filter" method="get" action="index.pl">
+            <input type="hidden" name="Page" value="AdminTimeAccountingReports">
+            <div class="qisutu-form-field"><label for="qisutu-time-report-from">[% Translate.AdminTimeAccountingReportDateFrom %]</label><input id="qisutu-time-report-from" type="date" name="DateFrom" value="[% FilterDateFrom %]" required></div>
+            <div class="qisutu-form-field"><label for="qisutu-time-report-to">[% Translate.AdminTimeAccountingReportDateTo %]</label><input id="qisutu-time-report-to" type="date" name="DateTo" value="[% FilterDateTo %]" required></div>
+            <div class="qisutu-form-field"><label for="qisutu-time-report-agent">[% Translate.TimeAccountingAgent %]</label><select id="qisutu-time-report-agent" name="AgentID"><option value="0">[% Translate.AdminTimeAccountingReportAllAgents %]</option>[% FOREACH Option IN AgentOptions %]<option value="[% Option.id %]" [% Option.selected %]>[% Option.label %]</option>[% END %]</select></div>
+            <div class="qisutu-form-field"><label for="qisutu-time-report-customer">[% Translate.AdminTimeAccountingReportCustomer %]</label><select id="qisutu-time-report-customer" name="CustomerID"><option value="0">[% Translate.AdminTimeAccountingReportAllCustomers %]</option>[% FOREACH Option IN CustomerOptions %]<option value="[% Option.id %]" [% Option.selected %]>[% Option.label %]</option>[% END %]</select></div>
+            <div class="qisutu-form-field"><label for="qisutu-time-report-queue">[% Translate.AdminTimeAccountingReportQueue %]</label><select id="qisutu-time-report-queue" name="QueueID"><option value="0">[% Translate.AdminTimeAccountingReportAllQueues %]</option>[% FOREACH Option IN QueueOptions %]<option value="[% Option.id %]" [% Option.selected %]>[% Option.label %]</option>[% END %]</select></div>
+            <div class="qisutu-form-field"><label for="qisutu-time-report-activity">[% Translate.TimeAccountingActivityType %]</label><select id="qisutu-time-report-activity" name="ActivityTypeID"><option value="0">[% Translate.AdminTimeAccountingReportAllActivities %]</option>[% FOREACH Option IN ActivityOptions %]<option value="[% Option.id %]" [% Option.selected %]>[% Option.label %]</option>[% END %]</select></div>
+            <div class="qisutu-form-field"><label for="qisutu-time-report-billing">[% Translate.TimeAccountingBilling %]</label><select id="qisutu-time-report-billing" name="Billing"><option value="all" [% FilterBillingAllSelected %]>[% Translate.AdminTimeAccountingReportAllBilling %]</option><option value="billable" [% FilterBillingBillableSelected %]>[% Translate.TimeAccountingBillableYes %]</option><option value="non_billable" [% FilterBillingNonBillableSelected %]>[% Translate.TimeAccountingBillableNo %]</option></select></div>
+            <div class="qisutu-time-report-filter-actions"><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminTimeAccountingReports">[% Translate.TicketListResetFilters %]</a><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminTimeAccountingReportApply %]</button></div>
+        </form>
+    </section>
+
+    <section class="qisutu-time-report-metrics" aria-label="[% Translate.AdminTimeAccountingReportSummary %]">
+        <div class="qisutu-metric-card"><span class="qisutu-metric-label">[% Translate.TimeAccountingTotal %]</span><strong class="qisutu-metric-value">[% TotalDuration %]</strong></div>
+        <div class="qisutu-metric-card"><span class="qisutu-metric-label">[% Translate.TimeAccountingBillableTotal %]</span><strong class="qisutu-metric-value">[% BillableDuration %]</strong></div>
+        <div class="qisutu-metric-card"><span class="qisutu-metric-label">[% Translate.TimeAccountingNonBillableTotal %]</span><strong class="qisutu-metric-value">[% NonBillableDuration %]</strong></div>
+        <div class="qisutu-metric-card"><span class="qisutu-metric-label">[% Translate.AdminTimeAccountingReportActiveEntries %]</span><strong class="qisutu-metric-value">[% ActiveEntryCount %]</strong></div>
+        <div class="qisutu-metric-card qisutu-time-report-metric-cancelled"><span class="qisutu-metric-label">[% Translate.AdminTimeAccountingReportCancelledEntries %]</span><strong class="qisutu-metric-value">[% CancelledEntryCount %]</strong></div>
+    </section>
+    <p class="qisutu-time-report-audit-hint">[% Translate.AdminTimeAccountingReportCancelledExcluded %]</p>
+
+    <div class="qisutu-time-report-groups">
+        <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% Translate.AdminTimeAccountingReportGroupByAgent %]</h2></div><div class="qisutu-table-wrap"><table class="qisutu-table qisutu-table-compact"><thead><tr><th>[% Translate.TimeAccountingAgent %]</th><th>[% Translate.AdminTimeAccountingReportEntries %]</th><th>[% Translate.TimeAccountingTotal %]</th><th>[% Translate.TimeAccountingBillableTotal %]</th><th>[% Translate.TimeAccountingNonBillableTotal %]</th></tr></thead><tbody>[% FOREACH Row IN AgentGroups %]<tr><td><strong>[% Row.group_label %]</strong></td><td>[% Row.entry_count %]</td><td>[% Row.total_duration %]</td><td>[% Row.billable_duration %]</td><td>[% Row.non_billable_duration %]</td></tr>[% END %]</tbody></table></div></section>
+        <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% Translate.AdminTimeAccountingReportGroupByCustomer %]</h2></div><div class="qisutu-table-wrap"><table class="qisutu-table qisutu-table-compact"><thead><tr><th>[% Translate.AdminTimeAccountingReportCustomer %]</th><th>[% Translate.AdminTimeAccountingReportEntries %]</th><th>[% Translate.TimeAccountingTotal %]</th><th>[% Translate.TimeAccountingBillableTotal %]</th><th>[% Translate.TimeAccountingNonBillableTotal %]</th></tr></thead><tbody>[% FOREACH Row IN CustomerGroups %]<tr><td><strong>[% Row.group_label %]</strong></td><td>[% Row.entry_count %]</td><td>[% Row.total_duration %]</td><td>[% Row.billable_duration %]</td><td>[% Row.non_billable_duration %]</td></tr>[% END %]</tbody></table></div></section>
+        <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% Translate.AdminTimeAccountingReportGroupByActivity %]</h2></div><div class="qisutu-table-wrap"><table class="qisutu-table qisutu-table-compact"><thead><tr><th>[% Translate.TimeAccountingActivityType %]</th><th>[% Translate.AdminTimeAccountingReportEntries %]</th><th>[% Translate.TimeAccountingTotal %]</th><th>[% Translate.TimeAccountingBillableTotal %]</th><th>[% Translate.TimeAccountingNonBillableTotal %]</th></tr></thead><tbody>[% FOREACH Row IN ActivityGroups %]<tr><td><strong>[% Row.group_label %]</strong></td><td>[% Row.entry_count %]</td><td>[% Row.total_duration %]</td><td>[% Row.billable_duration %]</td><td>[% Row.non_billable_duration %]</td></tr>[% END %]</tbody></table></div></section>
+    </div>
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.AdminTimeAccountingReportDetails %]</h2><span class="qisutu-panel-subtitle">[% EntryCount %] [% Translate.AdminTimeAccountingReportEntries %]</span></div><a class="qisutu-button qisutu-button-primary" href="[% ExportURL %]">[% Translate.AdminTimeAccountingReportExportCSV %]</a></div>
+        <p class="qisutu-form-hint [% DetailLimitedClass %]">[% Translate.AdminTimeAccountingReportResultsLimited %]</p>
+        [% IF HasEntries %]
+        <div class="qisutu-table-wrap"><table class="qisutu-table qisutu-time-report-detail-table"><thead><tr><th>[% Translate.TimeAccountingDate %]</th><th>[% Translate.Ticket %]</th><th>[% Translate.TimeAccountingAgent %]</th><th>[% Translate.AdminTimeAccountingReportCustomer %]</th><th>[% Translate.AdminTimeAccountingReportQueue %]</th><th>[% Translate.TimeAccountingActivityType %]</th><th>[% Translate.TimeAccountingDuration %]</th><th>[% Translate.TimeAccountingBilling %]</th><th>[% Translate.TimeAccountingDescription %]</th><th>[% Translate.AdminTimeAccountingReportStatus %]</th></tr></thead><tbody>[% FOREACH Entry IN EntryList %]<tr class="[% Entry.row_class %]"><td>[% Entry.work_date %]</td><td><a class="qisutu-table-link" href="[% Entry.ticket_url %]">[% Entry.ticket_number %]</a><span class="qisutu-table-muted">[% Entry.ticket_title %]</span></td><td>[% Entry.agent_name %]</td><td>[% Entry.customer_name %]</td><td>[% Entry.queue_name %]</td><td>[% Entry.activity_type_name %]</td><td><strong>[% Entry.duration_label %]</strong></td><td>[% Entry.billing_label %]</td><td class="qisutu-time-report-description">[% Entry.description %]</td><td><strong>[% Entry.status_label %]</strong><span class="qisutu-table-muted">[% Entry.cancellation_reason %]</span><span class="qisutu-table-muted">[% Entry.cancellation_meta %]</span></td></tr>[% END %]</tbody></table></div>
+        [% ELSE %]
+        <p>[% Translate.AdminTimeAccountingReportNoResults %]</p>
+        [% END %]
+    </section>
+</section>
