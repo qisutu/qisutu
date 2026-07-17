@@ -71,6 +71,21 @@ ergänzt. Details stehen in `INSTALL.md`.
 - `scriptfiles/` – Apache- und systemd-Vorlagen
 - `var/static/` – Frontend-Assets und eingebundene Drittanbieter-Assets
 
+## Zeiterfassung
+
+Agenten können bei der Ticketerstellung, bei Artikeln und bei Ticketänderungen
+optional Arbeitszeit in Stunden und Minuten erfassen. Jede Buchung unterscheidet
+zwischen abrechenbarer und nicht abrechenbarer Zeit und kann einer im
+Adminbereich gepflegten Tätigkeitsart zugeordnet werden. Manuelle Einzelbuchungen
+sind ebenfalls möglich.
+
+Zeitbuchungen sind revisionssicher: Sie werden nicht bearbeitet oder gelöscht.
+Eine berechtigte Korrektur storniert die ursprüngliche Buchung mit Pflichtgrund
+und legt eine verknüpfte Ersatzbuchung an. Die Korrekturberechtigung wird bei
+Neuinstallation und Update nur der Admin-Gruppe zugewiesen. Zeitdaten werden
+ausschließlich in Agenten- und Administrationsbereichen verarbeitet; Kundenmasken
+und Kundenartikel enthalten keine Zeiterfassung.
+
 ## Datenbankkonfiguration
 
 Die Datenbankverbindung steht direkt in `core/config/QisutuConfig.pm`. Der

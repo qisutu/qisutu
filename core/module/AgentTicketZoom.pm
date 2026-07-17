@@ -30,6 +30,7 @@ use Time::Local qw(timelocal);
 use QisutuService;
 use QisutuChecklist;
 use QisutuResponseTemplate;
+use QisutuTimeAccounting;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -59,6 +60,7 @@ sub Run {
     my $TicketObject       = $Self->_TicketObject();
     my $DynamicFieldObject = $Self->_DynamicFieldObject();
     my $ChecklistObject    = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    my $TimeAccountingObject = QisutuTimeAccounting->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
     my $AttachmentMaxSizeMB    = $Self->_AttachmentMaxSizeMB();
     my $AttachmentMaxSizeBytes = $AttachmentMaxSizeMB * 1024 * 1024;
 
@@ -226,6 +228,61 @@ sub Run {
 
     my $ToolActionError  = '';
     my $ToolActionActive = 'priority';
+    my $TimeAccountingActionError = '';
+
+    if ( $TicketObject && ( $Request->{Step} || '' ) eq 'TimeAccountingCreate' ) {
+        my $User = $Param{User} || {};
+        my $AccessibleTicket = $TicketObject->TicketGet( TicketID => $TicketID, User => $User, Language => $Language );
+        my $Input = $TimeAccountingObject->InputParse( Request => $Request );
+        my $Description = $Request->{TimeAccountingDescription} || '';
+        $Description =~ s{\A\s+|\s+\z}{}g;
+        if ( !$AccessibleTicket || !$Self->_QueueAccessCheck( User => $User, QueueID => $AccessibleTicket->{queue_id} || 0, Permission => 'ticket.edit' ) ) {
+            $TimeAccountingActionError = 'Translate:TimeAccountingCreateDenied';
+        }
+        elsif ( !$Input ) {
+            $TimeAccountingActionError = $TimeAccountingObject->Error() || 'Translate:TimeAccountingCreateFailed';
+        }
+        elsif ( !$Input->{DurationMinutes} ) {
+            $TimeAccountingActionError = 'Translate:TimeAccountingDurationRequired';
+        }
+        elsif ( !$Description ) {
+            $TimeAccountingActionError = 'Translate:TimeAccountingDescriptionRequired';
+        }
+        elsif ( $TimeAccountingObject->EntryCreate(
+            TicketID => $TicketID, AgentUserID => $User->{user_account_id},
+            ActivityTypeID => $Input->{ActivityTypeID}, DurationMinutes => $Input->{DurationMinutes},
+            Billable => $Input->{Billable}, Description => $Description, Source => 'manual',
+            CreatedByUserID => $User->{user_account_id},
+        ) ) {
+            return { Redirect => 'index.pl?Page=AgentTicketZoom&TicketID=' . $TicketID . '#qisutu-ticket-time-accounting' };
+        }
+        else {
+            $TimeAccountingActionError = $TimeAccountingObject->Error() || 'Translate:TimeAccountingCreateFailed';
+        }
+        $ToolActionActive = 'time-accounting';
+    }
+
+    if ( $TicketObject && ( $Request->{Step} || '' ) eq 'TimeAccountingCorrect' ) {
+        my $User = $Param{User} || {};
+        my $AccessibleTicket = $TicketObject->TicketGet( TicketID => $TicketID, User => $User, Language => $Language );
+        my $Input = $TimeAccountingObject->InputParse( Request => $Request, NamePrefix => 'Replacement' );
+        if ( !$AccessibleTicket || !$Self->_QueueAccessCheck( User => $User, QueueID => $AccessibleTicket->{queue_id} || 0, Permission => 'ticket.view' ) ) {
+            $TimeAccountingActionError = 'Translate:TimeAccountingCorrectionDenied';
+        }
+        elsif ( !$Input ) {
+            $TimeAccountingActionError = $TimeAccountingObject->Error() || 'Translate:TimeAccountingCorrectionFailed';
+        }
+        elsif ( $TimeAccountingObject->EntryCorrect(
+            TimeAccountingID => $Request->{TimeAccountingID}, TicketID => $TicketID,
+            UserID => $User->{user_account_id}, Reason => $Request->{TimeAccountingCorrectionReason},
+            Description => $Request->{ReplacementTimeAccountingDescription}, Input => $Input,
+        ) ) {
+            return { Redirect => 'index.pl?Page=AgentTicketZoom&TicketID=' . $TicketID . '#qisutu-ticket-time-accounting' };
+        }
+        else {
+            $TimeAccountingActionError = $TimeAccountingObject->Error() || 'Translate:TimeAccountingCorrectionFailed';
+        }
+    }
 
     if ( $TicketObject && ( $Request->{Step} || '' ) eq 'TicketToolUpdate' ) {
         my $ToolResult = $Self->_TicketToolUpdate(
@@ -257,6 +314,11 @@ sub Run {
             MaxSizeBytes => $AttachmentMaxSizeBytes,
         );
         my $Attachments = $UploadResult->{Attachments} || [];
+        my $TimeAccountingInput = $TimeAccountingObject->InputParse( Request => $Request );
+
+        if ( !$TimeAccountingInput ) {
+            $ArticleCreateError = $TimeAccountingObject->Error() || 'Translate:TimeAccountingCreateFailed';
+        }
 
         if ( @{ $UploadResult->{Oversized} || [] } ) {
             $ArticleCreateError = $Self->_AttachmentTooLargeMessage(
@@ -502,6 +564,19 @@ sub Run {
             }
         }
 
+        if ( !$ArticleCreateError && ( $TimeAccountingInput->{DurationMinutes} || 0 ) > 0 ) {
+            if ( !$TimeAccountingObject->EntryCreate(
+                TicketID => $TicketID, TicketArticleID => $ArticleID,
+                AgentUserID => $User->{user_account_id}, ActivityTypeID => $TimeAccountingInput->{ActivityTypeID},
+                DurationMinutes => $TimeAccountingInput->{DurationMinutes}, Billable => $TimeAccountingInput->{Billable},
+                Source => 'article_' . $ArticleMode, Description => $Subject,
+                CreatedByUserID => $User->{user_account_id}, TransactionActive => 1,
+            ) ) {
+                $ArticleCreateError = $TimeAccountingObject->Error() || 'Translate:TimeAccountingCreateFailed';
+                $Self->{DB}->Rollback();
+            }
+        }
+
         if ( !$ArticleCreateError && ( $ArticleMode eq 'email' || $ArticleMode eq 'forward' ) ) {
             my $SendResult = $Self->_EmailSend(
                 FromName    => $FromName,
@@ -737,6 +812,33 @@ sub Run {
         Language => $Language,
     ) : '';
 
+    my $ArticleTimeAccountingFieldsHTML = $TimeAccountingObject->FormHTML(
+        Language => $Language,
+        Request  => $ArticleCreateError ? $Request : {},
+        IDPrefix => 'qisutu-ticket-article-time-accounting',
+    );
+    my %ToolTimeAccountingFieldsHTML;
+    for my $Tool (qw(priority owner responsible customer service queue close)) {
+        $ToolTimeAccountingFieldsHTML{$Tool} = $TimeAccountingObject->FormHTML(
+            Language => $Language,
+            Request  => $ToolActionError && $ToolActionActive eq $Tool ? $Request : {},
+            IDPrefix => 'qisutu-ticket-tool-' . $Tool . '-time-accounting',
+        );
+    }
+    my $ManualTimeAccountingFieldsHTML = $TimeAccountingObject->FormHTML(
+        Language => $Language,
+        Request  => $TimeAccountingActionError && ( $Request->{Step} || '' ) eq 'TimeAccountingCreate' ? $Request : {},
+        IDPrefix => 'qisutu-ticket-manual-time-accounting',
+    );
+    my $TicketTimeAccountingHTML = $TimeAccountingObject->TicketSummaryHTML(
+        TicketID => $TicketID,
+        UserID   => ( $Param{User} || {} )->{user_account_id},
+        Language => $Language,
+    );
+
+    $ToolActionError = $TimeAccountingActionError
+        if $TimeAccountingActionError && ( $Request->{Step} || '' ) eq 'TimeAccountingCreate';
+
     my $ArticleEmptyClass = $ArticleCount ? 'qisutu-hidden' : '';
     my $ArticleCreateErrorClass = $ArticleCreateError ? '' : 'qisutu-hidden';
     my $ArticleReplyFormClass = $ArticleCreateError ? '' : 'qisutu-hidden';
@@ -864,6 +966,21 @@ sub Run {
             TicketCloseDynamicFieldsHTML => $CloseDynamicFieldsHTML,
             TicketDynamicFieldsDisplayHTML => $TicketDynamicFieldsDisplayHTML,
             HasTicketDynamicFields => $TicketDynamicFieldsDisplayHTML ? 1 : 0,
+            ArticleTimeAccountingFieldsHTML => $ArticleTimeAccountingFieldsHTML,
+            TicketToolPriorityTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{priority},
+            TicketToolOwnerTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{owner},
+            TicketToolResponsibleTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{responsible},
+            TicketToolCustomerTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{customer},
+            TicketToolServiceTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{service},
+            TicketToolQueueTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{queue},
+            TicketToolCloseTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{close},
+            ManualTimeAccountingFieldsHTML => $ManualTimeAccountingFieldsHTML,
+            ManualTimeAccountingDescription => $TimeAccountingActionError && ( $Request->{Step} || '' ) eq 'TimeAccountingCreate' ? ( $Request->{TimeAccountingDescription} || '' ) : '',
+            TicketTimeAccountingHTML => $TicketTimeAccountingHTML,
+            TimeAccountingActionError => $TimeAccountingActionError,
+            TimeAccountingActionErrorClass => $TimeAccountingActionError ? '' : 'qisutu-hidden',
+            TimeAccountingExpandedAria => $TimeAccountingActionError ? 'true' : 'false',
+            TimeAccountingHiddenAttribute => $TimeAccountingActionError ? '' : 'hidden',
             TicketToolError          => $ToolActionError,
             TicketToolErrorClass     => $TicketToolErrorClass,
             TicketToolActive         => $ToolActionActive,
@@ -1676,6 +1793,18 @@ sub _TicketToolUpdate {
         };
     }
 
+    my $TimeObject = QisutuTimeAccounting->new(
+        Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output},
+    );
+    my $TimeInput = $TimeObject->InputParse( Request => $Request );
+    if (!$TimeInput) {
+        return {
+            Success    => 0,
+            ActiveTool => $Action,
+            Error      => $TimeObject->Error() || 'Translate:TimeAccountingCreateFailed',
+        };
+    }
+
     my $TicketBefore = $TicketObject->TicketGet(
         TicketID => $TicketID,
         User     => $User,
@@ -2090,6 +2219,22 @@ sub _TicketToolUpdate {
             ActiveTool => $Action,
             Error      => $Error,
         };
+    }
+
+    if ( ( $TimeInput->{DurationMinutes} || 0 ) > 0 ) {
+        if ( !$TimeObject->EntryCreate(
+            TicketID => $TicketID, TicketArticleID => $ArticleID,
+            AgentUserID => $User->{user_account_id}, ActivityTypeID => $TimeInput->{ActivityTypeID},
+            DurationMinutes => $TimeInput->{DurationMinutes}, Billable => $TimeInput->{Billable},
+            Source => 'ticket_tool_' . $Action,
+            Description => $Self->_ToolArticleSubject( Language => $Language, Action => $Action ),
+            CreatedByUserID => $User->{user_account_id},
+            TransactionActive => 1,
+        ) ) {
+            my $Error = $TimeObject->Error() || 'Translate:TimeAccountingCreateFailed';
+            $Self->{DB}->Rollback();
+            return { Success => 0, ActiveTool => $Action, Error => $Error };
+        }
     }
 
     if ( !$Self->{DB}->Commit() ) {

@@ -71,6 +71,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <strong>[% Translate.AdminTicketStatesTitle %]</strong>
                             <span>[% Translate.AdminTicketStatesDescription %]</span>
                         </a>
+                        <a class="qisutu-admin-start-item" href="index.pl?Page=AdminTimeAccountingActivityTypes">
+                            <strong>[% Translate.AdminTimeAccountingActivityTypesTitle %]</strong>
+                            <span>[% Translate.AdminTimeAccountingActivityTypesDescription %]</span>
+                        </a>
                         <a class="qisutu-admin-start-item" href="index.pl?Page=AdminGroups">
                             <strong>[% Translate.AdminGroupsTitle %]</strong>
                             <span>[% Translate.AdminGroupsDescription %]</span>

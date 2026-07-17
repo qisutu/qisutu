@@ -26,6 +26,7 @@ Beispiele:
 install/update/database/0.0.2/001-create-password-reset-token.sql
 install/update/database/0.0.3/001-create-customer-registration-request.sql
 install/update/database/0.0.5/001-create-postmaster-filter.sql
+install/update/database/0.0.6/001-create-time-accounting.sql
 
 Alle früheren Migrationsdateien bleiben unverändert in jedem späteren
 Updatepaket erhalten. Dadurch kann eine Installation direkt von einem sehr

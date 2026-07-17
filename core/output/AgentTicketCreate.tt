@@ -147,6 +147,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     </select>
                                 </div>
 
+                                [% RAW.TimeAccountingFieldsHTML %]
+
                                 <div class="qisutu-form-actions qisutu-agent-ticket-create-actions">
                                     <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketCreateSubmit %]</button>
                                 </div>
@@ -186,7 +188,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     <h3 id="qisutu-agent-ticket-create-attachment-limit-title">[% Translate.TicketArticleAttachmentTooLargeTitle %]</h3>
                     <p data-qisutu-attachment-limit-message data-qisutu-message-template="[% Translate.TicketArticleAttachmentTooLargeMessage %]"></p>
                     <p>[% Translate.TicketArticleAttachmentTooLargeAdmin %]</p>
-                    <div class="qisutu-form-actions">
+                                <div class="qisutu-form-actions">
                         <button class="qisutu-button qisutu-button-primary" type="button" data-qisutu-attachment-limit-close>[% Translate.TicketArticleAttachmentDialogOK %]</button>
                     </div>
                 </div>

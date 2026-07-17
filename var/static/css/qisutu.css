@@ -36,6 +36,150 @@
     --qisutu-radius: 8px;
 }
 
+.qisutu-time-accounting-fields {
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid var(--qisutu-border, #d9e0e8);
+    border-radius: 0.75rem;
+}
+
+.qisutu-time-accounting-fields legend {
+    padding: 0 0.4rem;
+    font-weight: 700;
+}
+
+.qisutu-time-accounting-grid {
+    display: grid;
+    grid-template-columns: minmax(7rem, 0.7fr) minmax(7rem, 0.7fr) minmax(12rem, 1.8fr) minmax(10rem, 1fr);
+    gap: 0.8rem;
+    align-items: end;
+}
+
+.qisutu-time-accounting-billable {
+    min-height: 2.75rem;
+    align-items: center;
+}
+
+.qisutu-ticket-time-accounting-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.qisutu-ticket-time-accounting-summary > div {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    border-radius: 0.65rem;
+    background: var(--qisutu-surface-muted, #f4f7fa);
+}
+
+.qisutu-ticket-time-accounting-summary span {
+    font-size: 0.82rem;
+    color: var(--qisutu-text-muted, #5f6f7f);
+}
+
+.qisutu-time-accounting-entry-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.qisutu-time-accounting-entry {
+    min-width: 0;
+    padding: 0.75rem;
+    border: 1px solid var(--qisutu-border, #d9e0e8);
+    border-radius: 0.65rem;
+    background: var(--qisutu-surface, #fff);
+}
+
+.qisutu-time-accounting-entry-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid var(--qisutu-border, #d9e0e8);
+}
+
+.qisutu-time-accounting-entry-head span {
+    flex: 0 0 auto;
+    font-weight: 700;
+}
+
+.qisutu-ticket-info-block .qisutu-time-accounting-entry-data {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+    margin: 0.65rem 0 0;
+}
+
+.qisutu-ticket-info-block .qisutu-time-accounting-entry-data > div {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 0.8fr) minmax(0, 1.2fr);
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.qisutu-time-accounting-entry-data dt {
+    color: var(--qisutu-muted, #6b7785);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.qisutu-ticket-info-block .qisutu-time-accounting-entry-data dd {
+    min-width: 0;
+    margin: 0;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+}
+
+.qisutu-time-accounting-entry-actions {
+    margin-top: 0.65rem;
+}
+
+.qisutu-time-accounting-entry-actions:empty {
+    display: none;
+}
+
+.qisutu-time-accounting-cancelled {
+    opacity: 0.68;
+}
+
+.qisutu-time-accounting-cancelled .qisutu-time-accounting-entry-head,
+.qisutu-time-accounting-cancelled .qisutu-time-accounting-entry-data {
+    text-decoration: line-through;
+}
+
+.qisutu-time-accounting-correction {
+    width: 100%;
+    min-width: 0;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--qisutu-border, #d9e0e8);
+    border-radius: 0.65rem;
+    background: var(--qisutu-surface, #fff);
+    text-decoration: none;
+}
+
+.qisutu-time-accounting-correction .qisutu-time-accounting-grid {
+    grid-template-columns: 1fr;
+}
+
+.qisutu-time-accounting-correction .qisutu-time-accounting-billable {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 800px) {
+    .qisutu-time-accounting-grid,
+    .qisutu-ticket-time-accounting-summary {
+        grid-template-columns: 1fr;
+    }
+}
+
 * {
     box-sizing: border-box;
 }

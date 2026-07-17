@@ -1,0 +1,27 @@
+[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
+<section class="qisutu-dashboard" aria-labelledby="qisutu-admin-time-activity-title">
+    <div class="qisutu-dashboard-header"><div><h1 id="qisutu-admin-time-activity-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div>[% IF ShowBackToList %]<a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminTimeAccountingActivityTypes">[% Translate.AdminBackToList %]</a>[% END %]</div>
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+    [% IF ShowList %]
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.AdminTimeAccountingActivityTypesList %]</h2><span class="qisutu-panel-subtitle">[% ActivityTypeCount %]</span></div><a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminTimeAccountingActivityTypes;Action=Create">[% Translate.AdminTimeAccountingActivityTypeCreate %]</a></div>
+        <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table"><thead><tr><th>[% Translate.AdminTimeAccountingActivityTypeName %]</th><th>[% Translate.AdminSortOrder %]</th><th>[% Translate.AdminTimeAccountingActivityTypeDefault %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminActions %]</th></tr></thead><tbody>
+        [% FOREACH ActivityType IN ActivityTypeList %]<tr><td><strong>[% ActivityType.name %]</strong></td><td>[% ActivityType.sort_order %]</td><td>[% ActivityType.default_label %]</td><td>[% ActivityType.active_label %]</td><td><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminTimeAccountingActivityTypes;Action=Edit;ActivityTypeID=[% ActivityType.id %]">[% Translate.AdminEdit %]</a></td></tr>[% END %]
+        </tbody></table></div>
+    </section>
+    [% END %]
+    [% IF ShowForm %]
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% FormTitle %]</h2></div>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+            <input type="hidden" name="Page" value="AdminTimeAccountingActivityTypes"><input type="hidden" name="Step" value="[% FormStep %]"><input type="hidden" name="ActivityTypeID" value="[% FormActivityTypeID %]">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label>[% Translate.AdminTimeAccountingActivityTypeName %] *</label><input type="text" name="Name" value="[% FormName %]" maxlength="255" required></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSortOrder %]</label><input type="number" name="SortOrder" value="[% FormSortOrder %]" min="1"></div>
+                <label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="Default" value="1" [% FormDefaultChecked %]><span>[% Translate.AdminTimeAccountingActivityTypeDefault %]</span></label>
+                [% IF ShowEdit %]<label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="Active" value="1" [% FormActiveChecked %]><span>[% Translate.AdminActive %]</span></label>[% END %]
+            </div>
+            <p class="qisutu-form-hint">[% Translate.AdminTimeAccountingActivityTypeHint %]</p>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% FormSubmitLabel %]</button></div>
+        </form>
+    </section>
+    [% END %]
+</section>

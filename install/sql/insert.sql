@@ -100,13 +100,9 @@ INSERT INTO `user_group_permission` (
     `active`,
     `created_by_user_id`,
     `changed_by_user_id`
-) VALUES (
-    1,
-    'admin.view',
-    1,
-    1,
-    1
-);
+) VALUES
+    (1, 'admin.view', 1, 1, 1),
+    (1, 'time_accounting.correct', 1, 1, 1);
 
 INSERT INTO `ticket_queue` (
     `id`,

@@ -28,6 +28,7 @@ use utf8;
 
 use JSON::PP qw(encode_json);
 use QisutuService;
+use QisutuTimeAccounting;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -125,11 +126,18 @@ sub Run {
     my $TicketObject          = $Self->_TicketObject();
     my $DynamicFieldObject    = $Self->_DynamicFieldObject();
     my $ServiceObject         = QisutuService->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    my $TimeAccountingObject  = QisutuTimeAccounting->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
     my $AttachmentMaxSizeMB   = $Self->_AttachmentMaxSizeMB();
     my $AttachmentMaxSizeByte = $AttachmentMaxSizeMB * 1024 * 1024;
     my $IsSubmit              = $Step eq 'AgentTicketCreate' ? 1 : 0;
     my $CreateError           = '';
     my $SendEmail             = $IsSubmit ? ( $Request->{SendEmail} ? 1 : 0 ) : 1;
+    my $TimeAccountingInput;
+
+    if ($IsSubmit) {
+        $TimeAccountingInput = $TimeAccountingObject->InputParse( Request => $Request );
+        $CreateError = $TimeAccountingObject->Error() if !$TimeAccountingInput;
+    }
 
     my $QueueList = $Self->_QueueList( User => $User );
     my $QueueID   = $Request->{QueueID} || 0;
@@ -227,6 +235,7 @@ sub Run {
                 Attachments       => $Attachments,
                 DynamicFieldRequest => $Request,
                 Language            => $Language,
+                TimeAccounting      => $TimeAccountingInput,
             );
 
             if ($TicketID) {
@@ -283,6 +292,11 @@ sub Run {
             IDPrefix => 'qisutu-agent-ticket-create-dynamic-field',
         )
         : '';
+    my $TimeAccountingFieldsHTML = $TimeAccountingObject->FormHTML(
+        Language => $Language,
+        Request  => $CreateError ? $Request : {},
+        IDPrefix => 'qisutu-agent-ticket-create-time-accounting',
+    );
 
     return {
         Template => 'AgentTicketCreate.tt',
@@ -308,6 +322,7 @@ sub Run {
             StatusOptionsHTML  => $StatusOptionsHTML,
             PriorityOptionsHTML => $PriorityOptionsHTML,
             TicketDynamicFieldsHTML => $TicketDynamicFieldsHTML,
+            TimeAccountingFieldsHTML => $TimeAccountingFieldsHTML,
             CreateError        => $CreateError,
             CreateErrorClass   => $CreateError ? '' : 'qisutu-hidden',
             SendEmailChecked   => $SendEmail ? 'checked' : '',

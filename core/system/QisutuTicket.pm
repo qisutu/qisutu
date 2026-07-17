@@ -37,6 +37,7 @@ use QisutuNotification;
 use QisutuService;
 use QisutuSystemSetting;
 use QisutuTicketSearch;
+use QisutuTimeAccounting;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -1984,6 +1985,7 @@ sub TicketCreateFromAgent {
     my $Attachments       = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
     my $DynamicFieldRequest = ref $Param{DynamicFieldRequest} eq 'HASH' ? $Param{DynamicFieldRequest} : {};
     my $Language            = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
+    my $TimeAccounting      = ref $Param{TimeAccounting} eq 'HASH' ? $Param{TimeAccounting} : {};
     my $UserID              = $User->{user_account_id} || 0;
 
     if ( $UserID !~ m{\A\d+\z} || !$UserID || ( $User->{account_type} || '' ) ne 'agent' ) {
@@ -2416,6 +2418,26 @@ sub TicketCreateFromAgent {
         $Self->{LastError} ||= 'Translate:TicketArticleCreateFailed';
         $Self->{DB}->Rollback();
         return;
+    }
+
+    if ( ( $TimeAccounting->{DurationMinutes} || 0 ) > 0 ) {
+        my $TimeObject = QisutuTimeAccounting->new( Config => $Self->{Config}, DB => $Self->{DB} );
+        if ( !$TimeObject->EntryCreate(
+            TicketID        => $TicketID,
+            TicketArticleID => $ArticleID,
+            AgentUserID     => $UserID,
+            ActivityTypeID  => $TimeAccounting->{ActivityTypeID},
+            DurationMinutes => $TimeAccounting->{DurationMinutes},
+            Billable        => $TimeAccounting->{Billable},
+            Source          => 'ticket_create',
+            Description     => $Title,
+            CreatedByUserID => $UserID,
+            TransactionActive => 1,
+        ) ) {
+            $Self->{LastError} = $TimeObject->Error() || 'Translate:TimeAccountingCreateFailed';
+            $Self->{DB}->Rollback();
+            return;
+        }
     }
 
     if ($SendEmail) {

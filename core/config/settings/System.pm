@@ -122,4 +122,15 @@
         SortOrder    => 600,
         Active       => 1,
     },
+    {
+        Key          => 'time_accounting.default_billable',
+        Module       => 'TimeAccounting',
+        Group        => 'Translate:TimeAccountingTitle',
+        Name         => 'Translate:SystemSettingTimeAccountingDefaultBillable',
+        Description  => 'Translate:SystemSettingTimeAccountingDefaultBillableDescription',
+        Type         => 'boolean',
+        Default      => 0,
+        SortOrder    => 100,
+        Active       => 1,
+    },
 ]
