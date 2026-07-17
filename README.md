@@ -38,7 +38,8 @@ Datenbankkonfiguration ein. Dadurch können Produktiv- und Testsystem parallel
 auf demselben Server laufen.
 
 Der Webinstaller erstellt die jeweilige Datenbank, den festgelegten
-Datenbankbenutzer, die Grunddaten und das erste Administratorkonto. Das
+Datenbankbenutzer, die Tabellenstruktur aus `install/sql/schema.sql`, die
+Grunddaten aus `install/sql/insert.sql` und das erste Administratorkonto. Das
 zufällig erzeugte Datenbankpasswort wird direkt in
 `core/config/QisutuConfig.pm` der betreffenden Instanz geschrieben.
 
@@ -54,16 +55,19 @@ Installation gestartet:
     sudo ./update.sh /opt/qisutu-test
 
 Der Updater erkennt die Instanz über `var/install/instance.conf`, stoppt nur
-deren Daemon und sperrt deren Mailabruf. Vor der vollständigen
-Datenbanksicherung fragt er in der Konsole nach und weist auf den erforderlichen
-freien Speicherplatz hin. Bei Bedarf führt er anschließend definierte
-Änderungen an der bestehenden Datenbank aus. Details stehen in `INSTALL.md`.
+deren Daemon und sperrt deren Mailabruf. Er kopiert alle verwalteten
+Programmdateien direkt in die bestehende Installation, ohne Instanzdateien,
+Apache-Konfiguration oder systemd-Konfiguration zu überschreiben. Auf Wunsch
+erstellt er zusätzlich einen Datenbankdump. Tabellenstruktur und alle dauerhaft
+mitgeführten Datenmigrationen werden vollständig geprüft und bei Bedarf
+ergänzt. Details stehen in `INSTALL.md`.
 
 ## Verzeichnisstruktur
 
 - `bin/` – CGI-Einstieg, Hintergrundprozesse und Kommandozeilenprogramme
 - `core/` – Konfiguration, Module, Templates, Sprachen und Systemklassen
-- `install/sql/schema.sql` – sauberes Installationsschema ohne Entwicklungsdaten
+- `install/sql/schema.sql` – vollständige Tabellenstruktur
+- `install/sql/insert.sql` – Grunddaten für eine Neuinstallation
 - `scriptfiles/` – Apache- und systemd-Vorlagen
 - `var/static/` – Frontend-Assets und eingebundene Drittanbieter-Assets
 

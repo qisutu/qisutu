@@ -5342,3 +5342,130 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     justify-content: flex-end;
     margin-top: 12px;
 }
+
+/* Postmaster filters */
+.qisutu-postmaster-filter-page .qisutu-panel {
+    margin-bottom: 1.25rem;
+}
+
+.qisutu-panel-header-actions {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.qisutu-postmaster-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.qisutu-postmaster-rows {
+    display: grid;
+    gap: .9rem;
+}
+
+.qisutu-postmaster-row {
+    align-items: end;
+    background: var(--qisutu-surface-soft, #f5f7f8);
+    border: 1px solid var(--qisutu-border, #d7dee2);
+    border-radius: .45rem;
+    display: grid;
+    gap: .75rem;
+    grid-template-columns: minmax(180px, 1.15fr) minmax(160px, 1fr) minmax(160px, 1fr) minmax(190px, 1.2fr) auto auto;
+    padding: .9rem;
+}
+
+.qisutu-postmaster-action-row {
+    grid-template-columns: minmax(230px, 1.4fr) minmax(230px, 1.2fr) minmax(210px, 1.2fr) auto;
+}
+
+.qisutu-postmaster-row .qisutu-form-field,
+.qisutu-postmaster-row .qisutu-form-checkbox {
+    margin: 0;
+}
+
+.qisutu-postmaster-row > .qisutu-button {
+    margin-bottom: .08rem;
+}
+
+.qisutu-postmaster-case {
+    align-self: center;
+    min-width: 140px;
+}
+
+.qisutu-postmaster-form-actions {
+    background: var(--qisutu-surface, #fff);
+    bottom: 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, .08);
+    position: sticky;
+    z-index: 5;
+}
+
+.qisutu-postmaster-test-result {
+    border-top: 1px solid var(--qisutu-border, #d7dee2);
+    margin-top: 1rem;
+    padding-top: 1rem;
+}
+
+.qisutu-postmaster-test-filter {
+    background: var(--qisutu-surface-soft, #f5f7f8);
+    border-radius: .4rem;
+    margin-top: .75rem;
+    padding: .8rem 1rem;
+}
+
+.qisutu-postmaster-test-filter .is-match {
+    font-weight: 600;
+}
+
+.qisutu-postmaster-test-filter .is-no-match {
+    opacity: .72;
+}
+
+.qisutu-inline-form {
+    display: inline;
+}
+
+.qisutu-postmaster-log-table small {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 1200px) {
+    .qisutu-postmaster-row,
+    .qisutu-postmaster-action-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .qisutu-panel-header-actions,
+    .qisutu-postmaster-checkboxes {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .qisutu-postmaster-row,
+    .qisutu-postmaster-action-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.qisutu-postmaster-log-meta {
+    display: grid;
+    grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
+    margin: 0 0 1.25rem;
+}
+
+.qisutu-postmaster-log-meta dt,
+.qisutu-postmaster-log-meta dd {
+    border-bottom: 1px solid var(--qisutu-border, #d7dee2);
+    margin: 0;
+    padding: .55rem .7rem;
+}
+
+.qisutu-postmaster-log-meta dt {
+    font-weight: 700;
+}

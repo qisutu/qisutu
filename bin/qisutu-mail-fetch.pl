@@ -47,6 +47,7 @@ sub main {
     require QisutuMail;
     require QisutuRuntimeLock;
     require QisutuTicket;
+    require QisutuPostmasterFilter;
 
     if ( QisutuRuntimeLock::MaintenanceActive( RootPath => $QisutuHome ) ) {
         print "Qisutu update is active. Mail fetch skipped.\n";
@@ -97,6 +98,11 @@ sub main {
         DB     => $DB,
     );
 
+    my $PostmasterFilter = QisutuPostmasterFilter->new(
+        Config => $Config,
+        DB     => $DB,
+    );
+
     my $MailboxList = $Admin->PostmasterIMAPAccountInboundList();
 
     for my $Mailbox ( @{$MailboxList} ) {
@@ -125,14 +131,93 @@ sub main {
 
         my $Created = 0;
         my $Updated = 0;
+        my $Ignored = 0;
+        my $Filtered = 0;
         my $Failed  = 0;
         my @ErrorMessages;
         my @NotificationMessages;
         my @AttachmentLimitMessages;
 
         for my $Message ( @{ $Result->{Messages} || [] } ) {
+            my $ExistingTicketID = $TicketObject->TicketIDFromSubject(
+                Subject => $Message->{subject},
+            );
+            my $MessageScope = $ExistingTicketID ? 'follow_up' : 'new';
+
+            my $FilterResult = $PostmasterFilter->Evaluate(
+                Message => $Message,
+                Context => {
+                    IMAPAccount     => $Mailbox,
+                    MessageUID      => $Message->{uid},
+                    ExistingTicketID => $ExistingTicketID,
+                    MessageScope    => $MessageScope,
+                },
+            );
+
+            if ( !$FilterResult ) {
+                my $Error = $PostmasterFilter->Error() || 'Postmaster filters could not be evaluated';
+                $Failed++;
+                push @ErrorMessages, $Error;
+                $PostmasterFilter->RunLogSave(
+                    IMAPAccountID => $Mailbox->{id},
+                    MessageUID    => $Message->{uid},
+                    MessageScope  => $MessageScope,
+                    MessageSubject => $Message->{subject},
+                    FromEmail     => $Message->{from_email},
+                    TicketID      => $ExistingTicketID,
+                    Result        => 'error',
+                    ErrorMessage  => $Error,
+                );
+                next;
+            }
+
+            $Filtered++ if $FilterResult->{MatchedCount};
+
+            if ( $FilterResult->{Ignore} ) {
+                my $DeleteResult = $Mail->IMAPDeleteMessage(
+                    Account => $Mailbox,
+                    UID     => $Message->{uid},
+                );
+                if ( !$DeleteResult->{Success} ) {
+                    $Failed++;
+                    my $Error = $DeleteResult->{Message} || 'Ignored IMAP message could not be deleted';
+                    push @ErrorMessages, $Error;
+                    $PostmasterFilter->RunLogSave(
+                        IMAPAccountID => $Mailbox->{id},
+                        MessageUID    => $Message->{uid},
+                        MessageScope  => $MessageScope,
+                        MessageSubject => $Message->{subject},
+                        FromEmail     => $Message->{from_email},
+                        TicketID      => $ExistingTicketID,
+                        Result        => 'error',
+                        FilterCount   => $FilterResult->{FilterCount},
+                        MatchedCount  => $FilterResult->{MatchedCount},
+                        Details       => $FilterResult,
+                        ErrorMessage  => $Error,
+                    );
+                    next;
+                }
+
+                $Ignored++;
+                $PostmasterFilter->RunLogSave(
+                    IMAPAccountID => $Mailbox->{id},
+                    MessageUID    => $Message->{uid},
+                    MessageScope  => $MessageScope,
+                    MessageSubject => $Message->{subject},
+                    FromEmail     => $Message->{from_email},
+                    TicketID      => $ExistingTicketID,
+                    Result        => 'ignored',
+                    FilterCount   => $FilterResult->{FilterCount},
+                    MatchedCount  => $FilterResult->{MatchedCount},
+                    Details       => $FilterResult,
+                );
+                next;
+            }
+
             my $TicketID = $TicketObject->TicketCreateFromEmail(
                 QueueID         => $Mailbox->{queue_id},
+                ExistingTicketID => $ExistingTicketID,
+                PostmasterResult => $FilterResult,
                 Subject         => $Message->{subject},
                 Body            => $Message->{body},
                 ContentType     => $Message->{content_type},
@@ -140,6 +225,7 @@ sub main {
                 FromEmail       => $Message->{from_email},
                 ToName          => $Message->{to_name},
                 ToEmail         => $Message->{to_email} || $Mailbox->{email},
+                Cc              => $Message->{cc},
                 Attachments     => $Message->{attachments} || [],
                 CreatedByUserID => 1,
                 ChangedByUserID => 1,
@@ -162,7 +248,21 @@ sub main {
 
                 if ( !$DeleteResult->{Success} ) {
                     $Failed++;
-                    push @ErrorMessages, $DeleteResult->{Message} || 'IMAP message could not be deleted';
+                    my $Error = $DeleteResult->{Message} || 'IMAP message could not be deleted';
+                    push @ErrorMessages, $Error;
+                    $PostmasterFilter->RunLogSave(
+                        IMAPAccountID => $Mailbox->{id},
+                        MessageUID    => $Message->{uid},
+                        MessageScope  => $MessageScope,
+                        MessageSubject => $Message->{subject},
+                        FromEmail     => $Message->{from_email},
+                        TicketID      => $TicketID,
+                        Result        => 'error',
+                        FilterCount   => $FilterResult->{FilterCount},
+                        MatchedCount  => $FilterResult->{MatchedCount},
+                        Details       => $FilterResult,
+                        ErrorMessage  => $Error,
+                    );
                     next;
                 }
 
@@ -173,16 +273,43 @@ sub main {
                 else {
                     $Created++;
                 }
+
+                $PostmasterFilter->RunLogSave(
+                    IMAPAccountID => $Mailbox->{id},
+                    MessageUID    => $Message->{uid},
+                    MessageScope  => $MessageScope,
+                    MessageSubject => $Message->{subject},
+                    FromEmail     => $Message->{from_email},
+                    TicketID      => $TicketID,
+                    Result        => $ImportAction && $ImportAction eq 'updated' ? 'updated' : 'created',
+                    FilterCount   => $FilterResult->{FilterCount},
+                    MatchedCount  => $FilterResult->{MatchedCount},
+                    Details       => $FilterResult,
+                );
                 next;
             }
 
             $Failed++;
-            push @ErrorMessages, $TicketObject->Error() || 'Ticket and article could not be created';
+            my $Error = $TicketObject->Error() || 'Ticket and article could not be created';
+            push @ErrorMessages, $Error;
+            $PostmasterFilter->RunLogSave(
+                IMAPAccountID => $Mailbox->{id},
+                MessageUID    => $Message->{uid},
+                MessageScope  => $MessageScope,
+                MessageSubject => $Message->{subject},
+                FromEmail     => $Message->{from_email},
+                TicketID      => $ExistingTicketID,
+                Result        => 'error',
+                FilterCount   => $FilterResult->{FilterCount},
+                MatchedCount  => $FilterResult->{MatchedCount},
+                Details       => $FilterResult,
+                ErrorMessage  => $Error,
+            );
         }
 
         my $Status = $Failed ? 'error' : 'ok';
-        my $Message = $Created || $Updated || $Failed
-            ? $Created . ' ticket(s) created, ' . $Updated . ' ticket(s) updated, ' . $Failed . ' failed'
+        my $Message = $Created || $Updated || $Ignored || $Filtered || $Failed
+            ? $Created . ' ticket(s) created, ' . $Updated . ' ticket(s) updated, ' . $Ignored . ' message(s) ignored, ' . $Filtered . ' message(s) matched filters, ' . $Failed . ' failed'
             : 'No new messages';
 
         if (@ErrorMessages) {

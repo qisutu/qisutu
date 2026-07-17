@@ -539,12 +539,8 @@ mkdir -p \
 find "$ROOT_PATH" -type d -exec chmod 0755 {} +
 find "$ROOT_PATH" -type f -exec chmod 0644 {} +
 chmod 0755 "$ROOT_PATH/install.sh" "$ROOT_PATH/update.sh"
-find "$ROOT_PATH/bin" -type f -name '*.pl' -exec chmod 0755 {} +
-chmod 0775 \
-    "$ROOT_PATH/bin/qisutu-daemon.pl" \
-    "$ROOT_PATH/bin/qisutu-mail-fetch.pl" \
-    "$ROOT_PATH/bin/qisutu-search-index-rebuild.pl" \
-    "$ROOT_PATH/bin/qisutu-ticket-escalation-check.pl"
+find "$ROOT_PATH/bin" -maxdepth 1 -type f -name '*.pl' -exec chmod 0775 {} +
+find "$ROOT_PATH/bin/cgi-bin" -maxdepth 1 -type f -name '*.pl' -exec chmod 0755 {} +
 
 chown -R root:"$APACHE_GROUP" "$ROOT_PATH"
 chown -R "$APACHE_USER":"$APACHE_GROUP" \

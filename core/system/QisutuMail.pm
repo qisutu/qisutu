@@ -704,6 +704,12 @@ sub _IMAPFetchBody {
     return '';
 }
 
+sub MessageParse {
+    my ( $Self, %Param ) = @_;
+
+    return $Self->_MessageParse( $Param{RawMessage} );
+}
+
 sub _MessageParse {
     my ( $Self, $RawMessage ) = @_;
 
@@ -722,12 +728,27 @@ sub _MessageParse {
         next if $Line !~ m{\A([^:]+):\s*(.*)\z};
         my $Name  = lc $1;
         my $Value = $2;
+        $Name =~ s{\A\s+|\s+\z}{}g;
         $Header{$Name} = defined $Header{$Name} ? $Header{$Name} . ', ' . $Value : $Value;
     }
 
-    my $Subject = $Self->_HeaderDecode( $Header{subject} || '(no subject)' );
-    my ( $FromName, $FromEmail ) = $Self->_AddressParse( $Header{from} || '' );
-    my ( $ToName,   $ToEmail )   = $Self->_AddressParse( $Header{to}   || '' );
+    my %DecodedHeader;
+    for my $Name ( keys %Header ) {
+        my $Value = $Header{$Name};
+        if ( $Name eq 'content-type' || $Name eq 'content-transfer-encoding' ) {
+            $DecodedHeader{$Name} = $Value;
+        }
+        else {
+            $DecodedHeader{$Name} = $Self->_HeaderDecode($Value);
+        }
+    }
+
+    my $Subject = $DecodedHeader{subject} || '(no subject)';
+    my $FromRaw = $DecodedHeader{from} || '';
+    my $ToRaw   = $DecodedHeader{to} || '';
+    my $CcRaw   = $DecodedHeader{cc} || '';
+    my ( $FromName, $FromEmail ) = $Self->_AddressParse($FromRaw);
+    my ( $ToName,   $ToEmail )   = $Self->_AddressParse($ToRaw);
 
     my $ContentType = $Header{'content-type'} || 'text/plain';
     my $Encoding    = lc( $Header{'content-transfer-encoding'} || '' );
@@ -739,15 +760,22 @@ sub _MessageParse {
     );
 
     return {
-        subject      => $Subject,
-        from_name    => $FromName,
-        from_email   => $FromEmail,
-        to_name      => $ToName,
-        to_email     => $ToEmail,
-        body         => $ParsedBody->{Body},
-        content_type         => $ParsedBody->{ContentType},
-        attachments          => $ParsedBody->{Attachments} || [],
-        rejected_attachments => $ParsedBody->{RejectedAttachments} || [],
+        subject              => $Subject,
+        from_name            => $FromName,
+        from_email           => $FromEmail,
+        from_raw             => $FromRaw,
+        to_name              => $ToName,
+        to_email             => $ToEmail,
+        to_raw               => $ToRaw,
+        cc                   => $CcRaw,
+        message_id           => $DecodedHeader{'message-id'} || '',
+        in_reply_to           => $DecodedHeader{'in-reply-to'} || '',
+        references            => $DecodedHeader{references} || '',
+        headers               => \%DecodedHeader,
+        body                  => $ParsedBody->{Body},
+        content_type          => $ParsedBody->{ContentType},
+        attachments           => $ParsedBody->{Attachments} || [],
+        rejected_attachments  => $ParsedBody->{RejectedAttachments} || [],
     };
 }
 

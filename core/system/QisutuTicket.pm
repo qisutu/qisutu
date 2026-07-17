@@ -1012,44 +1012,31 @@ sub TicketGet {
 sub TicketCreateFromEmail {
     my ( $Self, %Param ) = @_;
 
-    my $QueueID         = $Param{QueueID} || 0;
-    my $Title           = $Param{Subject} || $Param{Title} || '(no subject)';
-    my $Body            = $Param{Body} || '(empty message)';
-    my $ContentType     = $Param{ContentType} || 'text/plain';
-    my $FromName        = $Param{FromName} || '';
-    my $FromEmail       = $Param{FromEmail} || '';
-    my $ToName          = $Param{ToName} || '';
-    my $ToEmail         = $Param{ToEmail} || '';
-    my $CreatedByUserID = $Param{CreatedByUserID} || 1;
-    my $ChangedByUserID = $Param{ChangedByUserID} || $CreatedByUserID;
-    my $Attachments     = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
+    my $PostmasterResult = ref $Param{PostmasterResult} eq 'HASH' ? $Param{PostmasterResult} : {};
+    my $OriginalTitle    = $Param{Subject} || $Param{Title} || '(no subject)';
+    my $ExistingTicketID = $Param{ExistingTicketID} || $Self->_TicketIDFromSubject( Subject => $OriginalTitle );
+    my $QueueID          = $PostmasterResult->{QueueID} || $Param{QueueID} || 0;
+    my $Title            = defined $PostmasterResult->{Title} ? $PostmasterResult->{Title} : $OriginalTitle;
+    my $Body             = $Param{Body} || '(empty message)';
+    my $ContentType      = $Param{ContentType} || 'text/plain';
+    my $FromName         = $Param{FromName} || '';
+    my $FromEmail        = $Param{FromEmail} || '';
+    my $ToName           = $Param{ToName} || '';
+    my $ToEmail          = $Param{ToEmail} || '';
+    my $Cc               = $Param{Cc} || $Param{CC} || '';
+    my $CreatedByUserID  = $Param{CreatedByUserID} || 1;
+    my $ChangedByUserID  = $Param{ChangedByUserID} || $CreatedByUserID;
+    my $Attachments      = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
+    my $Visibility       = $PostmasterResult->{ArticleVisibility} || 'both';
+    my $SenderType       = $PostmasterResult->{SenderType} || 'customer';
 
     $Self->{LastEmailImportAction}   = '';
     $Self->{LastEmailImportTicketID} = 0;
 
-    if ( $QueueID !~ m{\A\d+\z} || !$QueueID ) {
-        $Self->{LastError} = 'Valid QueueID is required';
-        return;
-    }
-
-    my $Queue = $Self->{DB}->SelectRow(
-        'SELECT id
-         FROM ticket_queue
-         WHERE id = ?
-           AND active = 1
-         LIMIT 1',
-        $QueueID,
-    );
-
-    if ( !$Queue ) {
-        $Self->{LastError} = 'Queue was not found';
-        return;
-    }
-
-    my $ExistingTicketID = $Self->_TicketIDFromSubject( Subject => $Title );
     if ($ExistingTicketID) {
         return $Self->_TicketReplyCreateFromEmail(
             TicketID        => $ExistingTicketID,
+            OriginalSubject => $OriginalTitle,
             Subject         => $Title,
             Body            => $Body,
             ContentType     => $ContentType,
@@ -1057,32 +1044,32 @@ sub TicketCreateFromEmail {
             FromEmail       => $FromEmail,
             ToName          => $ToName,
             ToEmail         => $ToEmail,
+            Cc              => $Cc,
+            Visibility      => $Visibility,
+            SenderType      => $SenderType,
+            PostmasterResult => $PostmasterResult,
             CreatedByUserID => $CreatedByUserID,
             ChangedByUserID => $ChangedByUserID,
             Attachments     => $Attachments,
         );
     }
 
-    my $StateID = $Self->_DefaultStateID();
-    return if !$StateID;
+    my $Data = $Self->_PostmasterTicketDataResolve(
+        IsNew             => 1,
+        QueueID           => $QueueID,
+        FromEmail         => $FromEmail,
+        PostmasterResult  => $PostmasterResult,
+    );
+    return if !$Data;
 
-    my $PriorityID = $Self->_DefaultPriorityID();
-    return if !$PriorityID;
+    $Title =~ s{\A\s+|\s+\z}{}g;
+    $Title ||= '(no subject)';
+    $Title = substr( $Title, 0, 500 ) if length($Title) > 500;
 
-    my ( $CustomerID, $CustomerUserID ) = $Self->_CustomerByEmail( Email => $FromEmail );
     my $TicketNumber = $Self->_TicketNumberCreate();
-
     if ( !$TicketNumber ) {
         $Self->{LastError} ||= 'Ticket number could not be created';
         return;
-    }
-
-    $Title =~ s{\A\s+}{};
-    $Title =~ s{\s+\z}{};
-    $Title ||= '(no subject)';
-
-    if ( length $Title > 500 ) {
-        $Title = substr $Title, 0, 500;
     }
 
     $Self->{DB}->BeginWork() || do {
@@ -1092,29 +1079,44 @@ sub TicketCreateFromEmail {
 
     my $TicketResult = $Self->{DB}->Do(
         'INSERT INTO ticket (
-            ticket_number,
-            title,
-            queue_id,
-            state_id,
-            priority_id,
-            customer_id,
-            customer_user_id,
-            owner_user_id,
-            responsible_user_id,
-            created_by_user_id,
-            changed_by_user_id,
-            created_at,
-            changed_at
-        ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, NOW(), NOW()
-        )',
+            ticket_number, title, queue_id, state_id, priority_id,
+            customer_id, customer_user_id, owner_user_id, responsible_user_id,
+            service_id, sla_id, sla_source, sla_assignment_source,
+            sla_name_snapshot, sla_calendar_id, sla_update_mode,
+            sla_first_response_minutes, sla_update_minutes, sla_solution_minutes,
+            pending_started_at, pending_until, sla_pause_started_at, solution_at,
+            created_by_user_id, changed_by_user_id, created_at, changed_at
+         ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            CASE WHEN ? = "pending" THEN NOW() ELSE NULL END,
+            ?,
+            CASE WHEN ? = 1 THEN NOW() ELSE NULL END,
+            CASE WHEN ? = "closed" THEN NOW() ELSE NULL END,
+            ?, ?, NOW(), NOW()
+         )',
         $TicketNumber,
         $Title,
-        $QueueID,
-        $StateID,
-        $PriorityID,
-        $CustomerID,
-        $CustomerUserID,
+        $Data->{queue_id},
+        $Data->{state_id},
+        $Data->{priority_id},
+        $Data->{customer_id},
+        $Data->{customer_user_id},
+        $Data->{owner_user_id},
+        $Data->{responsible_user_id},
+        $Data->{service_id},
+        $Data->{sla_id},
+        $Data->{sla_source},
+        $Data->{sla_assignment_source},
+        $Data->{sla_name_snapshot},
+        $Data->{sla_calendar_id},
+        $Data->{sla_update_mode},
+        $Data->{sla_first_response_minutes},
+        $Data->{sla_update_minutes},
+        $Data->{sla_solution_minutes},
+        $Data->{state_type},
+        $Data->{pending_until},
+        $Data->{state_sla_pause},
+        $Data->{state_type},
         $CreatedByUserID,
         $ChangedByUserID,
     );
@@ -1126,9 +1128,18 @@ sub TicketCreateFromEmail {
     }
 
     my $TicketID = $Self->{DB}->LastInsertID('ticket');
-
     if ( !$TicketID ) {
         $Self->{LastError} = 'Ticket ID could not be loaded';
+        $Self->{DB}->Rollback();
+        return;
+    }
+
+    if ( !$Self->_PostmasterDynamicFieldsApply(
+        TicketID        => $TicketID,
+        QueueID         => $Data->{queue_id},
+        DynamicFields   => $PostmasterResult->{DynamicFields} || {},
+        ChangedByUserID => $ChangedByUserID,
+    ) ) {
         $Self->{DB}->Rollback();
         return;
     }
@@ -1148,13 +1159,14 @@ sub TicketCreateFromEmail {
         Subject         => $Title,
         Body            => $Body,
         Channel         => 'email',
-        SenderType      => 'customer',
+        SenderType      => $SenderType,
         FromName        => $FromName,
         FromEmail       => $FromEmail,
         ToName          => $ToName,
         ToEmail         => $ToEmail,
+        Cc              => $Cc,
         ContentType     => $ContentType,
-        Visibility      => 'both',
+        Visibility      => $Visibility,
         SkipTicketAccessCheck => 1,
         SkipNotification => 1,
         CreatedByUserID => $CreatedByUserID,
@@ -1189,22 +1201,28 @@ sub TicketCreateFromEmail {
 sub _TicketReplyCreateFromEmail {
     my ( $Self, %Param ) = @_;
 
-    my $TicketID        = $Param{TicketID} || 0;
-    my $Subject         = $Param{Subject} || '(no subject)';
-    my $Body            = $Param{Body} || '(empty message)';
-    my $ContentType     = $Param{ContentType} || 'text/plain';
-    my $FromName        = $Param{FromName} || '';
-    my $FromEmail       = $Param{FromEmail} || '';
-    my $ToName          = $Param{ToName} || '';
-    my $ToEmail         = $Param{ToEmail} || '';
-    my $CreatedByUserID = $Param{CreatedByUserID} || 1;
-    my $ChangedByUserID = $Param{ChangedByUserID} || $CreatedByUserID;
-    my $Attachments     = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
+    my $TicketID         = $Param{TicketID} || 0;
+    my $OriginalSubject  = $Param{OriginalSubject} || $Param{Subject} || '(no subject)';
+    my $Subject          = $Param{Subject} || '(no subject)';
+    my $Body             = $Param{Body} || '(empty message)';
+    my $ContentType      = $Param{ContentType} || 'text/plain';
+    my $FromName         = $Param{FromName} || '';
+    my $FromEmail        = $Param{FromEmail} || '';
+    my $ToName           = $Param{ToName} || '';
+    my $ToEmail          = $Param{ToEmail} || '';
+    my $Cc               = $Param{Cc} || $Param{CC} || '';
+    my $Visibility       = $Param{Visibility} || 'both';
+    my $SenderType       = $Param{SenderType} || 'customer';
+    my $PostmasterResult = ref $Param{PostmasterResult} eq 'HASH' ? $Param{PostmasterResult} : {};
+    my $CreatedByUserID  = $Param{CreatedByUserID} || 1;
+    my $ChangedByUserID  = $Param{ChangedByUserID} || $CreatedByUserID;
+    my $Attachments      = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
 
     my $Ticket = $Self->{DB}->SelectRow(
-        'SELECT id, ticket_number
-         FROM ticket
-         WHERE id = ?
+        'SELECT t.*, state.state_type AS current_state_type
+         FROM ticket t
+         INNER JOIN ticket_state state ON state.id = t.state_id
+         WHERE t.id = ?
          LIMIT 1',
         $TicketID,
     );
@@ -1215,31 +1233,98 @@ sub _TicketReplyCreateFromEmail {
     }
 
     $Subject = $Self->_TicketSubjectReferenceRemove( Subject => $Subject );
-    $Subject =~ s{\A\s+}{};
-    $Subject =~ s{\s+\z}{};
+    $Subject =~ s{\A\s+|\s+\z}{}g;
     $Subject ||= 'Re: ' . ( $Ticket->{ticket_number} || $TicketID );
+    $Subject = substr( $Subject, 0, 500 ) if length($Subject) > 500;
 
-    if ( length $Subject > 500 ) {
-        $Subject = substr $Subject, 0, 500;
-    }
+    my $Data = $Self->_PostmasterTicketDataResolve(
+        IsNew             => 0,
+        Ticket            => $Ticket,
+        QueueID           => $Ticket->{queue_id},
+        FromEmail         => $FromEmail,
+        PostmasterResult  => $PostmasterResult,
+    );
+    return if !$Data;
 
     $Self->{DB}->BeginWork() || do {
         $Self->{LastError} = $Self->{DB}->Error() || 'Transaction could not be started';
         return;
     };
 
+    if ( defined $PostmasterResult->{StateID} || defined $PostmasterResult->{PendingMinutes} ) {
+        if ( !$Self->TicketStatusUpdate(
+            TicketID            => $TicketID,
+            StatusID            => $Data->{state_id},
+            PendingUntil         => $Data->{pending_until},
+            ChangedByUserID     => $ChangedByUserID,
+            SuppressNotification => 1,
+        ) ) {
+            $Self->{DB}->Rollback();
+            return;
+        }
+    }
+
+    my $TicketTitle = $PostmasterResult->{TitleChanged} ? $Subject : $Ticket->{title};
+    my $Update = $Self->{DB}->Do(
+        'UPDATE ticket
+         SET title = ?, queue_id = ?, priority_id = ?,
+             customer_id = ?, customer_user_id = ?,
+             owner_user_id = ?, responsible_user_id = ?,
+             service_id = ?, sla_id = ?, sla_source = ?, sla_assignment_source = ?,
+             sla_name_snapshot = ?, sla_calendar_id = ?, sla_update_mode = ?,
+             sla_first_response_minutes = ?, sla_update_minutes = ?, sla_solution_minutes = ?,
+             changed_by_user_id = ?, changed_at = NOW()
+         WHERE id = ?',
+        $TicketTitle,
+        $Data->{queue_id},
+        $Data->{priority_id},
+        $Data->{customer_id},
+        $Data->{customer_user_id},
+        $Data->{owner_user_id},
+        $Data->{responsible_user_id},
+        $Data->{service_id},
+        $Data->{sla_id},
+        $Data->{sla_source},
+        $Data->{sla_assignment_source},
+        $Data->{sla_name_snapshot},
+        $Data->{sla_calendar_id},
+        $Data->{sla_update_mode},
+        $Data->{sla_first_response_minutes},
+        $Data->{sla_update_minutes},
+        $Data->{sla_solution_minutes},
+        $ChangedByUserID,
+        $TicketID,
+    );
+
+    if (!$Update) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Postmaster ticket actions could not be applied';
+        $Self->{DB}->Rollback();
+        return;
+    }
+
+    if ( !$Self->_PostmasterDynamicFieldsApply(
+        TicketID        => $TicketID,
+        QueueID         => $Data->{queue_id},
+        DynamicFields   => $PostmasterResult->{DynamicFields} || {},
+        ChangedByUserID => $ChangedByUserID,
+    ) ) {
+        $Self->{DB}->Rollback();
+        return;
+    }
+
     my $ArticleID = $Self->ArticleCreate(
         TicketID        => $TicketID,
         Subject         => $Subject,
         Body            => $Body,
         Channel         => 'email',
-        SenderType      => 'customer',
+        SenderType      => $SenderType,
         FromName        => $FromName,
         FromEmail       => $FromEmail,
         ToName          => $ToName,
         ToEmail         => $ToEmail,
+        Cc              => $Cc,
         ContentType     => $ContentType,
-        Visibility      => 'both',
+        Visibility      => $Visibility,
         SkipTicketAccessCheck => 1,
         SkipNotification => 1,
         CreatedByUserID => $CreatedByUserID,
@@ -1259,16 +1344,443 @@ sub _TicketReplyCreateFromEmail {
         return;
     }
 
-    $Self->_AgentNotificationSend(
-        NotificationType => 'customer_reply_in_my_queues',
-        TicketID         => $TicketID,
-        ChangedByUserID  => $ChangedByUserID,
-    );
+    if ( $SenderType eq 'customer' ) {
+        $Self->_AgentNotificationSend(
+            NotificationType => 'customer_reply_in_my_queues',
+            TicketID         => $TicketID,
+            ChangedByUserID  => $ChangedByUserID,
+        );
+    }
+
+    if ( ( $Ticket->{state_id} || 0 ) != ( $Data->{state_id} || 0 ) ) {
+        $Self->_AgentNotificationSend(
+            NotificationType => 'ticket_state_changed',
+            TicketID         => $TicketID,
+            ChangedByUserID  => $ChangedByUserID,
+        );
+    }
+
+    if (
+        ( $Data->{owner_user_id} || 0 )
+        && ( $Ticket->{owner_user_id} || 0 ) != ( $Data->{owner_user_id} || 0 )
+    ) {
+        $Self->_AgentNotificationSend(
+            NotificationType => 'ticket_assigned_to_me',
+            TicketID         => $TicketID,
+            ChangedByUserID  => $ChangedByUserID,
+        );
+    }
 
     $Self->{LastEmailImportAction}   = 'updated';
     $Self->{LastEmailImportTicketID} = $TicketID;
 
     return $TicketID;
+}
+
+sub _PostmasterTicketDataResolve {
+    my ( $Self, %Param ) = @_;
+
+    my $IsNew  = $Param{IsNew} ? 1 : 0;
+    my $Ticket = $Param{Ticket} || {};
+    my $Post   = $Param{PostmasterResult} || {};
+
+    my $QueueID = $Post->{QueueID} || $Param{QueueID} || $Ticket->{queue_id} || 0;
+    my $Queue = $Self->{DB}->SelectRow(
+        'SELECT id FROM ticket_queue WHERE id = ? AND active = 1 LIMIT 1',
+        $QueueID,
+    );
+    if (!$Queue) {
+        $Self->{LastError} = 'Queue was not found';
+        return;
+    }
+
+    my $StateID = $Post->{StateID} || ( $IsNew ? $Self->_DefaultStateID() : $Ticket->{state_id} );
+    return if !$StateID;
+    my $State = $Self->{DB}->SelectRow(
+        'SELECT id, state_type, sla_pause FROM ticket_state WHERE id = ? AND active = 1 LIMIT 1',
+        $StateID,
+    );
+    if (!$State) {
+        $Self->{LastError} = 'Postmaster ticket state was not found';
+        return;
+    }
+
+    my $PriorityID = $Post->{PriorityID} || ( $IsNew ? $Self->_DefaultPriorityID() : $Ticket->{priority_id} );
+    return if !$PriorityID;
+    my $Priority = $Self->{DB}->SelectRow(
+        'SELECT id FROM ticket_priority WHERE id = ? AND active = 1 LIMIT 1',
+        $PriorityID,
+    );
+    if (!$Priority) {
+        $Self->{LastError} = 'Postmaster ticket priority was not found';
+        return;
+    }
+
+    my ( $CustomerID, $CustomerUserID );
+    if ( $Post->{CustomerClear} ) {
+        ( $CustomerID, $CustomerUserID ) = ( undef, undef );
+    }
+    elsif ( $Post->{CustomerUserID} ) {
+        my $CustomerUser = $Self->{DB}->SelectRow(
+            'SELECT cu.id, cu.customer_id
+             FROM customer_user cu
+             INNER JOIN customer c ON c.id = cu.customer_id AND c.active = 1
+             INNER JOIN user_account ua ON ua.id = cu.user_account_id
+             WHERE cu.id = ? AND cu.active = 1 AND ua.is_active = 1 AND ua.account_type = ?
+             LIMIT 1',
+            $Post->{CustomerUserID},
+            'customer',
+        );
+        if (!$CustomerUser) {
+            $Self->{LastError} = 'Postmaster customer user was not found';
+            return;
+        }
+        ( $CustomerID, $CustomerUserID ) = ( $CustomerUser->{customer_id}, $CustomerUser->{id} );
+    }
+    elsif ( $Post->{CustomerID} ) {
+        my $Customer = $Self->{DB}->SelectRow(
+            'SELECT id FROM customer WHERE id = ? AND active = 1 LIMIT 1',
+            $Post->{CustomerID},
+        );
+        if (!$Customer) {
+            $Self->{LastError} = 'Postmaster customer was not found';
+            return;
+        }
+        ( $CustomerID, $CustomerUserID ) = ( $Customer->{id}, undef );
+    }
+    elsif ($IsNew) {
+        ( $CustomerID, $CustomerUserID ) = $Self->_CustomerByEmail( Email => $Param{FromEmail} );
+    }
+    else {
+        ( $CustomerID, $CustomerUserID ) = ( $Ticket->{customer_id}, $Ticket->{customer_user_id} );
+    }
+
+    my $OwnerUserID = $IsNew ? undef : $Ticket->{owner_user_id};
+    if ( $Post->{OwnerClear} ) {
+        $OwnerUserID = undef;
+    }
+    elsif ( $Post->{OwnerUserID} ) {
+        $OwnerUserID = $Self->_PostmasterAgentValidate( UserID => $Post->{OwnerUserID} );
+        return if !$OwnerUserID;
+    }
+
+    my $ResponsibleUserID = $IsNew ? undef : $Ticket->{responsible_user_id};
+    if ( $Post->{ResponsibleClear} ) {
+        $ResponsibleUserID = undef;
+    }
+    elsif ( $Post->{ResponsibleUserID} ) {
+        $ResponsibleUserID = $Self->_PostmasterAgentValidate( UserID => $Post->{ResponsibleUserID} );
+        return if !$ResponsibleUserID;
+    }
+
+    my $Snapshot;
+    if ( $Post->{ServiceClear} ) {
+        $Snapshot = $Self->_PostmasterQueueSLASnapshot();
+    }
+    elsif ( $Post->{SLAID} ) {
+        $Snapshot = $Self->_PostmasterSLASnapshotFromSLA( SLAID => $Post->{SLAID} );
+        return if !$Snapshot;
+    }
+    elsif ( $Post->{ServiceID} ) {
+        $Snapshot = $Self->_PostmasterSLASnapshotFromService(
+            ServiceID  => $Post->{ServiceID},
+            CustomerID => $CustomerID,
+        );
+        return if !$Snapshot;
+    }
+    elsif ( !$IsNew && ( $Post->{CustomerID} || $Post->{CustomerUserID} || $Post->{CustomerClear} ) && $Ticket->{service_id} ) {
+        if ($CustomerID) {
+            $Snapshot = $Self->_PostmasterSLASnapshotFromService(
+                ServiceID  => $Ticket->{service_id},
+                CustomerID => $CustomerID,
+                AllowMissing => 1,
+            );
+        }
+        $Snapshot ||= $Self->_PostmasterQueueSLASnapshot();
+    }
+    elsif ($IsNew) {
+        $Snapshot = $Self->_PostmasterQueueSLASnapshot();
+    }
+    else {
+        $Snapshot = {
+            service_id                => $Ticket->{service_id},
+            sla_id                    => $Ticket->{sla_id},
+            sla_source                => $Ticket->{sla_source} || 'queue',
+            sla_assignment_source     => $Ticket->{sla_assignment_source} || 'queue',
+            sla_name_snapshot         => $Ticket->{sla_name_snapshot},
+            sla_calendar_id           => $Ticket->{sla_calendar_id},
+            sla_update_mode           => $Ticket->{sla_update_mode} || 'customer_response',
+            sla_first_response_minutes => $Ticket->{sla_first_response_minutes} || 0,
+            sla_update_minutes        => $Ticket->{sla_update_minutes} || 0,
+            sla_solution_minutes      => $Ticket->{sla_solution_minutes} || 0,
+        };
+    }
+
+    my $PendingUntil = $Ticket->{pending_until};
+    if ( ( $State->{state_type} || '' ) eq 'pending' ) {
+        my $Minutes = $Post->{PendingMinutes};
+        if ( !defined $Minutes || $Minutes !~ m{\A\d+\z} || $Minutes < 1 ) {
+            if ( !$IsNew && !$Post->{StateID} && $Ticket->{pending_until} ) {
+                $PendingUntil = $Ticket->{pending_until};
+            }
+            else {
+                $Self->{LastError} = 'Translate:PostmasterFilterPendingMinutesRequired';
+                return;
+            }
+        }
+        else {
+            $PendingUntil = $Self->_PostmasterPendingUntil( Minutes => $Minutes );
+        }
+    }
+    else {
+        $PendingUntil = undef;
+    }
+
+    return {
+        queue_id          => $QueueID,
+        state_id          => $StateID,
+        state_type        => $State->{state_type} || '',
+        state_sla_pause   => $State->{sla_pause} ? 1 : 0,
+        priority_id       => $PriorityID,
+        customer_id       => $CustomerID,
+        customer_user_id  => $CustomerUserID,
+        owner_user_id     => $OwnerUserID,
+        responsible_user_id => $ResponsibleUserID,
+        pending_until     => $PendingUntil,
+        %{$Snapshot},
+    };
+}
+
+sub _PostmasterAgentValidate {
+    my ( $Self, %Param ) = @_;
+
+    my $UserID = $Param{UserID} || 0;
+    my $Agent = $Self->{DB}->SelectRow(
+        'SELECT id FROM user_account
+         WHERE id = ? AND account_type = ? AND is_active = 1 AND is_system_user = 0
+         LIMIT 1',
+        $UserID,
+        'agent',
+    );
+    if (!$Agent) {
+        $Self->{LastError} = 'Postmaster agent was not found';
+        return;
+    }
+    return $Agent->{id};
+}
+
+sub _PostmasterQueueSLASnapshot {
+    return {
+        service_id                 => undef,
+        sla_id                     => undef,
+        sla_source                 => 'queue',
+        sla_assignment_source      => 'queue',
+        sla_name_snapshot          => undef,
+        sla_calendar_id            => undef,
+        sla_update_mode            => 'customer_response',
+        sla_first_response_minutes => 0,
+        sla_update_minutes         => 0,
+        sla_solution_minutes       => 0,
+    };
+}
+
+sub _PostmasterSLASnapshotFromSLA {
+    my ( $Self, %Param ) = @_;
+
+    my $Row = $Self->{DB}->SelectRow(
+        'SELECT sl.id, sl.name, sl.service_id, sl.calendar_id, sl.update_mode,
+                sl.first_response_minutes, sl.update_minutes, sl.solution_minutes
+         FROM sla sl
+         INNER JOIN service s ON s.id = sl.service_id AND s.active = 1
+         INNER JOIN calendar c ON c.id = sl.calendar_id AND c.active = 1
+         WHERE sl.id = ? AND sl.active = 1
+         LIMIT 1',
+        $Param{SLAID} || 0,
+    );
+    if (!$Row) {
+        $Self->{LastError} = 'Postmaster SLA was not found';
+        return;
+    }
+
+    return {
+        service_id                 => $Row->{service_id},
+        sla_id                     => $Row->{id},
+        sla_source                 => 'sla',
+        sla_assignment_source      => 'filter',
+        sla_name_snapshot          => $Row->{name},
+        sla_calendar_id            => $Row->{calendar_id},
+        sla_update_mode            => $Row->{update_mode} || 'customer_response',
+        sla_first_response_minutes => $Row->{first_response_minutes} || 0,
+        sla_update_minutes         => $Row->{update_minutes} || 0,
+        sla_solution_minutes       => $Row->{solution_minutes} || 0,
+    };
+}
+
+sub _PostmasterSLASnapshotFromService {
+    my ( $Self, %Param ) = @_;
+
+    my $ServiceID  = $Param{ServiceID} || 0;
+    my $CustomerID = $Param{CustomerID} || 0;
+
+    if ($CustomerID) {
+        my $ServiceObject = QisutuService->new( Config => $Self->{Config}, DB => $Self->{DB} );
+        my $Resolved = $ServiceObject->SLAResolve(
+            CustomerID => $CustomerID,
+            ServiceID  => $ServiceID,
+        );
+        if ($Resolved) {
+            return {
+                service_id                 => $Resolved->{service_id},
+                sla_id                     => $Resolved->{sla_id},
+                sla_source                 => 'sla',
+                sla_assignment_source      => $Resolved->{assignment_source} || 'customer',
+                sla_name_snapshot          => $Resolved->{sla_name},
+                sla_calendar_id            => $Resolved->{calendar_id},
+                sla_update_mode            => $Resolved->{update_mode} || 'customer_response',
+                sla_first_response_minutes => $Resolved->{first_response_minutes} || 0,
+                sla_update_minutes         => $Resolved->{update_minutes} || 0,
+                sla_solution_minutes       => $Resolved->{solution_minutes} || 0,
+            };
+        }
+    }
+
+    my $Row = $Self->{DB}->SelectRow(
+        'SELECT sl.id, sl.name, sl.service_id, sl.calendar_id, sl.update_mode,
+                sl.first_response_minutes, sl.update_minutes, sl.solution_minutes
+         FROM sla sl
+         INNER JOIN service s ON s.id = sl.service_id AND s.active = 1
+         INNER JOIN calendar c ON c.id = sl.calendar_id AND c.active = 1
+         WHERE sl.service_id = ? AND sl.active = 1
+         ORDER BY sl.is_default DESC, sl.sort_order ASC, sl.id ASC
+         LIMIT 1',
+        $ServiceID,
+    );
+
+    if (!$Row) {
+        if ( $Param{AllowMissing} ) {
+            return;
+        }
+        $Self->{LastError} = 'Postmaster service has no active SLA';
+        return;
+    }
+
+    return {
+        service_id                 => $Row->{service_id},
+        sla_id                     => $Row->{id},
+        sla_source                 => 'sla',
+        sla_assignment_source      => 'filter',
+        sla_name_snapshot          => $Row->{name},
+        sla_calendar_id            => $Row->{calendar_id},
+        sla_update_mode            => $Row->{update_mode} || 'customer_response',
+        sla_first_response_minutes => $Row->{first_response_minutes} || 0,
+        sla_update_minutes         => $Row->{update_minutes} || 0,
+        sla_solution_minutes       => $Row->{solution_minutes} || 0,
+    };
+}
+
+sub _PostmasterPendingUntil {
+    my ( $Self, %Param ) = @_;
+
+    my $Minutes = $Param{Minutes} || 0;
+    my $Epoch = time() + $Minutes * 60;
+    return strftime( '%Y-%m-%d %H:%M:%S', localtime($Epoch) );
+}
+
+sub _PostmasterDynamicFieldsApply {
+    my ( $Self, %Param ) = @_;
+
+    my $TicketID      = $Param{TicketID} || 0;
+    my $QueueID       = $Param{QueueID} || 0;
+    my $DynamicFields = ref $Param{DynamicFields} eq 'HASH' ? $Param{DynamicFields} : {};
+    my $UserID        = $Param{ChangedByUserID} || 1;
+
+    for my $FieldID ( sort { $a <=> $b } keys %{$DynamicFields} ) {
+        next if $FieldID !~ m{\A\d+\z} || !$FieldID;
+
+        my $Field = $Self->{DB}->SelectRow(
+            'SELECT f.id, f.field_type
+             FROM ticket_dynamic_field f
+             INNER JOIN ticket_dynamic_field_queue fq ON fq.field_id = f.id AND fq.queue_id = ?
+             WHERE f.id = ? AND f.active = 1
+             LIMIT 1',
+            $QueueID,
+            $FieldID,
+        );
+        if (!$Field) {
+            $Self->{LastError} = 'Postmaster dynamic field is not assigned to the target queue';
+            return;
+        }
+
+        my $Value = $DynamicFields->{$FieldID};
+        if ( !defined $Value ) {
+            my $Deleted = $Self->{DB}->Do(
+                'DELETE FROM ticket_dynamic_field_value WHERE ticket_id = ? AND field_id = ?',
+                $TicketID,
+                $FieldID,
+            );
+            if (!$Deleted) {
+                $Self->{LastError} = $Self->{DB}->Error() || 'Postmaster dynamic field could not be cleared';
+                return;
+            }
+            next;
+        }
+
+        my $Type = $Field->{field_type} || 'text';
+        if ( $Type eq 'dropdown' || $Type eq 'multiselect' ) {
+            my @Value = grep { $_ ne '' } map {
+                my $Item = $_;
+                $Item =~ s{\A\s+|\s+\z}{}g;
+                $Item;
+            } split m{(?:\r?\n|,)}, $Value;
+            @Value = ( $Value ) if $Type eq 'dropdown' && !@Value && $Value ne '';
+            if ( $Type eq 'dropdown' && @Value > 1 ) {
+                $Self->{LastError} = 'Postmaster dropdown dynamic field accepts only one value';
+                return;
+            }
+            my $Options = $Self->{DB}->SelectAll(
+                'SELECT option_key FROM ticket_dynamic_field_option
+                 WHERE field_id = ? AND active = 1',
+                $FieldID,
+            ) || [];
+            my %Allowed = map { ( $_->{option_key} || '' ) => 1 } @{$Options};
+            for my $Item (@Value) {
+                if ( !$Allowed{$Item} ) {
+                    $Self->{LastError} = 'Postmaster dynamic field option is invalid';
+                    return;
+                }
+            }
+            $Value = join "\n", @Value;
+        }
+        elsif ( $Type eq 'number' && $Value ne '' && $Value !~ m{\A-?(?:\d+(?:\.\d+)?|\.\d+)\z} ) {
+            $Self->{LastError} = 'Postmaster numeric dynamic field value is invalid';
+            return;
+        }
+        elsif ( $Type eq 'email' && $Value ne '' && $Value !~ m{\A[^\s\@]+\@[^\s\@]+\.[^\s\@]+\z} ) {
+            $Self->{LastError} = 'Postmaster e-mail dynamic field value is invalid';
+            return;
+        }
+
+        my $Saved = $Self->{DB}->Do(
+            'INSERT INTO ticket_dynamic_field_value (
+                ticket_id, field_id, value_text, created_by_user_id, changed_by_user_id
+             ) VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                value_text = VALUES(value_text),
+                changed_by_user_id = VALUES(changed_by_user_id),
+                changed_at = CURRENT_TIMESTAMP',
+            $TicketID,
+            $FieldID,
+            $Value,
+            $UserID,
+            $UserID,
+        );
+        if (!$Saved) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Postmaster dynamic field could not be saved';
+            return;
+        }
+    }
+
+    return 1;
 }
 
 sub TicketCreateFromCustomer {
@@ -2016,6 +2528,11 @@ sub LastEmailImportTicketID {
     my ($Self) = @_;
 
     return $Self->{LastEmailImportTicketID} || 0;
+}
+
+sub TicketIDFromSubject {
+    my ( $Self, %Param ) = @_;
+    return $Self->_TicketIDFromSubject(%Param);
 }
 
 sub _TicketIDFromSubject {
@@ -3392,7 +3909,7 @@ sub TicketStatusUpdate {
         ChangedByUserID => $ChangedByUserID,
     );
 
-    if ( $Recalculated && ( $Ticket->{state_id} || 0 ) != $StatusID ) {
+    if ( $Recalculated && !$Param{SuppressNotification} && ( $Ticket->{state_id} || 0 ) != $StatusID ) {
         $Self->_AgentNotificationSend(
             NotificationType => 'ticket_state_changed',
             TicketID         => $TicketID,

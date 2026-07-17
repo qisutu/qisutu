@@ -29,7 +29,7 @@ use utf8;
 use FindBin;
 use File::Spec;
 use Cwd qw(abs_path);
-use Encode qw(decode);
+use Encode qw(decode encode);
 
 my $QisutuHome = $ENV{QISUTU_HOME} || abs_path( File::Spec->catdir( $FindBin::Bin, '..', '..' ) );
 
@@ -44,7 +44,7 @@ if ( $ENV{GATEWAY_INTERFACE} ) {
 
     my $UpdateLock = File::Spec->catfile( $QisutuHome, 'var', 'install', 'update.lock' );
     if ( -e $UpdateLock ) {
-        print _MaintenanceResponse();
+        print encode( 'UTF-8', _MaintenanceResponse() );
         exit;
     }
 }

@@ -1,0 +1,183 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+<section class="qisutu-dashboard qisutu-postmaster-filter-page" aria-labelledby="qisutu-postmaster-filter-title">
+    <div class="qisutu-dashboard-header">
+        <div>
+            <h1 id="qisutu-postmaster-filter-title">[% ProgramTitle %]</h1>
+            <p>[% ProgramDescription %]</p>
+        </div>
+        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=Admin">[% Translate.NavigationAdmin %]</a>
+    </div>
+
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+    [% IF ShowList %]
+        <section class="qisutu-panel">
+            <div class="qisutu-panel-header qisutu-panel-header-actions">
+                <div>
+                    <h2>[% Translate.PostmasterFilterList %]</h2>
+                    <p>[% Translate.PostmasterFilterListDescription %]</p>
+                </div>
+                <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminPostmasterFilters;Action=Create">[% Translate.PostmasterFilterCreate %]</a>
+            </div>
+            [% IF HasFilters %]
+                <div class="qisutu-table-wrap">
+                    <table class="qisutu-table">
+                        <thead><tr>
+                            <th>[% Translate.AdminSortOrder %]</th>
+                            <th>[% Translate.AdminName %]</th>
+                            <th>[% Translate.PostmasterFilterScope %]</th>
+                            <th>[% Translate.PostmasterFilterConditions %]</th>
+                            <th>[% Translate.PostmasterFilterActions %]</th>
+                            <th>[% Translate.AdminActive %]</th>
+                            <th>[% Translate.CommonActions %]</th>
+                        </tr></thead>
+                        <tbody>[% RAW.FiltersRowsHTML %]</tbody>
+                    </table>
+                </div>
+            [% ELSE %]
+                <p class="qisutu-empty-state">[% Translate.PostmasterFilterNone %]</p>
+            [% END %]
+        </section>
+
+        <section class="qisutu-panel">
+            <div class="qisutu-panel-header">
+                <div>
+                    <h2>[% Translate.PostmasterFilterLogTitle %]</h2>
+                    <p>[% Translate.PostmasterFilterLogDescription %]</p>
+                </div>
+            </div>
+            [% IF HasLogs %]
+                <div class="qisutu-table-wrap">
+                    <table class="qisutu-table qisutu-postmaster-log-table">
+                        <thead><tr>
+                            <th>[% Translate.CommonDate %]</th>
+                            <th>[% Translate.PostmasterFilterMailbox %]</th>
+                            <th>[% Translate.PostmasterFilterEmail %]</th>
+                            <th>[% Translate.PostmasterFilterScope %]</th>
+                            <th>[% Translate.PostmasterFilterResult %]</th>
+                            <th>[% Translate.PostmasterFilterMatches %]</th>
+                            <th>[% Translate.Ticket %]</th>
+                            <th>[% Translate.CommonError %]</th>
+                            <th>[% Translate.PostmasterFilterLogDetails %]</th>
+                        </tr></thead>
+                        <tbody>[% RAW.LogsRowsHTML %]</tbody>
+                    </table>
+                </div>
+            [% ELSE %]
+                <p class="qisutu-empty-state">[% Translate.PostmasterFilterLogNone %]</p>
+            [% END %]
+        </section>
+    [% END %]
+
+    [% IF ShowLog %]
+        <section class="qisutu-panel">
+            <div class="qisutu-panel-header qisutu-panel-header-actions">
+                <h2>[% Translate.PostmasterFilterLogDetails %]</h2>
+                <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminPostmasterFilters">[% Translate.AdminBack %]</a>
+            </div>
+            <div class="qisutu-postmaster-log-detail">[% RAW.LogDetailHTML %]</div>
+        </section>
+    [% END %]
+
+    [% IF ShowForm %]
+        <form class="qisutu-admin-form qisutu-admin-form-wide qisutu-postmaster-filter-form" method="post" action="index.pl" enctype="multipart/form-data" data-postmaster-filter-form>
+            <input type="hidden" name="Page" value="AdminPostmasterFilters">
+            <input type="hidden" name="Step" value="[% FormStep %]" data-postmaster-form-step>
+            <input type="hidden" name="FilterID" value="[% FormFilterID %]">
+            <input type="hidden" name="ConditionRowCount" value="0" data-condition-count>
+            <input type="hidden" name="ActionRowCount" value="0" data-action-count>
+
+            <section class="qisutu-panel">
+                <div class="qisutu-panel-header qisutu-panel-header-actions">
+                    <h2>[% FormTitle %]</h2>
+                    <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminPostmasterFilters">[% Translate.AdminCancel %]</a>
+                </div>
+                <div class="qisutu-admin-form-columns">
+                    <div class="qisutu-form-field">
+                        <label for="PostmasterFilterName">[% Translate.AdminName %]</label>
+                        <input id="PostmasterFilterName" type="text" name="Name" value="[% FormName %]" maxlength="190" required>
+                    </div>
+                    <div class="qisutu-form-field">
+                        <label for="PostmasterFilterSortOrder">[% Translate.AdminSortOrder %]</label>
+                        <input id="PostmasterFilterSortOrder" type="number" name="SortOrder" value="[% FormSortOrder %]" min="1" required>
+                    </div>
+                    <div class="qisutu-form-field qisutu-form-field-wide">
+                        <label for="PostmasterFilterDescription">[% Translate.AdminDescription %]</label>
+                        <textarea id="PostmasterFilterDescription" name="Description" rows="3">[% FormDescription %]</textarea>
+                    </div>
+                    <div class="qisutu-form-field">
+                        <label for="PostmasterFilterMatchMode">[% Translate.PostmasterFilterMatchMode %]</label>
+                        <select id="PostmasterFilterMatchMode" name="MatchMode">
+                            <option value="all" [% MatchAllSelected %]>[% Translate.PostmasterFilterMatchAll %]</option>
+                            <option value="any" [% MatchAnySelected %]>[% Translate.PostmasterFilterMatchAny %]</option>
+                        </select>
+                    </div>
+                    <div class="qisutu-form-field">
+                        <label for="PostmasterFilterMessageScope">[% Translate.PostmasterFilterScope %]</label>
+                        <select id="PostmasterFilterMessageScope" name="MessageScope">
+                            <option value="both" [% ScopeBothSelected %]>[% Translate.PostmasterFilterScopeBoth %]</option>
+                            <option value="new" [% ScopeNewSelected %]>[% Translate.PostmasterFilterScopeNew %]</option>
+                            <option value="follow_up" [% ScopeFollowSelected %]>[% Translate.PostmasterFilterScopeFollowUp %]</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="qisutu-postmaster-checkboxes">
+                    <label class="qisutu-form-checkbox"><input type="checkbox" name="StopAfterMatch" value="1" [% FormStopChecked %]><span>[% Translate.PostmasterFilterStopAfterMatch %]</span></label>
+                    <label class="qisutu-form-checkbox"><input type="checkbox" name="Active" value="1" [% FormActiveChecked %]><span>[% Translate.AdminActive %]</span></label>
+                </div>
+            </section>
+
+            <section class="qisutu-panel">
+                <div class="qisutu-panel-header qisutu-panel-header-actions">
+                    <div><h2>[% Translate.PostmasterFilterConditions %]</h2><p>[% Translate.PostmasterFilterConditionsDescription %]</p></div>
+                    <button class="qisutu-button qisutu-button-secondary" type="button" data-add-condition>[% Translate.PostmasterFilterAddCondition %]</button>
+                </div>
+                <div class="qisutu-postmaster-rows" data-condition-rows></div>
+            </section>
+
+            <section class="qisutu-panel">
+                <div class="qisutu-panel-header qisutu-panel-header-actions">
+                    <div><h2>[% Translate.PostmasterFilterActions %]</h2><p>[% Translate.PostmasterFilterActionsDescription %]</p></div>
+                    <button class="qisutu-button qisutu-button-secondary" type="button" data-add-action>[% Translate.PostmasterFilterAddAction %]</button>
+                </div>
+                <div class="qisutu-postmaster-rows" data-action-rows></div>
+            </section>
+
+            <section class="qisutu-panel">
+                <div class="qisutu-panel-header"><div><h2>[% Translate.PostmasterFilterTestTitle %]</h2><p>[% Translate.PostmasterFilterTestDescription %]</p></div></div>
+                <div class="qisutu-admin-form-columns">
+                    <div class="qisutu-form-field">
+                        <label for="PostmasterTestMailbox">[% Translate.PostmasterFilterMailbox %]</label>
+                        <select id="PostmasterTestMailbox" name="TestIMAPAccountID">[% RAW.MailboxOptionsHTML %]</select>
+                    </div>
+                    <div class="qisutu-form-field">
+                        <label for="PostmasterTestEmailFile">[% Translate.PostmasterFilterEMLFile %]</label>
+                        <input id="PostmasterTestEmailFile" type="file" name="TestEmailFile" accept=".eml,message/rfc822,text/plain">
+                    </div>
+                    <div class="qisutu-form-field qisutu-form-field-wide">
+                        <label for="PostmasterTestRawEmail">[% Translate.PostmasterFilterRawEmail %]</label>
+                        <textarea id="PostmasterTestRawEmail" name="TestRawEmail" rows="8" placeholder="From: kunde@example.org&#10;To: support@example.org&#10;Subject: Rechnung&#10;&#10;Nachrichtentext">[% TestRawEmail %]</textarea>
+                    </div>
+                </div>
+                [% IF TestResultVisible %]
+                    <div class="qisutu-postmaster-test-result">[% RAW.TestResultHTML %]</div>
+                [% END %]
+            </section>
+
+            <div class="qisutu-form-actions qisutu-postmaster-form-actions">
+                <button class="qisutu-button qisutu-button-primary" type="submit" data-save-filter>[% Translate.AdminSave %]</button>
+                <button class="qisutu-button qisutu-button-secondary" type="submit" data-test-filter>[% Translate.PostmasterFilterTestButton %]</button>
+            </div>
+        </form>
+        <script id="qisutu-postmaster-filter-config" type="application/json">[% RAW.ClientConfigJSON %]</script>
+        <script src="[% StaticBase %]/js/qisutu-postmaster-filter.js?v=2026071601"></script>
+    [% END %]
+</section>

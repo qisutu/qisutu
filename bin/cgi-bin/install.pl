@@ -41,6 +41,7 @@ my $RootPath = $ENV{QISUTU_HOME} || abs_path( File::Spec->catdir( $FindBin::Bin,
 my $InstallPath = File::Spec->catdir( $RootPath, 'var', 'install' );
 my $LockFile = File::Spec->catfile( $InstallPath, 'installed.lock' );
 my $SchemaFile = File::Spec->catfile( $RootPath, 'install', 'sql', 'schema.sql' );
+my $InsertFile = File::Spec->catfile( $RootPath, 'install', 'sql', 'insert.sql' );
 my $ConfigFile = File::Spec->catfile( $RootPath, 'core', 'config', 'QisutuConfig.pm' );
 my $LicenseFile = File::Spec->catfile( $RootPath, 'LICENSE' );
 my $ThirdPartyFile = File::Spec->catfile( $RootPath, 'THIRD_PARTY_NOTICES.md' );
@@ -514,9 +515,16 @@ sub _DatabaseInstall {
     return { success => 0, error => 'Der Datenbankport ist ungültig.' } if $Port !~ m{\A\d+\z} || $Port < 1 || $Port > 65535;
     return { success => 0, error => 'Der Datenbankname darf nur Buchstaben, Zahlen und Unterstriche enthalten.' } if $DBName !~ m{\A[A-Za-z0-9_]+\z};
     return { success => 0, error => 'Die Datenbank-Schemadatei fehlt.' } if !-r $SchemaFile;
+    return { success => 0, error => 'Die Datenbank-Grunddatendatei fehlt.' } if !-r $InsertFile;
 
     my $DBILoaded = eval { require DBI; require DBD::mysql; 1 };
     return { success => 0, error => 'DBI oder DBD::mysql ist nicht installiert. Bitte zuerst install.sh als root ausführen.' } if !$DBILoaded;
+
+    my $DBPassword = _RandomPassword(32);
+    my $AdminPassword = _RandomPassword(24);
+    my $AdminPasswordHash = _PasswordHash($AdminPassword);
+    return { success => 0, error => 'Das Administratorpasswort konnte nicht sicher gehasht werden.' }
+        if !$AdminPasswordHash;
 
     my $AdminDSN = "DBI:mysql:host=$Host;port=$Port;mysql_enable_utf8mb4=1";
     my $AdminDBH = DBI->connect( $AdminDSN, $AdminUser, $AdminPass, { RaiseError => 0, PrintError => 0, AutoCommit => 1, mysql_enable_utf8mb4 => 1 } );
@@ -533,8 +541,6 @@ sub _DatabaseInstall {
         }
     }
 
-    my $DBPassword = _RandomPassword(32);
-    my $AdminPassword = _RandomPassword(24);
     my $GrantHost = $Host =~ m{\Alocalhost\z}i ? 'localhost'
         : $Host eq '127.0.0.1' ? '127.0.0.1'
         : $Host eq '::1' ? '::1'
@@ -584,11 +590,32 @@ sub _DatabaseInstall {
         return { success => 0, error => $Message };
     }
 
-    my $Import = _SchemaImport( Host => $Host, Port => $Port, DBName => $DBName, DBUser => $DBUser, DBPassword => $DBPassword );
-    if ( !$Import->{success} ) {
+    my $SchemaImport = _SQLImport(
+        File       => $SchemaFile,
+        Host       => $Host,
+        Port       => $Port,
+        DBName     => $DBName,
+        DBUser     => $DBUser,
+        DBPassword => $DBPassword,
+    );
+    if ( !$SchemaImport->{success} ) {
         _DatabaseCleanup( DBH => $AdminDBH, DBName => $DBName, Existed => $Existed, DBUser => $DBUser, GrantHost => $GrantHost, DropUser => $UserCreated );
         $AdminDBH->disconnect();
-        return { success => 0, error => 'Das Datenbankschema konnte nicht importiert werden: ' . $Import->{error} };
+        return { success => 0, error => 'Das Datenbankschema konnte nicht importiert werden: ' . $SchemaImport->{error} };
+    }
+
+    my $DataImport = _SQLImport(
+        File       => $InsertFile,
+        Host       => $Host,
+        Port       => $Port,
+        DBName     => $DBName,
+        DBUser     => $DBUser,
+        DBPassword => $DBPassword,
+    );
+    if ( !$DataImport->{success} ) {
+        _DatabaseCleanup( DBH => $AdminDBH, DBName => $DBName, Existed => $Existed, DBUser => $DBUser, GrantHost => $GrantHost, DropUser => $UserCreated );
+        $AdminDBH->disconnect();
+        return { success => 0, error => 'Die Datenbank-Grunddaten konnten nicht importiert werden: ' . $DataImport->{error} };
     }
 
     my $AppDSN = "DBI:mysql:database=$DBName;host=$Host;port=$Port;mysql_enable_utf8mb4=1";
@@ -599,12 +626,15 @@ sub _DatabaseInstall {
         return { success => 0, error => 'Die Verbindung mit dem neuen Qisutu-Datenbankbenutzer ist fehlgeschlagen: ' . ( $DBI::errstr || '' ) };
     }
 
-    my $Insert = _InitialDataInsert( DBH => $DBH, AdminPassword => $AdminPassword );
-    if ( !$Insert->{success} ) {
+    my $Finalize = _InitialDataFinalize(
+        DBH               => $DBH,
+        AdminPasswordHash => $AdminPasswordHash,
+    );
+    if ( !$Finalize->{success} ) {
         $DBH->disconnect();
         _DatabaseCleanup( DBH => $AdminDBH, DBName => $DBName, Existed => $Existed, DBUser => $DBUser, GrantHost => $GrantHost, DropUser => $UserCreated );
         $AdminDBH->disconnect();
-        return { success => 0, error => 'Die Grunddaten konnten nicht angelegt werden: ' . $Insert->{error} };
+        return { success => 0, error => 'Die Grunddaten konnten nicht abgeschlossen werden: ' . $Finalize->{error} };
     }
 
     $DBH->disconnect();
@@ -639,62 +669,38 @@ sub _DatabaseInstall {
     return { success => 1, state => $State };
 }
 
-sub _InitialDataInsert {
+sub _InitialDataFinalize {
     my (%Param) = @_;
     my $DBH = $Param{DBH};
-    my $AdminPassword = $Param{AdminPassword};
-    my $Hash = _PasswordHash($AdminPassword);
-    return { success => 0, error => 'Das Administratorpasswort konnte nicht sicher gehasht werden.' } if !$Hash;
+    my $AdminPasswordHash = $Param{AdminPasswordHash} || '';
 
-    my $OK = eval {
-        $DBH->begin_work();
-        $DBH->do('INSERT INTO user_account (id, login, account_type, email, password_hash, firstname, lastname, is_active, is_system_user, password_changed_at) VALUES (1, ?, ?, ?, ?, ?, ?, 1, 0, NOW())', undef, 'admin', 'agent', 'admin@localhost.invalid', $Hash, 'Qisutu', 'Administrator') or die $DBH->errstr;
-        $DBH->do('INSERT INTO user_group (id, name, title, group_type, active, sort_order, created_by_user_id, changed_by_user_id) VALUES (1, ?, ?, ?, 1, 100, 1, 1)', undef, 'admin', 'Administrators', 'agent') or die $DBH->errstr;
-        $DBH->do('INSERT INTO user_group_member (user_group_id, user_account_id, role_name, active, created_by_user_id, changed_by_user_id, permission_read, permission_create, permission_change, permission_overview, permission_full) VALUES (1, 1, ?, 1, 1, 1, 1, 1, 1, 1, 1)', undef, 'admin') or die $DBH->errstr;
-        $DBH->do('INSERT INTO user_group_permission (user_group_id, permission_key, active, created_by_user_id, changed_by_user_id) VALUES (1, ?, 1, 1, 1)', undef, 'admin.view') or die $DBH->errstr;
+    return { success => 0, error => 'Die Datenbankverbindung für die Grunddaten fehlt.' }
+        if !$DBH;
+    return { success => 0, error => 'Der Hash des Administratorpassworts fehlt.' }
+        if !$AdminPasswordHash;
 
-        my @Queues = ( [ 1, 'Posteingang', 100 ], [ 2, 'Junk', 200 ], [ 3, 'Spam', 300 ] );
-        for my $Queue (@Queues) {
-            $DBH->do('INSERT INTO ticket_queue (id, name, full_name, follow_up_allowed, active, sort_order, created_by_user_id, changed_by_user_id) VALUES (?, ?, ?, 1, 1, ?, 1, 1)', undef, $Queue->[0], $Queue->[1], $Queue->[1], $Queue->[2]) or die $DBH->errstr;
-            $DBH->do('INSERT INTO ticket_queue_group (queue_id, user_group_id, permission_key, active, created_by_user_id, changed_by_user_id) VALUES (?, 1, ?, 1, 1, 1)', undef, $Queue->[0], 'ticket.full') or die $DBH->errstr;
-        }
+    my $Statement = $DBH->prepare(
+        'UPDATE user_account
+         SET password_hash = ?, password_changed_at = NOW()
+         WHERE id = 1
+             AND password_hash = ?'
+    );
+    return { success => 0, error => $DBH->errstr || 'Das Administratorkonto konnte nicht vorbereitet werden.' }
+        if !$Statement;
 
-        my @States = (
-            [ 1, 'new',                     'new',     0, 100 ],
-            [ 2, 'open',                    'open',    0, 200 ],
-            [ 3, 'closed successful',       'closed',  0, 300 ],
-            [ 4, 'closed unsuccessful',     'closed',  0, 400 ],
-            [ 5, 'pending reminder',        'pending', 0, 500 ],
-            [ 6, 'merged',                  'closed',  0, 600 ],
-            [ 7, 'pending auto close+',     'pending', 0, 700 ],
-            [ 8, 'pending auto close-',     'pending', 0, 800 ],
-        );
-        for my $State (@States) {
-            $DBH->do('INSERT INTO ticket_state (id, name, state_type, sla_pause, active, sort_order, created_by_user_id, changed_by_user_id) VALUES (?, ?, ?, ?, 1, ?, 1, 1)', undef, @{$State}) or die $DBH->errstr;
-        }
-
-        my @Priorities = (
-            [ 1, '1 very low', 1, 100 ], [ 2, '2 low', 2, 200 ], [ 3, '3 normal', 3, 300 ],
-            [ 4, '4 high', 4, 400 ], [ 5, '5 very high', 5, 500 ],
-        );
-        for my $Priority (@Priorities) {
-            $DBH->do('INSERT INTO ticket_priority (id, name, priority_value, active, sort_order, created_by_user_id, changed_by_user_id) VALUES (?, ?, ?, 1, ?, 1, 1)', undef, @{$Priority}) or die $DBH->errstr;
-        }
-
-        my $TicketNumber = strftime( '%Y%m%d', localtime ) . '0001';
-        my $WelcomeBody = '<p>Willkommen bei Qisutu.</p><p>Die Installation wurde erfolgreich abgeschlossen. Als Nächstes kannst du Queues, Benutzer, E-Mail-Konten, Services, SLAs und weitere Systemeinstellungen einrichten.</p><p>Wir wünschen dir viel Erfolg mit Qisutu.</p>';
-        $DBH->do('INSERT INTO ticket (id, ticket_number, title, queue_id, state_id, priority_id, owner_user_id, responsible_user_id, created_by_user_id, changed_by_user_id, last_agent_article_at) VALUES (1, ?, ?, 1, 1, 3, 1, 1, 1, 1, NOW())', undef, $TicketNumber, 'Willkommen bei Qisutu') or die $DBH->errstr;
-        $DBH->do('INSERT INTO ticket_article (ticket_id, article_number, channel, sender_type, from_name, from_email, subject, body, search_text, content_type, visibility, internal, created_by_user_id, changed_by_user_id, created_at, changed_at) VALUES (1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, NOW(), NOW())', undef, 'note', 'agent', 'Qisutu', 'support@qisutu.de', 'Willkommen bei Qisutu', $WelcomeBody, 'Willkommen bei Qisutu Installation erfolgreich', 'text/html', 'agent') or die $DBH->errstr;
-
-        $DBH->commit();
-        1;
-    };
-
-    if ( !$OK ) {
-        my $Error = $@ || $DBH->errstr || 'unbekannter Fehler';
-        eval { $DBH->rollback() };
+    my $Result = $Statement->execute(
+        $AdminPasswordHash,
+        'QISUTU_ADMIN_PASSWORD_NOT_SET',
+    );
+    if ( !defined $Result ) {
+        my $Error = $Statement->errstr || $DBH->errstr || 'Das Administratorpasswort konnte nicht gespeichert werden.';
+        $Statement->finish();
         return { success => 0, error => $Error };
     }
+    $Statement->finish();
+
+    return { success => 0, error => 'Das Administratorkonto aus insert.sql wurde nicht eindeutig gefunden.' }
+        if $Result != 1;
 
     return { success => 1 };
 }
@@ -954,8 +960,13 @@ sub _BootstrapDelete {
     return { success => 1 };
 }
 
-sub _SchemaImport {
+sub _SQLImport {
     my (%Param) = @_;
+    my $SQLFile = $Param{File} || '';
+
+    return { success => 0, error => 'Die zu importierende SQL-Datei fehlt.' }
+        if !$SQLFile || !-r $SQLFile;
+
     my $ErrorHandle = gensym;
     local $ENV{MYSQL_PWD} = $Param{DBPassword};
     my $DatabaseCLI = _DatabaseCLI();
@@ -974,11 +985,11 @@ sub _SchemaImport {
     my $PID = eval { open3( $In, $Out, $ErrorHandle, @Command ) };
     return { success => 0, error => "mysql konnte nicht gestartet werden: $@" } if !$PID;
 
-    open my $SchemaHandle, '<:raw', $SchemaFile or return { success => 0, error => "Schemadatei kann nicht gelesen werden: $!" };
-    while ( read( $SchemaHandle, my $Buffer, 65536 ) ) {
+    open my $SQLHandle, '<:raw', $SQLFile or return { success => 0, error => "SQL-Datei kann nicht gelesen werden: $!" };
+    while ( read( $SQLHandle, my $Buffer, 65536 ) ) {
         print {$In} $Buffer;
     }
-    close $SchemaHandle;
+    close $SQLHandle;
     close $In;
     local $/;
     my $Stdout = <$Out> // '';
@@ -1118,7 +1129,7 @@ sub Load {
 
         System => {
             Name       => 'Qisutu',
-            Version    => '0.0.8',
+            Version    => '0.0.15',
             InstanceID => '$ConfiguredInstanceID',
             WebPath    => '$ConfiguredWebPath',
             BaseURL    => '$BaseURL',
@@ -1157,6 +1168,7 @@ sub _SystemChecks {
     push @Checks, { name => 'MariaDB/MySQL Client', ok => $DatabaseCLI ? 1 : 0, critical => 1, detail => $DatabaseCLI ? $DatabaseCLI : 'nicht gefunden' };
     push @Checks, { name => 'Apache CGI', ok => $ENV{GATEWAY_INTERFACE} ? 1 : 0, critical => 1, detail => $ENV{GATEWAY_INTERFACE} || 'nicht über CGI aufgerufen' };
     push @Checks, { name => 'Datenbankschema', ok => -r $SchemaFile ? 1 : 0, critical => 1, detail => -r $SchemaFile ? 'lesbar' : 'fehlt' };
+    push @Checks, { name => 'Datenbank-Grunddaten', ok => -r $InsertFile ? 1 : 0, critical => 1, detail => -r $InsertFile ? 'lesbar' : 'fehlt' };
     push @Checks, { name => 'QisutuConfig.pm', ok => -w $ConfigFile ? 1 : 0, critical => 1, detail => -w $ConfigFile ? 'beschreibbar' : 'nicht beschreibbar' };
     push @Checks, { name => 'Installationsverzeichnis', ok => -w $InstallPath ? 1 : 0, critical => 1, detail => -w $InstallPath ? 'beschreibbar' : 'nicht beschreibbar' };
     my $Crypt = crypt( 'test', '$6$abcdefghijklmnop$' ) || '';

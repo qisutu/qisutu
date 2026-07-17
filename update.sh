@@ -36,6 +36,7 @@ Optionen:
 
 Das Updatepaket ist das Verzeichnis, in dem dieses update.sh liegt.
 Der angegebene Pfad muss auf eine bereits installierte Qisutu-Instanz zeigen.
+Die Programmdateien werden direkt in dieser Installation aktualisiert.
 EOF_USAGE
 }
 
@@ -67,10 +68,6 @@ version_gt() {
 
 version_le() {
     [[ "$1" == "$2" ]] || version_lt "$1" "$2"
-}
-
-escape_sed_replacement() {
-    printf '%s' "$1" | sed 's/[&|\\]/\\&/g'
 }
 
 load_key_value_file() {
@@ -116,68 +113,6 @@ validate_instance_config() {
 
 command_required() {
     command -v "$1" >/dev/null 2>&1 || fail "Benötigtes Programm wurde nicht gefunden: $1"
-}
-
-mail_fetch_running() {
-    local command_file command_line
-
-    for command_file in /proc/[0-9]*/cmdline; do
-        [[ -r "$command_file" ]] || continue
-        command_line="$(tr '\0' ' ' < "$command_file" 2>/dev/null || true)"
-        if [[ "$command_line" == *"$TARGET_ROOT/bin/qisutu-mail-fetch.pl"* ]]; then
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-mail_fetch_block() {
-    local mail_file="$TARGET_ROOT/bin/qisutu-mail-fetch.pl"
-    local saved_file="$TARGET_ROOT/bin/.qisutu-mail-fetch.pl.update-backup"
-
-    [[ -f "$mail_file" ]] || fail "Der Mailabruf der Instanz wurde nicht gefunden: $mail_file"
-
-    if [[ -f "$saved_file" ]]; then
-        if grep -Fq 'QISUTU_UPDATE_TEMPORARY_MAIL_BLOCK' "$mail_file" 2>/dev/null; then
-            mv -f "$saved_file" "$mail_file"
-        else
-            fail "Es existiert bereits eine unklare Update-Sicherungsdatei: $saved_file"
-        fi
-    fi
-
-    mv "$mail_file" "$saved_file"
-    cat > "$mail_file" <<'EOF_MAIL_BLOCK'
-#!/usr/bin/env perl
-# QISUTU_UPDATE_TEMPORARY_MAIL_BLOCK
-use strict;
-use warnings;
-print STDERR "Qisutu update is active. Mail fetch skipped.\n";
-exit 0;
-EOF_MAIL_BLOCK
-    chmod 0755 "$mail_file"
-    chown "$APACHE_USER:$APACHE_GROUP" "$mail_file"
-    MAIL_FETCH_BLOCKED=1
-
-    local waited=0
-    while mail_fetch_running; do
-        if (( waited >= 600 )); then
-            fail "Ein laufender Qisutu-Mailabruf wurde innerhalb der zulässigen Wartezeit nicht beendet."
-        fi
-        sleep 1
-        waited=$(( waited + 1 ))
-    done
-}
-
-mail_fetch_restore() {
-    local mail_file="$TARGET_ROOT/bin/qisutu-mail-fetch.pl"
-    local saved_file="$TARGET_ROOT/bin/.qisutu-mail-fetch.pl.update-backup"
-
-    if [[ -f "$saved_file" ]]; then
-        rm -f "$mail_file"
-        mv -f "$saved_file" "$mail_file"
-    fi
-    MAIL_FETCH_BLOCKED=0
 }
 
 mysql_config_create() {
@@ -239,9 +174,7 @@ config_value_get() {
 
 perl_syntax_check() {
     local root="$1"
-    local file
-
-    local check_output
+    local file check_output
 
     while IFS= read -r -d '' file; do
         if ! check_output="$(
@@ -259,6 +192,89 @@ perl_syntax_check() {
     done < <(find "$root/bin" "$root/core" "$root/install/update" -type f \( -name '*.pl' -o -name '*.pm' \) -print0)
 }
 
+program_registry_check() {
+    local root="$1"
+
+    QISUTU_HOME="$root" perl \
+        -I"$root/core/config" \
+        -I"$root/core/system" \
+        -I"$root/core/output" \
+        -I"$root/core/module" \
+        -MQisutuConfig \
+        -MQisutuOutput \
+        -MQisutuProgramRegistry \
+        -e '
+            use strict;
+            use warnings;
+            use File::Spec;
+
+            my $Config = QisutuConfig::Load();
+            my $ProgramPath = $Config->{Paths}->{ProgramConfig}
+                || File::Spec->catdir( $Config->{Paths}->{Config}, q{programs} );
+
+            opendir my $DH, $ProgramPath
+                or die "Program config directory cannot be opened: $ProgramPath: $!\n";
+            my @Files = sort grep { /[.]pm\z/ } readdir $DH;
+            closedir $DH;
+
+            die "No program registrations found in $ProgramPath\n" if !@Files;
+
+            my %Name;
+            my @Program;
+
+            for my $File (@Files) {
+                my $FullPath = File::Spec->catfile( $ProgramPath, $File );
+                my $Program = do $FullPath;
+                if ( !defined $Program ) {
+                    my $Error = $@ || $! || q{unknown error};
+                    die "Program registration cannot be loaded: $FullPath: $Error\n";
+                }
+                die "Program registration does not return a hash: $FullPath\n"
+                    if ref $Program ne q{HASH};
+
+                my $Name = $Program->{Name} || q{};
+                my $Module = $Program->{Module} || q{};
+                my $Type = $Program->{Type} || q{ProgramOnly};
+
+                die "Program registration has no Name: $FullPath\n" if !$Name;
+                die "Duplicate program registration: $Name\n" if $Name{$Name}++;
+                die "Program registration has no Module: $FullPath\n" if !$Module;
+                die "Invalid module name in program registration $Name: $Module\n"
+                    if $Module !~ m{\A[A-Za-z_][A-Za-z0-9_:]*\z};
+                die "Invalid program type in $Name: $Type\n"
+                    if $Type !~ m{\A(?:MainNavigation|SubNavigation|ProgramOnly)\z};
+
+                push @Program, $Program;
+            }
+
+            for my $Program (@Program) {
+                next if ( $Program->{Type} || q{ProgramOnly} ) ne q{SubNavigation};
+                my $Parent = $Program->{Parent} || q{};
+                die "Sub-navigation program has no parent: $Program->{Name}\n" if !$Parent;
+                die "Parent program is not registered for $Program->{Name}: $Parent\n"
+                    if !$Name{$Parent};
+            }
+
+            my $Output = QisutuOutput->new( Config => $Config );
+            my $Registry = QisutuProgramRegistry->new(
+                Config => $Config,
+                Output => $Output,
+            );
+            my $Registered = $Registry->Programs();
+            my $LastError = $Registry->Error() || q{};
+            die "Program registry error: $LastError\n" if $LastError;
+            die "Program registry count differs from program files\n"
+                if @{$Registered} != @Program;
+
+            for my $Program (@Program) {
+                my $Name = $Program->{Name};
+                die "Program is missing from registry: $Name\n"
+                    if !$Registry->ProgramGet( Name => $Name );
+            }
+        '
+}
+
+
 program_version_patch() {
     local config_file="$1"
 
@@ -269,79 +285,335 @@ program_version_patch() {
     ' "$config_file"
 }
 
-stage_prepare() {
-    rm -rf "$STAGE_ROOT"
-    mkdir -p "$STAGE_ROOT"
-    cp -a "$SOURCE_ROOT/." "$STAGE_ROOT/"
+config_preservation_snapshot() {
+    cp -p "$TARGET_ROOT/core/config/QisutuConfig.pm" "$CONFIG_BEFORE_FILE"
+    cp -p "$TARGET_ROOT/var/install/instance.conf" "$INSTANCE_BEFORE_FILE"
+}
 
-    rm -f "$STAGE_ROOT/core/config/QisutuConfig.pm"
-    cp -a "$TARGET_ROOT/core/config/QisutuConfig.pm" "$STAGE_ROOT/core/config/QisutuConfig.pm"
+config_preservation_verify() {
+    local before_normalized="$TEMP_ROOT/QisutuConfig.before.normalized"
+    local after_normalized="$TEMP_ROOT/QisutuConfig.after.normalized"
 
-    local path
-    for path in var/install var/log var/cache var/tmp log; do
-        if [[ -e "$TARGET_ROOT/$path" ]]; then
-            rm -rf "$STAGE_ROOT/$path"
-            mkdir -p "$(dirname "$STAGE_ROOT/$path")"
-            cp -a "$TARGET_ROOT/$path" "$STAGE_ROOT/$path"
-        fi
-    done
+    cp -p "$CONFIG_BEFORE_FILE" "$before_normalized"
+    cp -p "$TARGET_ROOT/core/config/QisutuConfig.pm" "$after_normalized"
 
-    local runtime_apache="$TARGET_ROOT/scriptfiles/$INSTANCE_ID-apache-runtime.conf"
-    if [[ -f "$runtime_apache" ]]; then
-        cp -a "$runtime_apache" "$STAGE_ROOT/scriptfiles/$INSTANCE_ID-apache-runtime.conf"
+    perl -0pi -e "s{(Version\\s*=>\\s*)'[^']*'}{\$1'__QISUTU_VERSION__'}g" "$before_normalized" "$after_normalized"
+
+    cmp -s "$before_normalized" "$after_normalized" \
+        || fail "QisutuConfig.pm wurde außerhalb der Programmversion verändert."
+    cmp -s "$INSTANCE_BEFORE_FILE" "$TARGET_ROOT/var/install/instance.conf" \
+        || fail "Die bestehende instance.conf wurde beim Update verändert."
+}
+
+manifest_path_validate() {
+    local manifest_path="$1"
+    local relative_path
+
+    [[ "$manifest_path" == ./* ]] || fail "Ungültiger Dateipfad in release.sha256: $manifest_path"
+    relative_path="${manifest_path#./}"
+    [[ -n "$relative_path" ]] || fail "Leerer Dateipfad in release.sha256."
+    [[ "$relative_path" != *[[:space:]]* ]] || fail "Dateipfade mit Leerzeichen sind im Updatepaket nicht zulässig: $relative_path"
+    case "/$relative_path/" in
+        *"/../"*|*"/./"*|*"//"*) fail "Unsicherer Dateipfad in release.sha256: $relative_path" ;;
+    esac
+    printf '%s' "$relative_path"
+}
+
+path_is_protected() {
+    local relative_path="$1"
+
+    case "$relative_path" in
+        core/config/QisutuConfig.pm) return 0 ;;
+        var/install|var/install/*) return 0 ;;
+        var/log|var/log/*) return 0 ;;
+        var/cache|var/cache/*) return 0 ;;
+        var/tmp|var/tmp/*) return 0 ;;
+        log|log/*) return 0 ;;
+        scriptfiles/"$INSTANCE_ID"-apache-runtime.conf) return 0 ;;
+    esac
+
+    return 1
+}
+
+package_manifest_source_validate() {
+    local manifest_file="$SOURCE_ROOT/release.sha256"
+    local checksum manifest_path extra relative_path source_file first_symlink check_output
+    local -A manifest_paths=()
+    local manifest_count=0
+
+    [[ -r "$manifest_file" ]] || fail "Prüfsummenliste des Updatepakets fehlt oder ist nicht lesbar: $manifest_file"
+
+    while read -r checksum manifest_path extra; do
+        [[ -n "$checksum" || -n "$manifest_path" || -n "$extra" ]] || continue
+        [[ -z "${extra:-}" ]] || fail "Ungültiger Eintrag in release.sha256: $checksum $manifest_path $extra"
+        [[ "$checksum" =~ ^[0-9a-f]{64}$ ]] || fail "Ungültige SHA-256-Prüfsumme in release.sha256: $checksum"
+        relative_path="$(manifest_path_validate "$manifest_path")"
+        [[ -z "${manifest_paths[$relative_path]+x}" ]] || fail "Doppelter Dateipfad in release.sha256: $relative_path"
+        [[ -f "$SOURCE_ROOT/$relative_path" && ! -L "$SOURCE_ROOT/$relative_path" ]] \
+            || fail "Datei aus release.sha256 fehlt im Updatepaket: $relative_path"
+        manifest_paths["$relative_path"]=1
+        manifest_count=$(( manifest_count + 1 ))
+    done < "$manifest_file"
+
+    (( manifest_count > 0 )) || fail "release.sha256 enthält keine Programmdateien."
+
+    while IFS= read -r -d '' source_file; do
+        relative_path="${source_file#"$SOURCE_ROOT/"}"
+        [[ "$relative_path" == "release.sha256" ]] && continue
+        [[ -n "${manifest_paths[$relative_path]+x}" ]] \
+            || fail "Programmdatei ist nicht in release.sha256 eingetragen: $relative_path"
+    done < <(find "$SOURCE_ROOT" -type f -print0)
+
+    first_symlink="$(find "$SOURCE_ROOT" -type l -print -quit)"
+    [[ -z "$first_symlink" ]] || fail "Symbolische Links sind im Updatepaket nicht zulässig: ${first_symlink#"$SOURCE_ROOT/"}"
+
+    if ! check_output="$(cd "$SOURCE_ROOT" && sha256sum --check --quiet release.sha256 2>&1)"; then
+        echo "$check_output" >&2
+        fail "Die Prüfsummen des Qisutu-Updatepakets sind ungültig. Das Paket wird nicht installiert."
+    fi
+}
+
+database_migration_package_validate() {
+    local migrations_root="$SOURCE_ROOT/install/update/database"
+    local migration_version version_directory migration_file migration_name file_count
+    local -A migration_keys=()
+
+    [[ -d "$migrations_root" ]] || fail "Verzeichnis für kumulative Datenmigrationen fehlt im Updatepaket: $migrations_root"
+
+    while IFS= read -r migration_version; do
+        [[ -n "$migration_version" ]] || continue
+        version_is_valid "$migration_version" || fail "Ungültiges Datenmigrationsverzeichnis: $migration_version"
+        version_le "$migration_version" "$TARGET_DATABASE_VERSION" \
+            || fail "Die Datenmigration $migration_version ist neuer als der erwartete Datenbankstand $TARGET_DATABASE_VERSION."
+
+        version_directory="$migrations_root/$migration_version"
+        file_count=0
+        while IFS= read -r -d '' migration_file; do
+            file_count=$(( file_count + 1 ))
+            migration_name="$(basename "$migration_file")"
+            [[ "$migration_name" =~ ^[0-9]{3,}-[A-Za-z0-9][A-Za-z0-9._-]*\.(sql|pl)$ ]] \
+                || fail "Ungültiger Dateiname einer Datenmigration: $migration_file"
+            [[ ! -L "$migration_file" ]] || fail "Symbolische Links sind für Datenmigrationen nicht zulässig: $migration_file"
+            [[ -z "${migration_keys[$migration_version/$migration_name]+x}" ]] \
+                || fail "Doppelte Datenmigration im Updatepaket: $migration_version/$migration_name"
+            migration_keys["$migration_version/$migration_name"]=1
+        done < <(find "$version_directory" -maxdepth 1 -type f \( -name '*.sql' -o -name '*.pl' \) -print0 | sort -zV)
+
+        (( file_count > 0 )) || fail "Das Datenmigrationsverzeichnis $version_directory enthält keine .sql- oder .pl-Datei."
+    done < <(find "$migrations_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V)
+}
+
+
+database_migrations_preflight() {
+    local migrations_root="$SOURCE_ROOT/install/update/database"
+    local migration_version migration_file migration_name migration_key
+    local table_exists stored_key stored_checksum extra
+    local -A package_keys=()
+
+    while IFS= read -r migration_version; do
+        [[ -n "$migration_version" ]] || continue
+        while IFS= read -r -d '' migration_file; do
+            migration_name="$(basename "$migration_file")"
+            migration_key="$migration_version/$migration_name"
+            package_keys["$migration_key"]=1
+        done < <(find "$migrations_root/$migration_version" -maxdepth 1 -type f \( -name '*.sql' -o -name '*.pl' \) -print0 | sort -zV)
+    done < <(find "$migrations_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V)
+
+    table_exists="$(
+        "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" --batch --skip-column-names "$DB_NAME" \
+            -e "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'database_migration' AND TABLE_TYPE = 'BASE TABLE'"
+    )"
+
+    [[ "$table_exists" == "0" || "$table_exists" == "1" ]] \
+        || fail "Die Tabelle database_migration konnte nicht eindeutig geprüft werden."
+
+    if [[ "$table_exists" == "0" ]]; then
+        echo "Für diese Installation existiert noch kein Migrationsprotokoll."
+        return
     fi
 
-    rm -f "$STAGE_ROOT/bin/.qisutu-mail-fetch.pl.update-backup"
-    program_version_patch "$STAGE_ROOT/core/config/QisutuConfig.pm"
+    while IFS=$'\t' read -r stored_key stored_checksum extra; do
+        [[ -n "${stored_key:-}" ]] || continue
+        [[ -z "${extra:-}" ]] || fail "Ungültiger Datensatz in database_migration: $stored_key"
+        [[ -n "${package_keys[$stored_key]+x}" ]] \
+            || fail "Eine bereits protokollierte Datenmigration fehlt im Updatepaket: $stored_key"
+        [[ "$stored_checksum" =~ ^[0-9a-f]{64}$ ]] \
+            || fail "Ungültige gespeicherte Prüfsumme für die Datenmigration: $stored_key"
+    done < <(
+        "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" --batch --skip-column-names "$DB_NAME" \
+            -e "SELECT migration_key, checksum_sha256 FROM database_migration ORDER BY migration_key"
+    )
 
-    installation_permissions_apply "$STAGE_ROOT"
+    echo "Alle bereits protokollierten Datenmigrationen sind im Updatepaket enthalten."
+}
+
+old_manifest_snapshot() {
+    if [[ -f "$TARGET_ROOT/release.sha256" && ! -L "$TARGET_ROOT/release.sha256" ]]; then
+        cp -p "$TARGET_ROOT/release.sha256" "$OLD_MANIFEST_FILE"
+    else
+        : > "$OLD_MANIFEST_FILE"
+    fi
+}
+
+obsolete_managed_files_remove() {
+    local checksum manifest_path extra relative_path target_file
+    local -A new_paths=()
+    local removed_count=0
+
+    while read -r checksum manifest_path extra; do
+        [[ -n "$checksum" || -n "$manifest_path" || -n "$extra" ]] || continue
+        relative_path="$(manifest_path_validate "$manifest_path")"
+        new_paths["$relative_path"]=1
+    done < "$SOURCE_ROOT/release.sha256"
+
+    while read -r checksum manifest_path extra; do
+        [[ -n "$checksum" || -n "$manifest_path" || -n "$extra" ]] || continue
+        [[ "$checksum" =~ ^[0-9a-f]{64}$ ]] || continue
+        relative_path="$(manifest_path_validate "$manifest_path")"
+        [[ -z "${new_paths[$relative_path]+x}" ]] || continue
+        path_is_protected "$relative_path" && continue
+
+        target_file="$TARGET_ROOT/$relative_path"
+        if [[ -d "$target_file" && ! -L "$target_file" ]]; then
+            fail "Eine nicht mehr benötigte Programmdatei ist im Ziel ein Verzeichnis: $relative_path"
+        fi
+        if [[ -e "$target_file" || -L "$target_file" ]]; then
+            rm -f -- "$target_file"
+            removed_count=$(( removed_count + 1 ))
+            FILES_CHANGED=1
+        fi
+    done < "$OLD_MANIFEST_FILE"
+
+    printf 'Nicht mehr benötigte verwaltete Dateien entfernt: %d\n' "$removed_count"
+}
+
+package_files_copy_direct() {
+    local checksum manifest_path extra relative_path target_file
+    local created_count=0 updated_count=0 protected_count=0
+    local -a copy_paths=()
+
+    echo "Übertrage die Programmdateien direkt nach $TARGET_ROOT."
+    FILES_CHANGED=1
+
+    while read -r checksum manifest_path extra; do
+        [[ -n "$checksum" || -n "$manifest_path" || -n "$extra" ]] || continue
+        relative_path="$(manifest_path_validate "$manifest_path")"
+
+        if path_is_protected "$relative_path"; then
+            protected_count=$(( protected_count + 1 ))
+            continue
+        fi
+
+        target_file="$TARGET_ROOT/$relative_path"
+        [[ ! -d "$target_file" || -L "$target_file" ]] \
+            || fail "Eine Programmdatei kann nicht übertragen werden, weil im Ziel ein Verzeichnis existiert: $relative_path"
+
+        if [[ -e "$target_file" || -L "$target_file" ]]; then
+            updated_count=$(( updated_count + 1 ))
+        else
+            created_count=$(( created_count + 1 ))
+        fi
+
+        rm -f -- "$target_file"
+        copy_paths+=("./$relative_path")
+    done < "$SOURCE_ROOT/release.sha256"
+
+    if (( ${#copy_paths[@]} > 0 )); then
+        (
+            cd "$SOURCE_ROOT"
+            cp -p --parents -- "${copy_paths[@]}" "$TARGET_ROOT"
+        )
+    fi
+
+    cp -p -- "$SOURCE_ROOT/release.sha256" "$TARGET_ROOT/release.sha256"
+    FILES_CHANGED=1
+
+    printf 'Programmdateien: %d neu, %d aktualisiert, %d geschützt.\n' \
+        "$created_count" "$updated_count" "$protected_count"
 }
 
 installation_permissions_apply() {
-    local root="$1"
-    local path executable_file
-    local executable_files=(
-        qisutu-daemon.pl
-        qisutu-mail-fetch.pl
-        qisutu-search-index-rebuild.pl
-        qisutu-ticket-escalation-check.pl
-    )
+    local checksum manifest_path extra relative_path target_file source_directory relative_directory target_directory
+    local -a managed_files=()
+    local -a managed_directories=()
 
-    [[ -d "$root" ]] || fail "Qisutu-Verzeichnis für die Rechtevergabe fehlt: $root"
+    while IFS= read -r -d '' source_directory; do
+        [[ "$source_directory" != "$SOURCE_ROOT" ]] || continue
+        relative_directory="${source_directory#"$SOURCE_ROOT/"}"
+        path_is_protected "$relative_directory" && continue
+        target_directory="$TARGET_ROOT/$relative_directory"
+        mkdir -p "$target_directory"
+        managed_directories+=("$target_directory")
+    done < <(find "$SOURCE_ROOT" -type d -print0)
 
-    # Der bestehende Besitzer der ausgewählten Instanz wird beibehalten.
-    # Dadurch wird bei mehreren Installationen nicht eigenmächtig ein anderer
-    # Systembenutzer für die Programmdateien gesetzt.
-    chown -R "$TARGET_OWNER:$TARGET_GROUP" "$root"
+    while read -r checksum manifest_path extra; do
+        [[ -n "$checksum" || -n "$manifest_path" || -n "$extra" ]] || continue
+        relative_path="$(manifest_path_validate "$manifest_path")"
+        path_is_protected "$relative_path" && continue
+        target_file="$TARGET_ROOT/$relative_path"
+        [[ -f "$target_file" && ! -L "$target_file" ]] || fail "Programmdatei fehlt bei der Rechtevergabe: $relative_path"
+        managed_files+=("$target_file")
+    done < "$SOURCE_ROOT/release.sha256"
 
-    find "$root" -type d -exec chmod 0755 {} +
-    find "$root" -type f -exec chmod 0644 {} +
-
-    chmod 0755 "$root/install.sh" "$root/update.sh"
-    find "$root/bin" -type f -name '*.pl' -exec chmod 0755 {} +
-
-    for executable_file in "${executable_files[@]}"; do
-        if [[ -f "$root/bin/$executable_file" ]]; then
-            chmod 0775 "$root/bin/$executable_file"
-        fi
-    done
-
-    for path in var/install var/log var/cache var/tmp; do
-        mkdir -p "$root/$path"
-        chown -R "$TARGET_OWNER:$TARGET_GROUP" "$root/$path"
-        chmod 0770 "$root/$path"
-    done
-
-    chown "$TARGET_OWNER:$TARGET_GROUP" "$root/core/config/QisutuConfig.pm"
-    chmod 0660 "$root/core/config/QisutuConfig.pm"
-
-    chown "$TARGET_OWNER:$TARGET_GROUP" "$root/var/install/instance.conf"
-    chmod 0640 "$root/var/install/instance.conf"
-
-    if [[ -f "$root/var/install/update.lock" ]]; then
-        chown "$TARGET_OWNER:$TARGET_GROUP" "$root/var/install/update.lock"
-        chmod 0660 "$root/var/install/update.lock"
+    if (( ${#managed_directories[@]} > 0 )); then
+        chown "$TARGET_OWNER:$TARGET_GROUP" "${managed_directories[@]}"
+        chmod 0755 "${managed_directories[@]}"
     fi
+    if (( ${#managed_files[@]} > 0 )); then
+        chown "$TARGET_OWNER:$TARGET_GROUP" "${managed_files[@]}"
+        chmod 0644 "${managed_files[@]}"
+    fi
+    chmod 0755 "$TARGET_ROOT/install.sh" "$TARGET_ROOT/update.sh"
+    find "$TARGET_ROOT/bin" -maxdepth 1 -type f -name '*.pl' -exec chmod 0775 {} +
+    if [[ -d "$TARGET_ROOT/bin/cgi-bin" ]]; then
+        find "$TARGET_ROOT/bin/cgi-bin" -maxdepth 1 -type f -name '*.pl' -exec chmod 0755 {} +
+    fi
+
+    for target_directory in var/install var/log var/cache var/tmp log; do
+        mkdir -p "$TARGET_ROOT/$target_directory"
+        chown "$TARGET_OWNER:$TARGET_GROUP" "$TARGET_ROOT/$target_directory"
+        chmod 0770 "$TARGET_ROOT/$target_directory"
+    done
+
+    chown "$TARGET_OWNER:$TARGET_GROUP" "$TARGET_ROOT/core/config/QisutuConfig.pm"
+    chmod 0660 "$TARGET_ROOT/core/config/QisutuConfig.pm"
+
+    chown "$TARGET_OWNER:$TARGET_GROUP" "$TARGET_ROOT/var/install/instance.conf"
+    chmod 0640 "$TARGET_ROOT/var/install/instance.conf"
+
+    if [[ -f "$TARGET_ROOT/var/install/update.lock" ]]; then
+        chown "$TARGET_OWNER:$TARGET_GROUP" "$TARGET_ROOT/var/install/update.lock"
+        chmod 0660 "$TARGET_ROOT/var/install/update.lock"
+    fi
+}
+
+package_tree_verify() {
+    local source_manifest_checksum installed_manifest_checksum check_output
+
+    [[ -f "$TARGET_ROOT/release.sha256" && ! -L "$TARGET_ROOT/release.sha256" ]] \
+        || fail "release.sha256 fehlt im installierten Programmstand."
+    [[ -f "$TARGET_ROOT/core/config/QisutuConfig.pm" && ! -L "$TARGET_ROOT/core/config/QisutuConfig.pm" ]] \
+        || fail "Die installationsbezogene QisutuConfig.pm fehlt nach dem Update."
+
+    source_manifest_checksum="$(sha256sum "$SOURCE_ROOT/release.sha256" | awk '{print $1}')"
+    installed_manifest_checksum="$(sha256sum "$TARGET_ROOT/release.sha256" | awk '{print $1}')"
+    [[ "$installed_manifest_checksum" == "$source_manifest_checksum" ]] \
+        || fail "Die installierte release.sha256 stimmt nicht mit dem Updatepaket überein."
+
+    if ! check_output="$(
+        cd "$TARGET_ROOT"
+        awk '$2 != "./core/config/QisutuConfig.pm" { print }' "$SOURCE_ROOT/release.sha256" \
+            | sha256sum --check --quiet - 2>&1
+    )"; then
+        echo "$check_output" >&2
+        fail "Mindestens eine Programmdatei wurde nicht vollständig in die bestehende Installation übertragen."
+    fi
+}
+
+sql_literal_escape() {
+    local value="$1"
+    value="${value//\'/\'\'}"
+    printf '%s' "$value"
 }
 
 database_current_version_get() {
@@ -370,27 +642,20 @@ database_current_version_get() {
 }
 
 database_schema_synchronize() {
-    local schema_file="$STAGE_ROOT/install/sql/schema.sql"
-    local sync_program="$STAGE_ROOT/install/update/QisutuSchemaSync.pl"
     local status_file="$TEMP_ROOT/schema-sync.status"
     local status_key status_value schema_changed=""
 
-    [[ -r "$schema_file" ]] || fail "Die aktuelle Datenbank-Sollstruktur fehlt: $schema_file"
-    [[ -r "$sync_program" ]] || fail "Das Programm für den Datenbankabgleich fehlt: $sync_program"
+    [[ -r "$TARGET_ROOT/install/sql/schema.sql" ]] || fail "Die aktuelle Datenbank-Sollstruktur fehlt."
+    [[ -r "$TARGET_ROOT/install/update/QisutuSchemaSync.pl" ]] || fail "Das Programm für den Datenbankabgleich fehlt."
 
     rm -f "$status_file"
 
-    # Vor dem Aufruf wird DB_CHANGED vorsorglich gesetzt. Falls der Abgleich
-    # nach bereits ausgeführten DDL-Anweisungen fehlschlägt, kann die
-    # Fehlerbehandlung die Datenbanksicherung zuverlässig zurückspielen.
-    DB_CHANGED=1
-
-    QISUTU_HOME="$STAGE_ROOT" perl \
-        -I"$STAGE_ROOT/core/config" \
-        -I"$STAGE_ROOT/core/system" \
-        -I"$STAGE_ROOT/core/cpan-lib" \
-        "$sync_program" \
-        --schema "$schema_file" \
+    QISUTU_HOME="$TARGET_ROOT" perl \
+        -I"$TARGET_ROOT/core/config" \
+        -I"$TARGET_ROOT/core/system" \
+        -I"$TARGET_ROOT/core/cpan-lib" \
+        "$TARGET_ROOT/install/update/QisutuSchemaSync.pl" \
+        --schema "$TARGET_ROOT/install/sql/schema.sql" \
         --status-file "$status_file"
 
     [[ -r "$status_file" ]] || fail "Der Datenbankabgleich hat keine Statusdatei erzeugt."
@@ -402,35 +667,28 @@ database_schema_synchronize() {
     done < "$status_file"
 
     case "$schema_changed" in
-        0) DB_CHANGED=0 ;;
+        0) ;;
         1) DB_CHANGED=1 ;;
         *) fail "Der Änderungsstatus des Datenbankabgleichs ist ungültig." ;;
     esac
 }
 
-
-sql_literal_escape() {
-    local value="$1"
-    value="${value//\'/\'\'}"
-    printf '%s' "$value"
-}
-
 database_migrations_apply() {
-    local installed_database_version="$1"
-    local migrations_root="$STAGE_ROOT/install/update/database"
+    local migrations_root="$TARGET_ROOT/install/update/database"
     local version_directory migration_version migration_file migration_name
-    local migration_key migration_checksum stored_record stored_checksum stored_mode
+    local migration_key migration_checksum stored_count stored_mode
     local escaped_key escaped_version escaped_checksum
-    local executed_count=0 baseline_count=0 skipped_count=0 file_count=0
+    local executed_count=0 skipped_count=0 file_count=0
 
     [[ -d "$migrations_root" ]] || fail "Verzeichnis für kumulative Datenmigrationen fehlt: $migrations_root"
 
-    echo "Prüfe die dauerhaft mitgelieferten Datenmigrationen."
+    echo "Prüfe und ergänze die dauerhaft mitgeführten Datenmigrationen."
 
     while IFS= read -r migration_version; do
         [[ -n "$migration_version" ]] || continue
         version_is_valid "$migration_version" || fail "Ungültiges Datenmigrationsverzeichnis: $migration_version"
-        version_le "$migration_version" "$TARGET_DATABASE_VERSION" || fail "Die Datenmigration $migration_version ist neuer als der erwartete Datenbankstand $TARGET_DATABASE_VERSION."
+        version_le "$migration_version" "$TARGET_DATABASE_VERSION" \
+            || fail "Die Datenmigration $migration_version ist neuer als der erwartete Datenbankstand $TARGET_DATABASE_VERSION."
 
         version_directory="$migrations_root/$migration_version"
         file_count=0
@@ -438,44 +696,34 @@ database_migrations_apply() {
         while IFS= read -r -d '' migration_file; do
             file_count=$(( file_count + 1 ))
             migration_name="$(basename "$migration_file")"
-
-            [[ "$migration_name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*\.(sql|pl)$ ]] \
-                || fail "Ungültiger Dateiname einer Datenmigration: $migration_file"
-
             migration_key="$migration_version/$migration_name"
             (( ${#migration_key} <= 255 )) || fail "Der Schlüssel der Datenmigration ist zu lang: $migration_key"
-
             migration_checksum="$(sha256sum "$migration_file" | awk '{print $1}')"
-            [[ "$migration_checksum" =~ ^[0-9a-f]{64}$ ]] || fail "Die Prüfsumme der Datenmigration ist ungültig: $migration_key"
+            [[ "$migration_checksum" =~ ^[0-9a-f]{64}$ ]] \
+                || fail "Die Prüfsumme der Datenmigration ist ungültig: $migration_key"
 
             escaped_key="$(sql_literal_escape "$migration_key")"
-            stored_record="$(
+            stored_count="$(
                 "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" --batch --skip-column-names "$DB_NAME" \
-                    -e "SELECT CONCAT(checksum_sha256, CHAR(9), execution_mode) FROM database_migration WHERE migration_key = '$escaped_key' LIMIT 1"
+                    -e "SELECT COUNT(*) FROM database_migration WHERE migration_key = '$escaped_key'"
             )"
 
-            if [[ -n "$stored_record" ]]; then
-                IFS=$'\t' read -r stored_checksum stored_mode <<< "$stored_record"
-                [[ "$stored_checksum" == "$migration_checksum" ]] \
-                    || fail "Die bereits registrierte Datenmigration $migration_key besitzt im Updatepaket eine andere Prüfsumme. Alte Migrationen dürfen nachträglich nicht verändert werden."
-                echo "  Bereits erledigt: $migration_key ($stored_mode)"
+            if [[ "$stored_count" == "1" ]]; then
+                stored_mode="$(
+                    "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" --batch --skip-column-names "$DB_NAME" \
+                        -e "SELECT execution_mode FROM database_migration WHERE migration_key = '$escaped_key' LIMIT 1"
+                )"
+                echo "  Bereits erledigt: $migration_key (${stored_mode:-protokolliert})"
                 skipped_count=$(( skipped_count + 1 ))
                 continue
             fi
+            [[ "$stored_count" == "0" ]] \
+                || fail "Die Datenmigration ist im Migrationsprotokoll nicht eindeutig: $migration_key"
 
             escaped_version="$(sql_literal_escape "$migration_version")"
             escaped_checksum="$(sql_literal_escape "$migration_checksum")"
-
-            if version_le "$migration_version" "$installed_database_version"; then
-                echo "  Historischen Stand übernehmen: $migration_key"
-                DB_CHANGED=1
-                "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" "$DB_NAME" \
-                    -e "INSERT INTO database_migration (migration_key, database_version, checksum_sha256, execution_mode) VALUES ('$escaped_key', '$escaped_version', '$escaped_checksum', 'legacy')"
-                baseline_count=$(( baseline_count + 1 ))
-                continue
-            fi
-
             DB_CHANGED=1
+
             case "$migration_file" in
                 *.sql)
                     echo "  SQL ausführen: $migration_key"
@@ -483,13 +731,13 @@ database_migrations_apply() {
                     ;;
                 *.pl)
                     echo "  Perl ausführen: $migration_key"
-                    QISUTU_HOME="$STAGE_ROOT" \
+                    QISUTU_HOME="$TARGET_ROOT" \
                     QISUTU_DATABASE_MIGRATION_VERSION="$migration_version" \
                     QISUTU_DATABASE_MIGRATION_KEY="$migration_key" \
                     perl \
-                        -I"$STAGE_ROOT/core/config" \
-                        -I"$STAGE_ROOT/core/system" \
-                        -I"$STAGE_ROOT/core/cpan-lib" \
+                        -I"$TARGET_ROOT/core/config" \
+                        -I"$TARGET_ROOT/core/system" \
+                        -I"$TARGET_ROOT/core/cpan-lib" \
                         "$migration_file"
                     ;;
                 *)
@@ -502,14 +750,38 @@ database_migrations_apply() {
             executed_count=$(( executed_count + 1 ))
         done < <(find "$version_directory" -maxdepth 1 -type f \( -name '*.sql' -o -name '*.pl' \) -print0 | sort -zV)
 
-        if (( file_count == 0 )); then
-            fail "Das Datenmigrationsverzeichnis $version_directory enthält keine .sql- oder .pl-Datei."
-        fi
+        (( file_count > 0 )) || fail "Das Datenmigrationsverzeichnis $version_directory enthält keine .sql- oder .pl-Datei."
     done < <(find "$migrations_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V)
 
-    printf 'Datenmigrationen: %d ausgeführt, %d historisch übernommen, %d bereits erledigt.\n' \
-        "$executed_count" "$baseline_count" "$skipped_count"
+    printf 'Datenmigrationen: %d ausgeführt, %d bereits erledigt.\n' "$executed_count" "$skipped_count"
 }
+
+
+database_migrations_verify() {
+    local migrations_root="$TARGET_ROOT/install/update/database"
+    local migration_version migration_file migration_name migration_key
+    local escaped_key stored_count
+    local verified_count=0
+
+    while IFS= read -r migration_version; do
+        [[ -n "$migration_version" ]] || continue
+        while IFS= read -r -d '' migration_file; do
+            migration_name="$(basename "$migration_file")"
+            migration_key="$migration_version/$migration_name"
+            escaped_key="$(sql_literal_escape "$migration_key")"
+            stored_count="$(
+                "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" --batch --skip-column-names "$DB_NAME" \
+                    -e "SELECT COUNT(*) FROM database_migration WHERE migration_key = '$escaped_key'"
+            )"
+            [[ "$stored_count" == "1" ]] \
+                || fail "Die Datenmigration wurde nicht vollständig protokolliert: $migration_key"
+            verified_count=$(( verified_count + 1 ))
+        done < <(find "$migrations_root/$migration_version" -maxdepth 1 -type f \( -name '*.sql' -o -name '*.pl' \) -print0 | sort -zV)
+    done < <(find "$migrations_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V)
+
+    printf 'Protokollierte Datenmigrationen geprüft: %d\n' "$verified_count"
+}
+
 
 database_target_version_record() {
     local version_exists escaped_version
@@ -530,36 +802,43 @@ database_target_version_record() {
     fi
 }
 
-daemon_service_render() {
-    local source_file="$TARGET_ROOT/scriptfiles/qisutu-daemon.service"
-    local target_file="/etc/systemd/system/$DAEMON_SERVICE"
-    local temporary_file="$TEMP_ROOT/daemon.service"
-    local escaped_root escaped_instance escaped_user escaped_group escaped_web escaped_daemon escaped_complete_service escaped_complete_path
+path_state() {
+    local path="$1"
 
-    [[ -f "$source_file" ]] || fail "Die Vorlage des Daemon-Dienstes fehlt: $source_file"
+    if [[ -L "$path" ]]; then
+        printf 'symlink|%s|%s|%s\n' "$(readlink "$path")" "$(stat -c '%U:%G' "$path")" "$(stat -c '%a' "$path")"
+    elif [[ -f "$path" ]]; then
+        printf 'file|%s|%s|%s\n' "$(sha256sum "$path" | awk '{print $1}')" "$(stat -c '%U:%G' "$path")" "$(stat -c '%a' "$path")"
+    elif [[ -e "$path" ]]; then
+        printf 'other|%s|%s\n' "$(stat -c '%F' "$path")" "$(stat -c '%U:%G:%a' "$path")"
+    else
+        printf 'missing\n'
+    fi
+}
 
-    escaped_root="$(escape_sed_replacement "$TARGET_ROOT")"
-    escaped_instance="$(escape_sed_replacement "$INSTANCE_ID")"
-    escaped_user="$(escape_sed_replacement "$APACHE_USER")"
-    escaped_group="$(escape_sed_replacement "$APACHE_GROUP")"
-    escaped_web="$(escape_sed_replacement "$WEB_PATH")"
-    escaped_daemon="$(escape_sed_replacement "$DAEMON_SERVICE")"
-    escaped_complete_service="$(escape_sed_replacement "$INSTALL_COMPLETE_SERVICE")"
-    escaped_complete_path="$(escape_sed_replacement "$INSTALL_COMPLETE_PATH")"
+operator_config_snapshot() {
+    local path
+    : > "$OPERATOR_CONFIG_BEFORE_FILE"
 
-    sed \
-        -e "s|__QISUTU_ROOT__|$escaped_root|g" \
-        -e "s|__QISUTU_INSTANCE__|$escaped_instance|g" \
-        -e "s|__QISUTU_APACHE_USER__|$escaped_user|g" \
-        -e "s|__QISUTU_APACHE_GROUP__|$escaped_group|g" \
-        -e "s|__QISUTU_WEB_PATH__|$escaped_web|g" \
-        -e "s|__QISUTU_DAEMON_SERVICE__|$escaped_daemon|g" \
-        -e "s|__QISUTU_INSTALL_COMPLETE_SERVICE__|$escaped_complete_service|g" \
-        -e "s|__QISUTU_INSTALL_COMPLETE_PATH__|$escaped_complete_path|g" \
-        "$source_file" > "$temporary_file"
+    for path in \
+        "/etc/systemd/system/$DAEMON_SERVICE" \
+        "/etc/apache2/sites-available/$APACHE_CONF_NAME" \
+        "/etc/apache2/sites-enabled/$APACHE_CONF_NAME" \
+        "/etc/apache2/conf-available/$APACHE_CONF_NAME" \
+        "/etc/apache2/conf-enabled/$APACHE_CONF_NAME" \
+        "/etc/httpd/conf.d/$APACHE_CONF_NAME" \
+        "$TARGET_ROOT/scriptfiles/$INSTANCE_ID-apache-runtime.conf"; do
+        printf '%s\t%s\n' "$path" "$(path_state "$path")" >> "$OPERATOR_CONFIG_BEFORE_FILE"
+    done
+}
 
-    install -o root -g root -m 0644 "$temporary_file" "$target_file"
-    SYSTEMD_CHANGED=1
+operator_config_verify() {
+    local path expected actual
+
+    while IFS=$'\t' read -r path expected; do
+        actual="$(path_state "$path")"
+        [[ "$actual" == "$expected" ]] || fail "Eine Betreiber-Konfiguration wurde beim Update verändert: $path"
+    done < "$OPERATOR_CONFIG_BEFORE_FILE"
 }
 
 apache_config_test() {
@@ -574,7 +853,7 @@ apache_config_test() {
     fi
 }
 
-rollback() {
+update_failed() {
     local line="$1"
     local command="$2"
 
@@ -584,57 +863,27 @@ rollback() {
     echo >&2
     echo "Das Qisutu-Update ist fehlgeschlagen." >&2
     echo "Fehler bei Zeile $line: $command" >&2
-    echo "Der vorherige Programmstand wird wiederhergestellt." >&2
-
-    if (( SWAPPED == 1 )); then
-        if [[ -e "$TARGET_ROOT" ]]; then
-            rm -rf "$FAILED_ROOT"
-            mv "$TARGET_ROOT" "$FAILED_ROOT"
-        fi
-        if [[ -e "$OLD_ROOT" ]]; then
-            mv "$OLD_ROOT" "$TARGET_ROOT"
-        fi
-        SWAPPED=0
-    fi
-
-    if (( MAIL_FETCH_BLOCKED == 1 )) && [[ -d "$TARGET_ROOT" ]]; then
-        mail_fetch_restore
-    fi
-
-    if (( DB_CHANGED == 1 )); then
-        if (( DATABASE_BACKUP_CREATED == 1 )) && [[ -s "$DATABASE_DUMP_FILE" ]] && [[ -f "$MYSQL_CONFIG_FILE" ]]; then
-            echo "Datenbank wird aus der Sicherung wiederhergestellt." >&2
-            "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" < "$DATABASE_DUMP_FILE" >&2
-        else
-            echo "ACHTUNG: Die Datenbank wurde vor dem Update nicht gesichert." >&2
-            echo "Bereits ausgeführte Datenbankänderungen können deshalb nicht automatisch zurückgesetzt werden." >&2
-        fi
-    fi
-
-    if (( SYSTEMD_CHANGED == 1 )); then
-        if [[ -f "$BACKUP_DIR/systemd/$DAEMON_SERVICE" ]]; then
-            cp -a "$BACKUP_DIR/systemd/$DAEMON_SERVICE" "/etc/systemd/system/$DAEMON_SERVICE"
-        else
-            rm -f "/etc/systemd/system/$DAEMON_SERVICE"
-        fi
-        systemctl daemon-reload >/dev/null 2>&1
-    fi
-
-    if [[ -d "$TARGET_ROOT" ]]; then
-        rm -f "$TARGET_ROOT/var/install/update.lock"
-    fi
-
-    if (( SERVICE_WAS_ACTIVE == 1 )); then
-        systemctl start "$DAEMON_SERVICE" >/dev/null 2>&1
-    fi
 
     if [[ -n "${RUNTIME_LOCK_FD:-}" ]]; then
         flock -u "$RUNTIME_LOCK_FD" >/dev/null 2>&1
     fi
 
-    echo "Sicherungsverzeichnis: ${BACKUP_DIR:-nicht angelegt}" >&2
+    if (( FILES_CHANGED == 0 && DB_CHANGED == 0 )); then
+        if (( UPDATE_LOCK_CREATED_BY_RUN == 1 )); then
+            rm -f "$UPDATE_LOCK_FILE"
+        fi
+        if (( SERVICE_WAS_ACTIVE == 1 )); then
+            systemctl start "$DAEMON_SERVICE" >/dev/null 2>&1
+        fi
+    else
+        echo "Die Wartungssperre bleibt aktiv und der Daemon bleibt gestoppt." >&2
+        echo "Behebe den gemeldeten Fehler und führe dasselbe Update erneut aus." >&2
+    fi
+
+    rm -rf "${TEMP_ROOT:-}" >/dev/null 2>&1
     exit 1
 }
+
 
 if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
     fail "Bitte dieses Updateprogramm als root ausführen: sudo ./update.sh /opt/qisutu"
@@ -705,6 +954,11 @@ version_is_valid "$TARGET_DATABASE_VERSION" || fail "Ungültige Datenbankversion
 INSTANCE_CONFIG_FILE="$TARGET_ROOT/var/install/instance.conf"
 INSTALL_LOCK_FILE="$TARGET_ROOT/var/install/installed.lock"
 UPDATE_LOCK_FILE="$TARGET_ROOT/var/install/update.lock"
+UPDATE_LOCK_PREEXISTED=0
+UPDATE_LOCK_CREATED_BY_RUN=0
+if [[ -e "$UPDATE_LOCK_FILE" ]]; then
+    UPDATE_LOCK_PREEXISTED=1
+fi
 
 [[ -f "$INSTALL_LOCK_FILE" ]] || fail "Der Pfad ist keine vollständig installierte Qisutu-Instanz: installed.lock fehlt."
 [[ -f "$TARGET_ROOT/core/config/QisutuConfig.pm" ]] || fail "QisutuConfig.pm fehlt in der ausgewählten Installation."
@@ -714,18 +968,23 @@ validate_instance_config
 command_required perl
 command_required find
 command_required sort
-command_required tar
 command_required flock
 command_required systemctl
 command_required sed
-command_required install
 command_required sha256sum
 command_required stat
+command_required awk
+command_required cmp
+command_required cp
+command_required mv
+command_required rm
+command_required mkdir
+command_required chmod
+command_required chown
+command_required readlink
 
-[[ -f "$SOURCE_ROOT/release.sha256" ]] || fail "Prüfsummenliste des Updatepakets fehlt: release.sha256"
-if ! ( cd "$SOURCE_ROOT" && sha256sum --check --quiet release.sha256 ); then
-    fail "Die Prüfsummen des Qisutu-Updatepakets sind ungültig. Das Paket wird nicht installiert."
-fi
+package_manifest_source_validate
+database_migration_package_validate
 
 if command -v mariadb >/dev/null 2>&1; then
     DB_CLIENT="mariadb"
@@ -762,8 +1021,11 @@ version_is_valid "$CURRENT_PROGRAM_VERSION" || fail "Die installierte Qisutu-Pro
 if version_lt "$CURRENT_PROGRAM_VERSION" "$MINIMUM_PROGRAM_VERSION"; then
     fail "Dieses Update benötigt mindestens Qisutu $MINIMUM_PROGRAM_VERSION. Installiert ist $CURRENT_PROGRAM_VERSION."
 fi
-if ! version_lt "$CURRENT_PROGRAM_VERSION" "$RELEASE_VERSION"; then
-    fail "Das Updatepaket $RELEASE_VERSION ist nicht neuer als die installierte Version $CURRENT_PROGRAM_VERSION."
+if version_gt "$CURRENT_PROGRAM_VERSION" "$RELEASE_VERSION"; then
+    fail "Die installierte Version $CURRENT_PROGRAM_VERSION ist neuer als dieses Updatepaket $RELEASE_VERSION."
+fi
+if [[ "$CURRENT_PROGRAM_VERSION" == "$RELEASE_VERSION" && ! -f "$UPDATE_LOCK_FILE" ]]; then
+    fail "Qisutu $RELEASE_VERSION ist bereits vollständig installiert."
 fi
 
 printf '\nAusgewählte Qisutu-Instanz\n'
@@ -774,13 +1036,17 @@ printf '  Datenbank:         %s\n' "$DB_NAME"
 printf '  Daemon:            %s\n' "$DAEMON_SERVICE"
 printf '  Besitzer:          %s:%s\n' "$TARGET_OWNER" "$TARGET_GROUP"
 printf '  Installiert:       %s\n' "$CURRENT_PROGRAM_VERSION"
-printf '  Update auf:        %s\n\n' "$RELEASE_VERSION"
+printf '  Update auf:        %s\n' "$RELEASE_VERSION"
+if (( UPDATE_LOCK_PREEXISTED == 1 )); then
+    printf '  Zustand:           Fortsetzung eines nicht abgeschlossenen Updates\n'
+fi
+printf '\n'
 
 if (( ASSUME_YES == 0 )); then
     if [[ ! -t 0 ]]; then
         fail "Ohne interaktive Eingabe muss die Option --yes verwendet werden."
     fi
-    read -r -p "Diese Qisutu-Instanz jetzt aktualisieren? [j/N]: " ANSWER
+    read -r -p "Diese Qisutu-Instanz jetzt direkt aktualisieren? [j/N]: " ANSWER
     case "$ANSWER" in
         j|J|ja|Ja|JA|y|Y|yes|Yes|YES) ;;
         *) echo "Update abgebrochen."; exit 0 ;;
@@ -789,9 +1055,10 @@ fi
 
 TEMP_ROOT="$(mktemp -d "/tmp/qisutu-update-${INSTANCE_ID}.XXXXXX")"
 MYSQL_CONFIG_FILE="$TEMP_ROOT/mysql-client.cnf"
-STAGE_ROOT="$(dirname "$TARGET_ROOT")/.$(basename "$TARGET_ROOT").update-$RELEASE_VERSION-$$"
-OLD_ROOT="$(dirname "$TARGET_ROOT")/.$(basename "$TARGET_ROOT").rollback-$$"
-FAILED_ROOT="$TEMP_ROOT/failed-installation"
+OLD_MANIFEST_FILE="$TEMP_ROOT/release.sha256.old"
+CONFIG_BEFORE_FILE="$TEMP_ROOT/QisutuConfig.pm.before"
+INSTANCE_BEFORE_FILE="$TEMP_ROOT/instance.conf.before"
+OPERATOR_CONFIG_BEFORE_FILE="$TEMP_ROOT/operator-config.before"
 TIMESTAMP="$(date '+%Y-%m-%d_%H%M%S')"
 BACKUP_DIR="/var/backups/qisutu/$INSTANCE_ID/$TIMESTAMP"
 DATABASE_DUMP_FILE="$BACKUP_DIR/database.sql"
@@ -799,12 +1066,10 @@ RUNTIME_LOCK_DIR="/run/lock/qisutu"
 RUNTIME_LOCK_FILE="$RUNTIME_LOCK_DIR/$INSTANCE_ID.runtime.lock"
 UPDATE_MANAGER_LOCK_FILE="$RUNTIME_LOCK_DIR/$INSTANCE_ID.update-manager.lock"
 
-SWAPPED=0
+FILES_CHANGED=0
 DB_CHANGED=0
 DATABASE_BACKUP_ENABLED=1
 DATABASE_BACKUP_CREATED=0
-SYSTEMD_CHANGED=0
-MAIL_FETCH_BLOCKED=0
 SERVICE_WAS_ACTIVE=0
 RUNTIME_LOCK_FD=""
 
@@ -817,7 +1082,7 @@ chown "root:$APACHE_GROUP" "$UPDATE_MANAGER_LOCK_FILE"
 chmod 0660 "$UPDATE_MANAGER_LOCK_FILE"
 flock -n -x "$UPDATE_MANAGER_FD" || fail "Für diese Qisutu-Instanz läuft bereits ein Update."
 
-trap 'rollback "$LINENO" "$BASH_COMMAND"' ERR
+trap 'update_failed "$LINENO" "$BASH_COMMAND"' ERR
 
 mysql_config_create
 "$DB_CLIENT" --defaults-extra-file="$MYSQL_CONFIG_FILE" "$DB_NAME" -e 'SELECT 1' >/dev/null
@@ -827,31 +1092,32 @@ version_is_valid "$CURRENT_DATABASE_VERSION" || fail "Die aktuelle Datenbankvers
 printf 'Datenbankstand:       %s\n' "$CURRENT_DATABASE_VERSION"
 printf 'Erforderlicher Stand: %s\n\n' "$TARGET_DATABASE_VERSION"
 
+if version_gt "$CURRENT_DATABASE_VERSION" "$TARGET_DATABASE_VERSION"; then
+    fail "Die vorhandene Datenbankversion $CURRENT_DATABASE_VERSION ist neuer als das Updatepaket erwartet."
+fi
+
+printf 'Prüfe das Updatepaket vollständig, bevor die Installation verändert wird.\n'
+perl_syntax_check "$SOURCE_ROOT"
+program_registry_check "$SOURCE_ROOT"
+perl "$SOURCE_ROOT/install/update/QisutuSchemaSync.pl" --schema "$SOURCE_ROOT/install/sql/schema.sql" --parse-only
+database_migrations_preflight
+printf 'Alle Vorprüfungen wurden erfolgreich abgeschlossen.\n\n'
+
 if (( ASSUME_YES == 0 )); then
-    printf 'Datenbanksicherung vor dem Update\n'
-    printf '  Die vollständige Datenbank wird unter folgendem Pfad gesichert:\n'
+    printf 'Optionale Datenbanksicherung vor dem Update\n'
+    printf '  Die vollständige Datenbank kann unter folgendem Pfad gesichert werden:\n'
     printf '  %s\n\n' "$DATABASE_DUMP_FILE"
-    printf '  ACHTUNG: Bei großen Qisutu-Installationen mit vielen Tickets und\n'
-    printf '  Anhängen kann diese Sicherung sehr viel Speicherplatz benötigen.\n'
-    printf '  Stelle vor dem Fortfahren sicher, dass auf dem Datenträger unter\n'
-    printf '  /var/backups genügend freier Plattenplatz vorhanden ist.\n\n'
-    printf '  Ohne Datenbanksicherung können Datenbankänderungen bei einem\n'
-    printf '  fehlgeschlagenen Update nicht automatisch zurückgesetzt werden.\n\n'
+    printf '  ACHTUNG: Bei großen Installationen kann diese Sicherung sehr viel\n'
+    printf '  Speicherplatz benötigen. Prüfe vorher den freien Platz unter /var/backups.\n\n'
+    printf '  Die vollständige Systemsicherung muss entsprechend der\n'
+    printf '  Betreiberanweisung bereits vor dem Update vorhanden sein.\n\n'
 
     while true; do
-        read -r -p "Soll die Datenbank vor dem Update vollständig gesichert werden? [J/n]: " BACKUP_ANSWER
+        read -r -p "Soll zusätzlich ein Datenbankdump erstellt werden? [J/n]: " BACKUP_ANSWER
         case "$BACKUP_ANSWER" in
-            ""|j|J|ja|Ja|JA|y|Y|yes|Yes|YES)
-                DATABASE_BACKUP_ENABLED=1
-                break
-                ;;
-            n|N|nein|Nein|NEIN|no|No|NO)
-                DATABASE_BACKUP_ENABLED=0
-                break
-                ;;
-            *)
-                echo "Bitte antworte mit j oder n."
-                ;;
+            ""|j|J|ja|Ja|JA|y|Y|yes|Yes|YES) DATABASE_BACKUP_ENABLED=1; break ;;
+            n|N|nein|Nein|NEIN|no|No|NO) DATABASE_BACKUP_ENABLED=0; break ;;
+            *) echo "Bitte antworte mit j oder n." ;;
         esac
     done
 fi
@@ -860,40 +1126,19 @@ if (( DATABASE_BACKUP_ENABLED == 1 )) && [[ -z "$DB_DUMP_CLIENT" ]]; then
     fail "Für die gewählte Datenbanksicherung wurde weder mariadb-dump noch mysqldump gefunden."
 fi
 
-if version_gt "$CURRENT_DATABASE_VERSION" "$TARGET_DATABASE_VERSION"; then
-    fail "Die vorhandene Datenbankversion $CURRENT_DATABASE_VERSION ist neuer als das Updatepaket erwartet."
-fi
-
-printf 'Prüfe die Perl-Dateien des Updatepakets.\n'
-perl_syntax_check "$SOURCE_ROOT"
-
-mkdir -p "$BACKUP_DIR/systemd" "$BACKUP_DIR/apache"
-chmod 0700 "$BACKUP_DIR"
-cp -a "$INSTANCE_CONFIG_FILE" "$BACKUP_DIR/instance.conf"
-cp -a "$TARGET_ROOT/core/config/QisutuConfig.pm" "$BACKUP_DIR/QisutuConfig.pm"
-cp -a "$SYSTEMD_FILE" "$BACKUP_DIR/systemd/$DAEMON_SERVICE"
-
-for apache_file in \
-    "/etc/apache2/sites-available/$APACHE_CONF_NAME" \
-    "/etc/apache2/sites-enabled/$APACHE_CONF_NAME" \
-    "/etc/apache2/conf-available/$APACHE_CONF_NAME" \
-    "/etc/apache2/conf-enabled/$APACHE_CONF_NAME" \
-    "/etc/httpd/conf.d/$APACHE_CONF_NAME"; do
-    if [[ -e "$apache_file" || -L "$apache_file" ]]; then
-        cp -a "$apache_file" "$BACKUP_DIR/apache/$(echo "$apache_file" | sed 's|/|_|g')"
-    fi
-done
-
-echo "Sichere den vorhandenen Programmstand."
-tar --numeric-owner -czpf "$BACKUP_DIR/program.tar.gz" \
-    -C "$(dirname "$TARGET_ROOT")" "$(basename "$TARGET_ROOT")"
+old_manifest_snapshot
+config_preservation_snapshot
+operator_config_snapshot
 
 if systemctl is-active --quiet "$DAEMON_SERVICE"; then
     SERVICE_WAS_ACTIVE=1
 fi
 
-touch "$UPDATE_LOCK_FILE"
-chown "$APACHE_USER:$APACHE_GROUP" "$UPDATE_LOCK_FILE"
+if [[ ! -e "$UPDATE_LOCK_FILE" ]]; then
+    touch "$UPDATE_LOCK_FILE"
+    UPDATE_LOCK_CREATED_BY_RUN=1
+fi
+chown "$TARGET_OWNER:$TARGET_GROUP" "$UPDATE_LOCK_FILE"
 chmod 0660 "$UPDATE_LOCK_FILE"
 
 echo "Stoppe den Daemon $DAEMON_SERVICE."
@@ -902,7 +1147,6 @@ if systemctl is-active --quiet "$DAEMON_SERVICE"; then
     fail "Der Daemon $DAEMON_SERVICE konnte nicht gestoppt werden."
 fi
 
-mail_fetch_block
 
 touch "$RUNTIME_LOCK_FILE"
 chown "$APACHE_USER:$APACHE_GROUP" "$RUNTIME_LOCK_FILE"
@@ -912,6 +1156,8 @@ echo "Warte, bis laufende Prozesse dieser Instanz beendet sind."
 flock -x "$RUNTIME_LOCK_FD"
 
 if (( DATABASE_BACKUP_ENABLED == 1 )); then
+    mkdir -p "$BACKUP_DIR"
+    chmod 0700 "$BACKUP_DIR"
     echo "Sichere die bestehende Datenbank $DB_NAME."
     "$DB_DUMP_CLIENT" \
         --defaults-extra-file="$MYSQL_CONFIG_FILE" \
@@ -928,48 +1174,47 @@ if (( DATABASE_BACKUP_ENABLED == 1 )); then
     [[ -s "$DATABASE_DUMP_FILE" ]] || fail "Die Datenbanksicherung ist leer."
     DATABASE_BACKUP_CREATED=1
 else
-    echo "Die Datenbanksicherung wurde auf Wunsch übersprungen."
+    echo "Der zusätzliche Datenbankdump wurde übersprungen."
 fi
 
-stage_prepare
-perl_syntax_check "$STAGE_ROOT"
+obsolete_managed_files_remove
+package_files_copy_direct
+installation_permissions_apply
+package_tree_verify
+perl_syntax_check "$TARGET_ROOT"
+program_registry_check "$TARGET_ROOT"
+
+# Die Sollstruktur wird zuerst ergänzt. Danach werden alle dauerhaft
+# mitgeführten und noch nicht protokollierten INSERT-/UPDATE-/Datenmigrationen
+# ausgeführt. Ein zweiter Schemaabgleich bestätigt den Endzustand.
 database_schema_synchronize
-database_migrations_apply "$CURRENT_DATABASE_VERSION"
+database_migrations_apply
+database_schema_synchronize
+database_migrations_verify
 database_target_version_record
-
-rm -rf "$OLD_ROOT"
-mv "$TARGET_ROOT" "$OLD_ROOT"
-mv "$STAGE_ROOT" "$TARGET_ROOT"
-SWAPPED=1
-MAIL_FETCH_BLOCKED=0
-
-# Nach dem atomaren Austausch werden Besitzer und Rechte nochmals direkt auf
-# dem endgültigen Installationspfad gesetzt. Das verhindert, dass Daemon oder
-# Cronjob mit den Eigentümern/Rechten des entpackten Updatepakets arbeiten.
-installation_permissions_apply "$TARGET_ROOT"
-
-daemon_service_render
-systemctl daemon-reload
-apache_config_test
-
-INSTALLED_VERSION_AFTER="$(config_value_get program_version)"
-[[ "$INSTALLED_VERSION_AFTER" == "$RELEASE_VERSION" ]] || fail "Die installierte Programmversion ist nach dem Austausch nicht korrekt."
 
 DATABASE_VERSION_AFTER="$(database_current_version_get)"
 [[ "$DATABASE_VERSION_AFTER" == "$TARGET_DATABASE_VERSION" ]] || fail "Die Datenbankversion ist nach dem Update nicht korrekt."
 
-perl_syntax_check "$TARGET_ROOT"
+operator_config_verify
+apache_config_test
+
+program_version_patch "$TARGET_ROOT/core/config/QisutuConfig.pm"
+installation_permissions_apply
+config_preservation_verify
+
+INSTALLED_VERSION_AFTER="$(config_value_get program_version)"
+[[ "$INSTALLED_VERSION_AFTER" == "$RELEASE_VERSION" ]] || fail "Die installierte Programmversion ist nach dem Update nicht korrekt."
 
 rm -f "$UPDATE_LOCK_FILE"
 
-if (( SERVICE_WAS_ACTIVE == 1 )); then
+if (( SERVICE_WAS_ACTIVE == 1 || UPDATE_LOCK_PREEXISTED == 1 )); then
     echo "Starte den Daemon $DAEMON_SERVICE."
     systemctl start "$DAEMON_SERVICE"
     systemctl is-active --quiet "$DAEMON_SERVICE" || fail "Der Daemon $DAEMON_SERVICE läuft nach dem Update nicht."
 fi
 
 flock -u "$RUNTIME_LOCK_FD"
-rm -rf "$OLD_ROOT"
 rm -rf "$TEMP_ROOT"
 trap - ERR
 
@@ -977,10 +1222,11 @@ printf '\nQisutu wurde erfolgreich aktualisiert.\n'
 printf '  Instanz:      %s\n' "$INSTANCE_ID"
 printf '  Version:      %s\n' "$RELEASE_VERSION"
 printf '  DB-Stand:     %s\n' "$TARGET_DATABASE_VERSION"
-printf '  Sicherung:    %s\n' "$BACKUP_DIR"
 if (( DATABASE_BACKUP_CREATED == 1 )); then
-    printf '  DB-Sicherung: erstellt\n'
+    printf '  DB-Sicherung: %s\n' "$DATABASE_DUMP_FILE"
 else
     printf '  DB-Sicherung: nicht erstellt\n'
 fi
+printf '  Apache:       vorhandene Konfiguration unverändert\n'
+printf '  systemd:      vorhandene Konfiguration unverändert\n'
 printf '  Webadresse:   %s\n' "$WEB_PATH"

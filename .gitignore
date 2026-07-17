@@ -8,6 +8,7 @@ var/install/session-*.json
 var/install/database-bootstrap.conf
 var/install/instance.conf
 var/install/installed.lock
+var/install/update.lock
 *.log
 *.pid
 

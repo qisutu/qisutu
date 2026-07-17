@@ -132,6 +132,12 @@ geändert. Der Installer erzeugt zufällige Passwörter für den jeweiligen
 Datenbankbenutzer und den ersten Benutzer `admin`. Das Datenbankpasswort wird
 direkt in `core/config/QisutuConfig.pm` dieser Instanz gespeichert.
 
+Die vollständige Tabellenstruktur wird aus `install/sql/schema.sql` importiert.
+Alle festen Grunddaten der Neuinstallation stehen getrennt davon in
+`install/sql/insert.sql`. Das zufällig erzeugte Administratorpasswort wird nach
+dem Grunddatenimport sicher gehasht in das vorbereitete Administratorkonto
+eingetragen.
+
 ## 4. Abschluss
 
 Nach Abschluss wird innerhalb der betreffenden Instanz
@@ -169,9 +175,13 @@ Passwörter werden nicht in das Installationsprotokoll geschrieben.
 Während der Webinstallation wartet eine instanzbezogene systemd-Path-Unit auf `var/install/installed.lock`. Nach erfolgreichem Abschluss startet die zugehörige einmalige Service-Unit den Qisutu-Daemon. Anschließend werden beide temporären Abschluss-Units automatisch deaktiviert und aus `/etc/systemd/system` entfernt. Dauerhaft aktiv bleibt ausschließlich der jeweilige Qisutu-Daemon.
 ## Updates einer vorhandenen Qisutu-Instanz
 
-Ein neues Qisutu-Release wird immer in ein separates Verzeichnis entpackt.
-Das neue Paket darf nicht direkt über eine bestehende Installation entpackt
-werden. Anschließend wird `update.sh` aus dem neuen Paket mit dem Pfad der zu
+Vor jedem Update muss entsprechend der Betreiberanweisung eine vollständige
+Systemsicherung der Qisutu-Installation und ihrer Datenbank vorhanden sein.
+Qisutu erstellt keine zusätzliche Programmsicherung.
+
+Ein neues Qisutu-Release wird in ein separates Verzeichnis entpackt. Das neue
+Paket darf nicht direkt über die bestehende Installation entpackt werden.
+Anschließend wird `update.sh` aus dem neuen Paket mit dem Pfad der zu
 aktualisierenden Instanz aufgerufen.
 
 Produktivinstanz aktualisieren:
@@ -185,46 +195,52 @@ Zusätzliche Instanz aktualisieren:
     sudo ./update.sh /opt/qisutu-test
 
 Das Updateprogramm liest die vorhandene `var/install/instance.conf` und zeigt
-vor der Bestätigung den Installationspfad, die Instanzkennung, den Webpfad, die
-Datenbank und den systemd-Dienst an. Dadurch wird ausschließlich die explizit
-angegebene Qisutu-Instanz aktualisiert. Weitere Installationen auf demselben
-Server bleiben in Betrieb.
+vor der Bestätigung Installationspfad, Instanzkennung, Webpfad, Datenbank und
+systemd-Dienst an. Es aktualisiert ausschließlich die angegebene Instanz.
 
 Während des Updates führt das Programm folgende Schritte aus:
 
-1. Release-Prüfsummen, Versionen und Perl-Syntax prüfen.
-2. Den vorhandenen Programmstand sichern und in der Konsole fragen, ob auch
-   eine vollständige Datenbanksicherung angelegt werden soll. Das Programm
-   weist dabei darauf hin, dass bei großen Installationen genügend freier
-   Speicherplatz unter `/var/backups` vorhanden sein muss.
-3. Für genau diese Instanz den Wartungsmodus aktivieren.
-4. Den zugehörigen Qisutu-Daemon kontrolliert stoppen.
-5. Einen bereits laufenden Mailabruf beenden lassen und neue Cronläufe dieser
-   Instanz während des Updates überspringen.
-6. Erforderliche Änderungen an der bestehenden Datenbank ausführen. Die
-   Datenbank wird weder ersetzt noch in eine andere Datenbank übertragen.
-7. Die Programmdateien vollständig austauschen, ohne die bestehende
-   `QisutuConfig.pm`, `instance.conf`, Protokolle oder temporären Instanzdaten
-   zu überschreiben.
-8. Apache, Perl-Dateien, Datenbankstand und Daemon prüfen.
-9. Bei einem Fehler den vorherigen Programmstand automatisch wiederherstellen.
-   Der Datenbankstand kann nur dann automatisch wiederhergestellt werden, wenn
-   die Datenbanksicherung vor dem Update bestätigt wurde.
+1. Release-Prüfsummen, Versionen, Schemadatei, Perl-Syntax und
+   Programmregistrierung prüfen.
+2. Auf Wunsch einen zusätzlichen vollständigen Datenbankdump erstellen und auf
+   den dafür erforderlichen freien Speicherplatz hinweisen.
+3. Für genau diese Instanz den Wartungsmodus aktivieren, den Daemon stoppen,
+   laufende Prozesse beenden lassen und neue Mailabrufe sperren.
+4. Alle verwalteten Programmdateien direkt in die bestehende Installation
+   kopieren. Vorhandene Dateien werden ersetzt, neue Dateien und Verzeichnisse
+   werden angelegt und nicht mehr veröffentlichte verwaltete Dateien entfernt.
+5. Instanz- und Betreiberdateien unverändert erhalten. Dazu gehören
+   `core/config/QisutuConfig.pm` mit Ausnahme der Versionsnummer,
+   `var/install/instance.conf`, Logs, Cache, temporäre Laufzeitdaten,
+   instanzbezogene Runtime-Dateien, die bestehende Apache-Konfiguration und die
+   bestehende systemd-Konfiguration.
+6. Die aktuelle Datenbank-Sollstruktur aus `install/sql/schema.sql` mit der
+   vorhandenen Datenbank vergleichen und fehlende Tabellen, Spalten, Indizes,
+   Primärschlüssel und Fremdschlüssel ergänzen.
+7. Alle dauerhaft mitgeführten und noch nicht protokollierten SQL- und
+   Perl-Migrationen aus `install/update/database/` ausführen. Dadurch werden
+   auch notwendige `INSERT`-, `UPDATE`- und Datenumwandlungsschritte unabhängig
+   von der bisherigen Qisutu-Version nachgeholt.
+8. Schema, Migrationsprotokoll, Datenbankstand, Programmdateien,
+   Betreiberkonfigurationen, Apache und Daemon prüfen.
+9. Wartungsmodus beenden und den zuvor laufenden Daemon wieder starten.
 
-Die Programm- und gegebenenfalls Datenbanksicherungen werden instanzbezogen
-abgelegt unter:
+Der Updater baut keinen zweiten Qisutu-Programmbaum auf, verschiebt keine
+Installationsverzeichnisse und legt keine automatische Programmsicherung an.
+Bei einem Fehler nach begonnenen Datei- oder Datenbankänderungen bleibt die
+Wartungssperre aktiv. Nach Behebung des gemeldeten Fehlers wird dasselbe Update
+erneut ausgeführt.
 
-    /var/backups/qisutu/INSTANZKENNUNG/JJJJ-MM-TT_HHMMSS/
-
-Wird die Datenbanksicherung abgelehnt, enthält dieses Verzeichnis weiterhin
-die Sicherung des Programmstands und der instanzbezogenen Konfiguration. Ein
-Datenbankdump wird dann nicht erstellt. Bei Verwendung von `--yes` wird die
-Datenbanksicherung ohne weitere Rückfrage angelegt.
+Die vorhandenen Apache-Dateien und Symlinks unter `sites-available`,
+`sites-enabled`, `conf-available` und `conf-enabled` sowie der vorhandene
+systemd-Dienst unter `/etc/systemd/system` werden nicht neu erzeugt und nicht
+überschrieben. Der Updater prüft ausdrücklich, dass ihr Inhalt und ihre
+Dateieigenschaften unverändert geblieben sind.
 
 Die aktuelle Tabellenstruktur wird bei jedem Update mit
-`install/sql/schema.sql` abgeglichen. Fehlende Tabellen, Spalten, Indizes und
-Fremdschlüssel werden dabei ergänzt, ohne zusätzliche vorhandene Strukturen zu
-löschen.
+`install/sql/schema.sql` abgeglichen. Zusätzliche bestehende Tabellen oder
+Spalten werden nicht gelöscht. Abweichende vorhandene Definitionen werden aus
+Sicherheitsgründen gemeldet und nicht automatisch destruktiv geändert.
 
 Einmalige Datenänderungen wie `INSERT`, `UPDATE` oder Datenumwandlungen liegen
 kumulativ unter:
@@ -232,9 +248,11 @@ kumulativ unter:
     install/update/database/DATENBANKVERSION/
 
 Alle veröffentlichten `.sql`- und `.pl`-Migrationen bleiben dauerhaft in jedem
-späteren Updatepaket enthalten. Die Tabelle `database_migration` protokolliert
-jede einzelne Datei mit Prüfsumme, sodass sie genau einmal ausgeführt wird und
-ein direkter Sprung von einem alten auf den aktuellen Datenbankstand möglich
-bleibt. Die Tabelle `database_version` dokumentiert erst nach erfolgreichem
-Strukturabgleich und allen fehlenden Migrationen den erreichten Gesamtstand.
-
+späteren Updatepaket enthalten. Jede Migration muss so programmiert sein, dass
+sie den bereits vorhandenen Datenzustand prüft und bei Bedarf nur die fehlenden
+Daten ergänzt oder umwandelt. Die Tabelle `database_migration` protokolliert jede Datei unter ihrem dauerhaft
+eindeutigen Migrationsschlüssel und speichert zusätzlich ihre Prüfsumme.
+Nicht protokollierte Migrationen werden immer in aufsteigender Reihenfolge
+ausgeführt; bereits protokollierte Migrationen werden anhand ihres Schlüssels
+nicht erneut ausgeführt. Danach wird nochmals die vollständige Sollstruktur
+geprüft und erst dann der aktuelle Stand in `database_version` eingetragen.
