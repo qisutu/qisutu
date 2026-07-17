@@ -162,6 +162,56 @@ E-Mail-Zugänge des Testsystems müssen von den produktiven Postfächern getrenn
 bleiben. Die E-Mail-Konfiguration kann bei der Testinstallation übersprungen
 werden.
 
+## Eingehende E-Mail-Konten und OAuth2
+
+Nach der Installation werden eingehende E-Mail-Konten im Administrationsbereich
+über den Menüpunkt `E-Mail-Abruf` verwaltet. Die Übersicht zeigt alle vorhandenen
+Konten und bietet oben die drei Einrichtungsarten an:
+
+- `Standard-IMAP` verwendet Benutzername und Passwort.
+- `Microsoft 365` verwendet OAuth2/XOAUTH2 mit
+  `outlook.office365.com` auf Port 993.
+- `Google Workspace/Gmail` verwendet OAuth2/XOAUTH2 mit
+  `imap.gmail.com` auf Port 993.
+
+Für Microsoft 365 oder Google Workspace/Gmail ist zuerst unter
+`Administration > System-Einstellungen` die öffentliche Qisutu-Basis-URL mit
+HTTPS einzutragen, zum Beispiel `https://support.example.org/qisutu`. Qisutu
+zeigt daraus in der Anlegemaske die vollständige OAuth2-Weiterleitungs-URI an.
+Diese URI muss im Microsoft-Entra- beziehungsweise Google-Cloud-Projekt exakt
+als erlaubte Web-Redirect-URI registriert werden.
+
+### Microsoft 365
+
+Im Microsoft-Entra-Anwendungsprojekt werden eine Client-ID und ein
+Client-Secret benötigt. Als Tenant-ID kann die konkrete Verzeichnis-ID oder
+`common` verwendet werden. Qisutu fordert den IMAP-Scope
+`https://outlook.office.com/IMAP.AccessAsUser.All` sowie `offline_access` an.
+Das zu verbindende Microsoft-Konto muss Zugriff auf das angegebene Postfach
+besitzen und IMAP muss für das Postfach erlaubt sein.
+
+### Google Workspace/Gmail
+
+Im Google-Cloud-Projekt wird ein OAuth-Client vom Typ Webanwendung mit
+Client-ID und Client-Secret benötigt. Qisutu fordert den Scope
+`https://mail.google.com/` und Offline-Zugriff an. Der OAuth-Zustimmungsbildschirm
+muss für das verwendete Konto freigegeben sein. Bei Google-Workspace-Domänen
+kann zusätzlich eine Freigabe durch die Administration erforderlich sein.
+
+Nach `Speichern und mit OAuth2 verbinden` führt Qisutu durch die Anmeldung beim
+Anbieter. Erst nach erfolgreichem Token-Austausch und echtem IMAP-Test wird das
+Konto aktiviert. Access-Tokens werden beim späteren Mailabruf automatisch mit
+dem gespeicherten Refresh-Token erneuert. Client-Secrets und Tokens dürfen
+nicht in Protokolle, Supportausgaben oder öffentliche Fehlerberichte kopiert
+werden.
+
+Ein inaktives Konto wird beim erneuten Aktivieren zuerst durch einen echten
+Verbindungstest geprüft. Die vollständige Löschung ist nur bei inaktiven
+Konten möglich und muss in einem Bestätigungsdialog nochmals bestätigt werden.
+Zugangsdaten und OAuth2-Tokens werden dabei entfernt. Bereits vorhandene
+Postmaster-Verarbeitungsprotokolle bleiben als Historie erhalten, verlieren
+aber die Verknüpfung zum gelöschten Konto.
+
 ## Protokolle
 
 Jede Instanz besitzt ihr eigenes Installationsprotokoll:

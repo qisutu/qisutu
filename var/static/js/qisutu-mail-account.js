@@ -58,8 +58,77 @@
         });
     }
 
+    function setupDeleteOverlay() {
+        var overlay = document.querySelector('[data-qisutu-mail-delete-overlay]');
+        var form = document.querySelector('[data-qisutu-mail-delete-form]');
+        var idInput = document.querySelector('[data-qisutu-mail-delete-id-input]');
+        var account = document.querySelector('[data-qisutu-mail-delete-account]');
+        var closeButton = document.querySelector('[data-qisutu-mail-delete-close]');
+        var lastTrigger = null;
+
+        if (!overlay || !form || !idInput || !account || !closeButton) {
+            return;
+        }
+
+        function closeOverlay() {
+            overlay.hidden = true;
+            overlay.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('qisutu-overlay-open');
+            idInput.value = '';
+            account.textContent = '';
+
+            if (lastTrigger) {
+                lastTrigger.focus();
+            }
+        }
+
+        function openOverlay(trigger) {
+            var accountID = trigger.getAttribute('data-qisutu-mail-delete-id') || '';
+            var accountName = trigger.getAttribute('data-qisutu-mail-delete-name') || '';
+
+            if (!/^\d+$/.test(accountID)) {
+                return;
+            }
+
+            lastTrigger = trigger;
+            idInput.value = accountID;
+            account.textContent = accountName;
+            overlay.hidden = false;
+            overlay.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('qisutu-overlay-open');
+            closeButton.focus();
+        }
+
+        document.querySelectorAll('[data-qisutu-mail-delete-open]').forEach(function (trigger) {
+            trigger.addEventListener('click', function () {
+                openOverlay(trigger);
+            });
+        });
+
+        closeButton.addEventListener('click', closeOverlay);
+
+        overlay.addEventListener('click', function (event) {
+            if (event.target === overlay) {
+                closeOverlay();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !overlay.hidden) {
+                closeOverlay();
+            }
+        });
+
+        form.addEventListener('submit', function (event) {
+            if (!/^\d+$/.test(idInput.value)) {
+                event.preventDefault();
+                closeOverlay();
+            }
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('[data-qisutu-port-target]').forEach(setupPort);
+        setupDeleteOverlay();
     });
 }());
-

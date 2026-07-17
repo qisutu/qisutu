@@ -28,6 +28,7 @@ use utf8;
 
 use QisutuHTML;
 use QisutuMail;
+use QisutuOAuth2;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -681,19 +682,35 @@ sub PostmasterIMAPAccountCreate {
     my $Prepared = $Self->_IMAPAccountPrepare(%Param);
     return if !$Prepared;
 
-    my $UserID = $Param{ChangedByUserID} || 1;
-    my $Active = $Param{Active} ? 1 : 0;
-    my $TestAccount = $Self->_IMAPAccountFromPrepared(
-        Prepared => $Prepared,
-        Active   => $Active,
-    );
-    my $TestResult = QisutuMail->new( Config => $Self->{Config}, DB => $Self->{DB} )->IMAPTest(
-        Account => $TestAccount,
-    );
+    my $UserID  = $Param{ChangedByUserID} || 1;
+    my $OAuth2  = $Prepared->{IMAPAuthType} eq 'oauth2' ? 1 : 0;
+    my $Active  = $OAuth2 ? 0 : ( $Param{Active} ? 1 : 0 );
+    my $TestResult;
 
-    if ( !$TestResult || !$TestResult->{Success} ) {
-        $Self->{LastError} = $TestResult ? $TestResult->{Message} : 'IMAP connection test failed';
-        return;
+    if ($OAuth2) {
+        if ( !$Prepared->{OAuthClientSecret} ) {
+            $Self->{LastError} = 'Translate:AdminOAuthClientSecretRequired';
+            return;
+        }
+        $TestResult = {
+            Success => 1,
+            Status  => 'pending',
+            Message => 'Translate:AdminOAuthAuthorizationPending',
+        };
+    }
+    else {
+        my $TestAccount = $Self->_IMAPAccountFromPrepared(
+            Prepared => $Prepared,
+            Active   => $Active,
+        );
+        $TestResult = QisutuMail->new( Config => $Self->{Config}, DB => $Self->{DB} )->IMAPTest(
+            Account => $TestAccount,
+        );
+
+        if ( !$TestResult || !$TestResult->{Success} ) {
+            $Self->{LastError} = $TestResult ? $TestResult->{Message} : 'IMAP connection test failed';
+            return;
+        }
     }
 
     my $Result = $Self->{DB}->Do(
@@ -749,7 +766,7 @@ sub PostmasterIMAPAccountCreate {
         return;
     }
 
-    return 1;
+    return $Self->{DB}->LastInsertID('postmaster_imap_account') || 1;
 }
 
 sub PostmasterIMAPAccountUpdate {
@@ -768,21 +785,37 @@ sub PostmasterIMAPAccountUpdate {
     return if !$Prepared;
 
     my $UserID = $Param{ChangedByUserID} || 1;
-    my $Active = $Param{Active} ? 1 : 0;
+    my $OAuth2 = $Prepared->{IMAPAuthType} eq 'oauth2' ? 1 : 0;
+    my $Active = $OAuth2 ? 0 : ( $Param{Active} ? 1 : 0 );
     my $Existing = $Self->PostmasterIMAPAccountGet( AccountID => $AccountID );
     return if !$Existing;
-    my $TestAccount = $Self->_IMAPAccountFromPrepared(
-        Prepared => $Prepared,
-        Existing => $Existing,
-        Active   => $Active,
-    );
-    my $TestResult = QisutuMail->new( Config => $Self->{Config}, DB => $Self->{DB} )->IMAPTest(
-        Account => $TestAccount,
-    );
+    my $TestResult;
 
-    if ( !$TestResult || !$TestResult->{Success} ) {
-        $Self->{LastError} = $TestResult ? $TestResult->{Message} : 'IMAP connection test failed';
-        return;
+    if ($OAuth2) {
+        if ( !$Prepared->{OAuthClientSecret} && !$Existing->{oauth_client_secret} ) {
+            $Self->{LastError} = 'Translate:AdminOAuthClientSecretRequired';
+            return;
+        }
+        $TestResult = {
+            Success => 1,
+            Status  => 'pending',
+            Message => 'Translate:AdminOAuthAuthorizationPending',
+        };
+    }
+    else {
+        my $TestAccount = $Self->_IMAPAccountFromPrepared(
+            Prepared => $Prepared,
+            Existing => $Existing,
+            Active   => $Active,
+        );
+        $TestResult = QisutuMail->new( Config => $Self->{Config}, DB => $Self->{DB} )->IMAPTest(
+            Account => $TestAccount,
+        );
+
+        if ( !$TestResult || !$TestResult->{Success} ) {
+            $Self->{LastError} = $TestResult ? $TestResult->{Message} : 'IMAP connection test failed';
+            return;
+        }
     }
 
     my @Set = (
@@ -836,6 +869,13 @@ sub PostmasterIMAPAccountUpdate {
         push @Bind, $Prepared->{OAuthClientSecret};
     }
 
+    if ( !$OAuth2 ) {
+        push @Set,
+            'oauth_access_token = NULL',
+            'oauth_refresh_token = NULL',
+            'oauth_token_expires_at = NULL';
+    }
+
     push @Bind, $AccountID;
 
     my $Result = $Self->{DB}->Do(
@@ -847,6 +887,36 @@ sub PostmasterIMAPAccountUpdate {
 
     if ( !$Result ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Postmaster IMAP account could not be updated';
+        return;
+    }
+
+    return $AccountID;
+}
+
+sub PostmasterIMAPAccountActiveSet {
+    my ( $Self, %Param ) = @_;
+
+    my $AccountID = $Param{AccountID} || 0;
+    my $UserID    = $Param{ChangedByUserID} || 1;
+    my $Active    = $Param{Active} ? 1 : 0;
+
+    if ( $AccountID !~ m{\A\d+\z} || !$AccountID ) {
+        $Self->{LastError} = 'Postmaster IMAP account is required';
+        return;
+    }
+
+    my $Result = $Self->{DB}->Do(
+        'UPDATE postmaster_imap_account
+         SET active = ?,
+             changed_by_user_id = ?
+         WHERE id = ?',
+        $Active,
+        $UserID,
+        $AccountID,
+    );
+
+    if ( !$Result ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Postmaster IMAP account could not be activated';
         return;
     }
 
@@ -874,6 +944,124 @@ sub PostmasterIMAPAccountDeactivate {
 
     if ( !$Result ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Postmaster IMAP account could not be deactivated';
+        return;
+    }
+
+    return 1;
+}
+
+sub PostmasterIMAPAccountActivate {
+    my ( $Self, %Param ) = @_;
+
+    $Self->_MailIntegrationSchemaEnsure() || return;
+
+    my $AccountID = $Param{AccountID} || 0;
+    my $UserID    = $Param{ChangedByUserID} || 1;
+
+    if ( $AccountID !~ m{\A\d+\z} || !$AccountID ) {
+        $Self->{LastError} = 'Translate:AdminMailAccountMissing';
+        return;
+    }
+
+    my $Account = $Self->PostmasterIMAPAccountGet( AccountID => $AccountID );
+    return if !$Account;
+
+    return 1 if $Account->{active};
+
+    my $TestResult = $Self->PostmasterIMAPAccountTest(
+        AccountID       => $AccountID,
+        ChangedByUserID => $UserID,
+    );
+
+    if ( !$TestResult || !$TestResult->{Success} ) {
+        $Self->{LastError} = $TestResult
+            ? ( $TestResult->{Message} || 'Translate:AdminMailAccountActivationFailed' )
+            : ( $Self->{LastError} || 'Translate:AdminMailAccountActivationFailed' );
+        return;
+    }
+
+    return $Self->PostmasterIMAPAccountActiveSet(
+        AccountID       => $AccountID,
+        Active          => 1,
+        ChangedByUserID => $UserID,
+    );
+}
+
+sub PostmasterIMAPAccountDelete {
+    my ( $Self, %Param ) = @_;
+
+    $Self->_MailIntegrationSchemaEnsure() || return;
+
+    my $AccountID = $Param{AccountID} || 0;
+
+    if ( $AccountID !~ m{\A\d+\z} || !$AccountID ) {
+        $Self->{LastError} = 'Translate:AdminMailAccountMissing';
+        return;
+    }
+
+    if ( !$Self->{DB}->BeginWork() ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminMailAccountDeleteFailed';
+        return;
+    }
+
+    my $Account = $Self->{DB}->SelectRow(
+        'SELECT id, active
+         FROM postmaster_imap_account
+         WHERE id = ?
+         LIMIT 1
+         FOR UPDATE',
+        $AccountID,
+    );
+
+    if ( !$Account ) {
+        $Self->{DB}->Rollback();
+        $Self->{LastError} = 'Translate:AdminMailAccountMissing';
+        return;
+    }
+
+    if ( $Account->{active} ) {
+        $Self->{DB}->Rollback();
+        $Self->{LastError} = 'Translate:AdminMailAccountDeleteActiveBlocked';
+        return;
+    }
+
+    my $LogsDetached = $Self->{DB}->Do(
+        'UPDATE postmaster_filter_run
+         SET imap_account_id = NULL
+         WHERE imap_account_id = ?',
+        $AccountID,
+    );
+    if ( !$LogsDetached ) {
+        $Self->{DB}->Rollback();
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminMailAccountDeleteFailed';
+        return;
+    }
+
+    my $OAuthStateDeleted = $Self->{DB}->Do(
+        'DELETE FROM oauth2_authorization_state
+         WHERE account_id = ?',
+        $AccountID,
+    );
+    if ( !$OAuthStateDeleted ) {
+        $Self->{DB}->Rollback();
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminMailAccountDeleteFailed';
+        return;
+    }
+
+    my $Deleted = $Self->{DB}->Do(
+        'DELETE FROM postmaster_imap_account
+         WHERE id = ?',
+        $AccountID,
+    );
+    if ( !$Deleted ) {
+        $Self->{DB}->Rollback();
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminMailAccountDeleteFailed';
+        return;
+    }
+
+    if ( !$Self->{DB}->Commit() ) {
+        $Self->{DB}->Rollback();
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminMailAccountDeleteFailed';
         return;
     }
 
@@ -4233,6 +4421,26 @@ sub _MailIntegrationSchemaEnsure {
         'ALTER TABLE postmaster_imap_account
             ADD INDEX IF NOT EXISTS postmaster_imap_account_queue_id (queue_id)',
 
+        'CREATE TABLE IF NOT EXISTS oauth2_authorization_state (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            state_hash CHAR(64) NOT NULL,
+            account_id BIGINT UNSIGNED NOT NULL,
+            user_account_id BIGINT UNSIGNED NOT NULL,
+            provider VARCHAR(30) NOT NULL,
+            requested_active TINYINT(1) NOT NULL DEFAULT 1,
+            return_page VARCHAR(100) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY oauth2_authorization_state_hash_unique (state_hash),
+            KEY oauth2_authorization_state_account_user (account_id, user_account_id),
+            KEY oauth2_authorization_state_expires (expires_at),
+            CONSTRAINT oauth2_authorization_state_account_fk FOREIGN KEY (account_id)
+                REFERENCES postmaster_imap_account (id) ON DELETE CASCADE,
+            CONSTRAINT oauth2_authorization_state_user_fk FOREIGN KEY (user_account_id)
+                REFERENCES user_account (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
         'CREATE TABLE IF NOT EXISTS smtp_account (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             name VARCHAR(100) NOT NULL,
@@ -4334,21 +4542,67 @@ sub _IMAPAccountPrepare {
         return;
     }
 
+    my $OAuthProvider     = $Self->_Trim( $Param{OAuthProvider} );
+    my $OAuthClientID     = $Self->_Trim( $Param{OAuthClientID} );
+    my $OAuthClientSecret = defined $Param{OAuthClientSecret} ? $Param{OAuthClientSecret} : '';
+    my $OAuthTenantID     = $Self->_Trim( $Param{OAuthTenantID} );
+    my $OAuthScope        = $Self->_Trim( $Param{OAuthScope} );
+    my $IMAPHost          = $Self->_Trim( $Param{IMAPHost} );
+    my $IMAPPort          = $Self->_UnsignedInteger( $Param{IMAPPort} ) || $Self->_DefaultMailPort($IMAPSecurity);
+    my $IMAPUsername      = $Self->_Trim( $Param{IMAPUsername} );
+
+    if ( $IMAPAuthType eq 'oauth2' ) {
+        my $OAuthObject = QisutuOAuth2->new( Config => $Self->{Config}, DB => $Self->{DB} );
+        $OAuthProvider = $OAuthObject->ProviderNormalize($OAuthProvider);
+        my $Definition = $OAuthObject->ProviderDefinition(
+            Provider => $OAuthProvider,
+            Account  => { oauth_tenant_id => $OAuthTenantID },
+        );
+
+        if ( !$Definition ) {
+            $Self->{LastError} = 'Translate:AdminOAuthProviderInvalid';
+            return;
+        }
+        if ( !$OAuthClientID ) {
+            $Self->{LastError} = 'Translate:AdminOAuthClientIDRequired';
+            return;
+        }
+
+        $OAuthTenantID = 'common' if $OAuthProvider eq 'microsoft' && !$OAuthTenantID;
+        if ( $OAuthProvider eq 'microsoft' && $OAuthTenantID !~ m{\A[A-Za-z0-9.-]+\z} ) {
+            $Self->{LastError} = 'Translate:AdminOAuthTenantInvalid';
+            return;
+        }
+
+        $IMAPHost     = $Definition->{IMAPHost};
+        $IMAPSecurity = $Definition->{IMAPSecurity};
+        $IMAPPort     = $Definition->{IMAPPort};
+        $IMAPUsername ||= $Email;
+        $OAuthScope   = $Definition->{Scope};
+    }
+    else {
+        $OAuthProvider     = '';
+        $OAuthClientID     = '';
+        $OAuthClientSecret = '';
+        $OAuthTenantID     = '';
+        $OAuthScope        = '';
+    }
+
     return {
         Name          => $Name,
         Email         => $Email,
         QueueID       => $Queue->{id},
-        IMAPHost      => $Self->_Trim( $Param{IMAPHost} ),
+        IMAPHost      => $IMAPHost,
         IMAPSecurity  => $IMAPSecurity,
-        IMAPPort      => $Self->_UnsignedInteger( $Param{IMAPPort} ) || $Self->_DefaultMailPort($IMAPSecurity),
+        IMAPPort      => $IMAPPort,
         IMAPAuthType  => $IMAPAuthType,
-        IMAPUsername  => $Self->_Trim( $Param{IMAPUsername} ),
+        IMAPUsername  => $IMAPUsername,
         IMAPPassword  => defined $Param{IMAPPassword} ? $Param{IMAPPassword} : '',
-        OAuthProvider => $Self->_Trim( $Param{OAuthProvider} ),
-        OAuthClientID => $Self->_Trim( $Param{OAuthClientID} ),
-        OAuthClientSecret => defined $Param{OAuthClientSecret} ? $Param{OAuthClientSecret} : '',
-        OAuthTenantID => $Self->_Trim( $Param{OAuthTenantID} ),
-        OAuthScope    => $Self->_Trim( $Param{OAuthScope} ),
+        OAuthProvider => $OAuthProvider,
+        OAuthClientID => $OAuthClientID,
+        OAuthClientSecret => $OAuthClientSecret,
+        OAuthTenantID => $OAuthTenantID,
+        OAuthScope    => $OAuthScope,
         SortOrder     => $SortOrder,
     };
 }

@@ -996,6 +996,14 @@ a:hover {
 
 .qisutu-button-secondary {
     color: var(--qisutu-primary);
+    cursor: pointer;
+}
+
+.qisutu-button-secondary:hover,
+.qisutu-button-secondary:focus-visible {
+    border-color: var(--qisutu-primary);
+    background: var(--qisutu-primary-soft);
+    color: var(--qisutu-primary-hover);
 }
 
 .qisutu-button-primary {
@@ -1020,6 +1028,20 @@ a:hover {
 .qisutu-button-danger:hover {
     background: rgba(180, 35, 24, 0.14);
     color: var(--qisutu-danger);
+}
+
+.qisutu-button-success {
+    border-color: rgba(17, 122, 70, 0.34);
+    background: rgba(17, 122, 70, 0.10);
+    color: #117a46;
+    cursor: pointer;
+}
+
+.qisutu-button-success:hover,
+.qisutu-button-success:focus-visible {
+    border-color: #117a46;
+    background: #117a46;
+    color: #ffffff;
 }
 
 .qisutu-button-small {
@@ -1072,6 +1094,195 @@ a:hover {
 .qisutu-admin-form-block h3 {
     margin: 0;
     font-size: 16px;
+}
+
+.qisutu-mail-account-page {
+    display: grid;
+    gap: 18px;
+}
+
+.qisutu-mail-account-page > .qisutu-form-error,
+.qisutu-mail-account-page > .qisutu-form-success {
+    margin: 0;
+}
+
+.qisutu-mail-account-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.qisutu-mail-account-choice {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 5px 12px;
+    align-items: center;
+    padding: 16px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: var(--qisutu-radius);
+    background: #fbfdfe;
+    color: var(--qisutu-text);
+    transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.qisutu-mail-account-choice:hover,
+.qisutu-mail-account-choice:focus-visible {
+    border-color: var(--qisutu-primary);
+    background: var(--qisutu-primary-soft);
+    box-shadow: 0 10px 24px rgba(1, 80, 104, 0.12);
+    text-decoration: none;
+    transform: translateY(-2px);
+}
+
+.qisutu-mail-account-choice-icon {
+    width: 46px;
+    height: 46px;
+    grid-row: 1 / span 3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--qisutu-primary);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.qisutu-mail-account-choice strong,
+.qisutu-mail-account-choice span,
+.qisutu-mail-account-choice em {
+    min-width: 0;
+}
+
+.qisutu-mail-account-choice strong {
+    font-size: 16px;
+}
+
+.qisutu-mail-account-choice > span:not(.qisutu-mail-account-choice-icon) {
+    color: var(--qisutu-muted);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.qisutu-mail-account-choice em {
+    color: var(--qisutu-primary);
+    font-size: 13px;
+    font-style: normal;
+    font-weight: 800;
+}
+
+.qisutu-mail-provider-info {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border-left: 4px solid var(--qisutu-primary);
+    border-radius: 0 7px 7px 0;
+    background: var(--qisutu-primary-soft);
+}
+
+.qisutu-mail-provider-info span,
+.qisutu-form-field small {
+    color: var(--qisutu-muted);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.qisutu-form-field small {
+    display: block;
+    margin-top: 5px;
+}
+
+.qisutu-mail-connection-panel {
+    display: grid;
+    gap: 14px;
+}
+
+.qisutu-mail-connection-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 18px;
+    margin: 0;
+}
+
+.qisutu-mail-connection-details div {
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 7px;
+    background: #fbfdfe;
+}
+
+.qisutu-mail-connection-details dt {
+    margin-bottom: 4px;
+    color: var(--qisutu-muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.qisutu-mail-connection-details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.qisutu-mail-account-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.qisutu-mail-delete-overlay {
+    position: fixed;
+    z-index: 1600;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.48);
+}
+
+.qisutu-mail-delete-overlay[hidden] {
+    display: none;
+}
+
+.qisutu-mail-delete-dialog {
+    width: min(520px, 100%);
+    padding: 24px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+}
+
+.qisutu-mail-delete-dialog h3 {
+    margin: 0 0 12px;
+    color: var(--qisutu-danger);
+    font-size: 21px;
+}
+
+.qisutu-mail-delete-dialog p {
+    margin: 0 0 12px;
+    color: var(--qisutu-text);
+    line-height: 1.5;
+}
+
+.qisutu-mail-delete-account {
+    padding: 10px 12px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 7px;
+    background: #f7f9fb;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.qisutu-mail-delete-actions {
+    gap: 10px;
+    margin-top: 20px;
 }
 
 .qisutu-translation-rows {
@@ -2251,6 +2462,11 @@ a:hover {
     }
 
     .qisutu-admin-form-columns {
+        grid-template-columns: 1fr;
+    }
+
+    .qisutu-mail-account-choice-grid,
+    .qisutu-mail-connection-details {
         grid-template-columns: 1fr;
     }
 

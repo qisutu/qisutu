@@ -27,6 +27,7 @@ use warnings;
 use utf8;
 
 use QisutuAdmin;
+use QisutuOAuth2;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -47,104 +48,422 @@ sub Run {
 
     my $Request     = $Param{Request} || {};
     my $User        = $Param{User}    || {};
+    my $Program     = $Param{Program} || {};
+    my $ProgramName = $Program->{Name} || 'AdminPostmasterIMAPAccounts';
     my $Admin       = $Self->_AdminObject();
-    my $Step        = $Request->{Step} || '';
-    my $Action      = $Request->{Action} || 'List';
-    my $TestMessage = '';
-    my $TestClass   = 'qisutu-hidden';
+    my $OAuthObject = QisutuOAuth2->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    my $Step        = $Self->_Scalar( $Request->{Step} );
+    my $Action      = $Self->_Scalar( $Request->{Action} ) || ( $ProgramName eq 'AdminPostmasterIMAPAccounts' ? 'List' : 'Create' );
+    my $UserID      = $User->{user_account_id} || 0;
+    my $AccountKind = $Self->_KindFromPage($ProgramName);
+    my $AccountID   = $Self->_Scalar( $Request->{AccountID} ) || 0;
+    my $ErrorMessage = '';
+    my $NoticeMessage = '';
+    my $NoticeClass   = 'qisutu-hidden';
 
-    if ( $Admin && $Step eq 'IMAPAccountCreate' ) {
-        $Admin->PostmasterIMAPAccountCreate( %{$Request}, ChangedByUserID => $User->{user_account_id} );
-        return { Redirect => 'index.pl?Page=AdminPostmasterIMAPAccounts' } if !$Admin->Error();
-        $Action = 'Create';
+    if ( $ProgramName eq 'AdminPostmasterIMAPAccounts' && $Action eq 'OAuthCallback' ) {
+        return $Self->_OAuthCallback(
+            Request     => $Request,
+            UserID      => $UserID,
+            Admin       => $Admin,
+            OAuthObject => $OAuthObject,
+        );
     }
-    elsif ( $Admin && $Step eq 'IMAPAccountUpdate' ) {
-        $Admin->PostmasterIMAPAccountUpdate( %{$Request}, ChangedByUserID => $User->{user_account_id} );
-        return { Redirect => 'index.pl?Page=AdminPostmasterIMAPAccounts;Action=Edit;AccountID=' . ( $Request->{AccountID} || 0 ) } if !$Admin->Error();
-        $Action = 'Edit';
+
+    if ( $ProgramName eq 'AdminPostmasterIMAPAccounts' && $Action eq 'Create' ) {
+        return { Redirect => 'index.pl?Page=AdminPostmasterIMAPAccount' };
     }
-    elsif ( $Admin && $Step eq 'IMAPAccountDeactivate' ) {
+
+    if ( $ProgramName eq 'AdminPostmasterIMAPAccounts' && $Action eq 'Edit' && $AccountID ) {
+        my $LegacyAccount = $Admin->PostmasterIMAPAccountGet( AccountID => $AccountID );
+        return { Redirect => $Self->_EditURL($LegacyAccount) } if $LegacyAccount;
+    }
+
+    if ( $Step eq 'IMAPAccountCreate' || $Step eq 'IMAPAccountUpdate' ) {
+        my $SubmittedKind = $Self->_Scalar( $Request->{AccountKind} );
+        if ( !$AccountKind || $SubmittedKind ne $AccountKind ) {
+            $ErrorMessage = 'Translate:AdminOAuthProviderInvalid';
+        }
+        else {
+            my %SaveParam = (
+                %{$Request},
+                $Self->_KindParameters($AccountKind),
+                ChangedByUserID => $UserID,
+            );
+
+            my $SavedID;
+            if ( $Step eq 'IMAPAccountCreate' ) {
+                $SavedID = $Admin->PostmasterIMAPAccountCreate(%SaveParam);
+                $Action = 'Create';
+            }
+            else {
+                $SavedID = $Admin->PostmasterIMAPAccountUpdate(%SaveParam);
+                $Action = 'Edit';
+            }
+
+            if ($SavedID) {
+                $AccountID = $Step eq 'IMAPAccountCreate' ? $SavedID : $AccountID;
+
+                if ( $AccountKind eq 'standard' ) {
+                    return { Redirect => 'index.pl?Page=AdminPostmasterIMAPAccounts' };
+                }
+
+                my $Account = $Admin->PostmasterIMAPAccountGet( AccountID => $AccountID );
+                my $AuthURL = $OAuthObject->AuthorizationBegin(
+                    Account         => $Account,
+                    UserID          => $UserID,
+                    RequestedActive => $Request->{Active} ? 1 : 0,
+                    ReturnPage      => $ProgramName,
+                );
+
+                if ($AuthURL) {
+                    return { Redirect => $AuthURL };
+                }
+
+                $ErrorMessage = $OAuthObject->Error() || 'Translate:AdminOAuthAuthorizationStartFailed';
+                $Action = 'Edit';
+            }
+            else {
+                $ErrorMessage = $Admin->Error() || 'Translate:AdminMailAccountSaveFailed';
+            }
+        }
+    }
+    elsif ( $Step eq 'IMAPAccountDeactivate' ) {
         $Admin->PostmasterIMAPAccountDeactivate(
-            AccountID       => $Request->{AccountID},
-            ChangedByUserID => $User->{user_account_id},
+            AccountID       => $AccountID,
+            ChangedByUserID => $UserID,
         );
-        return { Redirect => 'index.pl?Page=AdminPostmasterIMAPAccounts' } if !$Admin->Error();
+        return { Redirect => 'index.pl?Page=AdminPostmasterIMAPAccounts;Status=deactivated' } if !$Admin->Error();
+        $ErrorMessage = $Admin->Error();
     }
-    elsif ( $Admin && $Step eq 'IMAPAccountTest' ) {
+    elsif ( $Step eq 'IMAPAccountActivate' ) {
+        $Admin->PostmasterIMAPAccountActivate(
+            AccountID       => $AccountID,
+            ChangedByUserID => $UserID,
+        );
+        return { Redirect => 'index.pl?Page=AdminPostmasterIMAPAccounts;Status=activated' } if !$Admin->Error();
+        $ErrorMessage = $Admin->Error();
+    }
+    elsif ( $Step eq 'IMAPAccountDelete' ) {
+        $Admin->PostmasterIMAPAccountDelete(
+            AccountID       => $AccountID,
+            ChangedByUserID => $UserID,
+        );
+        return { Redirect => 'index.pl?Page=AdminPostmasterIMAPAccounts;Status=deleted' } if !$Admin->Error();
+        $ErrorMessage = $Admin->Error();
+    }
+    elsif ( $Step eq 'IMAPAccountTest' ) {
         my $Result = $Admin->PostmasterIMAPAccountTest(
-            AccountID       => $Request->{AccountID},
-            ChangedByUserID => $User->{user_account_id},
+            AccountID       => $AccountID,
+            ChangedByUserID => $UserID,
         );
-
-        $Action      = 'Edit';
-        $TestMessage = $Result ? $Result->{Message} : $Admin->Error();
-        $TestClass   = $Result && $Result->{Success} ? 'qisutu-form-success' : '';
+        $Action = 'Edit';
+        $NoticeMessage = $Result ? $Result->{Message} : $Admin->Error();
+        $NoticeClass = $Result && $Result->{Success} ? 'qisutu-form-success' : 'qisutu-form-error';
     }
 
-    my $AccountList = $Admin ? $Admin->PostmasterIMAPAccountList() : [];
-    my $QueueList   = $Admin ? $Admin->QueueList() : [];
     my $Account;
-
-    if ( $Admin && $Action eq 'Edit' ) {
-        $Account = $Admin->PostmasterIMAPAccountGet( AccountID => $Request->{AccountID} );
-        $Action = 'List' if !$Account;
+    if ( $Action eq 'Edit' && $AccountID ) {
+        $Account = $Admin->PostmasterIMAPAccountGet( AccountID => $AccountID );
+        if ($Account) {
+            my $ActualKind = $Self->_KindFromAccount($Account);
+            my $ActualPage = $Self->_PageFromKind($ActualKind);
+            if ( $ProgramName ne $ActualPage ) {
+                return { Redirect => $Self->_EditURL($Account) };
+            }
+            $AccountKind = $ActualKind;
+        }
+        else {
+            $Action = $ProgramName eq 'AdminPostmasterIMAPAccounts' ? 'List' : 'Create';
+        }
     }
 
-    my $ErrorMessage = $Admin ? $Admin->Error() : '';
+    my $OAuthStatus = $Self->_Scalar( $Request->{OAuthStatus} );
+    if ($OAuthStatus) {
+        if ( $OAuthStatus eq 'success' ) {
+            $NoticeMessage = 'Translate:AdminOAuthConnectedAndTested';
+            $NoticeClass   = 'qisutu-form-success';
+        }
+        elsif ($Account) {
+            $NoticeMessage = $Account->{last_check_message} || 'Translate:AdminOAuthAuthorizationFailed';
+            $NoticeClass   = 'qisutu-form-error';
+        }
+        else {
+            $NoticeMessage = 'Translate:AdminOAuthStateInvalid';
+            $NoticeClass   = 'qisutu-form-error';
+        }
+    }
+
+    my $Status = $Self->_Scalar( $Request->{Status} );
+    if ( $ProgramName eq 'AdminPostmasterIMAPAccounts' && $Status ) {
+        my %StatusMessage = (
+            activated   => 'Translate:AdminMailAccountActivated',
+            deactivated => 'Translate:AdminMailAccountDeactivated',
+            deleted     => 'Translate:AdminMailAccountDeleted',
+        );
+        if ( $StatusMessage{$Status} ) {
+            $NoticeMessage = $StatusMessage{$Status};
+            $NoticeClass   = 'qisutu-form-success';
+        }
+    }
+
+    $ErrorMessage ||= $Admin->Error() || '';
+
+    my $AccountList = $Admin->PostmasterIMAPAccountList() || [];
+    for my $Item ( @{$AccountList} ) {
+        my $Kind = $Self->_KindFromAccount($Item);
+        $Item->{edit_url} = $Self->_EditURL($Item);
+        $Item->{type_label} = $Kind eq 'microsoft'
+            ? 'Translate:AdminMailTypeMicrosoft365'
+            : $Kind eq 'google'
+                ? 'Translate:AdminMailTypeGoogle'
+                : 'Translate:AdminMailTypeStandardIMAP';
+        $Item->{connection_label} = $Self->_ConnectionLabel($Item);
+        if ( $Item->{active} ) {
+            $Item->{toggle_step}         = 'IMAPAccountDeactivate';
+            $Item->{toggle_label}        = 'Translate:AdminDeactivate';
+            $Item->{toggle_button_class} = 'qisutu-button-danger';
+            $Item->{delete_class}        = 'qisutu-hidden';
+        }
+        else {
+            $Item->{toggle_step}         = 'IMAPAccountActivate';
+            $Item->{toggle_label}        = 'Translate:AdminActivate';
+            $Item->{toggle_button_class} = 'qisutu-button-success';
+            $Item->{delete_class}        = '';
+        }
+    }
+
+    my $QueueList = $Admin->QueueList() || [];
+    my $Submitted = $Step eq 'IMAPAccountCreate' || $Step eq 'IMAPAccountUpdate' ? 1 : 0;
+    my $Source    = $Submitted ? $Request : ( $Account || {} );
+    my $PageInfo  = $Self->_PageInfo($AccountKind);
+    my $QueueID   = $Self->_SourceValue( $Source, 'QueueID', 'queue_id', '' );
+    my $Security  = $Self->_SourceValue( $Source, 'IMAPSecurity', 'imap_security', 'imap_starttls' );
+    my $Active    = $Submitted ? ( $Request->{Active} ? 1 : 0 ) : ( !$Account || $Account->{active} ? 1 : 0 );
 
     return {
         Template => 'AdminPostmasterIMAPAccounts.tt',
         Data     => {
-            PageTitle          => 'Translate:AdminPostmasterIMAPAccountsTitle',
-            ProgramTitle       => 'Translate:AdminPostmasterIMAPAccountsTitle',
-            ProgramDescription => 'Translate:AdminPostmasterIMAPAccountsDescription',
+            PageTitle          => $PageInfo->{Title},
+            ProgramTitle       => $PageInfo->{Title},
+            ProgramDescription => $PageInfo->{Description},
             AccountList        => $AccountList,
             AccountCount       => scalar @{$AccountList},
             ErrorMessage       => $ErrorMessage,
-            ErrorClass         => $ErrorMessage ? '' : 'qisutu-hidden',
-            TestMessage        => $TestMessage,
-            TestClass          => $TestMessage ? $TestClass : 'qisutu-hidden',
+            ErrorClass         => $ErrorMessage ? 'qisutu-form-error' : 'qisutu-hidden',
+            NoticeMessage      => $NoticeMessage,
+            NoticeClass        => $NoticeMessage ? $NoticeClass : 'qisutu-hidden',
             FormAction         => 'index.pl',
-            ShowList           => $Action eq 'List' ? 1 : 0,
-            ShowCreate         => $Action eq 'Create' ? 1 : 0,
-            ShowEdit           => $Action eq 'Edit' ? 1 : 0,
+            CurrentPage        => $ProgramName,
+            AccountKind        => $AccountKind,
+            ShowList           => $ProgramName eq 'AdminPostmasterIMAPAccounts' && $Action eq 'List' ? 1 : 0,
+            ShowForm           => $ProgramName ne 'AdminPostmasterIMAPAccounts' && ( $Action eq 'Create' || $Action eq 'Edit' ) ? 1 : 0,
+            ShowEdit           => $Action eq 'Edit' && $Account ? 1 : 0,
+            IsStandard         => $AccountKind eq 'standard' ? 1 : 0,
+            IsMicrosoft        => $AccountKind eq 'microsoft' ? 1 : 0,
+            IsGoogle           => $AccountKind eq 'google' ? 1 : 0,
+            FormTitle          => $Action eq 'Edit' ? $PageInfo->{EditTitle} : $PageInfo->{CreateTitle},
+            FormStep           => $Action eq 'Edit' ? 'IMAPAccountUpdate' : 'IMAPAccountCreate',
+            SubmitLabel        => $AccountKind eq 'standard'
+                ? ( $Action eq 'Edit' ? 'Translate:AdminSave' : 'Translate:AdminCreate' )
+                : 'Translate:AdminOAuthSaveAndConnect',
             AccountID          => $Account ? $Account->{id} : '',
-            AccountName        => $Account ? $Account->{name} : '',
-            AccountEmail       => $Account ? $Account->{email} : '',
-            AccountQueueID     => $Account ? $Account->{queue_id} : '',
-            AccountIMAPHost    => $Account ? $Account->{imap_host} : '',
-            AccountIMAPPort    => $Account ? $Account->{imap_port} : 143,
-            AccountIMAPUsername => $Account ? $Account->{imap_username} : '',
-            AccountOAuthProvider => $Account ? $Account->{oauth_provider} : '',
-            AccountOAuthClientID => $Account ? $Account->{oauth_client_id} : '',
-            AccountOAuthTenantID => $Account ? $Account->{oauth_tenant_id} : '',
-            AccountOAuthScope => $Account ? $Account->{oauth_scope} : '',
-            AccountSortOrder   => $Account ? $Account->{sort_order} : 1000,
-            AccountActiveChecked => !$Account || $Account->{active} ? 'checked' : '',
-            CreateIMAPSecurityOptionsHTML => $Self->_SecurityOptionsHTML(
-                Type     => 'imap',
-                Selected => 'imap_starttls',
-            ),
-            EditIMAPSecurityOptionsHTML => $Self->_SecurityOptionsHTML(
-                Type     => 'imap',
-                Selected => $Account ? $Account->{imap_security} : 'imap_starttls',
-            ),
-            CreateIMAPAuthOptionsHTML => $Self->_AuthOptionsHTML(
-                Selected => 'password',
-            ),
-            EditIMAPAuthOptionsHTML => $Self->_AuthOptionsHTML(
-                Selected => $Account ? $Account->{imap_auth_type} : 'password',
-            ),
-            CreateQueueOptionsHTML => $Self->_QueueOptionsHTML(
+            AccountName        => $Self->_SourceValue( $Source, 'Name', 'name', '' ),
+            AccountEmail       => $Self->_SourceValue( $Source, 'Email', 'email', '' ),
+            AccountQueueID     => $QueueID,
+            AccountIMAPHost    => $Self->_SourceValue( $Source, 'IMAPHost', 'imap_host', '' ),
+            AccountIMAPPort    => $Self->_SourceValue( $Source, 'IMAPPort', 'imap_port', 143 ),
+            AccountIMAPUsername => $Self->_SourceValue( $Source, 'IMAPUsername', 'imap_username', '' ),
+            AccountOAuthClientID => $Self->_SourceValue( $Source, 'OAuthClientID', 'oauth_client_id', '' ),
+            AccountOAuthTenantID => $Self->_SourceValue( $Source, 'OAuthTenantID', 'oauth_tenant_id', 'common' ),
+            AccountOAuthScope  => $Account ? $Account->{oauth_scope} || '' : '',
+            AccountTokenExpires => $Account ? $Account->{oauth_token_expires_at} || '' : '',
+            AccountLastCheckAt => $Account ? $Account->{last_check_at} || '' : '',
+            AccountLastCheckMessage => $Account ? $Account->{last_check_message} || '' : '',
+            AccountConnectionLabel => $Account ? $Self->_ConnectionLabel($Account) : 'Translate:AdminOAuthNotConnected',
+            AccountClientSecretPresent => $Account && $Account->{oauth_client_secret} ? 1 : 0,
+            AccountSortOrder   => $Self->_SourceValue( $Source, 'SortOrder', 'sort_order', 1000 ),
+            AccountActiveChecked => $Active ? 'checked' : '',
+            IMAPSecurityOptionsHTML => $Self->_SecurityOptionsHTML( Selected => $Security ),
+            QueueOptionsHTML => $Self->_QueueOptionsHTML(
                 QueueList  => $QueueList,
-                SelectedID => '',
+                SelectedID => $QueueID,
             ),
-            EditQueueOptionsHTML => $Self->_QueueOptionsHTML(
-                QueueList  => $QueueList,
-                SelectedID => $Account ? $Account->{queue_id} : '',
-            ),
+            OAuthRedirectURI => $AccountKind eq 'standard' ? '' : ( $OAuthObject->RedirectURI() || '' ),
+            MicrosoftIMAPHost => 'outlook.office365.com',
+            GoogleIMAPHost    => 'imap.gmail.com',
         },
     };
+}
+
+sub _OAuthCallback {
+    my ( $Self, %Param ) = @_;
+
+    my $Result = $Param{OAuthObject}->AuthorizationComplete(
+        Request => $Param{Request},
+        UserID  => $Param{UserID},
+    );
+
+    if ( !$Result ) {
+        return { Redirect => 'index.pl?Page=AdminPostmasterIMAPAccounts;OAuthStatus=invalid' };
+    }
+
+    my $Status = 'error';
+    if ( $Result->{Success} ) {
+        my $Test = $Param{Admin}->PostmasterIMAPAccountTest(
+            AccountID       => $Result->{AccountID},
+            ChangedByUserID => $Param{UserID},
+        );
+
+        if ( $Test && $Test->{Success} ) {
+            $Param{Admin}->PostmasterIMAPAccountActiveSet(
+                AccountID       => $Result->{AccountID},
+                Active          => $Result->{RequestedActive},
+                ChangedByUserID => $Param{UserID},
+            );
+            $Status = 'success';
+        }
+        else {
+            $Param{Admin}->PostmasterIMAPAccountActiveSet(
+                AccountID       => $Result->{AccountID},
+                Active          => 0,
+                ChangedByUserID => $Param{UserID},
+            );
+            $Status = 'test_failed';
+        }
+    }
+
+    my $Page = $Result->{ReturnPage} || $Self->_PageFromKind( $Self->_KindFromProvider( $Result->{Provider} ) );
+    my $URL = 'index.pl?Page=' . $Page
+        . ';Action=Edit;AccountID=' . ( $Result->{AccountID} || 0 )
+        . ';OAuthStatus=' . $Status;
+
+    return { Redirect => $URL };
+}
+
+sub _KindParameters {
+    my ( $Self, $Kind ) = @_;
+
+    return (
+        IMAPAuthType => 'oauth2',
+        OAuthProvider => 'microsoft',
+        IMAPHost => 'outlook.office365.com',
+        IMAPSecurity => 'imaps',
+        IMAPPort => 993,
+    ) if $Kind eq 'microsoft';
+
+    return (
+        IMAPAuthType => 'oauth2',
+        OAuthProvider => 'google',
+        OAuthTenantID => '',
+        IMAPHost => 'imap.gmail.com',
+        IMAPSecurity => 'imaps',
+        IMAPPort => 993,
+    ) if $Kind eq 'google';
+
+    return (
+        IMAPAuthType => 'password',
+        OAuthProvider => '',
+        OAuthClientID => '',
+        OAuthClientSecret => '',
+        OAuthTenantID => '',
+        OAuthScope => '',
+    );
+}
+
+sub _KindFromPage {
+    my ( $Self, $Page ) = @_;
+
+    return 'standard'  if ( $Page || '' ) eq 'AdminPostmasterIMAPAccount';
+    return 'microsoft' if ( $Page || '' ) eq 'AdminPostmasterMicrosoft365';
+    return 'google'    if ( $Page || '' ) eq 'AdminPostmasterGoogleMail';
+    return '';
+}
+
+sub _KindFromProvider {
+    my ( $Self, $Provider ) = @_;
+
+    my $Key = QisutuOAuth2->new()->ProviderNormalize($Provider);
+    return $Key eq 'microsoft' ? 'microsoft' : $Key eq 'google' ? 'google' : 'standard';
+}
+
+sub _KindFromAccount {
+    my ( $Self, $Account ) = @_;
+
+    return 'standard' if !$Account || ( $Account->{imap_auth_type} || 'password' ) ne 'oauth2';
+    return $Self->_KindFromProvider( $Account->{oauth_provider} );
+}
+
+sub _PageFromKind {
+    my ( $Self, $Kind ) = @_;
+
+    return 'AdminPostmasterMicrosoft365' if ( $Kind || '' ) eq 'microsoft';
+    return 'AdminPostmasterGoogleMail' if ( $Kind || '' ) eq 'google';
+    return 'AdminPostmasterIMAPAccount';
+}
+
+sub _EditURL {
+    my ( $Self, $Account ) = @_;
+
+    return 'index.pl?Page=AdminPostmasterIMAPAccounts' if !$Account;
+    return 'index.pl?Page=' . $Self->_PageFromKind( $Self->_KindFromAccount($Account) )
+        . ';Action=Edit;AccountID=' . ( $Account->{id} || 0 );
+}
+
+sub _PageInfo {
+    my ( $Self, $Kind ) = @_;
+
+    if ( ( $Kind || '' ) eq 'microsoft' ) {
+        return {
+            Title       => 'Translate:AdminMicrosoft365Title',
+            Description => 'Translate:AdminMicrosoft365Description',
+            CreateTitle => 'Translate:AdminMicrosoft365Create',
+            EditTitle   => 'Translate:AdminMicrosoft365Edit',
+        };
+    }
+    if ( ( $Kind || '' ) eq 'google' ) {
+        return {
+            Title       => 'Translate:AdminGoogleMailTitle',
+            Description => 'Translate:AdminGoogleMailDescription',
+            CreateTitle => 'Translate:AdminGoogleMailCreate',
+            EditTitle   => 'Translate:AdminGoogleMailEdit',
+        };
+    }
+    if ( ( $Kind || '' ) eq 'standard' ) {
+        return {
+            Title       => 'Translate:AdminStandardIMAPTitle',
+            Description => 'Translate:AdminStandardIMAPDescription',
+            CreateTitle => 'Translate:AdminStandardIMAPCreate',
+            EditTitle   => 'Translate:AdminStandardIMAPEdit',
+        };
+    }
+
+    return {
+        Title       => 'Translate:AdminPostmasterIMAPAccountsTitle',
+        Description => 'Translate:AdminPostmasterIMAPAccountsDescription',
+        CreateTitle => 'Translate:AdminPostmasterIMAPAccountCreate',
+        EditTitle   => 'Translate:AdminPostmasterIMAPAccountEdit',
+    };
+}
+
+sub _ConnectionLabel {
+    my ( $Self, $Account ) = @_;
+
+    return 'Translate:AdminPasswordAuthentication'
+        if ( $Account->{imap_auth_type} || 'password' ) ne 'oauth2';
+    return 'Translate:AdminOAuthConnectionError'
+        if ( $Account->{last_check_status} || '' ) eq 'error';
+    return 'Translate:AdminOAuthConnected'
+        if $Account->{oauth_refresh_token};
+    return 'Translate:AdminOAuthAuthorizationPending';
+}
+
+sub _SourceValue {
+    my ( $Self, $Source, $RequestKey, $DBKey, $Default ) = @_;
+
+    return $Source->{$RequestKey} if exists $Source->{$RequestKey} && !ref $Source->{$RequestKey};
+    return $Source->{$DBKey} if exists $Source->{$DBKey} && !ref $Source->{$DBKey};
+    return $Default;
 }
 
 sub _SecurityOptionsHTML {
@@ -157,18 +476,6 @@ sub _SecurityOptionsHTML {
             [ imaps         => 'IMAPS (993)' ],
         ],
         Selected => $Param{Selected} || 'imap_starttls',
-    );
-}
-
-sub _AuthOptionsHTML {
-    my ( $Self, %Param ) = @_;
-
-    return $Self->_OptionsHTML(
-        Options => [
-            [ password => 'Password' ],
-            [ oauth2   => 'OAuth2' ],
-        ],
-        Selected => $Param{Selected} || 'password',
     );
 }
 
@@ -205,6 +512,15 @@ sub _OptionsHTML {
     return $HTML;
 }
 
+sub _Scalar {
+    my ( $Self, $Value ) = @_;
+
+    return '' if !defined $Value;
+    return defined $Value->[0] ? $Value->[0] : '' if ref $Value eq 'ARRAY';
+    return '' if ref $Value;
+    return $Value;
+}
+
 sub _Escape {
     my ( $Self, $Value ) = @_;
 
@@ -224,8 +540,8 @@ sub _AdminObject {
     my ($Self) = @_;
 
     return QisutuAdmin->new(
-        DB     => $Self->{DB},
         Config => $Self->{Config},
+        DB     => $Self->{DB},
     );
 }
 

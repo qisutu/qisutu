@@ -33,6 +33,7 @@ use MIME::QuotedPrint qw(decode_qp encode_qp);
 use Net::SMTP;
 use POSIX qw(strftime);
 use QisutuHTML;
+use QisutuOAuth2;
 use QisutuSystemSetting;
 
 sub new {
@@ -265,91 +266,10 @@ sub IMAPTest {
         return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPDisabled' );
     }
 
-    if ( ( $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'auth_type' ) || 'password' ) eq 'oauth2' ) {
-        return $Self->_Result( Success => 0, Message => 'Translate:AdminOAuth2FlowMissing' );
-    }
+    my $Session = $Self->_IMAPLoginSession( Account => $Account );
+    return $Session if ref $Session ne 'HASH' || !$Session->{Socket};
 
-    my $Host     = $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'host' ) || '';
-    my $Security = $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'security' ) || 'imap_starttls';
-    my $Port     = $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'port' ) || $Self->_DefaultPort($Security);
-
-    if ( !$Host ) {
-        return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPHostRequired' );
-    }
-
-    if ( $Security eq 'imap_starttls' || $Security eq 'imaps' ) {
-        return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPSSLRequired' )
-            if !$Self->_SSLAvailable();
-    }
-
-    my $Socket = $Self->_IMAPSocket(
-        Host     => $Host,
-        Port     => $Port,
-        Security => $Security,
-    );
-
-    return $Socket if ref $Socket eq 'HASH';
-
-    my $Greeting = $Self->_IMAPRead( Socket => $Socket );
-    if ( $Greeting !~ m{\A\*\s+OK}i ) {
-        $Self->_SocketClose($Socket);
-        return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPGreetingFailed' );
-    }
-
-    if ( $Security eq 'imap_starttls' ) {
-        my $StartTLS = $Self->_IMAPCommand(
-            Socket  => $Socket,
-            Tag     => 'A001',
-            Command => 'STARTTLS',
-        );
-
-        if ( $StartTLS !~ m{A001\s+OK}i ) {
-            $Self->_SocketClose($Socket);
-            return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPSTARTTLSFailed' );
-        }
-
-        my $SSLStarted = IO::Socket::SSL->start_SSL(
-            $Socket,
-            SSL_hostname => $Host,
-        );
-
-        if ( !$SSLStarted ) {
-            $Self->_SocketClose($Socket);
-            return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPTLSHandshakeFailed' );
-        }
-    }
-
-    my $Username = $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'username' ) || '';
-    my $Password = $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'password' ) || '';
-
-    if ( !$Username || !$Password ) {
-        $Self->_IMAPCommand(
-            Socket  => $Socket,
-            Tag     => 'A003',
-            Command => 'LOGOUT',
-        );
-        $Self->_SocketClose($Socket);
-        return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPCredentialsRequired' );
-    }
-
-    my $Login = $Self->_IMAPCommand(
-        Socket  => $Socket,
-        Tag     => 'A002',
-        Command => 'LOGIN '
-            . $Self->_IMAPQuote($Username)
-            . ' '
-            . $Self->_IMAPQuote($Password),
-    );
-
-    if ( $Login !~ m{A002\s+OK}i ) {
-        $Self->_IMAPCommand(
-            Socket  => $Socket,
-            Tag     => 'A003',
-            Command => 'LOGOUT',
-        );
-        $Self->_SocketClose($Socket);
-        return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPAuthFailed' );
-    }
+    my $Socket = $Session->{Socket};
 
     my $List = $Self->_IMAPCommand(
         Socket  => $Socket,
@@ -387,10 +307,6 @@ sub IMAPFetchNewMessages {
 
     if ( exists $Account->{inbound_enabled} && !$Account->{inbound_enabled} ) {
         return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPDisabled' );
-    }
-
-    if ( ( $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'auth_type' ) || 'password' ) eq 'oauth2' ) {
-        return $Self->_Result( Success => 0, Message => 'Translate:AdminOAuth2FlowMissing' );
     }
 
     my $Session = $Self->_IMAPLoginSession( Account => $Account );
@@ -561,27 +477,57 @@ sub _IMAPLoginSession {
         }
     }
 
+    my $AuthType = $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'auth_type' ) || 'password';
     my $Username = $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'username' ) || '';
-    my $Password = $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'password' ) || '';
+    my $Login;
 
-    if ( !$Username || !$Password ) {
-        $Self->_IMAPCommand(
-            Socket  => $Socket,
-            Tag     => 'A003',
-            Command => 'LOGOUT',
+    if ( $AuthType eq 'oauth2' ) {
+        if ( !$Username ) {
+            $Self->_IMAPLogout( Socket => $Socket, Tag => 'A003' );
+            return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPUsernameRequired' );
+        }
+
+        my $OAuthObject = QisutuOAuth2->new(
+            Config => $Self->{Config},
+            DB     => $Self->{DB},
         );
-        $Self->_SocketClose($Socket);
-        return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPCredentialsRequired' );
-    }
+        my $AccessToken = $OAuthObject->AccessTokenGet( Account => $Account );
 
-    my $Login = $Self->_IMAPCommand(
-        Socket  => $Socket,
-        Tag     => 'A002',
-        Command => 'LOGIN '
-            . $Self->_IMAPQuote($Username)
-            . ' '
-            . $Self->_IMAPQuote($Password),
-    );
+        if ( !$AccessToken ) {
+            $Self->_IMAPLogout( Socket => $Socket, Tag => 'A003' );
+            return $Self->_Result(
+                Success => 0,
+                Message => $OAuthObject->Error() || 'Translate:AdminOAuthAccessTokenMissing',
+            );
+        }
+
+        my $SASL = encode_base64(
+            'user=' . $Username . "\x01auth=Bearer " . $AccessToken . "\x01\x01",
+            '',
+        );
+        $Login = $Self->_IMAPOAuthCommand(
+            Socket   => $Socket,
+            Tag      => 'A002',
+            Response => $SASL,
+        );
+    }
+    else {
+        my $Password = $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'password' ) || '';
+
+        if ( !$Username || !$Password ) {
+            $Self->_IMAPLogout( Socket => $Socket, Tag => 'A003' );
+            return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPCredentialsRequired' );
+        }
+
+        $Login = $Self->_IMAPCommand(
+            Socket  => $Socket,
+            Tag     => 'A002',
+            Command => 'LOGIN '
+                . $Self->_IMAPQuote($Username)
+                . ' '
+                . $Self->_IMAPQuote($Password),
+        );
+    }
 
     if ( $Login !~ m{A002\s+OK}i ) {
         $Self->_IMAPCommand(
@@ -661,6 +607,42 @@ sub _IMAPCommand {
         Socket => $Socket,
         Tag    => $Tag,
     );
+}
+
+sub _IMAPOAuthCommand {
+    my ( $Self, %Param ) = @_;
+
+    my $Socket   = $Param{Socket};
+    my $Tag      = $Param{Tag};
+    my $Response = $Param{Response};
+    my $Data     = '';
+
+    print {$Socket} $Tag . ' AUTHENTICATE XOAUTH2 ' . $Response . "\r\n";
+
+    local $SIG{ALRM} = sub { die "timeout\n" };
+
+    eval {
+        alarm 15;
+        while ( my $Line = <$Socket> ) {
+            $Data .= $Line;
+
+            if ( $Line =~ m{\A\+} ) {
+                # OAuth failures can contain a SASL challenge. An empty
+                # response terminates that challenge and yields the tagged
+                # IMAP result without exposing the token again.
+                print {$Socket} "\r\n";
+                next;
+            }
+
+            last if $Line =~ m{\A\Q$Tag\E\s+}i;
+        }
+        alarm 0;
+        1;
+    } || do {
+        alarm 0;
+    };
+
+    return $Data;
 }
 
 sub _IMAPRead {

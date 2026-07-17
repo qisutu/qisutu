@@ -86,6 +86,35 @@ Neuinstallation und Update nur der Admin-Gruppe zugewiesen. Zeitdaten werden
 ausschließlich in Agenten- und Administrationsbereichen verarbeitet; Kundenmasken
 und Kundenartikel enthalten keine Zeiterfassung.
 
+## E-Mail-Abruf und OAuth2
+
+Der Administrationsbereich bündelt eingehende E-Mail-Konten unter dem einzigen
+Menüpunkt `E-Mail-Abruf`. Die dortige Übersicht zeigt vorhandene Konten und
+bietet drei Einrichtungsarten an:
+
+- Standard-IMAP mit Benutzername und Passwort
+- Microsoft 365 mit OAuth2/XOAUTH2
+- Google Workspace beziehungsweise Gmail mit OAuth2/XOAUTH2
+
+Microsoft- und Google-Konten werden nach dem Speichern direkt zum jeweiligen
+Anbieter weitergeleitet. Qisutu prüft den OAuth2-Rücksprung mit einem
+kurzlebigen, einmalig verwendbaren Statuswert, speichert Access- und
+Refresh-Token und testet anschließend die IMAP-Verbindung. Das Konto wird erst
+nach erfolgreichem Test aktiviert. Abgelaufene Access-Tokens werden beim
+Mailabruf automatisch mit dem Refresh-Token erneuert.
+
+Inaktive Konten werden vor einer erneuten Aktivierung automatisch auf eine
+funktionierende IMAP-/OAuth2-Verbindung geprüft. Ein Konto kann erst nach dem
+Deaktivieren endgültig gelöscht werden. Dabei werden seine Zugangsdaten und
+OAuth2-Tokens entfernt; vorhandene Postmaster-Verarbeitungsprotokolle bleiben
+erhalten und werden vom gelöschten Konto entkoppelt.
+
+Vor der Einrichtung muss unter `Administration > System-Einstellungen` eine
+von außen erreichbare HTTPS-Basis-URL für Qisutu hinterlegt sein. Die in der
+jeweiligen Kontomaske angezeigte Weiterleitungs-URI muss beim OAuth2-Anbieter
+exakt als erlaubte Redirect-URI registriert werden. Weitere Hinweise stehen in
+`INSTALL.md`.
+
 ## Datenbankkonfiguration
 
 Die Datenbankverbindung steht direkt in `core/config/QisutuConfig.pm`. Der

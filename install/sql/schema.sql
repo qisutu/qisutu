@@ -485,6 +485,7 @@ CREATE TABLE `customer_user` (
 -- Table structure for table `postmaster_imap_account`
 --
 
+DROP TABLE IF EXISTS `oauth2_authorization_state`;
 DROP TABLE IF EXISTS `postmaster_imap_account`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1584,6 +1585,31 @@ CREATE TABLE `user_account` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `oauth2_authorization_state`
+--
+
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `oauth2_authorization_state` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `state_hash` char(64) NOT NULL,
+  `account_id` bigint(20) unsigned NOT NULL,
+  `user_account_id` bigint(20) unsigned NOT NULL,
+  `provider` varchar(30) NOT NULL,
+  `requested_active` tinyint(1) NOT NULL DEFAULT 1,
+  `return_page` varchar(100) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `oauth2_authorization_state_hash_unique` (`state_hash`),
+  KEY `oauth2_authorization_state_account_user` (`account_id`,`user_account_id`),
+  KEY `oauth2_authorization_state_expires` (`expires_at`),
+  CONSTRAINT `oauth2_authorization_state_account_fk` FOREIGN KEY (`account_id`) REFERENCES `postmaster_imap_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `oauth2_authorization_state_user_fk` FOREIGN KEY (`user_account_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `password_reset_token`
 --
 
@@ -2004,7 +2030,7 @@ CREATE TABLE IF NOT EXISTS `database_version` (
   UNIQUE KEY `database_version_version_unique` (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `database_version` (`version`) VALUES ('0.0.7');
+INSERT INTO `database_version` (`version`) VALUES ('0.0.8');
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
