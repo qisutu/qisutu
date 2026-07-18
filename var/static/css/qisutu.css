@@ -7838,3 +7838,75 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
         grid-template-columns: 1fr;
     }
 }
+/* REST API administration */
+.qisutu-api-token-created {
+    border-color: #5aa873;
+    background: #f3fbf5;
+}
+.qisutu-api-secret-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.qisutu-api-secret-row code {
+    flex: 1;
+    padding: 12px;
+    overflow-wrap: anywhere;
+    border: 1px solid #b9d7c1;
+    border-radius: 7px;
+    background: #fff;
+}
+.qisutu-api-warning { color: #8a3c21; font-weight: 700; }
+.qisutu-api-user-picker { display: flex; gap: 8px; }
+.qisutu-api-user-picker input { min-width: 0; flex: 1; }
+.qisutu-api-scopes {
+    margin: 20px 0;
+    padding: 18px;
+    border: 1px solid #d6e0e8;
+    border-radius: 8px;
+}
+.qisutu-api-scopes legend { padding: 0 8px; font-weight: 800; }
+.qisutu-api-scope-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+.qisutu-api-scope-grid section {
+    padding: 12px;
+    border: 1px solid #e0e7ed;
+    border-radius: 7px;
+    background: #f8fafb;
+}
+.qisutu-api-scope-grid h3 { margin: 0 0 10px; font-size: 15px; }
+.qisutu-api-scope-grid .qisutu-form-checkbox { margin: 7px 0; }
+.qisutu-api-advanced { margin: 16px 0; padding: 12px; border: 1px solid #d6e0e8; border-radius: 7px; }
+.qisutu-api-advanced summary { cursor: pointer; font-weight: 700; }
+.qisutu-api-scope-summary { max-width: 360px; font-size: 13px; }
+.qisutu-api-doc-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 15px; }
+.qisutu-api-doc-grid > div { display: grid; gap: 7px; }
+.qisutu-api-doc-grid code,
+.qisutu-api-doc-grid pre { margin: 0; padding: 10px; overflow: auto; border-radius: 6px; background: #f2f6f8; }
+.qisutu-api-log { padding: 18px; }
+.qisutu-api-log > summary { cursor: pointer; }
+.qisutu-api-result { display: inline-block; min-width: 42px; padding: 3px 7px; text-align: center; border-radius: 999px; font-weight: 800; }
+.qisutu-api-result.is-success { color: #176b36; background: #e6f6eb; }
+.qisutu-api-result.is-error { color: #a52b24; background: #fdeceb; }
+.qisutu-api-user-modal { width: min(760px, calc(100vw - 32px)); }
+.qisutu-api-user-results { max-height: 390px; overflow: auto; border: 1px solid #d7e0e7; border-radius: 7px; }
+.qisutu-api-user-result {
+    display: grid;
+    width: 100%;
+    padding: 9px 12px;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid #e3e9ee;
+    background: #fff;
+    cursor: pointer;
+}
+.qisutu-api-user-result:hover,
+.qisutu-api-user-result:focus { color: #fff; background: #00617a; }
+.qisutu-api-user-result span { margin-top: 2px; font-size: 12px; }
+@media (max-width: 720px) {
+    .qisutu-api-secret-row,
+    .qisutu-api-user-picker { align-items: stretch; flex-direction: column; }
+}

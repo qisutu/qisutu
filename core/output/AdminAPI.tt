@@ -1,0 +1,49 @@
+[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
+<section class="qisutu-dashboard qisutu-api-admin" aria-labelledby="qisutu-api-title">
+    <div class="qisutu-dashboard-header"><div><h1 id="qisutu-api-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div></div>
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+    <div class="qisutu-form-success [% NoticeClass %]">[% NoticeMessage %]</div>
+    [% IF TokenCreated %]
+    <section class="qisutu-panel qisutu-api-token-created" aria-live="polite">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.APITokenCreatedTitle %]</h2><p>[% Translate.APITokenCreatedText %]</p></div></div>
+        <div class="qisutu-api-secret-row"><code id="qisutu-api-new-token">[% PlainToken %]</code><button class="qisutu-button qisutu-button-primary" type="button" data-api-copy-token data-copied-label="[% Translate.APICopied %]">[% Translate.APICopyToken %]</button></div>
+        <p class="qisutu-form-hint qisutu-api-warning">[% Translate.APITokenCreatedWarning %]</p>
+    </section>
+    [% END %]
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.APITokenCreateTitle %]</h2><p>[% Translate.APITokenCreateDescription %]</p></div></div>
+        <form method="post" action="index.pl" class="qisutu-admin-form qisutu-api-create-form">
+            <input type="hidden" name="Page" value="AdminAPI"><input type="hidden" name="Step" value="APITokenCreate">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label for="api-label">[% Translate.APITokenLabel %] *</label><input id="api-label" type="text" name="Label" maxlength="190" value="[% FormLabel %]" placeholder="[% Translate.APITokenLabelPlaceholder %]" required><small>[% Translate.APITokenLabelHint %]</small></div>
+                <div class="qisutu-form-field"><label>[% Translate.APITokenUser %] *</label><input type="hidden" name="UserAccountID" value="[% FormUserAccountID %]" data-api-user-id><div class="qisutu-api-user-picker"><input type="text" value="[% FormSelectedUser %]" placeholder="[% Translate.APINoUserSelected %]" readonly data-api-user-display><button type="button" class="qisutu-button qisutu-button-secondary" data-api-open-users>[% Translate.APISelectUser %]</button></div><small>[% Translate.APITokenUserHint %]</small></div>
+            </div>
+            <fieldset class="qisutu-api-scopes"><legend>[% Translate.APITokenPermissions %]</legend><p>[% Translate.APITokenPermissionsHint %]</p>
+                <div class="qisutu-api-scope-grid">[% RAW.ScopeGroupsHTML %]</div>
+            </fieldset>
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label for="api-lifetime">[% Translate.APITokenLifetime %]</label><select id="api-lifetime" name="Lifetime"><option value="30d" [% FormLifetime30Selected %]>[% Translate.APILifetime30 %]</option><option value="90d" [% FormLifetime90Selected %]>[% Translate.APILifetime90 %]</option><option value="365d" [% FormLifetime365Selected %]>[% Translate.APILifetime365 %]</option><option value="never" [% FormLifetimeNeverSelected %]>[% Translate.APILifetimeNever %]</option></select></div>
+            </div>
+            <details class="qisutu-api-advanced"><summary>[% Translate.APIAdvancedSettings %]</summary><div class="qisutu-admin-form-columns"><div class="qisutu-form-field"><label for="api-ips">[% Translate.APIAllowedIPs %]</label><textarea id="api-ips" name="AllowedIPs" rows="3" placeholder="192.0.2.10, 2001:db8::10">[% FormAllowedIPs %]</textarea><small>[% Translate.APIAllowedIPsHint %]</small></div><div class="qisutu-form-field"><label for="api-rate">[% Translate.APIRateLimit %]</label><select id="api-rate" name="RateLimitPerMinute"><option value="60" [% FormRateLimit60Selected %]>60</option><option value="120" [% FormRateLimit120Selected %]>120</option><option value="300" [% FormRateLimit300Selected %]>300</option><option value="1000" [% FormRateLimit1000Selected %]>1000</option></select><small>[% Translate.APIRateLimitHint %]</small></div></div></details>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.APICreateToken %]</button></div>
+        </form>
+    </section>
+
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.APITokenListTitle %]</h2><span class="qisutu-panel-subtitle">[% TokenCount %]</span></div></div>
+    [% IF HasTokens %]<div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table"><thead><tr><th>[% Translate.APITokenLabel %]</th><th>[% Translate.APITokenUser %]</th><th>[% Translate.APITokenPermissions %]</th><th>[% Translate.APITokenValidity %]</th><th>[% Translate.APITokenLastUsed %]</th><th>[% Translate.TicketStatus %]</th><th>[% Translate.AdminActions %]</th></tr></thead><tbody>
+    [% FOREACH Token IN TokenList %]<tr><td><strong>[% Token.label %]</strong><br><code>[% Token.token_prefix %]…</code></td><td>[% Token.user_name %]<br><small>[% Token.account_type_display %] · [% Token.login %]</small></td><td class="qisutu-api-scope-summary">[% Token.scope_display %]</td><td>[% Token.expires_display %]</td><td>[% Token.last_used_display %]</td><td><span class="qisutu-status-badge">[% Token.status_display %]</span></td><td>[% RAW.Token.action_html %]</td></tr>[% END %]
+    </tbody></table></div>[% ELSE %]<div class="qisutu-empty-state"><strong>[% Translate.APINoTokensTitle %]</strong><p>[% Translate.APINoTokensText %]</p></div>[% END %]</section>
+
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.APIDocumentationTitle %]</h2><p>[% Translate.APIDocumentationDescription %]</p></div><a class="qisutu-button qisutu-button-secondary" href="[% OpenAPIURL %]" target="_blank" rel="noopener">OpenAPI JSON</a></div>
+        <div class="qisutu-api-doc-grid"><div><strong>[% Translate.APIBaseURL %]</strong><code>[% APIBaseURL %]</code></div><div><strong>[% Translate.APIAuthentication %]</strong><code>Authorization: Bearer &lt;Token&gt;</code></div><div><strong>[% Translate.APIExample %]</strong><pre>curl -H "Authorization: Bearer &lt;Token&gt;" \
+  "[% APIBaseURL %]/tickets?per_page=20"</pre></div></div>
+        <p class="qisutu-form-hint">[% Translate.APIHeaderFallbackHint %]</p>
+    </section>
+
+    <details class="qisutu-panel qisutu-api-log"><summary><strong>[% Translate.APIRequestLogTitle %]</strong> — [% Translate.APIRequestLogDescription %]</summary>
+    [% IF HasRequestLogs %]<div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table"><thead><tr><th>[% Translate.CommonDate %]</th><th>Token</th><th>[% Translate.APIMethodPath %]</th><th>[% Translate.APIStatusCode %]</th><th>IP</th><th>Request-ID</th></tr></thead><tbody>[% FOREACH Log IN RequestLogs %]<tr><td>[% Log.created_at %]</td><td>[% Log.token_label %]<br><small>[% Log.login %]</small></td><td><code>[% Log.method %] [% Log.request_path %]</code></td><td><span class="qisutu-api-result [% Log.success_class %]">[% Log.status_code %]</span></td><td>[% Log.remote_ip %]</td><td><code>[% Log.request_id %]</code></td></tr>[% END %]</tbody></table></div>[% ELSE %]<p>[% Translate.APINoRequestLogs %]</p>[% END %]</details>
+</section>
+
+<div class="qisutu-modal-backdrop qisutu-hidden" data-api-user-modal aria-hidden="true" data-no-results="[% Translate.APIUserSearchNone %]" data-search-error="[% Translate.APIUserSearchError %]" data-agent-label="[% Translate.APIAccountAgent %]" data-customer-label="[% Translate.APIAccountCustomer %]" data-confirm-deactivate="[% Translate.APIConfirmDeactivate %]"><section class="qisutu-modal qisutu-api-user-modal" role="dialog" aria-modal="true" aria-labelledby="api-user-modal-title"><div class="qisutu-modal-header"><div><h2 id="api-user-modal-title">[% Translate.APISelectUser %]</h2><p>[% Translate.APISelectUserHint %]</p></div><button type="button" class="qisutu-modal-close" data-api-close-users aria-label="[% Translate.CommonClose %]">×</button></div><div class="qisutu-form-field"><label for="api-user-search">[% Translate.SearchTitle %]</label><input id="api-user-search" type="search" autocomplete="off" placeholder="[% Translate.APIUserSearchPlaceholder %]" data-api-user-search></div><div class="qisutu-api-user-results" data-api-user-results><p>[% Translate.APIUserSearchStart %]</p></div></section></div>
+<script src="[% StaticURL %]/js/qisutu-admin-api.js?v=2026071801"></script>

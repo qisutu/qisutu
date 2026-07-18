@@ -197,6 +197,7 @@
             var definition = findDefinition(config.conditionDefinitions, field.value) || { type: 'text' };
             var hasArgument = Boolean(definition.argument);
             argumentWrap.hidden = !hasArgument;
+            argumentWrap.style.display = hasArgument ? '' : 'none';
             argument.disabled = !hasArgument;
             row.classList.toggle('qisutu-postmaster-condition-has-argument', hasArgument);
             var currentOperator = operator.value || data.operator || 'contains';
@@ -264,8 +265,10 @@
             targetLabel.textContent = definition.targetLabel || config.labels.target;
             valueLabel.textContent = definition.valueLabel || config.labels.value;
             targetWrap.hidden = !needsTarget;
+            targetWrap.style.display = needsTarget ? '' : 'none';
             target.disabled = !needsTarget;
             valueWrap.hidden = !needsValue;
+            valueWrap.style.display = needsValue ? '' : 'none';
             row.classList.toggle('qisutu-postmaster-action-no-target', !needsTarget);
             row.classList.toggle('qisutu-postmaster-action-no-value', !needsValue);
 
@@ -312,8 +315,10 @@
     if (advancedToggle) {
         advancedToggle.checked = Boolean(config.advancedInitiallyOpen);
         advancedHelp.hidden = !advancedToggle.checked;
+        advancedHelp.style.display = advancedToggle.checked ? '' : 'none';
         advancedToggle.addEventListener('change', function () {
             advancedHelp.hidden = !advancedToggle.checked;
+            advancedHelp.style.display = advancedToggle.checked ? '' : 'none';
             conditionRefreshers.forEach(function (refresh) { refresh(); });
         });
     }

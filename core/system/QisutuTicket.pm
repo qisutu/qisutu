@@ -1858,6 +1858,7 @@ sub TicketCreateFromCustomer {
     my $Title       = $Param{Title} || '';
     my $Body        = $Param{Body} || '';
     my $ContentType = $Param{ContentType} || 'text/plain';
+    my $Attachments = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
     my $CustomerAccess = $Self->_CustomerAccessData( User => $User );
 
     if (!$CustomerAccess) {
@@ -1904,6 +1905,12 @@ sub TicketCreateFromCustomer {
 
     if (!$Title || !$Body) {
         $Self->{LastError} = 'Subject and message are required';
+        return;
+    }
+
+    my $AttachmentValidation = $Self->_AttachmentsValidate( Attachments => $Attachments );
+    if ( !$AttachmentValidation->{Valid} ) {
+        $Self->{LastError} = $AttachmentValidation->{Error} || 'Attachment exceeds the permitted maximum size';
         return;
     }
 
@@ -2006,6 +2013,7 @@ sub TicketCreateFromCustomer {
         SkipNotification => 1,
         CreatedByUserID => $UserID,
         ChangedByUserID => $UserID,
+        Attachments     => $Attachments,
     );
 
     if (!$ArticleID) {

@@ -5,6 +5,7 @@ use utf8;
 use Test::More;
 use JSON::PP qw(decode_json);
 use FindBin;
+use File::Spec;
 use lib "$FindBin::Bin/../core/system", "$FindBin::Bin/../core/module";
 
 use QisutuPostmasterFilter;
@@ -47,5 +48,13 @@ my $LegacyConfig = decode_json( $Module->_ClientConfig(
 ) );
 my %LegacyField = map { ( $_->{key} || '' ) => $_ } @{ $LegacyConfig->{conditionDefinitions} || [] };
 ok( $LegacyField{existing_ticket}->{legacy}, 'a previously stored legacy condition remains editable without data loss' );
+
+my $JavaScriptFile = File::Spec->catfile( $FindBin::Bin, '..', 'var', 'static', 'js', 'qisutu-postmaster-filter.js' );
+open my $JavaScriptHandle, '<:encoding(UTF-8)', $JavaScriptFile or die "Could not read $JavaScriptFile: $!";
+local $/;
+my $JavaScript = <$JavaScriptHandle>;
+close $JavaScriptHandle;
+like( $JavaScript, qr{argumentWrap\.style\.display\s*=\s*hasArgument}, 'email-header input is hidden directly when it is not applicable' );
+like( $JavaScript, qr{valueWrap\.style\.display\s*=\s*needsValue}, 'redundant action-value input is hidden directly when it is not applicable' );
 
 done_testing();
