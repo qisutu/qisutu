@@ -63,6 +63,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <input type="hidden" name="Step" value="CustomerTicketFormSubmit">
                         <input type="hidden" name="FormID" value="[% FormID %]">
                         [% RAW.TicketFormFieldsHTML %]
+                        [% RAW.CMDBSelectionHTML %]
                         <div class="qisutu-form-actions">
                             <button class="qisutu-button qisutu-button-primary" type="submit">[% TicketFormSubmitLabel %]</button>
                             <a class="qisutu-button qisutu-button-secondary" href="[% FormSelectionURL %]">[% Translate.AdminBackToList %]</a>
@@ -93,6 +94,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <label>[% Translate.TicketArticleBody %]</label>
                             <textarea id="qisutu-customer-ticket-body" class="qisutu-richtext" name="Body" rows="8"></textarea>
                         </div>
+
+                        [% RAW.CMDBSelectionHTML %]
 
                         <div class="qisutu-form-actions">
                             <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketCreateSubmit %]</button>

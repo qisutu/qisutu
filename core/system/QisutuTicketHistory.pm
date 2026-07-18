@@ -325,6 +325,8 @@ sub _EventTitleKey {
         ticket_linked          => 'TicketHistoryEventLinked',
         ticket_split           => 'TicketHistoryEventSplit',
         ticket_merged          => 'TicketHistoryEventMerged',
+        cmdb_ci_linked         => 'TicketHistoryEventCMDBLinked',
+        cmdb_ci_unlinked       => 'TicketHistoryEventCMDBUnlinked',
         checklist_added        => 'TicketHistoryEventChecklistAdded',
         checklist_removed      => 'TicketHistoryEventChecklistRemoved',
         item_completed         => 'TicketHistoryEventChecklistItemCompleted',

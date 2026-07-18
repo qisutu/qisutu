@@ -309,12 +309,24 @@ manifest_path_validate() {
     local manifest_path="$1"
     local relative_path
 
-    [[ "$manifest_path" == ./* ]] || fail "Ungültiger Dateipfad in release.sha256: $manifest_path"
+    if [[ "$manifest_path" != ./* ]]; then
+        fail "Ungültiger Dateipfad in release.sha256: $manifest_path"
+        return 1
+    fi
     relative_path="${manifest_path#./}"
-    [[ -n "$relative_path" ]] || fail "Leerer Dateipfad in release.sha256."
-    [[ "$relative_path" != *[[:space:]]* ]] || fail "Dateipfade mit Leerzeichen sind im Updatepaket nicht zulässig: $relative_path"
+    if [[ -z "$relative_path" ]]; then
+        fail "Leerer Dateipfad in release.sha256."
+        return 1
+    fi
+    if [[ "$relative_path" == *[[:space:]]* ]]; then
+        fail "Dateipfade mit Leerzeichen sind im Updatepaket nicht zulässig: $relative_path"
+        return 1
+    fi
     case "/$relative_path/" in
-        *"/../"*|*"/./"*|*"//"*) fail "Unsicherer Dateipfad in release.sha256: $relative_path" ;;
+        *"/../"*|*"/./"*|*"//"*)
+            fail "Unsicherer Dateipfad in release.sha256: $relative_path"
+            return 1
+            ;;
     esac
     printf '%s' "$relative_path"
 }
@@ -335,10 +347,33 @@ path_is_protected() {
     return 1
 }
 
+removed_path_validate() {
+    local removal_path="$1"
+    local relative_path
+
+    relative_path="$(manifest_path_validate "$removal_path")"
+
+    case "$relative_path" in
+        release.sha256|release.remove|release.conf|install.sh|update.sh)
+            fail "Release-Steuerdatei darf nicht als veraltet markiert werden: $relative_path"
+            return 1
+            ;;
+    esac
+
+    if path_is_protected "$relative_path"; then
+        fail "Geschützter Installationspfad darf nicht als veraltet markiert werden: $relative_path"
+        return 1
+    fi
+
+    printf '%s' "$relative_path"
+}
+
 package_manifest_source_validate() {
     local manifest_file="$SOURCE_ROOT/release.sha256"
-    local checksum manifest_path extra relative_path source_file first_symlink check_output
+    local removal_file="$SOURCE_ROOT/release.remove"
+    local checksum manifest_path extra relative_path source_file source_symlink check_output removal_line removal_path
     local -A manifest_paths=()
+    local -A removed_paths=()
     local manifest_count=0
 
     [[ -r "$manifest_file" ]] || fail "Prüfsummenliste des Updatepakets fehlt oder ist nicht lesbar: $manifest_file"
@@ -356,21 +391,66 @@ package_manifest_source_validate() {
     done < "$manifest_file"
 
     (( manifest_count > 0 )) || fail "release.sha256 enthält keine Programmdateien."
-
-    while IFS= read -r -d '' source_file; do
-        relative_path="${source_file#"$SOURCE_ROOT/"}"
-        [[ "$relative_path" == "release.sha256" ]] && continue
-        [[ -n "${manifest_paths[$relative_path]+x}" ]] \
-            || fail "Programmdatei ist nicht in release.sha256 eingetragen: $relative_path"
-    done < <(find "$SOURCE_ROOT" -type f -print0)
-
-    first_symlink="$(find "$SOURCE_ROOT" -type l -print -quit)"
-    [[ -z "$first_symlink" ]] || fail "Symbolische Links sind im Updatepaket nicht zulässig: ${first_symlink#"$SOURCE_ROOT/"}"
+    [[ -n "${manifest_paths[release.remove]+x}" ]] \
+        || fail "release.remove fehlt in release.sha256."
 
     if ! check_output="$(cd "$SOURCE_ROOT" && sha256sum --check --quiet release.sha256 2>&1)"; then
         echo "$check_output" >&2
         fail "Die Prüfsummen des Qisutu-Updatepakets sind ungültig. Das Paket wird nicht installiert."
     fi
+
+    while IFS= read -r removal_line || [[ -n "$removal_line" ]]; do
+        removal_line="$(trim "$removal_line")"
+        [[ -n "$removal_line" ]] || continue
+        [[ "$removal_line" == \#* ]] && continue
+
+        read -r removal_path extra <<< "$removal_line"
+        [[ -z "${extra:-}" ]] || fail "Ungültiger Eintrag in release.remove: $removal_line"
+        relative_path="$(removed_path_validate "$removal_path")"
+        [[ -z "${removed_paths[$relative_path]+x}" ]] \
+            || fail "Doppelter Dateipfad in release.remove: $relative_path"
+        [[ -z "${manifest_paths[$relative_path]+x}" ]] \
+            || fail "Dateipfad steht gleichzeitig in release.sha256 und release.remove: $relative_path"
+        removed_paths["$relative_path"]=1
+    done < "$removal_file"
+
+    while IFS= read -r -d '' source_file; do
+        relative_path="${source_file#"$SOURCE_ROOT/"}"
+        [[ "$relative_path" == "release.sha256" ]] && continue
+        [[ -n "${manifest_paths[$relative_path]+x}" || -n "${removed_paths[$relative_path]+x}" ]] \
+            || fail "Programmdatei ist nicht in release.sha256 eingetragen: $relative_path"
+    done < <(find "$SOURCE_ROOT" -type f -print0)
+
+    while IFS= read -r -d '' source_symlink; do
+        relative_path="${source_symlink#"$SOURCE_ROOT/"}"
+        [[ -n "${removed_paths[$relative_path]+x}" ]] && continue
+        fail "Symbolische Links sind im Updatepaket nicht zulässig: $relative_path"
+    done < <(find "$SOURCE_ROOT" -type l -print0)
+}
+
+package_obsolete_source_files_remove() {
+    local removal_line removal_path relative_path source_file extra
+    local removed_count=0
+
+    while IFS= read -r removal_line || [[ -n "$removal_line" ]]; do
+        removal_line="$(trim "$removal_line")"
+        [[ -n "$removal_line" ]] || continue
+        [[ "$removal_line" == \#* ]] && continue
+
+        read -r removal_path extra <<< "$removal_line"
+        relative_path="$(removed_path_validate "$removal_path")"
+        source_file="$SOURCE_ROOT/$relative_path"
+
+        if [[ -d "$source_file" && ! -L "$source_file" ]]; then
+            fail "Eine veraltete Programmdatei ist im Updatepaket ein Verzeichnis: $relative_path"
+        fi
+        if [[ -e "$source_file" || -L "$source_file" ]]; then
+            rm -f -- "$source_file"
+            removed_count=$(( removed_count + 1 ))
+        fi
+    done < "$SOURCE_ROOT/release.remove"
+
+    printf 'Veraltete Dateien aus dem Updateverzeichnis entfernt: %d\n' "$removed_count"
 }
 
 database_migration_package_validate() {
@@ -456,8 +536,9 @@ old_manifest_snapshot() {
 }
 
 obsolete_managed_files_remove() {
-    local checksum manifest_path extra relative_path target_file
+    local checksum manifest_path extra relative_path target_file removal_line removal_path
     local -A new_paths=()
+    local -A explicitly_removed_paths=()
     local removed_count=0
 
     while read -r checksum manifest_path extra; do
@@ -466,11 +547,32 @@ obsolete_managed_files_remove() {
         new_paths["$relative_path"]=1
     done < "$SOURCE_ROOT/release.sha256"
 
+    while IFS= read -r removal_line || [[ -n "$removal_line" ]]; do
+        removal_line="$(trim "$removal_line")"
+        [[ -n "$removal_line" ]] || continue
+        [[ "$removal_line" == \#* ]] && continue
+
+        read -r removal_path extra <<< "$removal_line"
+        relative_path="$(removed_path_validate "$removal_path")"
+        explicitly_removed_paths["$relative_path"]=1
+        target_file="$TARGET_ROOT/$relative_path"
+
+        if [[ -d "$target_file" && ! -L "$target_file" ]]; then
+            fail "Eine veraltete Programmdatei ist im Ziel ein Verzeichnis: $relative_path"
+        fi
+        if [[ -e "$target_file" || -L "$target_file" ]]; then
+            rm -f -- "$target_file"
+            removed_count=$(( removed_count + 1 ))
+            FILES_CHANGED=1
+        fi
+    done < "$SOURCE_ROOT/release.remove"
+
     while read -r checksum manifest_path extra; do
         [[ -n "$checksum" || -n "$manifest_path" || -n "$extra" ]] || continue
         [[ "$checksum" =~ ^[0-9a-f]{64}$ ]] || continue
         relative_path="$(manifest_path_validate "$manifest_path")"
         [[ -z "${new_paths[$relative_path]+x}" ]] || continue
+        [[ -z "${explicitly_removed_paths[$relative_path]+x}" ]] || continue
         path_is_protected "$relative_path" && continue
 
         target_file="$TARGET_ROOT/$relative_path"
@@ -984,6 +1086,7 @@ command_required chown
 command_required readlink
 
 package_manifest_source_validate
+package_obsolete_source_files_remove
 database_migration_package_validate
 
 if command -v mariadb >/dev/null 2>&1; then

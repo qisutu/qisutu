@@ -26,6 +26,7 @@ use strict;
 use warnings;
 use utf8;
 use Time::Local qw(timelocal);
+use QisutuCMDB;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -54,6 +55,7 @@ sub Run {
     my $ArticleCreateError = '';
     my $TicketObject = $Self->_TicketObject();
     my $TicketFormObject = $Self->_TicketFormObject();
+    my $CMDBObject = QisutuCMDB->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
 
     if ( $TicketObject && ( $Request->{Step} || '' ) eq 'CustomerArticleCreate' ) {
         my $Body    = $Request->{Body} || '';
@@ -179,6 +181,11 @@ sub Run {
         TicketID => $Ticket->{id},
         Language => $Language,
     ) : '';
+    my $TicketCMDBHTML = $CMDBObject->CustomerTicketSummaryHTML(
+        TicketID => $Ticket->{id},
+        User     => $User,
+        Language => $Language,
+    );
 
     return {
         Template => 'CustomerTicketZoom.tt',
@@ -212,6 +219,8 @@ sub Run {
             ),
             TicketFormInformationHTML => $TicketFormInformationHTML,
             HasTicketFormInformation  => $TicketFormInformationHTML ? 1 : 0,
+            TicketCMDBHTML            => $TicketCMDBHTML,
+            HasTicketCMDB             => $TicketCMDBHTML ? 1 : 0,
 
             ArticleList              => $Articles,
             ArticleCount             => $ArticleCount,

@@ -25,6 +25,7 @@ package CustomerTicketCreate;
 use strict;
 use warnings;
 use utf8;
+use QisutuCMDB;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -50,6 +51,7 @@ sub Run {
     my $User         = $Param{User} || {};
     my $Language     = $Request->{Language} || $User->{language}
         || $Self->{Config}->{Language}->{Default} || 'en';
+    my $CMDBObject   = QisutuCMDB->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
     my $CreateError  = '';
     my $QueueList    = [];
 
@@ -81,6 +83,14 @@ sub Run {
                 UserAgent => $ENV{HTTP_USER_AGENT} || '',
             );
             if ( $Created && $Created->{TicketID} ) {
+                if ( $Request->{CMDBCIID} ) {
+                    $CMDBObject->TicketLinkAdd(
+                        TicketID       => $Created->{TicketID},
+                        CIID           => $Request->{CMDBCIID},
+                        User           => $User,
+                        CustomerContext => 1,
+                    );
+                }
                 return {
                     Redirect => 'index.pl?Page=CustomerTicketZoom&TicketID=' . $Created->{TicketID},
                 };
@@ -104,6 +114,14 @@ sub Run {
         );
 
         if ($TicketID) {
+            if ( $Request->{CMDBCIID} ) {
+                $CMDBObject->TicketLinkAdd(
+                    TicketID        => $TicketID,
+                    CIID            => $Request->{CMDBCIID},
+                    User            => $User,
+                    CustomerContext => 1,
+                );
+            }
             return {
                 Redirect => 'index.pl?Page=CustomerTicketZoom&TicketID=' . $TicketID,
             };
@@ -130,6 +148,11 @@ sub Run {
         );
         $CreateError ||= $FormObject->Error();
     }
+    my $CMDBSelectionHTML = $CMDBObject->CustomerTicketSelectionHTML(
+        User     => $User,
+        Selected => $Request->{CMDBCIID},
+        Language => $Language,
+    );
 
     return {
         Template => 'CustomerTicketCreate.tt',
@@ -150,6 +173,7 @@ sub Run {
             TicketFormSubmitLabel => $SelectedForm
                 ? ( $SelectedForm->{submit_label} || 'Translate:TicketFormSubmit' ) : '',
             TicketFormFieldsHTML => $FieldsHTML,
+            CMDBSelectionHTML    => $CMDBSelectionHTML,
             FormSelectionURL   => 'index.pl?Page=CustomerTicketCreate',
             CreateError        => $CreateError,
             CreateErrorClass   => $CreateError ? '' : 'qisutu-hidden',

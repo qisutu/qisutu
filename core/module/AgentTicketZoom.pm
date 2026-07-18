@@ -33,6 +33,7 @@ use QisutuResponseTemplate;
 use QisutuTimeAccounting;
 use QisutuTicketLink;
 use QisutuTicketHistory;
+use QisutuCMDB;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -58,6 +59,7 @@ sub Run {
     my $Ticket   = undef;
     my $Articles = [];
     my $ArticleCreateError = '';
+    my $CMDBActionError = '';
 
     my $TicketObject       = $Self->_TicketObject();
     my $DynamicFieldObject = $Self->_DynamicFieldObject();
@@ -66,6 +68,11 @@ sub Run {
     my $TimeAccountingObject = QisutuTimeAccounting->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
     my $TicketLinkObject = QisutuTicketLink->new( Config => $Self->{Config}, DB => $Self->{DB} );
     my $TicketHistoryObject = QisutuTicketHistory->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+        Output => $Self->{Output},
+    );
+    my $CMDBObject = QisutuCMDB->new(
         Config => $Self->{Config},
         DB     => $Self->{DB},
         Output => $Self->{Output},
@@ -141,6 +148,58 @@ sub Run {
                 next_before_id => 0 + ( $HistoryPage->{NextBeforeID} || 0 ),
             },
         );
+    }
+
+    if ( ( $Request->{Step} || '' ) eq 'CMDBSearch' ) {
+        my $User = $Param{User} || {};
+        my $AccessibleTicket = $TicketObject ? $TicketObject->TicketGet(
+            TicketID => $TicketID,
+            User     => $User,
+            Language => $Language,
+        ) : undef;
+        my $CMDBPermission = $CMDBObject->PermissionLevel( User => $User );
+        my $Allowed = $AccessibleTicket && $CMDBPermission->{View} && $Self->_QueueAccessCheck(
+            User       => $User,
+            QueueID    => $AccessibleTicket->{queue_id} || 0,
+            Permission => 'ticket.view',
+        );
+        return $Self->_JSONResponse(
+            Data => {
+                success => $Allowed ? 1 : 0,
+                items   => $Allowed ? $CMDBObject->SearchItems(
+                    Query => $Request->{Term} || $Request->{term} || $Request->{Query} || $Request->{query} || $Request->{q} || '',
+                    Limit => 30,
+                ) : [],
+            },
+        );
+    }
+
+    if ( $TicketObject && ( $Request->{Step} || '' ) =~ m{\ACMDB(?:Link|Unlink)\z} ) {
+        my $User = $Param{User} || {};
+        my $AccessibleTicket = $TicketObject->TicketGet(
+            TicketID => $TicketID,
+            User     => $User,
+            Language => $Language,
+        );
+        my $CMDBPermission = $CMDBObject->PermissionLevel( User => $User );
+        my $Allowed = $AccessibleTicket && ( $AccessibleTicket->{state_name} || '' ) ne 'merged'
+            && $CMDBPermission->{Change} && $Self->_QueueAccessCheck(
+                User       => $User,
+                QueueID    => $AccessibleTicket->{queue_id} || 0,
+                Permission => 'ticket.edit',
+            );
+        if ($Allowed) {
+            my $Success = ( $Request->{Step} || '' ) eq 'CMDBLink'
+                ? $CMDBObject->TicketLinkAdd( TicketID => $TicketID, CIID => $Request->{CIID}, User => $User )
+                : $CMDBObject->TicketLinkRemove( TicketID => $TicketID, CIID => $Request->{CIID}, User => $User );
+            if ($Success) {
+                return { Redirect => 'index.pl?Page=AgentTicketZoom&TicketID=' . $TicketID . '#qisutu-ticket-cmdb' };
+            }
+            $CMDBActionError = $CMDBObject->Error() || 'Translate:CMDBLinkFailed';
+        }
+        else {
+            $CMDBActionError = 'Translate:CMDBAccessDenied';
+        }
     }
 
     if ( ( $Request->{Step} || '' ) eq 'DynamicFields' ) {
@@ -822,6 +881,15 @@ sub Run {
         QueueID    => $Ticket->{queue_id},
         Permission => 'ticket.edit',
     );
+    my $CMDBPermission = $CMDBObject->PermissionLevel( User => $Param{User} || {} );
+    my $HasCMDBAccess = $CMDBPermission->{View} ? 1 : 0;
+    my $CanChangeCMDB = $HasCMDBAccess && $CMDBPermission->{Change} && $CanChangeTicket ? 1 : 0;
+    my $TicketCMDBItems = $HasCMDBAccess ? $CMDBObject->TicketCIList( TicketID => $Ticket->{id} ) : [];
+    my $TicketCMDBHTML = $HasCMDBAccess ? $CMDBObject->TicketSummaryHTML(
+        TicketID  => $Ticket->{id},
+        CanChange => $CanChangeCMDB,
+        Language  => $Language,
+    ) : '';
     my $TicketLinks = $TicketLinkObject->LinkList(
         TicketID => $Ticket->{id},
         User     => $Param{User} || {},
@@ -1069,6 +1137,15 @@ sub Run {
             HasTicketLinks        => @{$TicketLinks} ? 1 : 0,
             TicketLinksHiddenAttribute => @{$TicketLinks} ? '' : 'hidden',
             CanChangeTicket       => $CanChangeTicket ? 1 : 0,
+            HasCMDBAccess         => $HasCMDBAccess,
+            CanChangeCMDB         => $CanChangeCMDB,
+            TicketCMDBHTML        => $TicketCMDBHTML,
+            TicketCMDBCount       => scalar @{$TicketCMDBItems},
+            CMDBExpandedClass     => @{$TicketCMDBItems} ? 'qisutu-ticket-info-block-open' : '',
+            CMDBExpandedAria      => @{$TicketCMDBItems} ? 'true' : 'false',
+            CMDBHiddenAttribute   => @{$TicketCMDBItems} ? '' : 'hidden',
+            CMDBActionError       => $CMDBActionError,
+            CMDBActionErrorClass  => $CMDBActionError ? '' : 'qisutu-hidden',
             TicketMerged          => $TicketMerged,
             TicketMergedTargetID  => $MergedTargetLink->{ticket_id} || 0,
             TicketMergedTargetNumber => $MergedTargetLink->{ticket_number} || '',

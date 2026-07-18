@@ -136,6 +136,53 @@ Ticket-Zoom unter `Formular-Informationen`, angemeldete Kunden unter
 `Ihre Formularangaben`. Spätere Änderungen am Formular verändern bestehende
 Übermittlungen nicht.
 
+## CMDB
+
+Die integrierte CMDB arbeitet ohne vorgegebene CI-Typen. Administratoren
+definieren CI-Typen, Feldgruppen, Pflicht-, Auswahl- und eindeutige Felder,
+Statuskataloge sowie gerichtete Beziehungsarten vollständig selbst. Auch das
+CI-Inventar, Kunden- und Ansprechpartnerzuordnungen, Beziehungen, Archivierung
+und Importe liegen ausschließlich im Administrationsbereich. Agenten ändern
+keine CMDB-Stammdaten; sie suchen und verknüpfen CIs nur im Ticket-Zoom und
+öffnen ein bereits verknüpftes CI dort schreibgeschützt. Beim Zusammenfassen
+eines Tickets werden dessen CI-Verknüpfungen vollständig in das Zielticket
+übernommen.
+
+Jede fachliche Änderung wird in einer unveränderlichen CI-Historie
+protokolliert. Herstellerunabhängige CSV-Importprofile ordnen Quellspalten,
+Werte und Aktualisierungsregeln den Qisutu-Feldern zu. Der eindeutige Abgleich
+erfolgt je Quelle über eine externe ID. Ein gespeichertes Profil kann manuell
+oder nachts per Cron ausgeführt werden, zum Beispiel:
+
+```bash
+/opt/qisutu/bin/qisutu-cmdb-import.pl --profile 1 --file /srv/import/idoit.csv
+```
+
+Im Kundenportal werden ausschließlich aktive, ausdrücklich freigegebene CIs
+des angemeldeten Kunden beziehungsweise Ansprechpartners und nur ausdrücklich
+freigegebene CI-Felder angezeigt.
+
+## CSV-Importe für Stammdaten
+
+Unter `Administration > CSV-Importe` stehen getrennte Importe für Kunden,
+Ansprechpartner und Agenten bereit. Die Grundstruktur ist fest vorgegeben;
+aktive dynamische Felder der jeweiligen Qisutu-Installation werden automatisch
+als `dynamic.<feldname>` an die Vorlage angehängt. Deshalb sollte die aktuelle
+Vorlage immer direkt aus der Zielinstallation heruntergeladen werden.
+
+Jeder Lauf wird zuerst vollständig geprüft. Die Vorschau zeigt neue,
+geänderte, unveränderte und fehlerhafte Zeilen; bei einem Fehler ist der Import
+gesperrt. Erst nach Bestätigung schreibt Qisutu alle Zeilen gemeinsam in einer
+Datenbanktransaktion. Kundennummer beziehungsweise Login dienen als eindeutige
+Abgleichschlüssel. Nicht in der CSV enthaltene Datensätze werden weder gelöscht
+noch deaktiviert.
+
+Passwörter, Agentengruppen und Berechtigungen sind bewusst nicht Bestandteil
+der CSV. Bestehende Agentenrechte bleiben unverändert, neue Agenten erhalten
+keine Gruppenrechte. Für neu angelegte aktive Ansprechpartner und Agenten kann
+der Administrator nach erfolgreichem Import optional Einladungen zum Setzen
+des ersten Passworts versenden.
+
 ## Datenbankkonfiguration
 
 Die Datenbankverbindung steht direkt in `core/config/QisutuConfig.pm`. Der

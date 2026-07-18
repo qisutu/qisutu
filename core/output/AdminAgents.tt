@@ -40,6 +40,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <span class="qisutu-panel-subtitle">[% AgentCount %] [% Translate.AdminEntries %]</span>
                         </div>
                         <div class="qisutu-panel-actions">
+                            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCSVImports;Action=Template;ImportType=agent">[% Translate.MasterDataImportDownloadTemplate %]</a>
                             <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminAgents;Action=FieldCreate">[% Translate.AdminAgentFieldCreate %]</a>
                             <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminAgents;Action=Create">[% Translate.AdminAgentCreate %]</a>
                         </div>

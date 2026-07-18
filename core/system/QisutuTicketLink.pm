@@ -561,6 +561,57 @@ sub TicketMerge {
         }
     }
 
+    # A merged ticket is an empty shell. Move its CMDB assignments to the
+    # target as well and retain an immutable audit entry on both objects.
+    my $CMDBItems = $Self->{DB}->SelectAll(
+        'SELECT ci.id, ci.ci_number, ci.name, ct.name AS type_name
+         FROM ticket_cmdb_ci tc
+         INNER JOIN cmdb_ci ci ON ci.id = tc.ci_id
+         INNER JOIN cmdb_ci_type ct ON ct.id = ci.type_id
+         WHERE tc.ticket_id = ?
+         ORDER BY tc.id ASC
+         FOR UPDATE',
+        $SourceTicketID,
+    );
+    if ( !defined $CMDBItems ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:TicketMergeFailed';
+        $Self->_TransactionRollback();
+        return;
+    }
+    my $ActorName = join ' ', grep {$_} ( $User->{firstname}, $User->{lastname} );
+    $ActorName ||= $User->{login} || $User->{email} || 'System';
+    for my $CI ( @{$CMDBItems} ) {
+        my $Inserted = $Self->{DB}->Do(
+            'INSERT IGNORE INTO ticket_cmdb_ci (ticket_id,ci_id,created_by_user_id,created_at) VALUES (?,?,?,NOW())',
+            $TargetTicketID, $CI->{id}, $UserID,
+        );
+        my $Removed = $Self->{DB}->Do(
+            'DELETE FROM ticket_cmdb_ci WHERE ticket_id=? AND ci_id=?',
+            $SourceTicketID, $CI->{id},
+        );
+        my $CIHistory = $Self->{DB}->Do(
+            'INSERT INTO cmdb_ci_history (ci_id,event_type,old_value,new_value,details,related_ticket_id,actor_user_id,actor_name,source,created_at)
+             VALUES (?,\'ticket_linked\',?,?,\'Ticket merge\',?,?,?,\'merge\',NOW())',
+            $CI->{id}, $SourceTicketID, $TargetTicketID, $TargetTicketID, $UserID, $ActorName,
+        );
+        my $Display = ( $CI->{ci_number} || '' ) . ' · ' . ( $CI->{name} || '' );
+        my $SourceHistory = $Self->{DB}->Do(
+            'INSERT INTO ticket_history (ticket_id,event_type,event_category,new_value,new_display,object_type,object_id,actor_user_id,actor_type,actor_name,source,details_text,created_at)
+             VALUES (?,\'cmdb_ci_unlinked\',\'system\',?,?,\'cmdb_ci\',?,?,\'agent\',?,\'merge\',?,NOW())',
+            $SourceTicketID, $CI->{id}, $Display, $CI->{id}, $UserID, $ActorName, $CI->{type_name} || '',
+        );
+        my $TargetHistory = $Self->{DB}->Do(
+            'INSERT INTO ticket_history (ticket_id,event_type,event_category,new_value,new_display,object_type,object_id,actor_user_id,actor_type,actor_name,source,details_text,created_at)
+             VALUES (?,\'cmdb_ci_linked\',\'system\',?,?,\'cmdb_ci\',?,?,\'agent\',?,\'merge\',?,NOW())',
+            $TargetTicketID, $CI->{id}, $Display, $CI->{id}, $UserID, $ActorName, $CI->{type_name} || '',
+        );
+        if ( !defined $Inserted || !$Removed || !$CIHistory || !$SourceHistory || !$TargetHistory ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Translate:TicketMergeFailed';
+            $Self->_TransactionRollback();
+            return;
+        }
+    }
+
     my $TimeReferenceClear = $Self->{DB}->Do(
         'UPDATE ticket_time_accounting
          SET ticket_article_id = NULL

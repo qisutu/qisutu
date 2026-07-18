@@ -1,0 +1,126 @@
+[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
+<section class="qisutu-dashboard qisutu-master-import" aria-labelledby="qisutu-master-import-title">
+    <div class="qisutu-dashboard-header">
+        <div>
+            <h1 id="qisutu-master-import-title">[% ProgramTitle %]</h1>
+            <p>[% ProgramDescription %]</p>
+        </div>
+        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=Admin">[% Translate.AdminBackToList %]</a>
+    </div>
+
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+    <div class="qisutu-form-error [% NoticeClass %]">[% NoticeMessage %]</div>
+
+    <nav class="qisutu-master-import-tabs" aria-label="[% Translate.MasterDataImportType %]">
+        [% FOREACH Tab IN Tabs %]
+        <a class="qisutu-button qisutu-button-secondary [% Tab.active_class %]" href="[% Tab.url %]">[% Tab.label %]</a>
+        [% END %]
+    </nav>
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header">
+            <div>
+                <h2>[% ImportTypeLabel %]</h2>
+                <span class="qisutu-panel-subtitle">[% Translate.MasterDataImportFormatHelp %]</span>
+            </div>
+            <a class="qisutu-button qisutu-button-primary" href="[% TemplateURL %]">[% Translate.MasterDataImportDownloadTemplate %]</a>
+        </div>
+
+        <div class="qisutu-master-import-header">
+            <strong>[% Translate.MasterDataImportExactHeader %]</strong>
+            <code>[% HeaderLine %]</code>
+        </div>
+
+        <div class="qisutu-table-wrap">
+            <table class="qisutu-table qisutu-table-compact">
+                <thead><tr><th>[% Translate.MasterDataImportColumn %]</th><th>[% Translate.MasterDataImportMeaning %]</th><th>[% Translate.MasterDataImportRequired %]</th><th>[% Translate.MasterDataImportExample %]</th></tr></thead>
+                <tbody>
+                    [% FOREACH Field IN DefinitionFields %]
+                    <tr><td><code>[% Field.Column %]</code></td><td>[% Field.description %]</td><td>[% Field.required_label %]</td><td>[% Field.example_display %]</td></tr>
+                    [% END %]
+                </tbody>
+            </table>
+        </div>
+
+        <div class="qisutu-master-import-rules">
+            <strong>[% Translate.MasterDataImportRules %]</strong>
+            <ul>
+                <li>[% Translate.MasterDataImportRuleUTF8 %]</li>
+                <li>[% Translate.MasterDataImportRuleExact %]</li>
+                <li>[% Translate.MasterDataImportRuleUpsert %]</li>
+                <li>[% Translate.MasterDataImportRuleNoDelete %]</li>
+                <li>[% Translate.MasterDataImportRuleNoPasswords %]</li>
+                <li>[% Translate.MasterDataImportRuleAgentRights %]</li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.MasterDataImportUpload %]</h2><span class="qisutu-panel-subtitle">[% Translate.MasterDataImportUploadHelp %]</span></div></div>
+        <form class="qisutu-admin-form qisutu-master-import-upload" method="post" action="[% FormAction %]" enctype="multipart/form-data">
+            <input type="hidden" name="Page" value="AdminCSVImports">
+            <input type="hidden" name="Step" value="Preview">
+            <input type="hidden" name="ImportType" value="[% ImportType %]">
+            <div class="qisutu-form-field">
+                <label for="qisutu-master-import-file">[% Translate.MasterDataImportFile %]</label>
+                <input id="qisutu-master-import-file" type="file" name="MasterDataCSV" accept=".csv,text/csv" required>
+                <span class="qisutu-form-hint">[% Translate.MasterDataImportFileHelp %]</span>
+            </div>
+            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.MasterDataImportPreview %]</button>
+        </form>
+    </section>
+
+    [% IF HasCurrentRun %]
+    <section class="qisutu-panel qisutu-master-import-preview">
+        <div class="qisutu-panel-header">
+            <div><h2>[% Translate.MasterDataImportPreviewTitle %] #[% CurrentRunID %]</h2><span class="qisutu-panel-subtitle">[% CurrentRunFileName %] · [% CurrentRunCreatedAt %] · [% CurrentRunCreatedBy %]</span></div>
+            <span class="qisutu-master-import-status [% CurrentRunStatusClass %]">[% CurrentRunStatusLabel %]</span>
+        </div>
+
+        <div class="qisutu-master-import-metrics">
+            <div><span>[% Translate.MasterDataImportRows %]</span><strong>[% CurrentRunTotalCount %]</strong></div>
+            <div><span>[% Translate.MasterDataImportCreated %]</span><strong>[% CurrentRunCreatedCount %]</strong></div>
+            <div><span>[% Translate.MasterDataImportUpdated %]</span><strong>[% CurrentRunUpdatedCount %]</strong></div>
+            <div><span>[% Translate.MasterDataImportUnchanged %]</span><strong>[% CurrentRunUnchangedCount %]</strong></div>
+            <div><span>[% Translate.MasterDataImportErrors %]</span><strong>[% CurrentRunErrorCount %]</strong></div>
+        </div>
+
+        [% IF HasCurrentErrorSummary %]<div class="qisutu-form-error">[% CurrentRunErrorSummary %]</div>[% END %]
+
+        [% IF HasCurrentItems %]
+        <div class="qisutu-table-wrap">
+            <table class="qisutu-table qisutu-table-compact">
+                <thead><tr><th>[% Translate.MasterDataImportRow %]</th><th>[% Translate.MasterDataImportRecordKey %]</th><th>[% Translate.MasterDataImportAction %]</th><th>[% Translate.MasterDataImportMessage %]</th></tr></thead>
+                <tbody>
+                    [% FOREACH Item IN CurrentItems %]
+                    <tr><td>[% Item.row_number %]</td><td><strong>[% Item.record_key %]</strong></td><td><span class="qisutu-master-import-action [% Item.action_class %]">[% Item.action_label %]</span></td><td>[% Item.message_display %]</td></tr>
+                    [% END %]
+                </tbody>
+            </table>
+        </div>
+        <p class="qisutu-form-hint [% IF CurrentItemsLimited %][% ELSE %]qisutu-hidden[% END %]">[% Translate.MasterDataImportPreviewLimited %]</p>
+        [% END %]
+
+        <div class="qisutu-master-import-preview-actions">
+            [% IF HasCurrentErrors %]<a class="qisutu-button qisutu-button-secondary" href="[% ErrorCSVURL %]">[% Translate.MasterDataImportDownloadErrors %]</a>[% END %]
+            [% IF CanImportCurrent %]
+            <form method="post" action="[% FormAction %]" class="qisutu-master-import-execute-form">
+                <input type="hidden" name="Page" value="AdminCSVImports"><input type="hidden" name="Step" value="Import"><input type="hidden" name="RunID" value="[% CurrentRunID %]"><input type="hidden" name="ImportType" value="[% ImportType %]">
+                [% IF ShowInvitationOption %]<label class="qisutu-checkbox-row"><input type="checkbox" name="SendInvitations" value="1"><span><strong>[% Translate.MasterDataImportSendInvitations %]</strong><small>[% Translate.MasterDataImportInvitationsHelp %]</small></span></label>[% END %]
+                <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.MasterDataImportExecute %]</button>
+            </form>
+            <form method="post" action="[% FormAction %]"><input type="hidden" name="Page" value="AdminCSVImports"><input type="hidden" name="Step" value="Cancel"><input type="hidden" name="RunID" value="[% CurrentRunID %]"><input type="hidden" name="ImportType" value="[% ImportType %]"><button class="qisutu-button qisutu-button-secondary" type="submit">[% Translate.MasterDataImportCancel %]</button></form>
+            [% END %]
+        </div>
+    </section>
+    [% END %]
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.MasterDataImportHistory %]</h2><span class="qisutu-panel-subtitle">[% Translate.MasterDataImportHistoryHelp %]</span></div></div>
+        [% IF HasRuns %]
+        <div class="qisutu-table-wrap"><table class="qisutu-table qisutu-table-compact"><thead><tr><th>[% Translate.MasterDataImportCreatedAt %]</th><th>[% Translate.MasterDataImportType %]</th><th>[% Translate.MasterDataImportFile %]</th><th>[% Translate.MasterDataImportStatus %]</th><th>[% Translate.MasterDataImportResult %]</th><th>[% Translate.MasterDataImportCreatedBy %]</th></tr></thead><tbody>
+            [% FOREACH Run IN RunList %]<tr><td><a class="qisutu-table-link" href="[% Run.url %]">[% Run.created_at %]</a></td><td>[% Run.type_label %]</td><td>[% Run.file_name %]</td><td><span class="qisutu-master-import-status [% Run.status_class %]">[% Run.status_label %]</span></td><td>+[% Run.created_count %] / ~[% Run.updated_count %] / =[% Run.unchanged_count %] / ![% Run.error_count %]</td><td>[% Run.created_by_name %]</td></tr>[% END %]
+        </tbody></table></div>
+        [% ELSE %]<p>[% Translate.MasterDataImportNoHistory %]</p>[% END %]
+    </section>
+</section>

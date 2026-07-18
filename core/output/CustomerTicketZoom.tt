@@ -170,6 +170,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         </div>
                         [% END %]
 
+                        [% IF HasTicketCMDB %]
+                        <div class="qisutu-ticket-info-block">
+                            <h3>[% Translate.CMDBConfigurationItems %]</h3>
+                            [% RAW.TicketCMDBHTML %]
+                        </div>
+                        [% END %]
+
                         <div class="qisutu-ticket-info-block">
                             <h3>[% Translate.TicketDates %]</h3>
                             <dl>

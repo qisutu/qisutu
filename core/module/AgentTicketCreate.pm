@@ -29,6 +29,7 @@ use utf8;
 use JSON::PP qw(encode_json);
 use QisutuService;
 use QisutuTimeAccounting;
+use QisutuCMDB;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -52,6 +53,7 @@ sub Run {
     my $User     = $Param{User} || {};
     my $Language = $Request->{Language} || $Self->{Config}->{Language}->{Default} || 'en';
     my $Step     = $Request->{Step} || '';
+    my $CMDBObject = QisutuCMDB->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
 
     if ( $Step eq 'AgentLookup' ) {
         return $Self->_JSONResponse(
@@ -75,6 +77,19 @@ sub Run {
                 CustomerUserID => $Request->{CustomerUserID},
                 Language       => $Language,
             ),
+        );
+    }
+
+    if ( $Step eq 'CMDBLookup' ) {
+        my $Permission = $CMDBObject->PermissionLevel( User => $User );
+        return $Self->_JSONResponse(
+            Data => {
+                success => $Permission->{View} ? 1 : 0,
+                items   => $Permission->{View} ? $CMDBObject->SearchItems(
+                    Query => $Request->{Term} || $Request->{term} || $Request->{Query} || $Request->{query} || $Request->{q} || '',
+                    Limit => 30,
+                ) : [],
+            },
         );
     }
 
@@ -239,6 +254,13 @@ sub Run {
             );
 
             if ($TicketID) {
+                if ( $Request->{CMDBCIID} && $CMDBObject->PermissionLevel( User => $User )->{Change} ) {
+                    $CMDBObject->TicketLinkAdd(
+                        TicketID => $TicketID,
+                        CIID     => $Request->{CMDBCIID},
+                        User     => $User,
+                    );
+                }
                 return {
                     Redirect => 'index.pl?Page=AgentTicketZoom&TicketID=' . $TicketID,
                 };
@@ -328,6 +350,8 @@ sub Run {
             SendEmailChecked   => $SendEmail ? 'checked' : '',
             CustomerUserID     => $Request->{CustomerUserID} || '',
             CustomerUserSearch => $Request->{CustomerUserSearch} || '',
+            CMDBCIID           => $Request->{CMDBCIID} || '',
+            CMDBCISearch       => $Request->{CMDBCISearch} || '',
             Cc                  => $Request->{Cc} || '',
             OwnerUserID         => $Request->{OwnerUserID} || '',
             OwnerUserSearch     => $Request->{OwnerUserSearch} || '',

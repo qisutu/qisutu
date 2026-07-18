@@ -56,6 +56,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <span class="qisutu-form-hint">[% Translate.TicketToolCustomerSearchHelp %]</span>
                                 </div>
 
+                                <div class="qisutu-form-field qisutu-autocomplete">
+                                    <label for="qisutu-agent-ticket-create-cmdb-ci">[% Translate.CMDBAffectedCI %]</label>
+                                    <input type="hidden" id="qisutu-agent-ticket-create-cmdb-ci-id" name="CMDBCIID" value="[% CMDBCIID %]" data-qisutu-autocomplete-target>
+                                    <input id="qisutu-agent-ticket-create-cmdb-ci" type="text" name="CMDBCISearch" value="[% CMDBCISearch %]" autocomplete="off" placeholder="[% Translate.CMDBSearchPlaceholder %]" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketCreate&amp;Step=CMDBLookup" data-qisutu-autocomplete-hidden="qisutu-agent-ticket-create-cmdb-ci-id" data-qisutu-autocomplete-min="1" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]">
+                                    <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+                                    <span class="qisutu-form-hint">[% Translate.CMDBAffectedCIHelp %]</span>
+                                </div>
+
                                 <div class="qisutu-form-field">
                                     <label for="qisutu-agent-ticket-create-service">[% Translate.TicketService %]</label>
                                     <select id="qisutu-agent-ticket-create-service" name="ServiceID" data-qisutu-create-service data-qisutu-service-tree data-qisutu-service-options-url="[% ServiceOptionsURL %]">

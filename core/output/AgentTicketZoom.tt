@@ -780,6 +780,21 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             </div>
                         </div>
 
+                        [% IF HasCMDBAccess %]
+                        <div id="qisutu-ticket-cmdb" class="qisutu-ticket-info-block [% CMDBExpandedClass %]" data-qisutu-ticket-info-section>
+                            <h3>
+                                <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="[% CMDBExpandedAria %]" aria-controls="qisutu-ticket-info-cmdb" data-qisutu-ticket-info-toggle>
+                                    <span>[% Translate.CMDBConfigurationItems %] · [% TicketCMDBCount %]</span>
+                                    <span class="qisutu-ticket-info-chevron" aria-hidden="true"></span>
+                                </button>
+                            </h3>
+                            <div id="qisutu-ticket-info-cmdb" class="qisutu-ticket-info-content" data-qisutu-ticket-info-content [% CMDBHiddenAttribute %]>
+                                <div class="qisutu-form-error [% CMDBActionErrorClass %]">[% CMDBActionError %]</div>
+                                [% RAW.TicketCMDBHTML %]
+                            </div>
+                        </div>
+                        [% END %]
+
                         <div class="qisutu-ticket-info-block" data-qisutu-ticket-info-section>
                             <h3>
                                 <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="false" aria-controls="qisutu-ticket-info-service-sla" data-qisutu-ticket-info-toggle>
@@ -931,9 +946,24 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 </section>
                 [% END %]
             </section>
+
+            [% IF CanChangeCMDB %]
+            <div class="qisutu-overlay" data-qisutu-cmdb-ticket-overlay hidden>
+                <div class="qisutu-overlay-dialog" role="dialog" aria-modal="true" aria-labelledby="qisutu-cmdb-ticket-dialog-title">
+                    <div class="qisutu-overlay-header">
+                        <div><h2 id="qisutu-cmdb-ticket-dialog-title">[% Translate.CMDBLinkToTicket %]</h2><p>[% Translate.CMDBTicketSearchHelp %]</p></div>
+                        <button class="qisutu-overlay-close" type="button" data-qisutu-cmdb-ticket-close aria-label="[% Translate.AdminClose %]">×</button>
+                    </div>
+                    <div class="qisutu-form-field"><label for="qisutu-cmdb-ticket-search">[% Translate.SearchTitle %]</label><input id="qisutu-cmdb-ticket-search" type="search" autocomplete="off" data-qisutu-cmdb-ticket-search data-url="index.pl?Page=AgentTicketZoom&amp;Step=CMDBSearch&amp;TicketID=[% TicketID %]"></div>
+                    <div class="qisutu-cmdb-ticket-results" data-qisutu-cmdb-ticket-results></div>
+                    <form method="post" action="index.pl" data-qisutu-cmdb-ticket-form><input type="hidden" name="Page" value="AgentTicketZoom"><input type="hidden" name="Step" value="CMDBLink"><input type="hidden" name="TicketID" value="[% TicketID %]"><input type="hidden" name="CIID" value=""></form>
+                </div>
+            </div>
+            [% END %]
             <script>
                 window.QISUTU_STATIC_BASE = '[% StaticBase %]';
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
             <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071802"></script>
+            <script src="[% StaticBase %]/js/qisutu-cmdb.js?v=2026071801"></script>

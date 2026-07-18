@@ -41,6 +41,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <span class="qisutu-panel-subtitle">[% CustomerUserCount %] [% Translate.AdminEntries %]</span>
                         </div>
                         <div class="qisutu-panel-actions">
+                            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCSVImports;Action=Template;ImportType=customer_user">[% Translate.MasterDataImportDownloadTemplate %]</a>
                             <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCustomerUsers;Action=FieldCreate">[% Translate.AdminCustomerUserFieldCreate %]</a>
                             <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminCustomerUsers;Action=Create">[% Translate.AdminCustomerUserCreate %]</a>
                         </div>
