@@ -392,8 +392,12 @@ sub _TicketListWhereData {
 
     if ($View) {
         if ( $View eq 'new' ) {
-            push @Where, 'LOWER(TRIM(s.name)) = ?';
+            push @Where, 's.state_type = ?';
             push @Bind, 'new';
+        }
+        elsif ( $View eq 'all_open' ) {
+            push @Where, 's.state_type <> ?';
+            push @Bind, 'closed';
         }
         elsif ( $View eq 'open' ) {
             push @Where, 's.state_type = ? AND LOWER(TRIM(s.name)) <> ?';
@@ -416,6 +420,56 @@ sub _TicketListWhereData {
                     OR (t.update_due_at IS NOT NULL AND t.update_due_at <= NOW())
                     OR (t.solution_due_at IS NOT NULL AND t.solution_at IS NULL AND t.solution_due_at <= NOW())
                  )';
+            push @Bind, 'closed';
+        }
+        elsif ( $View eq 'warning' ) {
+            push @Where,
+                's.state_type <> ?
+                 AND s.sla_pause = 0
+                 AND NULLIF(LEAST(
+                    COALESCE(CASE WHEN t.first_response_at IS NULL THEN t.first_response_due_at END, "9999-12-31 23:59:59"),
+                    COALESCE(t.update_due_at, "9999-12-31 23:59:59"),
+                    COALESCE(CASE WHEN t.solution_at IS NULL THEN t.solution_due_at END, "9999-12-31 23:59:59")
+                 ), "9999-12-31 23:59:59") > NOW()
+                 AND NULLIF(LEAST(
+                    COALESCE(CASE WHEN t.first_response_at IS NULL THEN t.first_response_due_at END, "9999-12-31 23:59:59"),
+                    COALESCE(t.update_due_at, "9999-12-31 23:59:59"),
+                    COALESCE(CASE WHEN t.solution_at IS NULL THEN t.solution_due_at END, "9999-12-31 23:59:59")
+                 ), "9999-12-31 23:59:59") <= DATE_ADD(NOW(), INTERVAL 8 HOUR)';
+            push @Bind, 'closed';
+        }
+        elsif ( $View eq 'customer_response' ) {
+            push @Where,
+                's.state_type <> ?
+                 AND t.last_customer_article_at IS NOT NULL
+                 AND (
+                    t.last_agent_article_at IS NULL
+                    OR t.last_customer_article_at > t.last_agent_article_at
+                 )';
+            push @Bind, 'closed';
+        }
+        elsif ( $View eq 'unassigned' ) {
+            push @Where, 's.state_type <> ? AND t.owner_user_id IS NULL';
+            push @Bind, 'closed';
+        }
+        elsif ( $View eq 'age_under_8h' ) {
+            push @Where, 's.state_type <> ? AND TIMESTAMPDIFF(MINUTE, t.created_at, NOW()) < 480';
+            push @Bind, 'closed';
+        }
+        elsif ( $View eq 'age_under_24h' ) {
+            push @Where, 's.state_type <> ? AND TIMESTAMPDIFF(MINUTE, t.created_at, NOW()) BETWEEN 480 AND 1439';
+            push @Bind, 'closed';
+        }
+        elsif ( $View eq 'age_under_3d' ) {
+            push @Where, 's.state_type <> ? AND TIMESTAMPDIFF(MINUTE, t.created_at, NOW()) BETWEEN 1440 AND 4319';
+            push @Bind, 'closed';
+        }
+        elsif ( $View eq 'age_under_10d' ) {
+            push @Where, 's.state_type <> ? AND TIMESTAMPDIFF(MINUTE, t.created_at, NOW()) BETWEEN 4320 AND 14399';
+            push @Bind, 'closed';
+        }
+        elsif ( $View eq 'age_over_10d' ) {
+            push @Where, 's.state_type <> ? AND TIMESTAMPDIFF(MINUTE, t.created_at, NOW()) >= 14400';
             push @Bind, 'closed';
         }
         elsif ( $View eq 'my' ) {

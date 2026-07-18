@@ -6487,3 +6487,349 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     .qisutu-ticket-form-admin .qisutu-ticket-form-field-card { align-items: flex-start; flex-direction: column; }
     .qisutu-ticket-form-language-grid { grid-template-columns: 1fr; }
 }
+
+/* Operational dashboard. */
+.qisutu-live-dashboard {
+    gap: 18px;
+}
+
+.qisutu-live-dashboard-header {
+    align-items: center;
+}
+
+.qisutu-dashboard-update {
+    align-items: center;
+    color: var(--qisutu-muted);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 13px;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.qisutu-dashboard-filter {
+    align-items: end;
+    background: var(--qisutu-surface);
+    border: 1px solid var(--qisutu-border);
+    border-radius: var(--qisutu-radius);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .05);
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(150px, .7fr) minmax(240px, 1.35fr) minmax(170px, .75fr) auto;
+    padding: 14px;
+}
+
+.qisutu-dashboard-filter-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.qisutu-dashboard-filter-field > span {
+    color: var(--qisutu-muted);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .035em;
+    text-transform: uppercase;
+}
+
+.qisutu-dashboard-filter-field select,
+.qisutu-dashboard-filter-field input {
+    min-width: 0;
+    width: 100%;
+}
+
+.qisutu-dashboard-filter-queue {
+    min-width: 240px;
+}
+
+.qisutu-dashboard-custom-dates {
+    display: grid;
+    gap: 10px;
+    grid-column: 1 / span 2;
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+}
+
+.qisutu-dashboard-filter-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.qisutu-dashboard-metrics {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.qisutu-dashboard-metric {
+    background: var(--qisutu-surface);
+    border: 1px solid var(--qisutu-border);
+    border-radius: var(--qisutu-radius);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .05);
+    color: var(--qisutu-text);
+    display: grid;
+    gap: 8px;
+    min-height: 112px;
+    overflow: hidden;
+    padding: 15px 16px;
+    position: relative;
+    text-decoration: none;
+    transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.qisutu-dashboard-metric::before {
+    background: var(--qisutu-dashboard-accent, var(--qisutu-primary));
+    content: '';
+    height: 4px;
+    inset: 0 0 auto;
+    position: absolute;
+}
+
+.qisutu-dashboard-metric:hover,
+.qisutu-dashboard-metric:focus-visible {
+    border-color: var(--qisutu-dashboard-accent, var(--qisutu-primary));
+    box-shadow: 0 14px 30px rgba(15, 23, 42, .1);
+    transform: translateY(-2px);
+}
+
+.qisutu-dashboard-metric-label {
+    color: var(--qisutu-muted);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.qisutu-dashboard-metric-value {
+    align-self: end;
+    font-size: 32px;
+    line-height: 1;
+}
+
+.qisutu-dashboard-metric-arrow {
+    bottom: 12px;
+    color: var(--qisutu-dashboard-accent, var(--qisutu-primary));
+    font-size: 18px;
+    font-weight: 800;
+    position: absolute;
+    right: 14px;
+}
+
+.qisutu-dashboard-metric-primary { --qisutu-dashboard-accent: #00677f; }
+.qisutu-dashboard-metric-info { --qisutu-dashboard-accent: #0284c7; }
+.qisutu-dashboard-metric-neutral { --qisutu-dashboard-accent: #64748b; }
+.qisutu-dashboard-metric-danger { --qisutu-dashboard-accent: #dc2626; }
+.qisutu-dashboard-metric-warning { --qisutu-dashboard-accent: #d97706; }
+.qisutu-dashboard-metric-customer { --qisutu-dashboard-accent: #7c3aed; }
+
+.qisutu-dashboard-chart-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.qisutu-dashboard-chart-card {
+    min-width: 0;
+    padding: 18px;
+}
+
+.qisutu-dashboard-chart-wide {
+    grid-column: 1 / -1;
+}
+
+.qisutu-dashboard-chart-wrap {
+    height: 310px;
+    min-width: 0;
+    position: relative;
+}
+
+.qisutu-dashboard-chart-wrap-compact {
+    height: 285px;
+}
+
+.qisutu-dashboard-chart-wrap canvas {
+    max-height: 100%;
+    max-width: 100%;
+}
+
+.qisutu-dashboard-data-details {
+    border-top: 1px solid var(--qisutu-border);
+    margin-top: 12px;
+    padding-top: 10px;
+}
+
+.qisutu-dashboard-data-details summary {
+    color: var(--qisutu-muted);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.qisutu-dashboard-data-details[open] summary {
+    margin-bottom: 10px;
+}
+
+.qisutu-dashboard-data-table {
+    font-size: 13px;
+}
+
+.qisutu-dashboard-data-table th,
+.qisutu-dashboard-data-table td {
+    padding: 7px 9px;
+}
+
+.qisutu-dashboard-attention {
+    padding: 18px;
+}
+
+.qisutu-dashboard-attention-table td {
+    vertical-align: middle;
+}
+
+.qisutu-dashboard-ticket-title {
+    display: block;
+    font-weight: 700;
+    max-width: 430px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qisutu-dashboard-reason {
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+    padding: 4px 8px;
+    white-space: nowrap;
+}
+
+.qisutu-dashboard-reason-danger { background: #fef2f2; color: #b91c1c; }
+.qisutu-dashboard-reason-warning { background: #fffbeb; color: #b45309; }
+.qisutu-dashboard-reason-customer { background: #f5f3ff; color: #6d28d9; }
+.qisutu-dashboard-reason-neutral { background: #f8fafc; color: #475569; }
+.qisutu-dashboard-reason-old { background: #fff7ed; color: #c2410c; }
+
+.qisutu-dashboard-no-access {
+    background: var(--qisutu-surface);
+    border: 1px dashed var(--qisutu-border);
+    border-radius: var(--qisutu-radius);
+}
+
+.qisutu-dashboard-customer-recent {
+    padding: 18px;
+}
+
+.qisutu-dashboard-customer-table a {
+    font-weight: 700;
+}
+
+@media (max-width: 1280px) {
+    .qisutu-dashboard-metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .qisutu-dashboard-filter {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .qisutu-dashboard-filter-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 900px) {
+    .qisutu-dashboard-chart-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .qisutu-dashboard-chart-wide {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 720px) {
+    .qisutu-live-dashboard-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .qisutu-dashboard-update {
+        justify-content: flex-start;
+    }
+
+    .qisutu-dashboard-filter {
+        grid-template-columns: 1fr;
+    }
+
+    .qisutu-dashboard-custom-dates {
+        grid-column: auto;
+        grid-template-columns: 1fr;
+    }
+
+    .qisutu-dashboard-filter-queue {
+        min-width: 0;
+    }
+
+    .qisutu-dashboard-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .qisutu-dashboard-metric {
+        min-height: 104px;
+    }
+
+    .qisutu-dashboard-chart-wrap,
+    .qisutu-dashboard-chart-wrap-compact {
+        height: 250px;
+    }
+
+    .qisutu-dashboard-attention-table thead {
+        display: none;
+    }
+
+    .qisutu-dashboard-attention-table,
+    .qisutu-dashboard-attention-table tbody,
+    .qisutu-dashboard-attention-table tr,
+    .qisutu-dashboard-attention-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .qisutu-dashboard-attention-table tr {
+        border-bottom: 1px solid var(--qisutu-border);
+        padding: 10px 0;
+    }
+
+    .qisutu-dashboard-attention-table td {
+        border: 0;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(110px, .45fr) minmax(0, 1fr);
+        padding: 5px 0;
+    }
+
+    .qisutu-dashboard-attention-table td::before {
+        color: var(--qisutu-muted);
+        content: attr(data-label);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+    }
+
+    .qisutu-dashboard-ticket-title {
+        max-width: none;
+        white-space: normal;
+    }
+}
+
+@media (max-width: 460px) {
+    .qisutu-dashboard-metrics {
+        grid-template-columns: 1fr;
+    }
+}

@@ -467,12 +467,16 @@ sub _ViewMenuHTML {
     my $Context  = $Param{Context} || {};
     my $Language = $Param{Language} || 'en';
     my @View = (
-        [ new       => 'TicketListViewNew' ],
-        [ open      => 'TicketListViewOpen' ],
-        [ pending   => 'TicketListViewPending' ],
-        [ closed    => 'TicketListViewClosed' ],
-        [ escalated => 'TicketListViewEscalated' ],
-        [ my        => 'TicketListViewMyTickets' ],
+        [ new               => 'TicketListViewNew' ],
+        [ all_open          => 'TicketListViewAllOpen' ],
+        [ open              => 'TicketListViewOpen' ],
+        [ pending           => 'TicketListViewPending' ],
+        [ customer_response => 'TicketListViewCustomerResponse' ],
+        [ unassigned        => 'TicketListViewUnassigned' ],
+        [ warning           => 'TicketListViewWarning' ],
+        [ escalated         => 'TicketListViewEscalated' ],
+        [ closed            => 'TicketListViewClosed' ],
+        [ my                => 'TicketListViewMyTickets' ],
     );
     my $HTML = '';
 
@@ -507,12 +511,21 @@ sub _ViewLabel {
     }
 
     my %Key = (
-        new       => 'TicketListViewNew',
-        open      => 'TicketListViewOpen',
-        pending   => 'TicketListViewPending',
-        closed    => 'TicketListViewClosed',
-        escalated => 'TicketListViewEscalated',
-        my        => 'TicketListViewMyTickets',
+        new               => 'TicketListViewNew',
+        all_open          => 'TicketListViewAllOpen',
+        open              => 'TicketListViewOpen',
+        pending           => 'TicketListViewPending',
+        customer_response => 'TicketListViewCustomerResponse',
+        unassigned        => 'TicketListViewUnassigned',
+        warning           => 'TicketListViewWarning',
+        age_under_8h      => 'TicketListViewAgeUnder8Hours',
+        age_under_24h     => 'TicketListViewAgeUnder24Hours',
+        age_under_3d      => 'TicketListViewAgeUnder3Days',
+        age_under_10d     => 'TicketListViewAgeUnder10Days',
+        age_over_10d      => 'TicketListViewAgeOver10Days',
+        closed            => 'TicketListViewClosed',
+        escalated         => 'TicketListViewEscalated',
+        my                => 'TicketListViewMyTickets',
     );
 
     return $Self->_Translate(
@@ -1660,7 +1673,7 @@ sub _ViewClean {
     my ( $Self, $View, %Param ) = @_;
 
     return '' if $Param{SearchActive};
-    return $View if defined $View && $View =~ m{\A(?:new|open|pending|closed|escalated|my)\z};
+    return $View if defined $View && $View =~ m{\A(?:new|all_open|open|pending|closed|escalated|warning|customer_response|unassigned|age_under_8h|age_under_24h|age_under_3d|age_under_10d|age_over_10d|my)\z};
     return 'new';
 }
 

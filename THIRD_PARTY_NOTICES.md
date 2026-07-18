@@ -1,5 +1,16 @@
 # Third-party notices
 
+## Chart.js
+
+Qisutu bundles Chart.js version 4.5.1 for the offline dashboard charts.
+
+Copyright (c) 2014-2025 Chart.js Contributors
+
+Chart.js is provided under the MIT License. The bundled license text is
+included as `var/static/js/chartjs/LICENSE.md`. Qisutu loads the library only
+from its own static file path and does not use a CDN or another external
+runtime service.
+
 ## CKEditor 5
 
 Qisutu bundles CKEditor 5 version 48.1.0 frontend files.

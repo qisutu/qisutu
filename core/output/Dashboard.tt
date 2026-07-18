@@ -22,33 +22,240 @@ SPDX-FileCopyrightText: 2026 Franziska Steps
 SPDX-License-Identifier: AGPL-3.0-or-later
 %]
 
-            <section class="qisutu-dashboard" aria-labelledby="qisutu-dashboard-title">
-                <div class="qisutu-dashboard-header">
+            <section class="qisutu-dashboard qisutu-live-dashboard" aria-labelledby="qisutu-dashboard-title" [% IF IsAgentDashboard %]data-qisutu-dashboard data-qisutu-dashboard-endpoint="[% DashboardDataEndpoint %]" data-qisutu-dashboard-refresh-seconds="[% AutoRefreshSeconds %]" data-qisutu-dashboard-refreshing="[% Translate.DashboardRefreshing %]" data-qisutu-dashboard-refresh-error="[% Translate.DashboardRefreshFailed %]"[% END %]>
+                <div class="qisutu-dashboard-header qisutu-live-dashboard-header">
                     <div>
-                        <h1 id="qisutu-dashboard-title">[% Translate.DashboardTitle %]</h1>
-                        <p>[% Translate.DashboardIntro %]</p>
+                        <h1 id="qisutu-dashboard-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
                     </div>
+                    [% IF IsAgentDashboard %]
+                    <div class="qisutu-dashboard-update">
+                        <span data-qisutu-dashboard-updated>[% GeneratedLabel %]</span>
+                        <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-dashboard-refresh>[% Translate.DashboardRefresh %]</button>
+                    </div>
+                    [% END %]
+                    [% IF IsCustomerDashboard %]
+                    <a class="qisutu-button qisutu-button-primary" href="[% CustomerTicketCreateURL %]">[% Translate.DashboardCustomerCreateTicket %]</a>
+                    [% END %]
                 </div>
 
-                <div class="qisutu-dashboard-grid">
-                    <article class="qisutu-metric-card">
-                        <span class="qisutu-metric-label">[% Translate.DashboardOpenTickets %]</span>
-                        <strong class="qisutu-metric-value">0</strong>
+                [% IF IsAgentDashboard %]
+                <div class="qisutu-alert qisutu-alert-error [% DashboardErrorClass %]" data-qisutu-dashboard-error>[% DashboardError %]</div>
+
+                [% IF HasQueueAccess %]
+                <form class="qisutu-dashboard-filter" method="get" action="index.pl" data-qisutu-dashboard-filter>
+                    <input type="hidden" name="Page" value="Dashboard">
+                    <label class="qisutu-dashboard-filter-field">
+                        <span>[% Translate.DashboardPeriod %]</span>
+                        <select name="Period" data-qisutu-dashboard-period>
+                            [% FOREACH Option IN PeriodOptions %]
+                            <option value="[% Option.value %]" [% Option.selected %]>[% Option.label %]</option>
+                            [% END %]
+                        </select>
+                    </label>
+                    <div class="qisutu-dashboard-custom-dates [% CustomDateClass %]" data-qisutu-dashboard-custom-dates>
+                        <label class="qisutu-dashboard-filter-field">
+                            <span>[% Translate.DashboardDateFrom %]</span>
+                            <input type="date" name="DateFrom" value="[% DateFrom %]" [% CustomDateDisabled %] data-qisutu-dashboard-date-from>
+                        </label>
+                        <label class="qisutu-dashboard-filter-field">
+                            <span>[% Translate.DashboardDateTo %]</span>
+                            <input type="date" name="DateTo" value="[% DateTo %]" [% CustomDateDisabled %] data-qisutu-dashboard-date-to>
+                        </label>
+                    </div>
+                    <label class="qisutu-dashboard-filter-field qisutu-dashboard-filter-queue">
+                        <span>[% Translate.DashboardQueue %]</span>
+                        <select name="QueueID">
+                            <option value="0">[% Translate.TicketListAllQueues %]</option>
+                            [% FOREACH Queue IN QueueOptions %]
+                            <option value="[% Queue.id %]" [% Queue.selected %]>[% Queue.label %]</option>
+                            [% END %]
+                        </select>
+                    </label>
+                    <label class="qisutu-dashboard-filter-field">
+                        <span>[% Translate.DashboardScope %]</span>
+                        <select name="Scope">
+                            [% FOREACH Option IN ScopeOptions %]
+                            <option value="[% Option.value %]" [% Option.selected %]>[% Option.label %]</option>
+                            [% END %]
+                        </select>
+                    </label>
+                    <div class="qisutu-dashboard-filter-actions">
+                        <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.DashboardApplyFilters %]</button>
+                        <a class="qisutu-button qisutu-button-secondary" href="[% DashboardResetURL %]">[% Translate.DashboardResetFilters %]</a>
+                    </div>
+                </form>
+                [% ELSE %]
+                <div class="qisutu-empty qisutu-dashboard-no-access">
+                    <strong>[% Translate.DashboardNoQueueAccessTitle %]</strong>
+                    <p>[% Translate.DashboardNoQueueAccessText %]</p>
+                </div>
+                [% END %]
+                [% END %]
+
+                <div class="qisutu-dashboard-metrics" data-qisutu-dashboard-metrics>
+                    [% FOREACH Metric IN Metrics %]
+                    <a class="qisutu-dashboard-metric [% Metric.class %]" href="[% Metric.url %]" data-qisutu-dashboard-metric="[% Metric.key %]">
+                        <span class="qisutu-dashboard-metric-label">[% Metric.label %]</span>
+                        <strong class="qisutu-dashboard-metric-value" data-qisutu-dashboard-metric-value>[% Metric.value %]</strong>
+                        <span class="qisutu-dashboard-metric-arrow" aria-hidden="true">→</span>
+                    </a>
+                    [% END %]
+                </div>
+
+                [% IF IsAgentDashboard %]
+                <div class="qisutu-dashboard-chart-grid">
+                    <article class="qisutu-panel qisutu-dashboard-chart-card qisutu-dashboard-chart-wide">
+                        <div class="qisutu-panel-header">
+                            <div>
+                                <h2>[% Translate.DashboardTrendTitle %]</h2>
+                                <span class="qisutu-panel-subtitle">[% Translate.DashboardTrendSubtitle %]</span>
+                            </div>
+                        </div>
+                        <div class="qisutu-dashboard-chart-wrap">
+                            <canvas data-qisutu-dashboard-chart="trend" role="img" aria-label="[% Translate.DashboardTrendTitle %]"></canvas>
+                        </div>
+                        <details class="qisutu-dashboard-data-details">
+                            <summary>[% Translate.DashboardShowData %]</summary>
+                            <div class="qisutu-table-wrap">
+                                <table class="qisutu-table qisutu-dashboard-data-table">
+                                    <thead><tr><th>[% Translate.DashboardDate %]</th><th>[% Translate.DashboardCreated %]</th><th>[% Translate.DashboardClosed %]</th></tr></thead>
+                                    <tbody data-qisutu-dashboard-trend-table>
+                                        [% FOREACH Row IN TrendRows %]
+                                        <tr><td>[% Row.label %]</td><td>[% Row.created %]</td><td>[% Row.closed %]</td></tr>
+                                        [% END %]
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
                     </article>
-                    <article class="qisutu-metric-card">
-                        <span class="qisutu-metric-label">[% Translate.DashboardWaitingTickets %]</span>
-                        <strong class="qisutu-metric-value">0</strong>
+
+                    <article class="qisutu-panel qisutu-dashboard-chart-card">
+                        <div class="qisutu-panel-header">
+                            <div>
+                                <h2>[% Translate.DashboardStatusTitle %]</h2>
+                                <span class="qisutu-panel-subtitle">[% Translate.DashboardStatusSubtitle %]</span>
+                            </div>
+                        </div>
+                        <div class="qisutu-dashboard-chart-wrap qisutu-dashboard-chart-wrap-compact">
+                            <canvas data-qisutu-dashboard-chart="status" role="img" aria-label="[% Translate.DashboardStatusTitle %]"></canvas>
+                        </div>
+                        <details class="qisutu-dashboard-data-details">
+                            <summary>[% Translate.DashboardShowData %]</summary>
+                            <div class="qisutu-table-wrap">
+                                <table class="qisutu-table qisutu-dashboard-data-table">
+                                    <thead><tr><th>[% Translate.TicketState %]</th><th>[% Translate.DashboardTickets %]</th></tr></thead>
+                                    <tbody data-qisutu-dashboard-status-table>
+                                        [% FOREACH Row IN StatusRows %]
+                                        <tr><td><a href="[% Row.url %]">[% Row.label %]</a></td><td>[% Row.value %]</td></tr>
+                                        [% END %]
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
                     </article>
-                    <article class="qisutu-metric-card">
-                        <span class="qisutu-metric-label">[% Translate.DashboardTodayTickets %]</span>
-                        <strong class="qisutu-metric-value">0</strong>
+
+                    <article class="qisutu-panel qisutu-dashboard-chart-card">
+                        <div class="qisutu-panel-header">
+                            <div>
+                                <h2>[% Translate.DashboardAgeTitle %]</h2>
+                                <span class="qisutu-panel-subtitle">[% Translate.DashboardAgeSubtitle %]</span>
+                            </div>
+                        </div>
+                        <div class="qisutu-dashboard-chart-wrap qisutu-dashboard-chart-wrap-compact">
+                            <canvas data-qisutu-dashboard-chart="age" role="img" aria-label="[% Translate.DashboardAgeTitle %]"></canvas>
+                        </div>
+                        <details class="qisutu-dashboard-data-details">
+                            <summary>[% Translate.DashboardShowData %]</summary>
+                            <div class="qisutu-table-wrap">
+                                <table class="qisutu-table qisutu-dashboard-data-table">
+                                    <thead><tr><th>[% Translate.DashboardAge %]</th><th>[% Translate.DashboardTickets %]</th></tr></thead>
+                                    <tbody data-qisutu-dashboard-age-table>
+                                        [% FOREACH Row IN AgeRows %]
+                                        <tr><td><a href="[% Row.url %]">[% Row.label %]</a></td><td>[% Row.value %]</td></tr>
+                                        [% END %]
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
                     </article>
                 </div>
 
-                <section class="qisutu-panel">
+                <section class="qisutu-panel qisutu-dashboard-attention">
                     <div class="qisutu-panel-header">
-                        <h2>[% Translate.DashboardWorkArea %]</h2>
+                        <div>
+                            <h2>[% Translate.DashboardAttentionTitle %]</h2>
+                            <span class="qisutu-panel-subtitle">[% Translate.DashboardAttentionSubtitle %]</span>
+                        </div>
                     </div>
-                    <p>[% Translate.DashboardWorkAreaText %]</p>
+                    <div class="qisutu-table-wrap [% IF HasAttentionTickets %][% ELSE %]qisutu-hidden[% END %]" data-qisutu-dashboard-attention-table-wrap>
+                        <table class="qisutu-table qisutu-dashboard-attention-table">
+                            <thead>
+                                <tr>
+                                    <th>[% Translate.TicketNumber %]</th>
+                                    <th>[% Translate.TicketTitle %]</th>
+                                    <th>[% Translate.TicketQueue %]</th>
+                                    <th>[% Translate.TicketState %]</th>
+                                    <th>[% Translate.DashboardAge %]</th>
+                                    <th>[% Translate.DashboardReason %]</th>
+                                </tr>
+                            </thead>
+                            <tbody data-qisutu-dashboard-attention-body>
+                                [% FOREACH Ticket IN AttentionTickets %]
+                                <tr>
+                                    <td data-label="[% Translate.TicketNumber %]"><a href="[% Ticket.url %]">[% Ticket.ticket_number %]</a></td>
+                                    <td data-label="[% Translate.TicketTitle %]"><a class="qisutu-dashboard-ticket-title" href="[% Ticket.url %]">[% Ticket.title %]</a></td>
+                                    <td data-label="[% Translate.TicketQueue %]">[% Ticket.queue_name %]</td>
+                                    <td data-label="[% Translate.TicketState %]">[% Ticket.state_name %]</td>
+                                    <td data-label="[% Translate.DashboardAge %]">[% Ticket.age %]</td>
+                                    <td data-label="[% Translate.DashboardReason %]"><span class="qisutu-dashboard-reason [% Ticket.reason_class %]">[% Ticket.reason %]</span></td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="qisutu-empty [% IF HasAttentionTickets %]qisutu-hidden[% END %]" data-qisutu-dashboard-attention-empty>
+                        <strong>[% Translate.DashboardAttentionEmpty %]</strong>
+                    </div>
                 </section>
+
+                <script id="qisutu-dashboard-data" type="application/json">[% RAW.DashboardDataJSON %]</script>
+                <script src="[% StaticBase %]/js/chartjs/chart.umd.min.js?v=4.5.1"></script>
+                <script src="[% StaticBase %]/js/qisutu-dashboard.js?v=2026071801"></script>
+                [% END %]
+
+                [% IF IsCustomerDashboard %]
+                <section class="qisutu-panel qisutu-dashboard-customer-recent">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.DashboardCustomerRecentTitle %]</h2>
+                            <span class="qisutu-panel-subtitle">[% Translate.DashboardCustomerRecentSubtitle %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="[% CustomerTicketListURL %]">[% Translate.DashboardCustomerAllTickets %]</a>
+                    </div>
+                    [% IF HasCustomerTickets %]
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-dashboard-customer-table">
+                            <thead><tr><th>[% Translate.TicketNumber %]</th><th>[% Translate.TicketTitle %]</th><th>[% Translate.TicketQueue %]</th><th>[% Translate.TicketState %]</th><th>[% Translate.TicketChanged %]</th></tr></thead>
+                            <tbody>
+                                [% FOREACH Ticket IN CustomerTickets %]
+                                <tr>
+                                    <td data-label="[% Translate.TicketNumber %]"><a href="[% Ticket.ticket_zoom_url %]">[% Ticket.ticket_number %]</a></td>
+                                    <td data-label="[% Translate.TicketTitle %]"><a href="[% Ticket.ticket_zoom_url %]">[% Ticket.title %]</a></td>
+                                    <td data-label="[% Translate.TicketQueue %]">[% Ticket.queue_name %]</td>
+                                    <td data-label="[% Translate.TicketState %]">[% Ticket.state_name_display %]</td>
+                                    <td data-label="[% Translate.TicketChanged %]">[% Ticket.changed_at_display %]</td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                    [% ELSE %]
+                    <div class="qisutu-empty">
+                        <strong>[% Translate.DashboardCustomerEmptyTitle %]</strong>
+                        <p>[% Translate.DashboardCustomerEmptyText %]</p>
+                    </div>
+                    [% END %]
+                </section>
+                [% END %]
             </section>
