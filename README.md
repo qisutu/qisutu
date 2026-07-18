@@ -183,6 +183,24 @@ keine Gruppenrechte. Für neu angelegte aktive Ansprechpartner und Agenten kann
 der Administrator nach erfolgreichem Import optional Einladungen zum Setzen
 des ersten Passworts versenden.
 
+## Wissensdatenbank und FAQ
+
+Alle Agenten können Kategorien mit mehrsprachigen Bezeichnungen sowie
+FAQ-Artikel anlegen und bearbeiten. Artikel besitzen eine eindeutige
+FAQ-Nummer, Sprache und genau eine von zwei Sichtbarkeiten: „Nur Agenten“ oder
+„Agenten und Kunden“. Gruppenrechte, Queue-Zuordnungen, kundenspezifische
+Freigaben und ein zusätzlicher Veröffentlichungsstatus sind bewusst nicht Teil
+der FAQ-Logik. Jede Speicherung erzeugt eine neue, unveränderliche Revision.
+
+Im Kundenportal erscheinen alle Artikel mit der Sichtbarkeit „Agenten und
+Kunden“. Agenten können beim
+Erstellen und Bearbeiten eines Tickets direkt am CKEditor nach FAQ-Artikeln
+suchen und Lösung, Titel mit Lösung oder einen Kundenportal-Link an der
+aktuellen Cursorposition einfügen. Bei E-Mails und kundensichtbaren Notizen
+blockiert Qisutu ausschließlich Artikel mit der Sichtbarkeit „Nur Agenten“.
+Die Verwendung einer Revision wird am Artikel und –
+soweit bereits vorhanden – am Ticket protokolliert.
+
 ## Datenbankkonfiguration
 
 Die Datenbankverbindung steht direkt in `core/config/QisutuConfig.pm`. Der

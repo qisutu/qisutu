@@ -1,0 +1,18 @@
+{
+    Name            => 'AdminKnowledgeBase',
+    Module          => 'AdminKnowledgeBase',
+    Title           => 'AdminKnowledgeBaseTitle',
+    Description     => 'AdminKnowledgeBaseDescription',
+    Icon            => '',
+    URL             => 'index.pl?Page=AdminKnowledgeBase',
+    Type            => 'SubNavigation',
+    Parent          => 'Admin',
+    Order           => 918,
+    VisibleFor      => [ 'admin' ],
+    AccessType      => 'agent',
+    AccessTypes     => [ 'agent' ],
+    PermissionGroup => 'admin',
+    PermissionMode  => 'ro',
+    Permission      => 'admin.view',
+    Active          => 1,
+}

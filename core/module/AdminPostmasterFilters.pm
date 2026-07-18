@@ -225,14 +225,18 @@ sub _ClientConfig {
     my $Form     = $Param{Form} || {};
     my $Language = $Param{Language} || 'en';
 
+    my %UsedCondition = map { ( $_->{field_name} || '' ) => 1 } @{ $Form->{conditions} || [] };
     my @Conditions = map {
         +{
             key      => $_->{key},
             label    => $Self->_DefinitionLabel( $_->{label}, $Language ),
             type     => $_->{type} || 'text',
+            group    => $_->{group} || 'basic',
+            advanced => $_->{advanced} ? JSON::PP::true : JSON::PP::false,
+            legacy   => $_->{legacy} ? JSON::PP::true : JSON::PP::false,
             argument => $_->{argument} ? JSON::PP::true : JSON::PP::false,
         }
-    } @{ $Object->ConditionDefinitions() };
+    } grep { !$_->{legacy} || $UsedCondition{ $_->{key} || '' } } @{ $Object->ConditionDefinitions() };
     my @Operators = map {
         +{
             key      => $_->{key},
@@ -243,11 +247,24 @@ sub _ClientConfig {
     } @{ $Object->OperatorDefinitions() };
     my @Actions = map {
         +{
-            key    => $_->{key},
-            label  => $Self->_DefinitionLabel( $_->{label}, $Language ),
-            target => $_->{target} || 'none',
+            key         => $_->{key},
+            label       => $Self->_DefinitionLabel( $_->{label}, $Language ),
+            target      => $_->{target} || 'none',
+            group       => $_->{group} || 'ticket',
+            targetLabel => $Self->_DefinitionLabel( $_->{target_label} || 'Translate:PostmasterFilterTarget', $Language ),
+            valueLabel  => $Self->_DefinitionLabel( $_->{value_label} || 'Translate:PostmasterFilterValue', $Language ),
         }
     } @{ $Object->ActionDefinitions() };
+
+    my %AdvancedOperator = map { ( $_->{key} || '' ) => $_->{advanced} ? 1 : 0 } @{ $Object->OperatorDefinitions() };
+    my $AdvancedInitiallyOpen = 0;
+    for my $Condition ( @{ $Form->{conditions} || [] } ) {
+        my ($Definition) = grep { ( $_->{key} || '' ) eq ( $Condition->{field_name} || '' ) } @Conditions;
+        if ( ( $Definition && ( $Definition->{advanced} || $Definition->{legacy} ) ) || $AdvancedOperator{ $Condition->{operator} || '' } ) {
+            $AdvancedInitiallyOpen = 1;
+            last;
+        }
+    }
 
     my %OptionMap = (
         queue         => $Self->_PlainOptions( $Options->{Queues} ),
@@ -268,6 +285,7 @@ sub _ClientConfig {
         options              => \%OptionMap,
         conditions           => $Form->{conditions} || [],
         actions              => $Form->{actions} || [],
+        advancedInitiallyOpen => $AdvancedInitiallyOpen ? JSON::PP::true : JSON::PP::false,
         labels => {
             field          => $Self->_T('PostmasterFilterField', $Language),
             header         => $Self->_T('PostmasterFilterHeaderName', $Language),
@@ -286,6 +304,12 @@ sub _ClientConfig {
             senderAgent    => $Self->_T('PostmasterFilterSenderAgent', $Language),
             senderSystem   => $Self->_T('PostmasterFilterSenderSystem', $Language),
             regexAdvanced  => $Self->_T('PostmasterFilterRegexAdvanced', $Language),
+            conditionBasic => $Self->_T('PostmasterFilterConditionGroupBasic', $Language),
+            conditionAdvanced => $Self->_T('PostmasterFilterConditionGroupAdvanced', $Language),
+            conditionLegacy => $Self->_T('PostmasterFilterConditionGroupLegacy', $Language),
+            actionTicket   => $Self->_T('PostmasterFilterActionGroupTicket', $Language),
+            actionArticle  => $Self->_T('PostmasterFilterActionGroupArticle', $Language),
+            actionProcessing => $Self->_T('PostmasterFilterActionGroupProcessing', $Language),
         },
     };
 

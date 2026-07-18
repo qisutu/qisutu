@@ -1,0 +1,56 @@
+[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
+<section class="qisutu-dashboard qisutu-knowledge-admin" aria-labelledby="qisutu-knowledge-admin-title">
+    <div class="qisutu-dashboard-header">
+        <div><h1 id="qisutu-knowledge-admin-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div>
+        [% IF ShowList %]<a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminKnowledgeBase;Action=Create">[% Translate.KnowledgeCategoryCreate %]</a>[% END %]
+    </div>
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+    <div class="qisutu-form-success [% SavedClass %]">[% SavedMessage %]</div>
+
+    [% IF ShowList %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.KnowledgeCategories %]</h2><span class="qisutu-panel-subtitle">[% CategoryCount %] [% Translate.AdminEntries %]</span></div></div>
+        <div class="qisutu-table-wrap"><table class="qisutu-table qisutu-table-compact"><thead><tr>
+            <th>[% Translate.AdminName %]</th><th>[% Translate.KnowledgeCategoryInternalName %]</th><th>[% Translate.KnowledgeArticles %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminAction %]</th>
+        </tr></thead><tbody>
+            [% FOREACH Category IN Categories %]
+            <tr><td><a class="qisutu-table-link" href="index.pl?Page=AdminKnowledgeBase;Action=Edit;CategoryID=[% Category.id %]">[% Category.display_name %]</a></td><td>[% Category.internal_name %]</td><td>[% Category.article_count %]</td><td>[% Category.active_label %]</td><td>
+                <form class="qisutu-inline-form" method="post" action="index.pl"><input type="hidden" name="Page" value="AdminKnowledgeBase"><input type="hidden" name="Step" value="CategoryToggle"><input type="hidden" name="CategoryID" value="[% Category.id %]"><input type="hidden" name="Active" value="[% Category.toggle_active %]"><button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="submit">[% Category.toggle_label %]</button></form>
+            </td></tr>
+            [% END %]
+        </tbody></table></div>
+    </section>
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.KnowledgePermissions %]</h2><span class="qisutu-panel-subtitle">[% Translate.KnowledgePermissionsHelp %]</span></div></div>
+        <form method="post" action="index.pl"><input type="hidden" name="Page" value="AdminKnowledgeBase"><input type="hidden" name="Step" value="PermissionsSave">
+            <div class="qisutu-table-wrap"><table class="qisutu-table qisutu-table-compact"><thead><tr><th>[% Translate.AdminGroup %]</th><th>[% Translate.KnowledgePermissionView %]</th><th>[% Translate.KnowledgePermissionEdit %]</th><th>[% Translate.KnowledgePermissionPublish %]</th></tr></thead><tbody>
+                [% FOREACH Group IN PermissionGroups %]
+                <tr><td><strong>[% Group.name %]</strong> [% Group.title %]</td><td><input type="checkbox" name="PermissionView_[% Group.id %]" value="1" [% Group.view_checked %]></td><td><input type="checkbox" name="PermissionEdit_[% Group.id %]" value="1" [% Group.edit_checked %]></td><td><input type="checkbox" name="PermissionPublish_[% Group.id %]" value="1" [% Group.publish_checked %]></td></tr>
+                [% END %]
+            </tbody></table></div>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button></div>
+        </form>
+    </section>
+    [% END %]
+
+    [% IF ShowForm %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><h2>[% IF IsEdit %][% Translate.KnowledgeCategoryEdit %][% ELSE %][% Translate.KnowledgeCategoryCreate %][% END %]</h2><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminKnowledgeBase">[% Translate.AdminBackToList %]</a></div>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="index.pl"><input type="hidden" name="Page" value="AdminKnowledgeBase"><input type="hidden" name="Step" value="CategorySave"><input type="hidden" name="CategoryID" value="[% CategoryID %]">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label>[% Translate.KnowledgeCategoryInternalName %] *</label><input type="text" name="InternalName" value="[% InternalName %]" pattern="[A-Za-z0-9][A-Za-z0-9_.-]*" required><span class="qisutu-form-hint">[% Translate.KnowledgeCategoryInternalNameHelp %]</span></div>
+                <div class="qisutu-form-field"><label>[% Translate.KnowledgeCategoryParent %]</label><select name="ParentID">[% RAW.ParentOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSortOrder %]</label><input type="number" name="SortOrder" value="[% SortOrder %]" min="0"></div>
+                <label class="qisutu-form-checkbox"><input type="checkbox" name="Active" value="1" [% ActiveChecked %]><span>[% Translate.AdminActive %]</span></label>
+            </div>
+            <div class="qisutu-admin-form-block"><h3>[% Translate.AdminTranslations %]</h3>
+                [% FOREACH Translation IN TranslationRows %]
+                <details class="qisutu-admin-translation" [% Translation.open %]><summary>[% Translation.code %]</summary><div class="qisutu-admin-form-columns"><div class="qisutu-form-field"><label>[% Translate.AdminName %]</label><input type="text" name="TranslationName_[% Translation.code %]" value="[% Translation.name %]"></div><div class="qisutu-form-field"><label>[% Translate.AdminDescription %]</label><textarea name="TranslationDescription_[% Translation.code %]" rows="3">[% Translation.description %]</textarea></div></div></details>
+                [% END %]
+            </div>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminKnowledgeBase">[% Translate.AdminCancel %]</a></div>
+        </form>
+    </section>
+    [% END %]
+</section>

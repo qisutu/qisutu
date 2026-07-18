@@ -1,0 +1,13 @@
+[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
+<section class="qisutu-dashboard qisutu-knowledge" aria-labelledby="qisutu-customer-knowledge-title">
+    <div class="qisutu-dashboard-header"><div><h1 id="qisutu-customer-knowledge-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div></div>
+    [% IF ShowList %]
+    <section class="qisutu-panel"><form class="qisutu-knowledge-filter qisutu-knowledge-filter-customer" method="get" action="index.pl"><input type="hidden" name="Page" value="CustomerKnowledgeBase"><div class="qisutu-form-field"><label>[% Translate.SearchTitle %]</label><input type="search" name="Query" value="[% Query %]" placeholder="[% Translate.KnowledgeSearchPlaceholder %]"></div><div class="qisutu-form-field"><label>[% Translate.KnowledgeCategory %]</label><select name="CategoryID">[% RAW.CategoryOptionsHTML %]</select></div><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.SearchSubmit %]</button><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=CustomerKnowledgeBase">[% Translate.SearchReset %]</a></form></section>
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.KnowledgeArticles %]</h2><span class="qisutu-panel-subtitle">[% ArticleCount %] [% Translate.AdminEntries %]</span></div></div>
+        [% IF HasArticles %]<div class="qisutu-knowledge-card-list">[% FOREACH Article IN Articles %]<a class="qisutu-knowledge-card" href="[% Article.url %]"><span class="qisutu-knowledge-card-category">[% Article.category_name %]</span><strong>[% Article.title %]</strong><p>[% Article.summary %]</p><small>[% Article.article_number %]</small></a>[% END %]</div>[% ELSE %]<div class="qisutu-empty"><strong>[% Translate.KnowledgeNoArticles %]</strong><p>[% Translate.KnowledgeNoCustomerArticlesHelp %]</p></div>[% END %]
+    </section>
+    [% END %]
+    [% IF ShowArticle %]
+        [% IF ArticleFound %]<article class="qisutu-panel qisutu-knowledge-article"><div class="qisutu-panel-header"><div><span class="qisutu-knowledge-number">[% ArticleNumber %]</span><h2>[% ArticleTitle %]</h2><p>[% ArticleSummary %]</p></div><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=CustomerKnowledgeBase">[% Translate.AdminBackToList %]</a></div><div class="qisutu-knowledge-meta"><span>[% ArticleCategory %]</span></div><div class="qisutu-rich-content">[% RAW.ArticleContent %]</div></article>[% ELSE %]<section class="qisutu-panel"><div class="qisutu-empty"><strong>[% Translate.KnowledgeArticleNotFound %]</strong><p>[% Translate.KnowledgeArticleNotAvailable %]</p></div></section>[% END %]
+    [% END %]
+</section>

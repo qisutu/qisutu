@@ -1,0 +1,7 @@
+# Veraltete, von Qisutu verwaltete Programmdateien.
+# Ein Pfad pro Zeile; die Pfade bleiben kumulativ in dieser Liste.
+./core/config/programs/CMDB.pm
+./core/config/programs/AdminKnowledgeBase.pm
+./core/module/AdminKnowledgeBase.pm
+./core/output/AdminKnowledgeBase.tt
+./var/static/js/qisutu-knowledge-admin.js

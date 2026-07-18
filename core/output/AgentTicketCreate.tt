@@ -124,6 +124,21 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 <div class="qisutu-form-field qisutu-form-field-richtext">
                                     <label for="qisutu-agent-ticket-create-body">[% Translate.TicketArticleBody %] *</label>
                                     <textarea id="qisutu-agent-ticket-create-body" class="qisutu-richtext" name="Body" rows="12" data-qisutu-create-body data-qisutu-body-required-message="[% Translate.AgentTicketCreateBodyRequired %]">[% Body %]</textarea>
+                                    [% IF HasKnowledgeAccess %]
+                                    <div class="qisutu-knowledge-insert-toolbar" data-qisutu-knowledge-insert data-editor="#qisutu-agent-ticket-create-body" data-context="ticket_create" data-search-url="index.pl?Page=AgentKnowledgeBase&amp;Step=SearchJSON" data-article-url="index.pl?Page=AgentKnowledgeBase&amp;Step=ArticleGetJSON" data-usage-url="index.pl?Page=AgentKnowledgeBase&amp;Step=UsageRecord" data-queue-selector="#qisutu-agent-ticket-create-queue" data-customer-user-selector="#qisutu-agent-ticket-create-customer-user-id" data-title-selector="#qisutu-agent-ticket-create-title-field" data-loading-text="[% Translate.KnowledgeInsertLoading %]" data-empty-text="[% Translate.KnowledgeInsertNoResults %]" data-error-text="[% Translate.KnowledgeInsertError %]" data-not-allowed-text="[% Translate.KnowledgeInsertRestricted %]">
+                                        <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-knowledge-open>[% Translate.KnowledgeInsertOpen %]</button>
+                                        <span class="qisutu-form-hint">[% Translate.KnowledgeInsertHelp %]</span>
+                                        <div class="qisutu-overlay qisutu-knowledge-insert-overlay" data-qisutu-knowledge-overlay hidden aria-hidden="true">
+                                            <div class="qisutu-overlay-dialog qisutu-knowledge-insert-dialog" role="dialog" aria-modal="true" aria-labelledby="qisutu-knowledge-create-dialog-title">
+                                                <div class="qisutu-overlay-header"><div><h2 id="qisutu-knowledge-create-dialog-title">[% Translate.KnowledgeInsertTitle %]</h2><p>[% Translate.KnowledgeInsertDescription %]</p></div><button class="qisutu-overlay-close" type="button" data-qisutu-knowledge-close aria-label="[% Translate.AdminClose %]">×</button></div>
+                                                <div class="qisutu-knowledge-insert-search"><label for="qisutu-knowledge-create-search">[% Translate.SearchTitle %]</label><input id="qisutu-knowledge-create-search" type="search" data-qisutu-knowledge-search placeholder="[% Translate.KnowledgeSearchPlaceholder %]" autocomplete="off"></div>
+                                                <div class="qisutu-knowledge-insert-status" data-qisutu-knowledge-status aria-live="polite"></div>
+                                                <div class="qisutu-knowledge-insert-layout"><div class="qisutu-knowledge-results" data-qisutu-knowledge-results></div><article class="qisutu-knowledge-preview" data-qisutu-knowledge-preview hidden><h3 data-qisutu-knowledge-preview-title></h3><p class="qisutu-knowledge-preview-meta" data-qisutu-knowledge-preview-meta></p><div class="qisutu-rich-content qisutu-knowledge-preview-content" data-qisutu-knowledge-preview-content></div></article></div>
+                                                <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-knowledge-close>[% Translate.AdminCancel %]</button><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-knowledge-insert-mode="link" disabled>[% Translate.KnowledgeInsertLink %]</button><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-knowledge-insert-mode="title_solution" disabled>[% Translate.KnowledgeInsertTitleSolution %]</button><button class="qisutu-button qisutu-button-primary" type="button" data-qisutu-knowledge-insert-mode="solution" disabled>[% Translate.KnowledgeInsertSolution %]</button></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    [% END %]
                                 </div>
 
                                 <div class="qisutu-form-field qisutu-ticket-reply-attachments">
@@ -206,5 +221,6 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 window.QISUTU_STATIC_BASE = '[% StaticBase %]';
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
-            <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
+            <script src="[% StaticBase %]/js/qisutu-richtext.js?v=2026071802"></script>
+            <script src="[% StaticBase %]/js/qisutu-knowledge-insert.js?v=2026071801"></script>
             <script src="[% StaticBase %]/js/qisutu-agent-ticket-create.js?v=2026071201"></script>

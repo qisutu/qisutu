@@ -1,0 +1,73 @@
+[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
+<section class="qisutu-dashboard qisutu-knowledge" aria-labelledby="qisutu-knowledge-title">
+    <div class="qisutu-dashboard-header">
+        <div><h1 id="qisutu-knowledge-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div>
+        [% IF ShowList %]<div class="qisutu-form-actions"><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase;Action=Categories">[% Translate.KnowledgeCategoriesManage %]</a><a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AgentKnowledgeBase;Action=Create">[% Translate.KnowledgeArticleCreate %]</a></div>[% END %]
+        [% IF ShowCategories %]<div class="qisutu-form-actions"><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase">[% Translate.KnowledgeBackToArticles %]</a><a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AgentKnowledgeBase;Action=CategoryCreate">[% Translate.KnowledgeCategoryCreate %]</a></div>[% END %]
+    </div>
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+    [% IF ShowList %]
+    <section class="qisutu-panel">
+        <form class="qisutu-knowledge-filter" method="get" action="index.pl"><input type="hidden" name="Page" value="AgentKnowledgeBase">
+            <div class="qisutu-form-field"><label>[% Translate.SearchTitle %]</label><input type="search" name="Query" value="[% Query %]" placeholder="[% Translate.KnowledgeSearchPlaceholder %]"></div>
+            <div class="qisutu-form-field"><label>[% Translate.KnowledgeCategory %]</label><select name="CategoryID">[% RAW.CategoryOptionsHTML %]</select></div>
+            <div class="qisutu-form-field"><label>[% Translate.KnowledgeLanguage %]</label><select name="ArticleLanguage">[% RAW.FilterLanguageOptionsHTML %]</select></div>
+            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.SearchSubmit %]</button><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase">[% Translate.SearchReset %]</a>
+        </form>
+    </section>
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.KnowledgeArticles %]</h2><span class="qisutu-panel-subtitle">[% ArticleCount %] [% Translate.AdminEntries %]</span></div></div>
+        [% IF HasArticles %]<div class="qisutu-table-wrap"><table class="qisutu-table"><thead><tr><th>[% Translate.KnowledgeArticleNumber %]</th><th>[% Translate.KnowledgeArticleTitle %]</th><th>[% Translate.KnowledgeCategory %]</th><th>[% Translate.KnowledgeLanguage %]</th><th>[% Translate.KnowledgeVisibility %]</th><th>[% Translate.KnowledgeUsage %]</th></tr></thead><tbody>
+        [% FOREACH Article IN Articles %]<tr><td><a class="qisutu-table-link" href="[% Article.url %]">[% Article.article_number %]</a></td><td><a class="qisutu-table-link" href="[% Article.url %]">[% Article.title %]</a><small>[% Article.summary %]</small></td><td>[% Article.category_name %]</td><td>[% Article.language %]</td><td>[% Article.visibility_label %]</td><td>[% Article.usage_count %]</td></tr>[% END %]
+        </tbody></table></div>[% ELSE %]<div class="qisutu-empty"><strong>[% Translate.KnowledgeNoArticles %]</strong><p>[% Translate.KnowledgeNoArticlesHelp %]</p></div>[% END %]
+    </section>
+    [% END %]
+
+    [% IF ShowArticle %]
+    <article class="qisutu-panel qisutu-knowledge-article"><div class="qisutu-panel-header"><div><span class="qisutu-knowledge-number">[% ArticleNumber %]</span><h2>[% ArticleTitle %]</h2><p>[% ArticleSummary %]</p></div><div class="qisutu-form-actions"><a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AgentKnowledgeBase;Action=Edit;ArticleID=[% ArticleID %]">[% Translate.AdminEdit %]</a><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase">[% Translate.AdminBackToList %]</a></div></div>
+        <div class="qisutu-knowledge-meta"><span>[% ArticleCategory %]</span><span>[% ArticleLanguage %]</span><span>[% ArticleVisibility %]</span><span>[% Translate.KnowledgeRevision %] [% ArticleRevision %]</span></div>
+        <div class="qisutu-knowledge-content">[% RAW.ArticleContent %]</div>
+    </article>
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% Translate.KnowledgeRevisionHistory %]</h2></div><div class="qisutu-table-wrap"><table class="qisutu-table qisutu-table-compact"><thead><tr><th>[% Translate.KnowledgeRevision %]</th><th>[% Translate.KnowledgeVisibility %]</th><th>[% Translate.TicketChanged %]</th><th>[% Translate.KnowledgeChangedBy %]</th></tr></thead><tbody>[% FOREACH Revision IN Revisions %]<tr><td>[% Revision.revision_number %]</td><td>[% Revision.visibility_label %]</td><td>[% Revision.created_at %]</td><td>[% Revision.actor %]</td></tr>[% END %]</tbody></table></div></section>
+    [% END %]
+
+    [% IF ShowForm %]
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% IF IsEdit %][% Translate.KnowledgeArticleEdit %][% ELSE %][% Translate.KnowledgeArticleCreate %][% END %]</h2><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase">[% Translate.AdminBackToList %]</a></div>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="index.pl"><input type="hidden" name="Page" value="AgentKnowledgeBase"><input type="hidden" name="Step" value="ArticleSave"><input type="hidden" name="ArticleID" value="[% ArticleID %]">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label>[% Translate.KnowledgeArticleTitle %] *</label><input type="text" name="Title" value="[% Title %]" required></div>
+                <div class="qisutu-form-field"><label>[% Translate.KnowledgeCategory %] *</label><select name="CategoryID" required>[% RAW.CategoryOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.KnowledgeLanguage %] *</label><select name="ArticleLanguage" required>[% RAW.LanguageOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.KnowledgeVisibility %]</label><select name="Visibility">[% RAW.VisibilityOptionsHTML %]</select><span class="qisutu-form-hint">[% Translate.KnowledgeVisibilityHelp %]</span></div>
+            </div>
+            <div class="qisutu-form-field"><label>[% Translate.KnowledgeArticleSummary %]</label><textarea name="Summary" rows="3">[% Summary %]</textarea></div>
+            <div class="qisutu-form-field"><label>[% Translate.KnowledgeKeywords %]</label><input type="text" name="Keywords" value="[% Keywords %]"><span class="qisutu-form-hint">[% Translate.KnowledgeKeywordsHelp %]</span></div>
+            <div class="qisutu-form-field"><label>[% Translate.KnowledgeSolution %] *</label><textarea class="qisutu-richtext" name="Content" rows="14">[% Content %]</textarea></div>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase">[% Translate.AdminCancel %]</a></div>
+        </form>
+    </section>
+    [% END %]
+
+    [% IF ShowCategories %]
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.KnowledgeCategories %]</h2><span class="qisutu-panel-subtitle">[% CategoryCount %] [% Translate.AdminEntries %]</span></div></div>
+        <div class="qisutu-table-wrap"><table class="qisutu-table qisutu-table-compact"><thead><tr><th>[% Translate.AdminName %]</th><th>[% Translate.KnowledgeCategoryInternalName %]</th><th>[% Translate.KnowledgeArticles %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminAction %]</th></tr></thead><tbody>
+        [% FOREACH Category IN Categories %]<tr><td><a class="qisutu-table-link" href="index.pl?Page=AgentKnowledgeBase;Action=CategoryEdit;CategoryID=[% Category.id %]">[% Category.display_name %]</a></td><td>[% Category.internal_name %]</td><td>[% Category.article_count %]</td><td>[% Category.active_label %]</td><td><form class="qisutu-inline-form" method="post" action="index.pl"><input type="hidden" name="Page" value="AgentKnowledgeBase"><input type="hidden" name="Step" value="CategoryToggle"><input type="hidden" name="CategoryID" value="[% Category.id %]"><input type="hidden" name="Active" value="[% Category.toggle_active %]"><button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="submit">[% Category.toggle_label %]</button></form></td></tr>[% END %]
+        </tbody></table></div>
+    </section>
+    [% END %]
+
+    [% IF ShowCategoryForm %]
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% IF IsEdit %][% Translate.KnowledgeCategoryEdit %][% ELSE %][% Translate.KnowledgeCategoryCreate %][% END %]</h2><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase;Action=Categories">[% Translate.AdminBackToList %]</a></div>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="index.pl"><input type="hidden" name="Page" value="AgentKnowledgeBase"><input type="hidden" name="Step" value="CategorySave"><input type="hidden" name="CategoryID" value="[% CategoryID %]">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label>[% Translate.KnowledgeCategoryInternalName %] *</label><input type="text" name="InternalName" value="[% InternalName %]" pattern="[A-Za-z0-9][A-Za-z0-9_.-]*" required><span class="qisutu-form-hint">[% Translate.KnowledgeCategoryInternalNameHelp %]</span></div>
+                <div class="qisutu-form-field"><label>[% Translate.KnowledgeCategoryParent %]</label><select name="ParentID">[% RAW.ParentOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSortOrder %]</label><input type="number" name="SortOrder" value="[% SortOrder %]" min="0"></div>
+                <label class="qisutu-form-checkbox"><input type="checkbox" name="Active" value="1" [% ActiveChecked %]><span>[% Translate.AdminActive %]</span></label>
+            </div>
+            <div class="qisutu-admin-form-block"><h3>[% Translate.AdminTranslations %]</h3>[% FOREACH Translation IN TranslationRows %]<details class="qisutu-admin-translation" [% Translation.open %]><summary>[% Translation.code %]</summary><div class="qisutu-admin-form-columns"><div class="qisutu-form-field"><label>[% Translate.AdminName %]</label><input type="text" name="TranslationName_[% Translation.code %]" value="[% Translation.name %]"></div><div class="qisutu-form-field"><label>[% Translate.AdminDescription %]</label><textarea name="TranslationDescription_[% Translation.code %]" rows="3">[% Translation.description %]</textarea></div></div></details>[% END %]</div>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase;Action=Categories">[% Translate.AdminCancel %]</a></div>
+        </form>
+    </section>
+    [% END %]
+</section>

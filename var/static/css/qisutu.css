@@ -6662,6 +6662,36 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     grid-template-columns: minmax(230px, 1.4fr) minmax(230px, 1.2fr) minmax(210px, 1.2fr) auto;
 }
 
+.qisutu-postmaster-condition-row:not(.qisutu-postmaster-condition-has-argument) {
+    grid-template-columns: minmax(210px, 1.2fr) minmax(170px, 1fr) minmax(210px, 1.2fr) auto auto;
+}
+
+.qisutu-postmaster-action-row.qisutu-postmaster-action-no-target {
+    grid-template-columns: minmax(280px, 1.4fr) minmax(260px, 1.2fr) auto;
+}
+
+.qisutu-postmaster-action-row.qisutu-postmaster-action-no-value {
+    grid-template-columns: minmax(280px, 1.4fr) minmax(280px, 1.2fr) auto;
+}
+
+.qisutu-postmaster-action-row.qisutu-postmaster-action-no-target.qisutu-postmaster-action-no-value {
+    grid-template-columns: minmax(320px, 1fr) auto;
+}
+
+.qisutu-postmaster-row > [hidden],
+.qisutu-postmaster-advanced-help[hidden] {
+    display: none !important;
+}
+
+.qisutu-postmaster-advanced-toggle {
+    align-self: center;
+    margin: 0;
+}
+
+.qisutu-postmaster-advanced-help {
+    margin: -.25rem 0 1rem;
+}
+
 .qisutu-postmaster-row .qisutu-form-field,
 .qisutu-postmaster-row .qisutu-form-checkbox {
     margin: 0;
@@ -6715,7 +6745,11 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 
 @media (max-width: 1200px) {
     .qisutu-postmaster-row,
-    .qisutu-postmaster-action-row {
+    .qisutu-postmaster-action-row,
+    .qisutu-postmaster-condition-row:not(.qisutu-postmaster-condition-has-argument),
+    .qisutu-postmaster-action-row.qisutu-postmaster-action-no-target,
+    .qisutu-postmaster-action-row.qisutu-postmaster-action-no-value,
+    .qisutu-postmaster-action-row.qisutu-postmaster-action-no-target.qisutu-postmaster-action-no-value {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
@@ -6728,7 +6762,11 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     }
 
     .qisutu-postmaster-row,
-    .qisutu-postmaster-action-row {
+    .qisutu-postmaster-action-row,
+    .qisutu-postmaster-condition-row:not(.qisutu-postmaster-condition-has-argument),
+    .qisutu-postmaster-action-row.qisutu-postmaster-action-no-target,
+    .qisutu-postmaster-action-row.qisutu-postmaster-action-no-value,
+    .qisutu-postmaster-action-row.qisutu-postmaster-action-no-target.qisutu-postmaster-action-no-value {
         grid-template-columns: 1fr;
     }
 }
@@ -7571,6 +7609,206 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     background: var(--qisutu-primary);
     border-color: var(--qisutu-primary);
     color: #fff;
+}
+
+/* Knowledge base */
+.qisutu-knowledge-filter {
+    display: grid;
+    grid-template-columns: minmax(15rem, 2fr) repeat(3, minmax(10rem, 1fr)) auto auto;
+    gap: 0.85rem;
+    align-items: end;
+}
+
+.qisutu-knowledge-filter-customer {
+    grid-template-columns: minmax(16rem, 2fr) minmax(12rem, 1fr) auto auto;
+}
+
+.qisutu-knowledge-card-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 0.9rem;
+}
+
+.qisutu-knowledge-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+    padding: 1rem;
+    color: var(--qisutu-text, #1f2937);
+    text-decoration: none;
+    border: 1px solid #d6e0e8;
+    border-radius: 0.7rem;
+    background: #fff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.qisutu-knowledge-card:hover,
+.qisutu-knowledge-card:focus-visible {
+    border-color: #00627a;
+    box-shadow: 0 0.55rem 1.25rem rgba(15, 53, 67, 0.12);
+    transform: translateY(-1px);
+}
+
+.qisutu-knowledge-card p {
+    margin: 0;
+    color: #607083;
+}
+
+.qisutu-knowledge-card-category,
+.qisutu-knowledge-number {
+    color: #00627a;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.qisutu-knowledge-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.5rem 0 1rem;
+}
+
+.qisutu-knowledge-meta span {
+    padding: 0.25rem 0.55rem;
+    color: #355064;
+    font-size: 0.8rem;
+    border-radius: 999px;
+    background: #edf3f6;
+}
+
+.qisutu-knowledge-article .qisutu-rich-content {
+    max-width: 70rem;
+    line-height: 1.6;
+}
+
+.qisutu-knowledge-queue-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.45rem 1rem;
+    max-height: 16rem;
+    overflow: auto;
+    padding: 0.65rem;
+    border: 1px solid #d6e0e8;
+    border-radius: 0.55rem;
+}
+
+.qisutu-knowledge-insert-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem;
+    margin-top: 0.55rem;
+}
+
+.qisutu-knowledge-insert-dialog {
+    width: min(72rem, calc(100vw - 2rem));
+    max-height: min(50rem, calc(100vh - 2rem));
+    overflow: hidden;
+}
+
+.qisutu-knowledge-insert-search {
+    display: grid;
+    grid-template-columns: auto minmax(12rem, 1fr);
+    gap: 0.65rem;
+    align-items: center;
+    margin: 1rem 0 0.5rem;
+}
+
+.qisutu-knowledge-insert-search input {
+    width: 100%;
+}
+
+.qisutu-knowledge-insert-status {
+    min-height: 1.4rem;
+    color: #607083;
+    font-size: 0.88rem;
+}
+
+.qisutu-knowledge-insert-layout {
+    display: grid;
+    grid-template-columns: minmax(16rem, 0.8fr) minmax(20rem, 1.2fr);
+    gap: 0.85rem;
+    min-height: 22rem;
+    max-height: calc(100vh - 15rem);
+}
+
+.qisutu-knowledge-results,
+.qisutu-knowledge-preview {
+    min-width: 0;
+    overflow: auto;
+    border: 1px solid #d6e0e8;
+    border-radius: 0.6rem;
+    background: #fff;
+}
+
+.qisutu-knowledge-result {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.75rem;
+    color: #1f2937;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid #e1e8ed;
+    background: #fff;
+    cursor: pointer;
+}
+
+.qisutu-knowledge-result:hover,
+.qisutu-knowledge-result:focus-visible,
+.qisutu-knowledge-result-active {
+    background: #eaf4f7;
+    box-shadow: inset 0.22rem 0 #00627a;
+}
+
+.qisutu-knowledge-result span,
+.qisutu-knowledge-result small {
+    color: #607083;
+}
+
+.qisutu-knowledge-result-restricted {
+    background: #faf7f2;
+}
+
+.qisutu-knowledge-preview {
+    padding: 1rem;
+}
+
+.qisutu-knowledge-preview h3 {
+    margin: 0 0 0.25rem;
+}
+
+.qisutu-knowledge-preview-meta {
+    margin: 0 0 0.8rem;
+    color: #607083;
+    font-size: 0.82rem;
+}
+
+.qisutu-knowledge-insert-dialog > .qisutu-form-actions {
+    margin-top: 0.85rem;
+}
+
+@media (max-width: 900px) {
+    .qisutu-knowledge-filter,
+    .qisutu-knowledge-filter-customer,
+    .qisutu-knowledge-insert-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .qisutu-knowledge-insert-layout {
+        min-height: 0;
+        max-height: calc(100vh - 16rem);
+        overflow: auto;
+    }
+
+    .qisutu-knowledge-results,
+    .qisutu-knowledge-preview {
+        max-height: 18rem;
+    }
 }
 
 .qisutu-cmdb-customer-result span {

@@ -34,6 +34,7 @@ use QisutuTimeAccounting;
 use QisutuTicketLink;
 use QisutuTicketHistory;
 use QisutuCMDB;
+use QisutuKnowledgeBase;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -77,6 +78,12 @@ sub Run {
         DB     => $Self->{DB},
         Output => $Self->{Output},
     );
+    my $KnowledgeObject = QisutuKnowledgeBase->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+        Output => $Self->{Output},
+    );
+    my $KnowledgePermission = $KnowledgeObject->PermissionLevel( User => $Param{User} || {} );
     my $AttachmentMaxSizeMB    = $Self->_AttachmentMaxSizeMB();
     my $AttachmentMaxSizeBytes = $AttachmentMaxSizeMB * 1024 * 1024;
 
@@ -1155,6 +1162,7 @@ sub Run {
             MergeDirectionCurrentChecked => !$ToolActionError || ( $Request->{MergeDirection} || '' ) eq 'current_into_selected' ? 'checked' : '',
             MergeDirectionSelectedChecked => $ToolActionError && ( $Request->{MergeDirection} || '' ) eq 'selected_into_current' ? 'checked' : '',
             TicketQueue           => $Ticket->{queue_full_name} || $Ticket->{queue_name},
+            TicketQueueID         => $Ticket->{queue_id} || 0,
             TicketServiceID       => $Ticket->{service_id} || 0,
             TicketService         => $Ticket->{service_name} || '-',
             TicketSLA             => $Ticket->{sla_name_display} || '-',
@@ -1181,6 +1189,7 @@ sub Run {
             TicketCustomerUser     => $TicketCustomerUser,
             TicketCustomerAutocompleteValue => $TicketCustomerAutocompleteValue,
             TicketCustomerEmail    => $TicketCustomerEmail,
+            HasKnowledgeAccess     => $KnowledgePermission->{View} ? 1 : 0,
             TicketOwnerID          => $Ticket->{owner_user_id} || 0,
             TicketOwner            => $Ticket->{owner_name} || '-',
             TicketOwnerAutocompleteValue => $TicketOwnerAutocompleteValue,

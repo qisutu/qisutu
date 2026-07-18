@@ -1,0 +1,18 @@
+{
+    Name            => 'CustomerKnowledgeBase',
+    Module          => 'CustomerKnowledgeBase',
+    Title           => 'KnowledgeBaseNavigation',
+    Description     => 'KnowledgeBaseCustomerDescription',
+    Icon            => '',
+    URL             => 'index.pl?Page=CustomerKnowledgeBase',
+    Type            => 'SubNavigation',
+    Parent          => 'KnowledgeBase',
+    Order           => 251,
+    VisibleFor      => [ 'customer' ],
+    AccessType      => 'customer',
+    AccessTypes     => [ 'customer' ],
+    PermissionGroup => '',
+    PermissionMode  => '',
+    Permission      => '',
+    Active          => 1,
+}

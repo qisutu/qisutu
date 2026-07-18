@@ -27,6 +27,43 @@
 
     var editors = [];
 
+    function editorFor(target) {
+        var textarea = typeof target === 'string' ? document.querySelector(target) : target;
+
+        return textarea && textarea.qisutuEditor ? textarea.qisutuEditor : null;
+    }
+
+    function insertHTML(target, html) {
+        var textarea = typeof target === 'string' ? document.querySelector(target) : target;
+        var editor = editorFor(textarea);
+
+        if (!textarea || !html) {
+            return false;
+        }
+
+        if (!editor) {
+            var start = Number.isInteger(textarea.selectionStart) ? textarea.selectionStart : textarea.value.length;
+            var end = Number.isInteger(textarea.selectionEnd) ? textarea.selectionEnd : start;
+            textarea.value = textarea.value.slice(0, start) + html + textarea.value.slice(end);
+            textarea.focus();
+            return true;
+        }
+
+        editor.model.change(function () {
+            var viewFragment = editor.data.processor.toView(html);
+            var modelFragment = editor.data.toModel(viewFragment);
+
+            editor.model.insertContent(modelFragment, editor.model.document.selection);
+        });
+        editor.updateSourceElement();
+        editor.editing.view.focus();
+        return true;
+    }
+
+    window.QisutuRichText = window.QisutuRichText || {};
+    window.QisutuRichText.editorFor = editorFor;
+    window.QisutuRichText.insertHTML = insertHTML;
+
     function staticBase() {
         return window.QISUTU_STATIC_BASE || '/static';
     }

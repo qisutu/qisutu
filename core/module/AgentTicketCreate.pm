@@ -30,6 +30,7 @@ use JSON::PP qw(encode_json);
 use QisutuService;
 use QisutuTimeAccounting;
 use QisutuCMDB;
+use QisutuKnowledgeBase;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -54,6 +55,8 @@ sub Run {
     my $Language = $Request->{Language} || $Self->{Config}->{Language}->{Default} || 'en';
     my $Step     = $Request->{Step} || '';
     my $CMDBObject = QisutuCMDB->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
+    my $KnowledgeObject = QisutuKnowledgeBase->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
+    my $KnowledgePermission = $KnowledgeObject->PermissionLevel( User => $User );
 
     if ( $Step eq 'AgentLookup' ) {
         return $Self->_JSONResponse(
@@ -261,6 +264,21 @@ sub Run {
                         User     => $User,
                     );
                 }
+                my @KnowledgeUsage = ref $Request->{KnowledgeUsage} eq 'ARRAY'
+                    ? @{ $Request->{KnowledgeUsage} }
+                    : defined $Request->{KnowledgeUsage} && $Request->{KnowledgeUsage} ne ''
+                        ? ( $Request->{KnowledgeUsage} )
+                        : ();
+                for my $Usage (@KnowledgeUsage) {
+                    next if !defined $Usage || $Usage !~ m{\A(\d+)\|(solution|title_solution|link)\z};
+                    $KnowledgeObject->UsageRecord(
+                        ArticleID => $1,
+                        TicketID  => $TicketID,
+                        UserID    => $User->{user_account_id},
+                        Context   => 'ticket_create',
+                        InsertMode => $2,
+                    );
+                }
                 return {
                     Redirect => 'index.pl?Page=AgentTicketZoom&TicketID=' . $TicketID,
                 };
@@ -364,6 +382,7 @@ sub Run {
             PendingUntilRequired   => $IsPending ? 'required' : '',
             AttachmentMaxSizeMB => $AttachmentMaxSizeMB,
             AttachmentMaxSizeBytes => $AttachmentMaxSizeByte,
+            HasKnowledgeAccess  => $KnowledgePermission->{View} ? 1 : 0,
         },
     };
 }

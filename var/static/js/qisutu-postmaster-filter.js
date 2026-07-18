@@ -1,6 +1,5 @@
 /*
  * Qisutu - Open Source Ticket System
- * Copyright (C) 2026 Franziska Steps
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 (function () {
@@ -24,6 +23,9 @@
     var actionContainer = form.querySelector('[data-action-rows]');
     var conditionCount = form.querySelector('[data-condition-count]');
     var actionCount = form.querySelector('[data-action-count]');
+    var advancedToggle = form.querySelector('[data-postmaster-advanced-conditions]');
+    var advancedHelp = form.querySelector('[data-postmaster-advanced-help]');
+    var conditionRefreshers = [];
     var nextCondition = 0;
     var nextAction = 0;
 
@@ -60,13 +62,61 @@
         });
     }
 
+    function definitionGroupLabel(group, kind) {
+        if (kind === 'action') {
+            if (group === 'article') { return config.labels.actionArticle; }
+            if (group === 'processing') { return config.labels.actionProcessing; }
+            return config.labels.actionTicket;
+        }
+        if (group === 'advanced') { return config.labels.conditionAdvanced; }
+        if (group === 'legacy') { return config.labels.conditionLegacy; }
+        return config.labels.conditionBasic;
+    }
+
+    function selectDefinitionOptions(select, list, selected, kind) {
+        var groups = {};
+        var order = kind === 'action' ? ['ticket', 'article', 'processing'] : ['basic', 'advanced', 'legacy'];
+        select.innerHTML = '';
+        (list || []).forEach(function (definition) {
+            var group = definition.group || (kind === 'action' ? 'ticket' : 'basic');
+            if (!groups[group]) {
+                groups[group] = [];
+            }
+            groups[group].push(definition);
+        });
+        order.forEach(function (group) {
+            if (!groups[group] || !groups[group].length) {
+                return;
+            }
+            var optgroup = element('optgroup', { label: definitionGroupLabel(group, kind) });
+            groups[group].forEach(function (definition) {
+                var option = element('option', { value: definition.key }, definition.label || definition.key);
+                option.selected = definition.key === selected;
+                optgroup.appendChild(option);
+            });
+            select.appendChild(optgroup);
+        });
+    }
+
     function findDefinition(list, key) {
         return (list || []).find(function (item) { return item.key === key; }) || null;
     }
 
-    function compatibleOperators(fieldType) {
+    function advancedEnabled() {
+        return Boolean(advancedToggle && advancedToggle.checked);
+    }
+
+    function availableConditions(selected) {
+        return (config.conditionDefinitions || []).filter(function (definition) {
+            return definition.key === selected || (!definition.legacy && (!definition.advanced || advancedEnabled()));
+        });
+    }
+
+    function compatibleOperators(fieldType, selected) {
         return (config.operatorDefinitions || []).filter(function (item) {
-            return item.type === 'all' || item.type === fieldType;
+            var compatible = item.type === 'all' || item.type === fieldType;
+            var visible = !item.advanced || advancedEnabled() || item.key === selected;
+            return compatible && visible;
         });
     }
 
@@ -79,13 +129,12 @@
         var fieldWrap = element('div', { class: 'qisutu-form-field' });
         fieldWrap.appendChild(element('label', {}, config.labels.field));
         var field = element('select', { name: 'ConditionField_' + index, required: 'required' });
-        selectOptions(field, config.conditionDefinitions, data.field_name || 'subject');
         fieldWrap.appendChild(field);
         row.appendChild(fieldWrap);
 
         var argumentWrap = element('div', { class: 'qisutu-form-field qisutu-postmaster-argument' });
         argumentWrap.appendChild(element('label', {}, config.labels.header));
-        var argument = element('input', { type: 'text', name: 'ConditionArgument_' + index, value: data.field_argument || '', maxlength: '100' });
+        var argument = element('input', { type: 'text', name: 'ConditionArgument_' + index, value: data.field_argument || '', maxlength: '100', placeholder: 'X-Spam-Status' });
         argumentWrap.appendChild(argument);
         row.appendChild(argumentWrap);
 
@@ -111,15 +160,12 @@
         remove.addEventListener('click', function () { row.remove(); });
         row.appendChild(remove);
 
-        function refresh() {
-            var definition = findDefinition(config.conditionDefinitions, field.value) || { type: 'text' };
-            argumentWrap.hidden = !definition.argument;
-            var currentOperator = operator.value || data.operator || 'contains';
-            selectOptions(operator, compatibleOperators(definition.type), currentOperator);
-            if (!operator.value && operator.options.length) {
-                operator.value = operator.options[0].value;
+        function refreshFieldOptions() {
+            var selected = field.value || data.field_name || 'subject';
+            selectDefinitionOptions(field, availableConditions(selected), selected, 'condition');
+            if (!field.value && field.options.length) {
+                field.value = field.options[0].value;
             }
-            refreshValue();
         }
 
         function refreshValue() {
@@ -147,10 +193,35 @@
             valueInput = newInput;
         }
 
-        field.addEventListener('change', refresh);
+        function refresh() {
+            var definition = findDefinition(config.conditionDefinitions, field.value) || { type: 'text' };
+            var hasArgument = Boolean(definition.argument);
+            argumentWrap.hidden = !hasArgument;
+            argument.disabled = !hasArgument;
+            row.classList.toggle('qisutu-postmaster-condition-has-argument', hasArgument);
+            var currentOperator = operator.value || data.operator || 'contains';
+            selectOptions(operator, compatibleOperators(definition.type, currentOperator), currentOperator);
+            if (!operator.value && operator.options.length) {
+                operator.value = operator.options[0].value;
+            }
+            refreshValue();
+        }
+
+        field.addEventListener('change', function () {
+            data.field_name = field.value;
+            data.operator = '';
+            argument.value = '';
+            refresh();
+        });
         operator.addEventListener('change', refreshValue);
         conditionContainer.appendChild(row);
+        refreshFieldOptions();
         refresh();
+        conditionRefreshers.push(function () {
+            if (!row.isConnected) { return; }
+            refreshFieldOptions();
+            refresh();
+        });
     }
 
     function addAction(data) {
@@ -162,18 +233,20 @@
         var typeWrap = element('div', { class: 'qisutu-form-field' });
         typeWrap.appendChild(element('label', {}, config.labels.action));
         var type = element('select', { name: 'ActionType_' + index, required: 'required' });
-        selectOptions(type, config.actionDefinitions, data.action_type || 'queue');
+        selectDefinitionOptions(type, config.actionDefinitions, data.action_type || 'queue', 'action');
         typeWrap.appendChild(type);
         row.appendChild(typeWrap);
 
         var targetWrap = element('div', { class: 'qisutu-form-field' });
-        targetWrap.appendChild(element('label', {}, config.labels.target));
+        var targetLabel = element('label', {}, config.labels.target);
+        targetWrap.appendChild(targetLabel);
         var target = element('select', { name: 'ActionTargetID_' + index });
         targetWrap.appendChild(target);
         row.appendChild(targetWrap);
 
         var valueWrap = element('div', { class: 'qisutu-form-field qisutu-postmaster-action-value' });
-        valueWrap.appendChild(element('label', {}, config.labels.value));
+        var valueLabel = element('label', {}, config.labels.value);
+        valueWrap.appendChild(valueLabel);
         var valueInput = element('input', { type: 'text', name: 'ActionValue_' + index, value: data.action_value || '' });
         valueWrap.appendChild(valueInput);
         row.appendChild(valueWrap);
@@ -185,16 +258,19 @@
         function refresh() {
             var definition = findDefinition(config.actionDefinitions, type.value) || { target: 'none' };
             var targetType = definition.target || 'none';
-            targetWrap.hidden = ['none', 'text', 'number', 'visibility', 'sender_type'].indexOf(targetType) !== -1;
-            valueWrap.hidden = ['none', 'queue', 'state', 'priority', 'agent', 'service', 'sla', 'customer', 'customer_user', 'dynamic_field'].indexOf(targetType) !== -1;
+            var needsTarget = ['queue', 'state', 'priority', 'agent', 'service', 'sla', 'customer', 'customer_user', 'dynamic_field', 'dynamic_field_value'].indexOf(targetType) !== -1;
+            var needsValue = ['text', 'number', 'visibility', 'sender_type', 'dynamic_field_value'].indexOf(targetType) !== -1;
 
-            if (targetType === 'dynamic_field_value') {
-                targetWrap.hidden = false;
-                valueWrap.hidden = false;
-                selectOptions(target, config.options.dynamic_field, data.target_id || target.value, config.labels.select);
-            }
-            else if (config.options[targetType]) {
-                selectOptions(target, config.options[targetType], data.target_id || target.value, config.labels.select);
+            targetLabel.textContent = definition.targetLabel || config.labels.target;
+            valueLabel.textContent = definition.valueLabel || config.labels.value;
+            targetWrap.hidden = !needsTarget;
+            target.disabled = !needsTarget;
+            valueWrap.hidden = !needsValue;
+            row.classList.toggle('qisutu-postmaster-action-no-target', !needsTarget);
+            row.classList.toggle('qisutu-postmaster-action-no-value', !needsValue);
+
+            if (needsTarget && config.options[targetType === 'dynamic_field_value' ? 'dynamic_field' : targetType]) {
+                selectOptions(target, config.options[targetType === 'dynamic_field_value' ? 'dynamic_field' : targetType], data.target_id || target.value, config.labels.select);
             }
             else {
                 target.innerHTML = '';
@@ -217,13 +293,29 @@
                     newInput.min = '1';
                 }
             }
+            newInput.disabled = !needsValue;
             valueWrap.replaceChild(newInput, valueInput);
             valueInput = newInput;
         }
 
-        type.addEventListener('change', function () { data.target_id = ''; data.action_value = ''; refresh(); });
+        type.addEventListener('change', function () {
+            data.target_id = '';
+            data.action_value = '';
+            target.innerHTML = '';
+            valueInput.value = '';
+            refresh();
+        });
         actionContainer.appendChild(row);
         refresh();
+    }
+
+    if (advancedToggle) {
+        advancedToggle.checked = Boolean(config.advancedInitiallyOpen);
+        advancedHelp.hidden = !advancedToggle.checked;
+        advancedToggle.addEventListener('change', function () {
+            advancedHelp.hidden = !advancedToggle.checked;
+            conditionRefreshers.forEach(function (refresh) { refresh(); });
+        });
     }
 
     (config.conditions || []).forEach(addCondition);
