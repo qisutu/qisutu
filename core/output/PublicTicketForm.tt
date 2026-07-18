@@ -1,0 +1,51 @@
+[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
+<!doctype html>
+<html lang="[% Language %]">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>[% PublicFormTitle %] – [% SystemName %]</title>
+    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu-ticket-form-public.css?v=2026071701">
+</head>
+<body>
+    <main class="qisutu-public-form-shell">
+        <section class="qisutu-public-form-card">
+            [% IF NotFound %]
+            <div class="qisutu-public-form-state qisutu-public-form-error">
+                <h1>[% Translate.PublicTicketFormNotFound %]</h1>
+            </div>
+            [% ELSE %]
+                [% IF Success %]
+                <div class="qisutu-public-form-state qisutu-public-form-success">
+                    <div class="qisutu-public-form-mark" aria-hidden="true">✓</div>
+                    <h1>[% Translate.PublicTicketFormSuccessTitle %]</h1>
+                    <p>[% ConfirmationText %]</p>
+                    [% IF HasTicketNumber %]<p class="qisutu-public-form-ticket-number">[% Translate.PublicTicketFormTicketNumber %]: <strong>[% TicketNumber %]</strong></p>[% END %]
+                </div>
+                [% ELSE %]
+                <header class="qisutu-public-form-header">
+                    <span class="qisutu-public-form-brand">[% SystemName %]</span>
+                    <h1>[% PublicFormTitle %]</h1>
+                    <p>[% PublicFormDescription %]</p>
+                </header>
+                <div class="qisutu-form-error [% FormErrorClass %]">[% FormError %]</div>
+                <form class="qisutu-public-form" method="post" action="[% FormAction %]">
+                    <input type="hidden" name="Step" value="PublicTicketFormSubmit">
+                    <input type="hidden" name="FormID" value="[% FormID %]">
+                    <input type="hidden" name="FormStartedAt" value="[% FormStartedAt %]">
+                    <div class="qisutu-public-form-honeypot" aria-hidden="true">
+                        <label>Website<input type="text" name="Website" tabindex="-1" autocomplete="off"></label>
+                    </div>
+                    [% RAW.PublicFormFieldsHTML %]
+                    <div class="qisutu-public-form-actions">
+                        <button type="submit">[% PublicFormSubmitLabel %]</button>
+                    </div>
+                    <p class="qisutu-public-form-privacy">[% Translate.PublicTicketFormPrivacy %]</p>
+                </form>
+                [% END %]
+            [% END %]
+        </section>
+    </main>
+</body>
+</html>
+

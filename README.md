@@ -115,6 +115,27 @@ jeweiligen Kontomaske angezeigte Weiterleitungs-URI muss beim OAuth2-Anbieter
 exakt als erlaubte Redirect-URI registriert werden. Weitere Hinweise stehen in
 `INSTALL.md`.
 
+## Kundenformulare und Webformulare
+
+Unter `Administration > Formulare` können Administratoren individuelle
+Formulare für das Kundenportal und öffentliche Webformulare anlegen. Jedes
+Formular besitzt eine feste Ziel-Queue, mehrsprachige Texte sowie eigene
+optionale oder verpflichtende Felder. Kundenformulare können für alle oder nur
+für ausgewählte Kunden freigegeben werden. Solange kein individuelles
+Kundenformular vorhanden ist, bleibt die bisherige Standard-Ticketerstellung
+im Kundenportal verfügbar.
+
+Öffentliche Webformulare erhalten einen Direktlink und fertigen Iframe-Code.
+Qisutu schützt sie mit Einbettungsfreigaben über Content Security Policy,
+Honeypot und Zeitprüfung sowie konfigurierbaren Limits. Name und E-Mail sind
+verpflichtend; Webformular-Kontakte erhalten kein aktives Login-Konto.
+
+Alle Formularwerte werden zusätzlich zu den dynamischen Ticketfeldern als
+unveränderlicher Übermittlungsstand gespeichert. Agenten sehen diesen Stand im
+Ticket-Zoom unter `Formular-Informationen`, angemeldete Kunden unter
+`Ihre Formularangaben`. Spätere Änderungen am Formular verändern bestehende
+Übermittlungen nicht.
+
 ## Datenbankkonfiguration
 
 Die Datenbankverbindung steht direkt in `core/config/QisutuConfig.pm`. Der

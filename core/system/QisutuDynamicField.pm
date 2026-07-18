@@ -611,6 +611,18 @@ sub TicketValueValidate {
 
         my $Value = $Self->_Trim( $Request->{$Key} );
 
+        if ( $Type eq 'checkbox' ) {
+            if ( $Value ne '' && $Value ne '1' ) {
+                $Self->{LastError} = 'Translate:TicketDynamicFieldInvalid';
+                return;
+            }
+            if ( $Field->{is_required} && $Value ne '1' ) {
+                $Self->{LastError} = 'Translate:TicketDynamicFieldRequired';
+                return;
+            }
+            next;
+        }
+
         if ( $Field->{is_required} && $Value eq '' ) {
             $Self->{LastError} = 'Translate:TicketDynamicFieldRequired';
             return;
@@ -666,7 +678,9 @@ sub TicketValueSave {
         my $Type = $Field->{field_type} || 'text';
         my $Value = $Type eq 'dropdown' || $Type eq 'multiselect'
             ? join( "\n", @{ $Self->_ValueList( $Request->{$Key} ) } )
-            : $Self->_Trim( $Request->{$Key} );
+            : $Type eq 'checkbox'
+                ? ( $Self->_Trim( $Request->{$Key} ) eq '1' ? '1' : '0' )
+                : $Self->_Trim( $Request->{$Key} );
 
         if ( $Type eq 'date' && $Value ne '' ) {
             $Value = $Self->_DateTimeInputValue($Value);
@@ -762,11 +776,13 @@ sub FormHTML {
             : '';
         my $InputID = $IDPrefix . '-' . $FieldID;
 
-        $HTML .= '<div class="qisutu-form-field' . $WideClass . '">'
-            . '<label for="' . $Self->_Escape($InputID) . '">'
-            . $Self->_Escape( $Field->{label} || $Field->{name} || '' )
-            . $RequiredMarker
-            . '</label>';
+        $HTML .= '<div class="qisutu-form-field' . $WideClass . '">';
+        if ( $Type ne 'checkbox' ) {
+            $HTML .= '<label for="' . $Self->_Escape($InputID) . '">'
+                . $Self->_Escape( $Field->{label} || $Field->{name} || '' )
+                . $RequiredMarker
+                . '</label>';
+        }
 
         if ( $Type eq 'dropdown' || $Type eq 'multiselect' ) {
             my $SelectedValues = $Self->_ValueList($RawValue);
@@ -808,6 +824,15 @@ sub FormHTML {
             if ( $Type eq 'multiselect' ) {
                 $HTML .= '<span class="qisutu-form-hint">' . $Self->_Escape($MultiSelectHint) . '</span>';
             }
+        }
+        elsif ( $Type eq 'checkbox' ) {
+            my $Checked = defined $RawValue && $RawValue eq '1' ? ' checked' : '';
+            $HTML .= '<input type="hidden" name="TicketDynamicFieldPresent_' . $FieldID . '" value="1">'
+                . '<label class="qisutu-form-checkbox" for="' . $Self->_Escape($InputID) . '">'
+                . '<input id="' . $Self->_Escape($InputID) . '" type="checkbox" name="' . $Key . '" value="1"'
+                . $Checked . $Required . '>'
+                . '<span>' . $Self->_Escape( $Field->{label} || $Field->{name} || '' ) . $RequiredMarker . '</span>'
+                . '</label>';
         }
         elsif ( $Type eq 'textarea' ) {
             my $Value = defined $RawValue && ref $RawValue ne 'ARRAY' ? $RawValue : '';
@@ -873,6 +898,15 @@ sub DisplayHTML {
                 } @{$SelectedValues};
                 $ValueHTML = join( '<br>', @Display );
             }
+        }
+        elsif ( $Type eq 'checkbox' ) {
+            $ValueHTML = $Self->_Escape(
+                $Self->_Translate(
+                    Key      => $RawValue eq '1' ? 'AdminActiveYes' : 'AdminActiveNo',
+                    Language => $Language,
+                    Fallback => $RawValue eq '1' ? 'Yes' : 'No',
+                )
+            );
         }
         elsif ( $Type eq 'date' && $RawValue ne '' ) {
             $ValueHTML = $Self->_Escape(
@@ -1147,7 +1181,7 @@ sub _FieldTypeClean {
     my ( $Self, $FieldType ) = @_;
 
     $FieldType = $Self->_Trim($FieldType) || 'text';
-    return $FieldType if $FieldType =~ m{\A(?:text|textarea|email|phone|date|number|dropdown|multiselect)\z};
+    return $FieldType if $FieldType =~ m{\A(?:text|textarea|email|phone|date|number|dropdown|multiselect|checkbox)\z};
     return 'text';
 }
 

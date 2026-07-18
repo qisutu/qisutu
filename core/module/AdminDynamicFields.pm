@@ -339,7 +339,7 @@ sub _FieldTypeOptions {
     my ( $Self, %Param ) = @_;
 
     my $Selected = $Param{Selected} || 'text';
-    my @Types = qw(text textarea email phone date number dropdown multiselect);
+    my @Types = qw(text textarea email phone date number dropdown multiselect checkbox);
     my $HTML = '';
 
     for my $Type (@Types) {

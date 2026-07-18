@@ -45,12 +45,56 @@ sub Run {
     my ( $Self, %Param ) = @_;
 
     my $TicketObject = $Self->_TicketObject();
+    my $FormObject   = $Self->_TicketFormObject();
     my $Request      = $Param{Request} || {};
     my $User         = $Param{User} || {};
+    my $Language     = $Request->{Language} || $User->{language}
+        || $Self->{Config}->{Language}->{Default} || 'en';
     my $CreateError  = '';
     my $QueueList    = [];
 
-    if ( $TicketObject && ( $Request->{Step} || '' ) eq 'CustomerTicketCreate' ) {
+    if ($TicketObject) {
+        $QueueList = $TicketObject->CustomerQueueList( User => $User );
+    }
+
+    my $Forms = [];
+    if ( $FormObject && $User->{customer_id} ) {
+        $Forms = $FormObject->FormListForCustomer(
+            CustomerID => $User->{customer_id},
+            Language   => $Language,
+        );
+    }
+
+    my %AllowedForm = map { ( $_->{id} || 0 ) => $_ } @{$Forms};
+    my $SelectedFormID = $Request->{FormID} || 0;
+    $SelectedFormID = $Forms->[0]->{id} if @{$Forms} == 1 && !$SelectedFormID;
+    my $SelectedForm = $AllowedForm{$SelectedFormID};
+
+    if ( $FormObject && ( $Request->{Step} || '' ) eq 'CustomerTicketFormSubmit' ) {
+        if ($SelectedForm) {
+            my $Created = $FormObject->SubmissionCreate(
+                Context   => 'customer',
+                FormID    => $SelectedForm->{id},
+                User      => $User,
+                Request   => $Request,
+                Language  => $Language,
+                UserAgent => $ENV{HTTP_USER_AGENT} || '',
+            );
+            if ( $Created && $Created->{TicketID} ) {
+                return {
+                    Redirect => 'index.pl?Page=CustomerTicketZoom&TicketID=' . $Created->{TicketID},
+                };
+            }
+            $CreateError = $FormObject->Error() || 'Translate:TicketCreateFailed';
+        }
+        else {
+            $CreateError = 'Translate:TicketFormUnavailable';
+        }
+    }
+
+    # Keep the established ticket form available until an administrator creates
+    # the first individual customer form.
+    if ( !@{$Forms} && $TicketObject && ( $Request->{Step} || '' ) eq 'CustomerTicketCreate' ) {
         my $TicketID = $TicketObject->TicketCreateFromCustomer(
             User        => $User,
             QueueID     => $Request->{QueueID},
@@ -68,8 +112,23 @@ sub Run {
         $CreateError = $TicketObject->Error() || 'Translate:TicketCreateFailed';
     }
 
-    if ($TicketObject) {
-        $QueueList = $TicketObject->CustomerQueueList( User => $User );
+    my @FormCards;
+    for my $Form ( @{$Forms} ) {
+        push @FormCards, {
+            %{$Form},
+            open_url => 'index.pl?Page=CustomerTicketCreate&FormID=' . ( $Form->{id} || 0 ),
+            queue_display => $Form->{queue_full_name} || $Form->{queue_name} || '-',
+        };
+    }
+
+    my $FieldsHTML = '';
+    if ($SelectedForm) {
+        $FieldsHTML = $FormObject->FieldsHTML(
+            Form     => $SelectedForm,
+            Request  => $Request,
+            Language => $Language,
+        );
+        $CreateError ||= $FormObject->Error();
     }
 
     return {
@@ -81,6 +140,17 @@ sub Run {
             TicketListURL      => 'index.pl?Page=CustomerTicketList',
             QueueOptionsHTML   => $Self->_QueueOptionsHTML( QueueList => $QueueList ),
             HasQueueOptions    => scalar @{$QueueList} ? 1 : 0,
+            ShowLegacyForm     => @{$Forms} ? 0 : 1,
+            ShowFormSelection  => @{$Forms} > 1 && !$SelectedForm ? 1 : 0,
+            ShowConfiguredForm => $SelectedForm ? 1 : 0,
+            TicketForms        => \@FormCards,
+            FormID             => $SelectedForm ? $SelectedForm->{id} : '',
+            TicketFormTitle    => $SelectedForm ? $SelectedForm->{title} : '',
+            TicketFormDescription => $SelectedForm ? $SelectedForm->{description} : '',
+            TicketFormSubmitLabel => $SelectedForm
+                ? ( $SelectedForm->{submit_label} || 'Translate:TicketFormSubmit' ) : '',
+            TicketFormFieldsHTML => $FieldsHTML,
+            FormSelectionURL   => 'index.pl?Page=CustomerTicketCreate',
             CreateError        => $CreateError,
             CreateErrorClass   => $CreateError ? '' : 'qisutu-hidden',
             FormAction         => 'index.pl',
@@ -142,6 +212,31 @@ sub _TicketObject {
     return QisutuTicket->new(
         Config     => $Self->{Config},
         DB         => $Self->{DB},
+        Permission => $PermissionObject,
+    );
+}
+
+sub _TicketFormObject {
+    my ($Self) = @_;
+
+    return if !$Self->{DB};
+
+    my $Loaded = eval {
+        require QisutuPermission;
+        require QisutuTicketForm;
+        1;
+    };
+    return if !$Loaded;
+
+    my $PermissionObject = QisutuPermission->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
+
+    return QisutuTicketForm->new(
+        Config     => $Self->{Config},
+        DB         => $Self->{DB},
+        Output     => $Self->{Output},
         Permission => $PermissionObject,
     );
 }

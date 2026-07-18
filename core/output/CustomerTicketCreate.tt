@@ -34,6 +34,43 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 <section class="qisutu-panel">
                     <div class="qisutu-form-error [% CreateErrorClass %]">[% CreateError %]</div>
 
+                    [% IF ShowFormSelection %]
+                    <div class="qisutu-ticket-form-intro">
+                        <h2>[% Translate.TicketFormsSelectTitle %]</h2>
+                        <p>[% Translate.TicketFormsSelectDescription %]</p>
+                    </div>
+                    <div class="qisutu-ticket-form-card-grid">
+                        [% FOREACH TicketForm IN TicketForms %]
+                        <article class="qisutu-ticket-form-card">
+                            <div>
+                                <h3>[% TicketForm.title %]</h3>
+                                <p>[% TicketForm.description %]</p>
+                                <span class="qisutu-form-hint">[% Translate.TicketQueue %]: [% TicketForm.queue_display %]</span>
+                            </div>
+                            <a class="qisutu-button qisutu-button-primary" href="[% TicketForm.open_url %]">[% Translate.TicketFormOpen %]</a>
+                        </article>
+                        [% END %]
+                    </div>
+                    [% END %]
+
+                    [% IF ShowConfiguredForm %]
+                    <div class="qisutu-ticket-form-intro">
+                        <h2>[% TicketFormTitle %]</h2>
+                        <p>[% TicketFormDescription %]</p>
+                    </div>
+                    <form class="qisutu-admin-form qisutu-admin-form-wide qisutu-ticket-form" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="CustomerTicketCreate">
+                        <input type="hidden" name="Step" value="CustomerTicketFormSubmit">
+                        <input type="hidden" name="FormID" value="[% FormID %]">
+                        [% RAW.TicketFormFieldsHTML %]
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% TicketFormSubmitLabel %]</button>
+                            <a class="qisutu-button qisutu-button-secondary" href="[% FormSelectionURL %]">[% Translate.AdminBackToList %]</a>
+                        </div>
+                    </form>
+                    [% END %]
+
+                    [% IF ShowLegacyForm %]
                     [% IF HasQueueOptions %]
                     <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
                         <input type="hidden" name="Page" value="CustomerTicketCreate">
@@ -66,6 +103,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <strong>[% Translate.TicketListEmptyTitle %]</strong>
                         <p>[% Translate.TicketListEmptyText %]</p>
                     </div>
+                    [% END %]
                     [% END %]
                 </section>
             </section>

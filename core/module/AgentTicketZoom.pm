@@ -60,6 +60,7 @@ sub Run {
 
     my $TicketObject       = $Self->_TicketObject();
     my $DynamicFieldObject = $Self->_DynamicFieldObject();
+    my $TicketFormObject   = $Self->_TicketFormObject();
     my $ChecklistObject    = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
     my $TimeAccountingObject = QisutuTimeAccounting->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
     my $BulkActionObject = QisutuBulkAction->new( Config => $Self->{Config}, DB => $Self->{DB} );
@@ -821,6 +822,10 @@ sub Run {
         TicketID => $Ticket->{id},
         Language => $Language,
     ) : '';
+    my $TicketFormInformationHTML = $TicketFormObject ? $TicketFormObject->SubmissionDisplayHTML(
+        TicketID => $Ticket->{id},
+        Language => $Language,
+    ) : '';
 
     my $ArticleTimeAccountingFieldsHTML = $TimeAccountingObject->FormHTML(
         Language => $Language,
@@ -977,6 +982,8 @@ sub Run {
             TicketCloseDynamicFieldsHTML => $CloseDynamicFieldsHTML,
             TicketDynamicFieldsDisplayHTML => $TicketDynamicFieldsDisplayHTML,
             HasTicketDynamicFields => $TicketDynamicFieldsDisplayHTML ? 1 : 0,
+            TicketFormInformationHTML => $TicketFormInformationHTML,
+            HasTicketFormInformation  => $TicketFormInformationHTML ? 1 : 0,
             ArticleTimeAccountingFieldsHTML => $ArticleTimeAccountingFieldsHTML,
             TicketToolPriorityTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{priority},
             TicketToolOwnerTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{owner},
@@ -1205,7 +1212,21 @@ sub _ArticleReplyData {
     my $QueueReplyTemplate = $Param{QueueReplyTemplate} || '';
     my $Language           = $Param{Language} || 'en';
 
-    my $Allowed = ( ( $Article->{channel} || '' ) eq 'email' && ( $Article->{visibility} || '' ) ne 'agent' ) ? 1 : 0;
+    my $Channel    = lc( $Article->{channel} || '' );
+    my $SenderType = lc( $Article->{sender_type} || '' );
+    my $Visibility = lc( $Article->{visibility} || '' );
+
+    # Customer requests submitted through the customer portal or a public
+    # ticket form keep their real source channel "web".  They must still be
+    # answerable by e-mail in the agent zoom.  Never offer a customer reply
+    # for internal articles or for arbitrary agent-created web articles.
+    my $Allowed = $Visibility ne 'agent'
+        && (
+            $Channel eq 'email'
+            || ( $Channel eq 'web' && $SenderType eq 'customer' )
+        )
+        ? 1
+        : 0;
 
     return {
         Allowed      => 0,
@@ -1219,6 +1240,17 @@ sub _ArticleReplyData {
         Ticket  => $Ticket,
         Article => $Article,
     );
+
+    # Without a customer address an e-mail reply cannot be delivered.  Keep
+    # forwarding available, but do not expose a reply action that is bound to
+    # fail on submit.
+    return {
+        Allowed      => 0,
+        To           => '',
+        Cc           => '',
+        Subject      => '',
+        BodyTemplate => '',
+    } if !$To;
 
     my $Subject = $Self->_ArticleReplySubject( Article => $Article );
     my $BodyTemplate = $Self->_ArticleReplyBodyTemplate(
@@ -2682,6 +2714,26 @@ sub _DynamicFieldObject {
     );
 
     return $Self->{DynamicFieldObject};
+}
+
+sub _TicketFormObject {
+    my ($Self) = @_;
+
+    return $Self->{TicketFormObject} if $Self->{TicketFormObject};
+    return if !$Self->{DB};
+
+    my $Loaded = eval {
+        require QisutuTicketForm;
+        1;
+    };
+    return if !$Loaded;
+
+    $Self->{TicketFormObject} = QisutuTicketForm->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+        Output => $Self->{Output},
+    );
+    return $Self->{TicketFormObject};
 }
 
 sub _TicketObject {

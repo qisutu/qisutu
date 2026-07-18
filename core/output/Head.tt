@@ -31,7 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
     <title>[% PageTitle %]</title>
 
-    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu.css?v=2026071707">
+    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu.css?v=2026071803">
     <link rel="stylesheet" href="[% StaticBase %]/css/ckeditor5/ckeditor5.css">
     <link rel="stylesheet" href="[% StaticBase %]/css/[% PageCSS %]">
 

@@ -345,10 +345,22 @@ sub _TicketListWhereData {
             }
         }
 
-        return { Denied => 1, WhereSQL => '', Bind => [] }
-            if !@OwnQueueIDs && !@OrganizationQueueIDs;
-
         my @CustomerWhere;
+
+        # A customer must always be able to reopen a ticket that was created
+        # through an assigned customer-portal form. The form target queue is
+        # an internal routing decision and may intentionally not be exposed as
+        # a regular customer queue.
+        if ( $CustomerAccess->{customer_user_id} ) {
+            push @CustomerWhere,
+                '(t.customer_user_id = ? AND EXISTS (
+                    SELECT 1
+                    FROM ticket_form_submission customer_form_submission
+                    WHERE customer_form_submission.ticket_id = t.id
+                      AND customer_form_submission.source = "customer_portal"
+                 ))';
+            push @Bind, $CustomerAccess->{customer_user_id};
+        }
 
         if ( @OwnQueueIDs && $CustomerAccess->{customer_user_id} ) {
             my $Placeholder = join ', ', map {'?'} @OwnQueueIDs;
@@ -3030,6 +3042,14 @@ sub _CustomerTicketAccessCheck {
 
     return if !$CustomerAccess->{customer_user_id};
 
+    if ( $Ticket->{id}
+        && $Ticket->{customer_user_id}
+        && $Ticket->{customer_user_id} == $CustomerAccess->{customer_user_id}
+        && $Self->_CustomerPortalSubmissionExists( TicketID => $Ticket->{id} )
+    ) {
+        return 1;
+    }
+
     my $QueueRule = $Self->_CustomerQueueRuleHash(
         User       => $User,
         Permission => $Permission,
@@ -3047,6 +3067,24 @@ sub _CustomerTicketAccessCheck {
         && $Ticket->{customer_id} == $CustomerAccess->{customer_id};
 
     return;
+}
+
+sub _CustomerPortalSubmissionExists {
+    my ( $Self, %Param ) = @_;
+
+    my $TicketID = $Param{TicketID} || 0;
+    return if $TicketID !~ m{\A\d+\z} || !$TicketID;
+
+    my $Row = $Self->{DB}->SelectRow(
+        'SELECT ticket_id
+         FROM ticket_form_submission
+         WHERE ticket_id = ?
+           AND source = "customer_portal"
+         LIMIT 1',
+        $TicketID,
+    );
+
+    return $Row ? 1 : 0;
 }
 
 sub _CustomerQueueRuleHash {

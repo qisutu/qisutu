@@ -719,6 +719,20 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         </div>
                         [% END %]
 
+                        [% IF HasTicketFormInformation %]
+                        <div class="qisutu-ticket-info-block" data-qisutu-ticket-info-section>
+                            <h3>
+                                <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="false" aria-controls="qisutu-ticket-info-form-information" data-qisutu-ticket-info-toggle>
+                                    <span>[% Translate.TicketFormInformation %]</span>
+                                    <span class="qisutu-ticket-info-chevron" aria-hidden="true"></span>
+                                </button>
+                            </h3>
+                            <div id="qisutu-ticket-info-form-information" class="qisutu-ticket-info-content" data-qisutu-ticket-info-content hidden>
+                                <dl class="qisutu-ticket-info-list">[% RAW.TicketFormInformationHTML %]</dl>
+                            </div>
+                        </div>
+                        [% END %]
+
                         <div class="qisutu-ticket-info-block qisutu-time-accounting-block" data-qisutu-ticket-info-section>
                             <h3>
                                 <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="[% TimeAccountingExpandedAria %]" aria-controls="qisutu-ticket-info-time-accounting" data-qisutu-ticket-info-toggle>

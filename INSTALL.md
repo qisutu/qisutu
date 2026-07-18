@@ -212,6 +212,30 @@ Zugangsdaten und OAuth2-Tokens werden dabei entfernt. Bereits vorhandene
 Postmaster-Verarbeitungsprotokolle bleiben als Historie erhalten, verlieren
 aber die Verknüpfung zum gelöschten Konto.
 
+## Öffentliche Webformulare einbetten
+
+Formulare werden nach der Installation unter `Administration > Formulare`
+verwaltet. Bei einem öffentlichen Formular zeigt Qisutu den Direktlink und
+einen fertigen Iframe-Code an. Voraussetzung für eine absolute URL ist die
+öffentliche HTTPS-Basis-URL unter `Administration > System-Einstellungen`.
+
+Unter `Erlaubte Einbettungs-Domains` sollte jede erlaubte Website vollständig
+und zeilenweise eingetragen werden, zum Beispiel:
+
+    https://www.example.org
+    https://service.example.org
+
+Der Wert `*` erlaubt die Einbettung auf jeder Domain und sollte nur bewusst
+verwendet werden. Qisutu setzt daraus die CSP-Direktive `frame-ancestors`.
+Zusätzlich lassen sich Grenzwerte pro IP und Stunde, pro IP und Tag sowie ein
+Gesamtlimit pro Tag festlegen. Der öffentliche Einstieg liegt innerhalb des
+Instanz-Webpfads unter `form.pl?Form=URL-KENNUNG`.
+
+Webformular-Kontakte werden dem internen Kunden `QISUTU-WEBFORM` zugeordnet.
+Die Benutzerkonten sind absichtlich inaktiv und können sich nicht am
+Kundenportal anmelden. Formularübermittlungen bleiben als Snapshot am Ticket
+erhalten und werden bei späteren Formularänderungen nicht verändert.
+
 ## Protokolle
 
 Jede Instanz besitzt ihr eigenes Installationsprotokoll:

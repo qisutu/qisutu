@@ -53,6 +53,7 @@ sub Run {
     my $Articles = [];
     my $ArticleCreateError = '';
     my $TicketObject = $Self->_TicketObject();
+    my $TicketFormObject = $Self->_TicketFormObject();
 
     if ( $TicketObject && ( $Request->{Step} || '' ) eq 'CustomerArticleCreate' ) {
         my $Body    = $Request->{Body} || '';
@@ -174,6 +175,10 @@ sub Run {
     my $ArticleEmptyClass = $ArticleCount ? 'qisutu-hidden' : '';
     my $ArticleCreateErrorClass = $ArticleCreateError ? '' : 'qisutu-hidden';
     my $ArticleReplyFormClass = $ArticleCreateError ? '' : 'qisutu-hidden';
+    my $TicketFormInformationHTML = $TicketFormObject ? $TicketFormObject->SubmissionDisplayHTML(
+        TicketID => $Ticket->{id},
+        Language => $Language,
+    ) : '';
 
     return {
         Template => 'CustomerTicketZoom.tt',
@@ -205,6 +210,8 @@ sub Run {
                 DateTime => $Ticket->{changed_at},
                 Language => $Language,
             ),
+            TicketFormInformationHTML => $TicketFormInformationHTML,
+            HasTicketFormInformation  => $TicketFormInformationHTML ? 1 : 0,
 
             ArticleList              => $Articles,
             ArticleCount             => $ArticleCount,
@@ -244,6 +251,23 @@ sub _TicketObject {
         Config     => $Self->{Config},
         DB         => $Self->{DB},
         Permission => $PermissionObject,
+    );
+}
+
+sub _TicketFormObject {
+    my ($Self) = @_;
+
+    return if !$Self->{DB};
+    my $Loaded = eval {
+        require QisutuTicketForm;
+        1;
+    };
+    return if !$Loaded;
+
+    return QisutuTicketForm->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+        Output => $Self->{Output},
     );
 }
 

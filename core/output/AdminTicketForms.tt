@@ -1,0 +1,162 @@
+[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
+
+<section class="qisutu-dashboard qisutu-ticket-form-admin" aria-labelledby="qisutu-admin-ticket-forms-title">
+    <div class="qisutu-dashboard-header">
+        <div><h1 id="qisutu-admin-ticket-forms-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div>
+        [% IF ShowList %]<div class="qisutu-ticket-form-create-actions">
+            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminTicketForms&amp;Action=Create&amp;FormType=customer">[% Translate.AdminTicketFormCreateCustomer %]</a>
+            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminTicketForms&amp;Action=Create&amp;FormType=public">[% Translate.AdminTicketFormCreatePublic %]</a>
+        </div>[% END %]
+    </div>
+
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+    <div class="[% NoticeClass %]">[% NoticeMessage %]</div>
+
+    [% IF ShowList %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.AdminTicketFormsOverview %]</h2><span class="qisutu-panel-subtitle">[% FormCount %] [% Translate.AdminEntries %]</span></div></div>
+        <div class="qisutu-table-wrap"><table class="qisutu-table"><thead><tr>
+            <th>[% Translate.AdminName %]</th><th>[% Translate.AdminTicketFormType %]</th><th>[% Translate.AdminTargetQueue %]</th>
+            <th>[% Translate.AdminTicketFormFields %]</th><th>[% Translate.AdminTicketFormSubmissions %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminAction %]</th>
+        </tr></thead><tbody>
+        [% FOREACH TicketForm IN FormList %]
+            <tr><td><a class="qisutu-table-link" href="[% TicketForm.edit_url %]">[% TicketForm.internal_name %]</a><br><small>[% TicketForm.title %]</small></td>
+            <td>[% TicketForm.type_display %]</td><td>[% TicketForm.queue_display %]</td><td>[% TicketForm.field_count %]</td><td>[% TicketForm.submission_count %]</td><td>[% TicketForm.active_display %]</td>
+            <td><div class="qisutu-ticket-form-actions"><form method="post" action="index.pl"><input type="hidden" name="Page" value="AdminTicketForms"><input type="hidden" name="Step" value="[% TicketForm.toggle_step %]"><input type="hidden" name="FormID" value="[% TicketForm.id %]"><button class="qisutu-button [% TicketForm.toggle_class %] qisutu-button-small" type="submit">[% TicketForm.toggle_label %]</button></form>
+            <form class="[% TicketForm.delete_class %]" method="post" action="index.pl" data-qisutu-ticket-form-delete><input type="hidden" name="Page" value="AdminTicketForms"><input type="hidden" name="Step" value="FormDelete"><input type="hidden" name="FormID" value="[% TicketForm.id %]"><button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminDelete %]</button></form></div></td></tr>
+        [% END %]
+        </tbody></table></div>
+    </section>
+    [% END %]
+
+    [% IF ShowEdit %]
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% FormEditorTitle %]</h2><span class="qisutu-panel-subtitle">[% FormInternalName %]</span></div><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminTicketForms">[% Translate.AdminBackToList %]</a></div>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+            <input type="hidden" name="Page" value="AdminTicketForms"><input type="hidden" name="Step" value="[% SettingsStep %]"><input type="hidden" name="FormID" value="[% FormID %]"><input type="hidden" name="FormType" value="[% FormType %]">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormInternalName %]</label><input type="text" name="InternalName" value="[% FormInternalName %]" maxlength="190" required></div>
+                [% IF IsPublicForm %]
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormSlug %]</label><input type="text" name="Slug" value="[% FormSlug %]" maxlength="100" required><span class="qisutu-form-hint">[% Translate.AdminTicketFormSlugHint %]</span></div>
+                [% ELSE %]<input type="hidden" name="Slug" value="[% FormSlug %]">[% END %]
+                <div class="qisutu-form-field"><label>[% Translate.AdminTargetQueue %]</label><select name="QueueID" required>[% RAW.QueueOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSortOrder %]</label><input type="number" name="SortOrder" value="[% FormSortOrder %]" min="1"></div>
+                <label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="Active" value="1" [% FormActiveChecked %]><span>[% Translate.AdminActive %]</span></label>
+                [% IF IsCustomerForm %]<label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="AllCustomers" value="1" [% FormAllCustomersChecked %] data-qisutu-customer-all><span>[% Translate.AdminTicketFormAllCustomers %]</span></label>[% END %]
+                [% IF IsPublicForm %]<label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="RequireConsent" value="1" [% FormRequireConsentChecked %]><span>[% Translate.AdminTicketFormRequireConsent %]</span></label>[% END %]
+            </div>
+            <div class="qisutu-admin-form-block"><h3>[% Translate.AdminTranslations %]</h3>[% RAW.FormTranslationsHTML %]</div>
+            [% IF IsCustomerForm %]
+            <div class="qisutu-admin-form-block" data-qisutu-customer-assignment data-search-url="[% CustomerSearchURL %]" data-loading-text="[% Translate.AdminTicketFormCustomerSearchLoading %]" data-empty-text="[% Translate.AdminTicketFormCustomerSearchEmpty %]" data-error-text="[% Translate.AdminTicketFormCustomerSearchError %]">
+                <h3>[% Translate.AdminTicketFormCustomerAssignments %]</h3>
+                <p class="qisutu-form-hint">[% Translate.AdminTicketFormCustomerAssignmentsHint %]</p>
+                <div class="qisutu-customer-assignment-summary"><span><strong data-qisutu-customer-selected-count>[% SelectedCustomerCount %]</strong> [% Translate.AdminTicketFormCustomersSelected %]</span><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-customer-assignment-open>[% Translate.AdminTicketFormCustomerSelectionOpen %]</button></div>
+                <div data-qisutu-customer-selected-inputs>[% RAW.CustomerAssignmentsHTML %]</div>
+                <div class="qisutu-customer-assignment-overlay" data-qisutu-customer-assignment-overlay hidden aria-hidden="true">
+                    <section class="qisutu-customer-assignment-dialog" role="dialog" aria-modal="true" aria-labelledby="qisutu-customer-assignment-title">
+                        <header><div><h3 id="qisutu-customer-assignment-title">[% Translate.AdminTicketFormCustomerSelectionTitle %]</h3><p>[% Translate.AdminTicketFormCustomerSelectionDescription %]</p></div><button class="qisutu-customer-assignment-close" type="button" data-qisutu-customer-assignment-cancel aria-label="[% Translate.AdminCancel %]">×</button></header>
+                        <div class="qisutu-customer-assignment-search"><input type="search" data-qisutu-customer-assignment-search placeholder="[% Translate.AdminTicketFormCustomerSearchPlaceholder %]" autocomplete="off"></div>
+                        <div class="qisutu-customer-assignment-status" data-qisutu-customer-assignment-status aria-live="polite"></div>
+                        <div class="qisutu-customer-assignment-results" data-qisutu-customer-assignment-results></div>
+                        <button class="qisutu-button qisutu-button-secondary qisutu-customer-assignment-more" type="button" data-qisutu-customer-assignment-more hidden>[% Translate.AdminTicketFormCustomerLoadMore %]</button>
+                        <footer><span><strong data-qisutu-customer-working-count>[% SelectedCustomerCount %]</strong> [% Translate.AdminTicketFormCustomersSelected %]</span><div><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-customer-assignment-cancel>[% Translate.AdminCancel %]</button><button class="qisutu-button qisutu-button-primary" type="button" data-qisutu-customer-assignment-apply>[% Translate.AdminTicketFormCustomerSelectionApply %]</button></div></footer>
+                    </section>
+                </div>
+            </div>
+            <input type="hidden" name="RequireConsent" value="0"><input type="hidden" name="AllowedOrigins" value="*"><input type="hidden" name="RateLimitHour" value="20"><input type="hidden" name="RateLimitDay" value="240"><input type="hidden" name="RateLimitTotalDay" value="5000">
+            [% END %]
+            [% IF IsPublicForm %]
+            <div class="qisutu-admin-form-block"><h3>[% Translate.AdminTicketFormWebSecurity %]</h3><div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field qisutu-ticket-form-field-wide"><label>[% Translate.AdminTicketFormAllowedOrigins %]</label><textarea name="AllowedOrigins" rows="3">[% FormAllowedOrigins %]</textarea><span class="qisutu-form-hint">[% Translate.AdminTicketFormAllowedOriginsHint %]</span></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormRateHour %]</label><input type="number" name="RateLimitHour" value="[% FormRateLimitHour %]" min="1"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormRateDay %]</label><input type="number" name="RateLimitDay" value="[% FormRateLimitDay %]" min="1"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormRateTotalDay %]</label><input type="number" name="RateLimitTotalDay" value="[% FormRateLimitTotalDay %]" min="1"></div>
+            </div></div>
+            [% END %]
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button></div>
+        </form>
+    </section>
+
+    [% IF IsPublicForm %]
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% Translate.AdminTicketFormEmbed %]</h2></div>
+        <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormPublicURL %]</label><input type="text" value="[% PublicURL %]" readonly></div>
+        <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormIframeCode %]</label><textarea rows="4" readonly>[% EmbedCode %]</textarea></div>
+        <a class="qisutu-button qisutu-button-secondary" href="[% PublicURL %]" target="_blank" rel="noopener">[% Translate.AdminTicketFormPreview %]</a>
+    </section>
+    [% END %]
+
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.AdminTicketFormFields %]</h2><span class="qisutu-panel-subtitle">[% Translate.AdminTicketFormFieldsHint %]</span></div></div>
+        <div class="qisutu-ticket-form-field-list">[% RAW.FormFieldsHTML %]</div>
+    </section>
+
+    <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% IF ShowFieldEdit %][% Translate.AdminTicketFormFieldEdit %][% ELSE %][% Translate.AdminTicketFormFieldCreate %][% END %]</h2></div>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+            <input type="hidden" name="Page" value="AdminTicketForms"><input type="hidden" name="Step" value="[% FieldStep %]"><input type="hidden" name="FormID" value="[% FormID %]"><input type="hidden" name="FieldID" value="[% FieldID %]">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormFieldKey %]</label><input type="text" name="FieldKey" value="[% FieldKey %]" [% FieldKeyReadonly %]><span class="qisutu-form-hint">[% Translate.AdminTicketFormFieldKeyHint %]</span></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminFieldType %]</label><select name="FieldType" data-qisutu-ticket-form-field-type>[% RAW.FieldTypeOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSortOrder %]</label><input type="number" name="SortOrder" value="[% FieldSortOrder %]" min="1"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormDefaultValue %]</label><input type="text" name="DefaultValue" value="[% FieldDefaultValue %]"></div>
+                <label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="IsRequired" value="1" [% FieldRequiredChecked %]><span>[% Translate.AdminRequired %]</span></label>
+                <label class="qisutu-form-checkbox qisutu-admin-active-checkbox"><input type="checkbox" name="Active" value="1" [% FieldActiveChecked %]><span>[% Translate.AdminActive %]</span></label>
+            </div>
+            <div class="qisutu-ticket-form-options [% FieldOptionsClass %]" data-qisutu-ticket-form-options>
+                <h3>[% Translate.AdminTicketFormOptions %]</h3>
+                <p class="qisutu-form-hint">[% Translate.AdminTicketFormOptionsHint %]</p>
+                <div class="qisutu-ticket-form-option-list" data-qisutu-ticket-form-option-list data-option-placeholder="[% Translate.AdminTicketFormOptionValue %]" data-remove-label="[% Translate.AdminDelete %]"></div>
+                <button class="qisutu-button qisutu-button-secondary qisutu-ticket-form-option-add" type="button" data-qisutu-ticket-form-option-add>+ [% Translate.AdminTicketFormOptionAdd %]</button>
+                <textarea id="qisutu-ticket-form-options-text" class="qisutu-hidden" name="OptionsText" data-qisutu-ticket-form-options-input tabindex="-1" aria-hidden="true">[% FieldOptionsText %]</textarea>
+            </div>
+            <div class="qisutu-admin-form-block"><h3>[% Translate.AdminTranslations %]</h3>[% RAW.FieldTranslationsHTML %]</div>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% IF ShowFieldEdit %][% Translate.AdminSave %][% ELSE %][% Translate.AdminCreate %][% END %]</button>[% IF ShowFieldEdit %]<a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminTicketForms&amp;Action=Edit&amp;FormID=[% FormID %]">[% Translate.AdminCancel %]</a>[% END %]</div>
+        </form>
+    </section>
+    [% END %]
+
+    [% IF ShowCreate %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><h2>[% FormEditorTitle %]</h2><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminTicketForms">[% Translate.AdminBackToList %]</a></div>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+            <input type="hidden" name="Page" value="AdminTicketForms"><input type="hidden" name="Step" value="FormCreate"><input type="hidden" name="FormType" value="[% FormType %]">
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormInternalName %]</label><input type="text" name="InternalName" value="[% FormInternalName %]" required></div>
+                [% IF IsPublicForm %]<div class="qisutu-form-field"><label>[% Translate.AdminTicketFormSlug %]</label><input type="text" name="Slug" value="[% FormSlug %]" required><span class="qisutu-form-hint">[% Translate.AdminTicketFormSlugHint %]</span></div>[% ELSE %]<input type="hidden" name="Slug" value="[% FormSlug %]">[% END %]
+                <div class="qisutu-form-field"><label>[% Translate.AdminTargetQueue %]</label><select name="QueueID" required>[% RAW.QueueOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminSortOrder %]</label><input type="number" name="SortOrder" value="[% FormSortOrder %]" min="1"></div>
+                <label class="qisutu-form-checkbox"><input type="checkbox" name="Active" value="1" [% FormActiveChecked %]><span>[% Translate.AdminActive %]</span></label>
+                [% IF IsCustomerForm %]<label class="qisutu-form-checkbox"><input type="checkbox" name="AllCustomers" value="1" [% FormAllCustomersChecked %] data-qisutu-customer-all><span>[% Translate.AdminTicketFormAllCustomers %]</span></label>[% END %]
+                [% IF IsPublicForm %]<label class="qisutu-form-checkbox"><input type="checkbox" name="RequireConsent" value="1" [% FormRequireConsentChecked %]><span>[% Translate.AdminTicketFormRequireConsent %]</span></label>[% END %]
+            </div>
+            <div class="qisutu-admin-form-block"><h3>[% Translate.AdminTranslations %]</h3>[% RAW.FormTranslationsHTML %]</div>
+            [% IF IsCustomerForm %]
+            <div class="qisutu-admin-form-block" data-qisutu-customer-assignment data-search-url="[% CustomerSearchURL %]" data-loading-text="[% Translate.AdminTicketFormCustomerSearchLoading %]" data-empty-text="[% Translate.AdminTicketFormCustomerSearchEmpty %]" data-error-text="[% Translate.AdminTicketFormCustomerSearchError %]">
+                <h3>[% Translate.AdminTicketFormCustomerAssignments %]</h3>
+                <p class="qisutu-form-hint">[% Translate.AdminTicketFormCustomerAssignmentsHint %]</p>
+                <div class="qisutu-customer-assignment-summary"><span><strong data-qisutu-customer-selected-count>[% SelectedCustomerCount %]</strong> [% Translate.AdminTicketFormCustomersSelected %]</span><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-customer-assignment-open>[% Translate.AdminTicketFormCustomerSelectionOpen %]</button></div>
+                <div data-qisutu-customer-selected-inputs>[% RAW.CustomerAssignmentsHTML %]</div>
+                <div class="qisutu-customer-assignment-overlay" data-qisutu-customer-assignment-overlay hidden aria-hidden="true">
+                    <section class="qisutu-customer-assignment-dialog" role="dialog" aria-modal="true" aria-labelledby="qisutu-customer-assignment-title">
+                        <header><div><h3 id="qisutu-customer-assignment-title">[% Translate.AdminTicketFormCustomerSelectionTitle %]</h3><p>[% Translate.AdminTicketFormCustomerSelectionDescription %]</p></div><button class="qisutu-customer-assignment-close" type="button" data-qisutu-customer-assignment-cancel aria-label="[% Translate.AdminCancel %]">×</button></header>
+                        <div class="qisutu-customer-assignment-search"><input type="search" data-qisutu-customer-assignment-search placeholder="[% Translate.AdminTicketFormCustomerSearchPlaceholder %]" autocomplete="off"></div>
+                        <div class="qisutu-customer-assignment-status" data-qisutu-customer-assignment-status aria-live="polite"></div>
+                        <div class="qisutu-customer-assignment-results" data-qisutu-customer-assignment-results></div>
+                        <button class="qisutu-button qisutu-button-secondary qisutu-customer-assignment-more" type="button" data-qisutu-customer-assignment-more hidden>[% Translate.AdminTicketFormCustomerLoadMore %]</button>
+                        <footer><span><strong data-qisutu-customer-working-count>[% SelectedCustomerCount %]</strong> [% Translate.AdminTicketFormCustomersSelected %]</span><div><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-customer-assignment-cancel>[% Translate.AdminCancel %]</button><button class="qisutu-button qisutu-button-primary" type="button" data-qisutu-customer-assignment-apply>[% Translate.AdminTicketFormCustomerSelectionApply %]</button></div></footer>
+                    </section>
+                </div>
+            </div>
+            <input type="hidden" name="RequireConsent" value="0"><input type="hidden" name="AllowedOrigins" value="*"><input type="hidden" name="RateLimitHour" value="20"><input type="hidden" name="RateLimitDay" value="240"><input type="hidden" name="RateLimitTotalDay" value="5000">
+            [% END %]
+            [% IF IsPublicForm %]
+            <div class="qisutu-admin-form-block"><h3>[% Translate.AdminTicketFormWebSecurity %]</h3><div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field qisutu-ticket-form-field-wide"><label>[% Translate.AdminTicketFormAllowedOrigins %]</label><textarea name="AllowedOrigins" rows="3">[% FormAllowedOrigins %]</textarea><span class="qisutu-form-hint">[% Translate.AdminTicketFormAllowedOriginsHint %]</span></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormRateHour %]</label><input type="number" name="RateLimitHour" value="[% FormRateLimitHour %]" min="1"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormRateDay %]</label><input type="number" name="RateLimitDay" value="[% FormRateLimitDay %]" min="1"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormRateTotalDay %]</label><input type="number" name="RateLimitTotalDay" value="[% FormRateLimitTotalDay %]" min="1"></div>
+            </div></div>
+            [% END %]
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button></div>
+        </form>
+    </section>
+    [% END %]
+</section>
+<script src="[% StaticBase %]/js/qisutu-ticket-forms-admin.js?v=2026071803"></script>
