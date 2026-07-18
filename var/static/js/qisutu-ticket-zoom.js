@@ -1322,6 +1322,191 @@
         });
     }
 
+    function initTicketSplitDialog() {
+        var dialog = document.querySelector('[data-qisutu-ticket-split-dialog]');
+        var articleIDInput = dialog ? dialog.querySelector('[data-qisutu-split-article-id]') : null;
+        var titleInput = dialog ? dialog.querySelector('[data-qisutu-split-title]') : null;
+
+        if (!dialog || !articleIDInput || !titleInput) {
+            return;
+        }
+
+        function dialogOpen() {
+            if (dialog.hasAttribute('open')) {
+                return;
+            }
+
+            if (typeof dialog.showModal === 'function') {
+                dialog.showModal();
+            }
+            else {
+                dialog.setAttribute('open', '');
+            }
+
+            window.setTimeout(function () {
+                titleInput.focus();
+                titleInput.select();
+            }, 50);
+        }
+
+        function dialogClose() {
+            if (typeof dialog.close === 'function') {
+                dialog.close();
+            }
+            else {
+                dialog.removeAttribute('open');
+            }
+        }
+
+        document.querySelectorAll('[data-qisutu-article-split-button]').forEach(function (button) {
+            button.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                articleIDInput.value = button.getAttribute('data-qisutu-split-article-id') || '';
+                titleInput.value = button.getAttribute('data-qisutu-split-title') || '';
+                dialogOpen();
+            });
+        });
+
+        dialog.querySelectorAll('[data-qisutu-ticket-split-close]').forEach(function (button) {
+            button.addEventListener('click', dialogClose);
+        });
+
+        dialog.addEventListener('click', function (event) {
+            if (event.target === dialog) {
+                dialogClose();
+            }
+        });
+
+        if (dialog.hasAttribute('open') && typeof dialog.showModal === 'function') {
+            dialog.removeAttribute('open');
+            dialog.showModal();
+        }
+    }
+
+    function initTicketHistory() {
+        document.querySelectorAll('[data-qisutu-ticket-history]').forEach(function (history) {
+            var url = history.getAttribute('data-qisutu-ticket-history-url') || '';
+            var list = history.querySelector('[data-qisutu-ticket-history-list]');
+            var moreButton = history.querySelector('[data-qisutu-ticket-history-more]');
+            var filterButtons = history.querySelectorAll('[data-qisutu-ticket-history-filter]');
+            var category = 'all';
+            var loading = false;
+
+            if (!url || !list || !moreButton) {
+                return;
+            }
+
+            function loadingSet(enabled) {
+                loading = enabled;
+                moreButton.disabled = enabled;
+                filterButtons.forEach(function (button) {
+                    button.disabled = enabled;
+                });
+            }
+
+            function messageShow(message) {
+                var box = document.createElement('div');
+                box.className = 'qisutu-ticket-history-empty';
+                box.textContent = message || '';
+                list.replaceChildren(box);
+            }
+
+            function pageLoad(beforeID, append) {
+                var requestURL;
+
+                if (loading) {
+                    return;
+                }
+
+                requestURL = new URL(url, window.location.href);
+                requestURL.searchParams.set('Category', category);
+                if (beforeID) {
+                    requestURL.searchParams.set('BeforeID', String(beforeID));
+                }
+
+                loadingSet(true);
+                if (!append) {
+                    messageShow(history.getAttribute('data-qisutu-ticket-history-loading') || 'Loading…');
+                }
+
+                fetch(requestURL.toString(), {
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'same-origin'
+                })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error('History request failed');
+                        }
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        if (!data || !data.success) {
+                            throw new Error('History response failed');
+                        }
+
+                        if (append) {
+                            if (Number(data.count || 0) > 0) {
+                                list.insertAdjacentHTML('beforeend', data.html || '');
+                            }
+                        }
+                        else {
+                            list.innerHTML = data.html || '';
+                        }
+
+                        moreButton.setAttribute('data-before-id', String(data.next_before_id || 0));
+                        moreButton.hidden = !data.has_more;
+                    })
+                    .catch(function () {
+                        if (!append) {
+                            messageShow(history.getAttribute('data-qisutu-ticket-history-error') || 'History could not be loaded.');
+                        }
+                    })
+                    .finally(function () {
+                        loadingSet(false);
+                    });
+            }
+
+            filterButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var selected = button.getAttribute('data-qisutu-ticket-history-filter') || 'all';
+                    if (selected === category && !loading) {
+                        return;
+                    }
+
+                    category = selected;
+                    filterButtons.forEach(function (item) {
+                        var active = item === button;
+                        item.classList.toggle('qisutu-ticket-history-filter-active', active);
+                        item.setAttribute('aria-pressed', active ? 'true' : 'false');
+                    });
+                    pageLoad(0, false);
+                });
+            });
+
+            moreButton.addEventListener('click', function () {
+                pageLoad(Number(moreButton.getAttribute('data-before-id') || 0), true);
+            });
+
+            history.addEventListener('click', function (event) {
+                var link = event.target.closest('.qisutu-ticket-history-link[href^="#qisutu-ticket-article-"]');
+                var target;
+                var close;
+                if (!link) {
+                    return;
+                }
+                target = document.querySelector(link.getAttribute('href'));
+                if (target) {
+                    target.classList.add('qisutu-ticket-article-open');
+                }
+                close = document.querySelector('[data-qisutu-ticket-tools-close]');
+                if (close) {
+                    close.click();
+                }
+            });
+        });
+    }
+
     function init() {
         initArticles();
         initTicketInfoSections();
@@ -1333,6 +1518,8 @@
         initTicketToolDynamicFields();
         initDynamicMultiSelects();
         initTimeAccountingCorrectionDialogs();
+        initTicketSplitDialog();
+        initTicketHistory();
     }
 
     if (document.readyState === 'loading') {

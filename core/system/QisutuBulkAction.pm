@@ -329,6 +329,7 @@ sub _TicketApply {
     }
 
     $Self->_NotificationSuppressionSet(1);
+    $Self->_HistorySourceSet('bulk');
 
     my $OK = 1;
 
@@ -385,6 +386,7 @@ sub _TicketApply {
         my $Error = $Self->{Ticket}->Error() || 'Translate:TicketBulkActionFailed';
         $Self->{DB}->Rollback();
         $Self->_NotificationSuppressionSet(0);
+        $Self->_HistorySourceSet('');
         return $Self->_FailureRecord(
             OperationID => $OperationID,
             TicketID    => $TicketID,
@@ -404,6 +406,7 @@ sub _TicketApply {
         my $Error = $Self->{Ticket}->Error() || 'Translate:TicketBulkActionFailed';
         $Self->{DB}->Rollback();
         $Self->_NotificationSuppressionSet(0);
+        $Self->_HistorySourceSet('');
         return $Self->_FailureRecord(
             OperationID => $OperationID,
             TicketID    => $TicketID,
@@ -435,6 +438,7 @@ sub _TicketApply {
         my $Error = $Self->{DB}->Error() || 'Translate:TicketBulkActionAuditFailed';
         $Self->{DB}->Rollback();
         $Self->_NotificationSuppressionSet(0);
+        $Self->_HistorySourceSet('');
         return $Self->_FailureRecord(
             OperationID => $OperationID,
             TicketID    => $TicketID,
@@ -445,6 +449,7 @@ sub _TicketApply {
     }
 
     $Self->_NotificationSuppressionSet(0);
+    $Self->_HistorySourceSet('');
 
     if ( !$Self->{DB}->Commit() ) {
         my $Error = $Self->{DB}->Error() || 'Translate:TicketBulkActionFailed';
@@ -556,6 +561,16 @@ sub _NotificationSuppressionSet {
     my $DBH = $Self->{DB}->Handle();
     return if !$DBH;
     eval { $DBH->do( 'SET @qisutu_suppress_notifications = ' . ( $Enabled ? '1' : '0' ) ); 1; };
+    return 1;
+}
+
+sub _HistorySourceSet {
+    my ( $Self, $Source ) = @_;
+
+    my $DBH = $Self->{DB}->Handle();
+    return if !$DBH;
+    my $Value = $Source ? $DBH->quote($Source) : 'NULL';
+    eval { $DBH->do( 'SET @qisutu_history_source = ' . $Value ); 1; };
     return 1;
 }
 

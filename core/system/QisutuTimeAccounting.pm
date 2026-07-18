@@ -422,7 +422,7 @@ sub TicketSummaryHTML {
     my ( $Self, %Param ) = @_;
     my $Language = $Param{Language} || 'en';
     my $TicketID = $Param{TicketID} || 0;
-    my $CanCorrect = $Self->CorrectionAllowed( UserID => $Param{UserID} );
+    my $CanCorrect = !$Param{ReadOnly} && $Self->CorrectionAllowed( UserID => $Param{UserID} );
     my $Permission = $Self->{Permission} || QisutuPermission->new( Config => $Self->{Config}, DB => $Self->{DB} );
     my $IsAdmin = $Permission->UserIsAdmin( UserID => $Param{UserID} ) ? 1 : 0;
     my $Entries = $Self->TicketEntryList( TicketID => $TicketID );

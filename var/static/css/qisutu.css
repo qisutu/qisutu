@@ -977,6 +977,73 @@ a:hover {
     margin-bottom: 6px;
 }
 
+.qisutu-ticket-merged-shell {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin: 20px 0;
+    padding: 20px;
+    border: 1px solid #b9d8e3;
+    border-radius: var(--qisutu-radius);
+    background: #f1f8fa;
+}
+
+.qisutu-ticket-merged-shell h3 {
+    margin: 0 0 6px;
+}
+
+.qisutu-ticket-merged-shell p {
+    margin: 0 0 16px;
+    color: var(--qisutu-muted);
+}
+
+.qisutu-ticket-merged-icon {
+    display: grid;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--qisutu-primary);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.qisutu-ticket-merge-direction {
+    display: grid;
+    gap: 9px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.qisutu-ticket-merge-direction legend {
+    margin-bottom: 6px;
+    font-weight: 700;
+}
+
+.qisutu-ticket-merge-direction label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.qisutu-ticket-merge-direction label:hover,
+.qisutu-ticket-merge-direction label:focus-within {
+    border-color: var(--qisutu-primary);
+    background: #f1f8fa;
+}
+
+.qisutu-ticket-merge-direction input {
+    margin-top: 3px;
+}
+
 .qisutu-button {
     min-height: 38px;
     display: inline-flex;
@@ -1682,6 +1749,92 @@ a:hover {
     padding: 12px;
 }
 
+.qisutu-ticket-split-dialog {
+    width: min(820px, calc(100vw - 40px));
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    padding: 24px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 14px;
+    background: #ffffff;
+    color: var(--qisutu-text);
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.30);
+}
+
+.qisutu-ticket-split-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.48);
+}
+
+.qisutu-ticket-split-dialog .qisutu-dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.qisutu-ticket-split-dialog .qisutu-dialog-header h3 {
+    margin: 0;
+}
+
+.qisutu-ticket-split-dialog .qisutu-dialog-header p {
+    margin: 6px 0 0;
+    color: var(--qisutu-muted);
+}
+
+.qisutu-ticket-split-dialog .qisutu-form-actions {
+    margin-top: 20px;
+}
+
+.qisutu-ticket-split-customer {
+    margin: 0;
+}
+
+.qisutu-ticket-article-origin {
+    padding: 2px 7px;
+    border: 1px solid #b9d8e3;
+    border-radius: 999px;
+    background: #eef7fa;
+    color: #075c75;
+    font-size: 11px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.qisutu-ticket-article-origin:hover,
+.qisutu-ticket-article-origin:focus-visible {
+    border-color: #087a9a;
+    background: #def1f7;
+    outline: none;
+}
+
+.qisutu-ticket-link-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.qisutu-ticket-link-list li {
+    display: grid;
+    gap: 2px;
+    padding: 9px 10px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 8px;
+    background: #f8fbfc;
+}
+
+.qisutu-ticket-link-list a {
+    color: var(--qisutu-primary);
+    font-weight: 800;
+}
+
+.qisutu-ticket-link-list span,
+.qisutu-ticket-link-list small {
+    color: var(--qisutu-muted);
+}
+
 .qisutu-ticket-tools-placeholder {
     margin: 14px 0 0;
     padding: 10px 12px;
@@ -1753,6 +1906,215 @@ a:hover {
 .qisutu-ticket-bulk-history-reason p {
     margin: 4px 0 0;
     white-space: pre-wrap;
+}
+
+.qisutu-ticket-history {
+    display: grid;
+    gap: 14px;
+}
+
+.qisutu-ticket-history-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.qisutu-ticket-history-filter-active,
+.qisutu-ticket-history-filter-active:hover,
+.qisutu-ticket-history-filter-active:focus-visible {
+    border-color: var(--qisutu-primary);
+    background: var(--qisutu-primary);
+    color: #ffffff;
+}
+
+.qisutu-ticket-history-list {
+    position: relative;
+    display: grid;
+    gap: 0;
+}
+
+.qisutu-ticket-history-list::before {
+    position: absolute;
+    top: 20px;
+    bottom: 20px;
+    left: 19px;
+    width: 2px;
+    background: var(--qisutu-border);
+    content: '';
+}
+
+.qisutu-ticket-history-entry {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+    padding: 0 0 14px;
+}
+
+.qisutu-ticket-history-marker {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    background: #e8f3f6;
+    color: var(--qisutu-primary);
+    font-size: 12px;
+    font-weight: 900;
+    box-shadow: 0 0 0 1px var(--qisutu-border);
+}
+
+.qisutu-ticket-history-entry-change .qisutu-ticket-history-marker {
+    background: #fff0e9;
+    color: #c64628;
+}
+
+.qisutu-ticket-history-entry-communication .qisutu-ticket-history-marker {
+    background: #e7f6ed;
+    color: #176b3a;
+}
+
+.qisutu-ticket-history-entry-time .qisutu-ticket-history-marker {
+    background: #f0ebff;
+    color: #5b3fa3;
+}
+
+.qisutu-ticket-history-card {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    padding: 13px 14px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.qisutu-ticket-history-card header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.qisutu-ticket-history-card header > div {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.qisutu-ticket-history-card time,
+.qisutu-ticket-history-meta,
+.qisutu-ticket-history-field {
+    color: var(--qisutu-muted);
+    font-size: 12px;
+}
+
+.qisutu-ticket-history-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.qisutu-ticket-history-meta strong {
+    color: var(--qisutu-text);
+}
+
+.qisutu-ticket-history-backfill {
+    display: inline-flex;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #edf2f5;
+    color: var(--qisutu-muted);
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.qisutu-ticket-history-change {
+    display: grid;
+    gap: 5px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    background: #f7fafb;
+}
+
+.qisutu-ticket-history-change > div {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.qisutu-ticket-history-old {
+    color: var(--qisutu-muted);
+    text-decoration: line-through;
+}
+
+.qisutu-ticket-history-arrow {
+    color: #ff7f50;
+    font-weight: 900;
+}
+
+.qisutu-ticket-history-details p {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.qisutu-ticket-history-details > span {
+    display: inline-flex;
+    margin-bottom: 5px;
+    color: var(--qisutu-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.qisutu-ticket-history-details ul {
+    display: grid;
+    gap: 5px;
+    margin: 7px 0 0;
+    padding: 8px 0 0;
+    border-top: 1px solid var(--qisutu-border);
+    list-style: none;
+}
+
+.qisutu-ticket-history-details li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.qisutu-ticket-history-link {
+    justify-self: start;
+    color: var(--qisutu-primary);
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.qisutu-ticket-history-link:hover,
+.qisutu-ticket-history-link:focus-visible {
+    text-decoration: underline;
+}
+
+.qisutu-ticket-history-empty {
+    position: relative;
+    z-index: 1;
+    padding: 18px;
+    border: 1px dashed var(--qisutu-border);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--qisutu-muted);
+}
+
+.qisutu-ticket-history-actions {
+    display: flex;
+    justify-content: center;
 }
 
 .qisutu-ticket-articles {

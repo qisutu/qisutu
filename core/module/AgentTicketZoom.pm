@@ -27,11 +27,12 @@ use warnings;
 use utf8;
 use JSON::PP qw(encode_json);
 use Time::Local qw(timelocal);
-use QisutuBulkAction;
 use QisutuService;
 use QisutuChecklist;
 use QisutuResponseTemplate;
 use QisutuTimeAccounting;
+use QisutuTicketLink;
+use QisutuTicketHistory;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -63,7 +64,12 @@ sub Run {
     my $TicketFormObject   = $Self->_TicketFormObject();
     my $ChecklistObject    = QisutuChecklist->new( Config => $Self->{Config}, DB => $Self->{DB} );
     my $TimeAccountingObject = QisutuTimeAccounting->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
-    my $BulkActionObject = QisutuBulkAction->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    my $TicketLinkObject = QisutuTicketLink->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    my $TicketHistoryObject = QisutuTicketHistory->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+        Output => $Self->{Output},
+    );
     my $AttachmentMaxSizeMB    = $Self->_AttachmentMaxSizeMB();
     my $AttachmentMaxSizeBytes = $AttachmentMaxSizeMB * 1024 * 1024;
 
@@ -80,6 +86,60 @@ sub Run {
             Data => $Self->_CustomerUserLookup(
                 Query => $Request->{Term} || $Request->{term} || $Request->{Query} || $Request->{query} || $Request->{q} || '',
             ),
+        );
+    }
+
+    if ( ( $Request->{Step} || '' ) eq 'TicketLookup' ) {
+        return $Self->_JSONResponse(
+            Data => $TicketLinkObject->TicketLookup(
+                Query           => $Request->{Term} || $Request->{term} || $Request->{Query} || $Request->{query} || $Request->{q} || '',
+                CurrentTicketID => $TicketID,
+                User            => $Param{User} || {},
+                RequireEdit     => 1,
+                ExcludeMerged   => $Request->{ExcludeMerged} ? 1 : 0,
+            ),
+        );
+    }
+
+    if ( ( $Request->{Step} || '' ) eq 'TicketHistory' ) {
+        my $User = $Param{User} || {};
+        my $AccessibleTicket = $TicketObject ? $TicketObject->TicketGet(
+            TicketID => $TicketID,
+            User     => $User,
+            Language => $Language,
+        ) : undef;
+        my $Allowed = ( $User->{account_type} || '' ) eq 'agent' && $AccessibleTicket && $Self->_QueueAccessCheck(
+            User       => $User,
+            QueueID    => $AccessibleTicket->{queue_id} || 0,
+            Permission => 'ticket.view',
+        );
+
+        if ( !$Allowed ) {
+            return $Self->_JSONResponse(
+                Data => {
+                    success => 0,
+                    error   => 'TicketHistoryAccessDenied',
+                },
+            );
+        }
+
+        my $HistoryPage = $TicketHistoryObject->List(
+            TicketID => $TicketID,
+            Category => $Request->{Category} || 'all',
+            BeforeID => $Request->{BeforeID} || 0,
+            Limit    => 50,
+        );
+        return $Self->_JSONResponse(
+            Data => {
+                success        => 1,
+                html           => $TicketHistoryObject->TimelineHTML(
+                    Items    => $HistoryPage->{Items},
+                    Language => $Language,
+                ),
+                count          => scalar @{ $HistoryPage->{Items} || [] },
+                has_more       => $HistoryPage->{HasMore} ? 1 : 0,
+                next_before_id => 0 + ( $HistoryPage->{NextBeforeID} || 0 ),
+            },
         );
     }
 
@@ -176,7 +236,7 @@ sub Run {
             User     => $User,
             Language => $Language,
         );
-        if ( !$AccessibleTicket || !$Self->_QueueAccessCheck(
+        if ( !$AccessibleTicket || ( $AccessibleTicket->{state_name} || '' ) eq 'merged' || !$Self->_QueueAccessCheck(
             User       => $User,
             QueueID    => $AccessibleTicket->{queue_id} || 0,
             Permission => 'ticket.edit',
@@ -232,6 +292,8 @@ sub Run {
     my $ToolActionError  = '';
     my $ToolActionActive = 'priority';
     my $TimeAccountingActionError = '';
+    my $SplitActionError = '';
+    my $SplitArticleID   = 0;
 
     if ( $TicketObject && ( $Request->{Step} || '' ) eq 'TimeAccountingCreate' ) {
         my $User = $Param{User} || {};
@@ -239,7 +301,7 @@ sub Run {
         my $Input = $TimeAccountingObject->InputParse( Request => $Request );
         my $Description = $Request->{TimeAccountingDescription} || '';
         $Description =~ s{\A\s+|\s+\z}{}g;
-        if ( !$AccessibleTicket || !$Self->_QueueAccessCheck( User => $User, QueueID => $AccessibleTicket->{queue_id} || 0, Permission => 'ticket.edit' ) ) {
+        if ( !$AccessibleTicket || ( $AccessibleTicket->{state_name} || '' ) eq 'merged' || !$Self->_QueueAccessCheck( User => $User, QueueID => $AccessibleTicket->{queue_id} || 0, Permission => 'ticket.edit' ) ) {
             $TimeAccountingActionError = 'Translate:TimeAccountingCreateDenied';
         }
         elsif ( !$Input ) {
@@ -269,7 +331,7 @@ sub Run {
         my $User = $Param{User} || {};
         my $AccessibleTicket = $TicketObject->TicketGet( TicketID => $TicketID, User => $User, Language => $Language );
         my $Input = $TimeAccountingObject->InputParse( Request => $Request, NamePrefix => 'Replacement' );
-        if ( !$AccessibleTicket || !$Self->_QueueAccessCheck( User => $User, QueueID => $AccessibleTicket->{queue_id} || 0, Permission => 'ticket.view' ) ) {
+        if ( !$AccessibleTicket || ( $AccessibleTicket->{state_name} || '' ) eq 'merged' || !$Self->_QueueAccessCheck( User => $User, QueueID => $AccessibleTicket->{queue_id} || 0, Permission => 'ticket.view' ) ) {
             $TimeAccountingActionError = 'Translate:TimeAccountingCorrectionDenied';
         }
         elsif ( !$Input ) {
@@ -305,6 +367,72 @@ sub Run {
         }
 
         $ToolActionError = $ToolResult->{Error} || 'Translate:TicketToolUpdateFailed';
+    }
+
+    if ( $TicketObject && ( $Request->{Step} || '' ) eq 'TicketLinkCreate' ) {
+        $ToolActionActive = 'link';
+
+        if ( $TicketLinkObject->LinkCreate(
+            SourceTicketID => $TicketID,
+            TargetTicketID => $Request->{TargetTicketID},
+            User           => $Param{User} || {},
+        ) ) {
+            return { Redirect => 'index.pl?Page=AgentTicketZoom&TicketID=' . $TicketID . '#qisutu-ticket-links' };
+        }
+
+        $ToolActionError = $TicketLinkObject->Error() || 'Translate:TicketLinkCreateFailed';
+    }
+
+    if ( $TicketObject && ( $Request->{Step} || '' ) eq 'TicketMerge' ) {
+        $ToolActionActive = 'merge';
+
+        my $MergeDirection = $Request->{MergeDirection} || '';
+        if ( $MergeDirection ne 'current_into_selected' && $MergeDirection ne 'selected_into_current' ) {
+            $ToolActionError = 'Translate:TicketMergeDirectionRequired';
+        }
+        elsif ( !$Request->{MergeConfirmed} ) {
+            $ToolActionError = 'Translate:TicketMergeConfirmationRequired';
+        }
+        else {
+            my $SelectedTicketID = $Request->{TargetTicketID} || 0;
+            my ( $SourceTicketID, $TargetTicketID ) = $MergeDirection eq 'selected_into_current'
+                ? ( $SelectedTicketID, $TicketID )
+                : ( $TicketID, $SelectedTicketID );
+            my $MergeResult = $TicketLinkObject->TicketMerge(
+                SourceTicketID => $SourceTicketID,
+                TargetTicketID => $TargetTicketID,
+                User           => $Param{User} || {},
+            );
+
+            if ($MergeResult) {
+                return { Redirect => 'index.pl?Page=AgentTicketZoom&TicketID=' . $MergeResult->{TicketID} . '#qisutu-ticket-links' };
+            }
+
+            $ToolActionError = $TicketLinkObject->Error() || 'Translate:TicketMergeFailed';
+        }
+    }
+
+    if ( $TicketObject && ( $Request->{Step} || '' ) eq 'TicketArticleSplit' ) {
+        $SplitArticleID = $Request->{SourceArticleID} || 0;
+
+        my $SplitResult = $TicketLinkObject->ArticleSplit(
+            SourceTicketID   => $TicketID,
+            SourceArticleID  => $SplitArticleID,
+            Title            => $Request->{SplitTitle},
+            QueueID          => $Request->{SplitQueueID},
+            StateID          => $Request->{SplitStateID},
+            PriorityID       => $Request->{SplitPriorityID},
+            OwnerUserID      => $Request->{SplitOwnerUserID},
+            ResponsibleUserID => $Request->{SplitResponsibleUserID},
+            CopyAttachments  => $Request->{SplitCopyAttachments} ? 1 : 0,
+            User             => $Param{User} || {},
+        );
+
+        if ($SplitResult) {
+            return { Redirect => 'index.pl?Page=AgentTicketZoom&TicketID=' . $SplitResult->{TicketID} . '#qisutu-ticket-links' };
+        }
+
+        $SplitActionError = $TicketLinkObject->Error() || 'Translate:TicketSplitCreateFailed';
     }
 
 
@@ -347,6 +475,9 @@ sub Run {
 
         if ( !$TicketForSubmit ) {
             $ArticleCreateError = $TicketObject->Error() || 'Translate:TicketArticleCreateFailed';
+        }
+        elsif ( ( $TicketForSubmit->{state_name} || '' ) eq 'merged' ) {
+            $ArticleCreateError = 'Translate:TicketMergedReadOnly';
         }
 
         if ( !$ArticleCreateError && $ArticleMode eq 'email' && ( $Request->{ResponseTemplateID} || 0 ) ) {
@@ -653,11 +784,13 @@ sub Run {
         TicketID   => $TicketID,
         Checklists => $TicketChecklists,
         Language   => $Language,
+        ReadOnly   => $Ticket && ( $Ticket->{state_name} || '' ) eq 'merged' ? 1 : 0,
     );
     my $TicketChecklistAddFormHTML = $Self->_TicketChecklistAddFormHTML(
         TicketID  => $TicketID,
         Templates => $TicketChecklistTemplates,
         Language  => $Language,
+        ReadOnly  => $Ticket && ( $Ticket->{state_name} || '' ) eq 'merged' ? 1 : 0,
     );
 
     if ( !$Ticket ) {
@@ -673,13 +806,44 @@ sub Run {
         };
     }
 
-    my $TicketBulkHistoryHTML = $Self->_TicketBulkHistoryHTML(
-        Entries  => $BulkActionObject->TicketHistoryList(
-            TicketID => $Ticket->{id},
-            Limit    => 100,
-        ),
+    my $TicketHistoryPage = $TicketHistoryObject->List(
+        TicketID => $Ticket->{id},
+        Category => 'all',
+        Limit    => 50,
+    );
+    my $TicketHistoryHTML = $TicketHistoryObject->TimelineHTML(
+        Items    => $TicketHistoryPage->{Items},
         Language => $Language,
     );
+
+    my $TicketMerged = ( $Ticket->{state_name} || '' ) eq 'merged' ? 1 : 0;
+    my $CanChangeTicket = !$TicketMerged && $Self->_QueueAccessCheck(
+        User       => $Param{User} || {},
+        QueueID    => $Ticket->{queue_id},
+        Permission => 'ticket.edit',
+    );
+    my $TicketLinks = $TicketLinkObject->LinkList(
+        TicketID => $Ticket->{id},
+        User     => $Param{User} || {},
+    ) || [];
+    for my $Link ( @{$TicketLinks} ) {
+        $Link->{created_at_display} = $Self->_DateTimeFormat(
+            DateTime => $Link->{created_at},
+            Language => $Language,
+        );
+        $Link->{state} = $Self->_TicketStateText(
+            State    => $Link->{state},
+            Language => $Language,
+        );
+    }
+    my ($MergedTargetLink) = grep {
+        ( $_->{link_type} || '' ) eq 'merge' && $_->{current_is_source}
+    } @{$TicketLinks};
+    $MergedTargetLink ||= {};
+    my $ArticleOriginMap = $TicketLinkObject->ArticleOriginMap(
+        TicketID => $Ticket->{id},
+        User     => $Param{User} || {},
+    ) || {};
 
     $Articles = $TicketObject->ArticleList(
         TicketID => $Ticket->{id},
@@ -734,6 +898,14 @@ sub Run {
 
         $Article->{forward_subject}       = $ForwardData->{Subject} || '';
         $Article->{forward_body_template} = $ForwardData->{BodyTemplate} || '';
+        $Article->{split_button_class}     = $CanChangeTicket ? '' : 'qisutu-hidden';
+        $Article->{split_title}            = $Article->{subject} || $Ticket->{title} || '';
+        my $ArticleOrigin = $ArticleOriginMap->{ $Article->{id} } || {};
+        $Article->{origin_class}         = $ArticleOrigin->{ticket_id} ? '' : 'qisutu-hidden';
+        $Article->{origin_ticket_id}     = $ArticleOrigin->{ticket_id} || 0;
+        $Article->{origin_ticket_number} = $ArticleOrigin->{ticket_number} || '';
+        $Article->{origin_title}         = $ArticleOrigin->{title} || '';
+        $Article->{origin_label}         = $ArticleOrigin->{label_key} || '';
 
         if ( !$FallbackSenderEmail && ( $Article->{channel} || '' ) eq 'email' ) {
             $FallbackSenderEmail = $Article->{from_email} || '';
@@ -758,6 +930,7 @@ sub Run {
     my $TicketCustomerAutocompleteValue = $Ticket->{customer_user_id}
         ? ( ( $Ticket->{customer_user_name} || $TicketCustomerUser || '' ) . ( ( $Ticket->{customer_name} || '' ) ? ' — ' . $Ticket->{customer_name} : '' ) )
         : '';
+    my $SplitDefaultOwnerValue = $TicketOwnerAutocompleteValue || $Self->_UserName( User => $Param{User} || {} );
     my $StatusOptionsHTML   = $Self->_StatusOptionsHTML(
         Language         => $Language,
         DefaultStateName => 'open',
@@ -784,6 +957,18 @@ sub Run {
     my $ClosedStateOptionsHTML = $Self->_ClosedStateOptionsHTML(
         Language       => $Language,
         CurrentStateID => $Ticket->{state_id},
+    );
+    my $SplitQueueOptionsHTML = $Self->_SplitQueueOptionsHTML(
+        CurrentQueueID => $SplitActionError ? ( $Request->{SplitQueueID} || $Ticket->{queue_id} ) : $Ticket->{queue_id},
+        User           => $Param{User} || {},
+    );
+    my $SplitStateOptionsHTML = $Self->_SplitStateOptionsHTML(
+        CurrentStateID => $SplitActionError ? ( $Request->{SplitStateID} || 0 ) : 0,
+        Language       => $Language,
+    );
+    my $SplitPriorityOptionsHTML = $Self->_PriorityOptionsHTML(
+        CurrentPriorityID => $SplitActionError ? ( $Request->{SplitPriorityID} || $Ticket->{priority_id} ) : $Ticket->{priority_id},
+        Language          => $Language,
     );
 
     my $ArticleDynamicFieldsHTML = $DynamicFieldObject ? $DynamicFieldObject->FormHTML(
@@ -849,6 +1034,7 @@ sub Run {
         TicketID => $TicketID,
         UserID   => ( $Param{User} || {} )->{user_account_id},
         Language => $Language,
+        ReadOnly => $TicketMerged,
     );
 
     $ToolActionError = $TimeAccountingActionError
@@ -874,7 +1060,23 @@ sub Run {
             TicketID              => $Ticket->{id},
             TicketNumber          => $Ticket->{ticket_number},
             TicketTitle           => $Ticket->{title},
-            TicketBulkHistoryHTML => $TicketBulkHistoryHTML,
+            TicketHistoryHTML     => $TicketHistoryHTML,
+            TicketHistoryHasMore  => $TicketHistoryPage->{HasMore} ? 1 : 0,
+            TicketHistoryNextBeforeID => 0 + ( $TicketHistoryPage->{NextBeforeID} || 0 ),
+            TicketHistoryLoadMoreHidden => $TicketHistoryPage->{HasMore} ? '' : 'hidden',
+            TicketLinks           => $TicketLinks,
+            TicketLinkCount       => scalar @{$TicketLinks},
+            HasTicketLinks        => @{$TicketLinks} ? 1 : 0,
+            TicketLinksHiddenAttribute => @{$TicketLinks} ? '' : 'hidden',
+            CanChangeTicket       => $CanChangeTicket ? 1 : 0,
+            TicketMerged          => $TicketMerged,
+            TicketMergedTargetID  => $MergedTargetLink->{ticket_id} || 0,
+            TicketMergedTargetNumber => $MergedTargetLink->{ticket_number} || '',
+            TicketMergedTargetTitle  => $MergedTargetLink->{title} || '',
+            MergeTargetTicketID      => $ToolActionError && $ToolActionActive eq 'merge' ? ( $Request->{TargetTicketID} || 0 ) : 0,
+            MergeTargetTicketQuery   => $ToolActionError && $ToolActionActive eq 'merge' ? ( $Request->{TargetTicketQuery} || '' ) : '',
+            MergeDirectionCurrentChecked => !$ToolActionError || ( $Request->{MergeDirection} || '' ) eq 'current_into_selected' ? 'checked' : '',
+            MergeDirectionSelectedChecked => $ToolActionError && ( $Request->{MergeDirection} || '' ) eq 'selected_into_current' ? 'checked' : '',
             TicketQueue           => $Ticket->{queue_full_name} || $Ticket->{queue_name},
             TicketServiceID       => $Ticket->{service_id} || 0,
             TicketService         => $Ticket->{service_name} || '-',
@@ -976,6 +1178,19 @@ sub Run {
             TicketQueueOptionsHTML   => $QueueOptionsHTML,
             TicketServiceOptionsHTML => $ServiceOptionsHTML,
             TicketClosedStateOptionsHTML => $ClosedStateOptionsHTML,
+            SplitQueueOptionsHTML => $SplitQueueOptionsHTML,
+            SplitStateOptionsHTML => $SplitStateOptionsHTML,
+            SplitPriorityOptionsHTML => $SplitPriorityOptionsHTML,
+            SplitActionError      => $SplitActionError,
+            SplitActionErrorClass => $SplitActionError ? '' : 'qisutu-hidden',
+            SplitDialogOpen       => $SplitActionError ? 'open' : '',
+            SplitArticleID        => $SplitActionError ? $SplitArticleID : 0,
+            SplitTitle            => $SplitActionError ? ( $Request->{SplitTitle} || '' ) : '',
+            SplitOwnerUserID      => $SplitActionError ? ( $Request->{SplitOwnerUserID} || $Ticket->{owner_user_id} || ( $Param{User} || {} )->{user_account_id} || 0 ) : ( $Ticket->{owner_user_id} || ( $Param{User} || {} )->{user_account_id} || 0 ),
+            SplitOwnerValue       => $SplitActionError ? ( $Request->{SplitOwnerValue} || $SplitDefaultOwnerValue ) : $SplitDefaultOwnerValue,
+            SplitResponsibleUserID => $SplitActionError ? ( $Request->{SplitResponsibleUserID} || 0 ) : ( $Ticket->{responsible_user_id} || 0 ),
+            SplitResponsibleValue => $SplitActionError ? ( $Request->{SplitResponsibleValue} || '' ) : $TicketResponsibleAutocompleteValue,
+            SplitCopyAttachmentsChecked => !$SplitActionError || $Request->{SplitCopyAttachments} ? 'checked' : '',
             TicketArticleDynamicFieldsHTML => $ArticleDynamicFieldsHTML,
             TicketPriorityDynamicFieldsHTML => $PriorityDynamicFieldsHTML,
             TicketQueueDynamicFieldsHTML => $QueueDynamicFieldsHTML,
@@ -1862,6 +2077,14 @@ sub _TicketToolUpdate {
         };
     }
 
+    if ( ( $TicketBefore->{state_name} || '' ) eq 'merged' ) {
+        return {
+            Success    => 0,
+            ActiveTool => $Action,
+            Error      => 'Translate:TicketMergedReadOnly',
+        };
+    }
+
     my $Summary = '';
     my $UpdateOK;
     my $DynamicFieldQueueID = $Action eq 'queue'
@@ -2513,6 +2736,78 @@ sub _QueueOptionsHTML {
         my $Label = $Row->{full_name} || $Row->{name} || '';
         $HTML .= '<option value="' . $Self->_Escape( $Row->{id} ) . '"' . $Selected . '>'
             . $Self->_Escape($Label)
+            . '</option>';
+    }
+
+    return $HTML;
+}
+
+sub _SplitQueueOptionsHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $CurrentQueueID = $Param{CurrentQueueID} || 0;
+    my $User           = $Param{User} || {};
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT id, name, full_name
+         FROM ticket_queue
+         WHERE active = 1
+         ORDER BY sort_order ASC, full_name ASC, id ASC'
+    ) || [];
+
+    my $HTML = '';
+    for my $Row ( @{$Rows} ) {
+        next if !$Self->_QueueAccessCheck(
+            User       => $User,
+            QueueID    => $Row->{id},
+            Permission => 'ticket.create',
+        );
+
+        my $Selected = $CurrentQueueID && ( $Row->{id} || 0 ) == $CurrentQueueID ? ' selected' : '';
+        my $Label = $Row->{full_name} || $Row->{name} || '';
+        $HTML .= '<option value="' . $Self->_Escape( $Row->{id} ) . '"' . $Selected . '>'
+            . $Self->_Escape($Label)
+            . '</option>';
+    }
+
+    return $HTML;
+}
+
+sub _SplitStateOptionsHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $CurrentStateID = $Param{CurrentStateID} || 0;
+    my $Language       = $Param{Language} || 'en';
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT id, name, state_type
+         FROM ticket_state
+         WHERE active = 1
+           AND state_type <> ?
+           AND name <> ?
+         ORDER BY sort_order ASC, id ASC',
+        'pending',
+        'merged',
+    ) || [];
+
+    my $SelectedID = $CurrentStateID;
+    if (!$SelectedID) {
+        for my $Row ( @{$Rows} ) {
+            if ( ( $Row->{name} || '' ) eq 'new' ) {
+                $SelectedID = $Row->{id};
+                last;
+            }
+        }
+    }
+    $SelectedID ||= @{$Rows} ? $Rows->[0]->{id} : 0;
+
+    my $HTML = '';
+    for my $Row ( @{$Rows} ) {
+        my $Selected = $SelectedID && ( $Row->{id} || 0 ) == $SelectedID ? ' selected' : '';
+        my $Label = $Self->_TicketStateText(
+            State    => $Row->{name},
+            Language => $Language,
+        );
+        $HTML .= '<option value="' . $Self->_Escape( $Row->{id} ) . '"' . $Selected . '>'
+            . $Self->_Escape( $Label || $Row->{name} || '' )
             . '</option>';
     }
 
@@ -3489,6 +3784,7 @@ sub _TicketChecklistListHTML {
 
     my $TicketID = int( $Param{TicketID} || 0 );
     my $Language = $Param{Language} || 'en';
+    my $ReadOnly = $Param{ReadOnly} ? 1 : 0;
     my $Checklists = ref $Param{Checklists} eq 'ARRAY' ? $Param{Checklists} : [];
 
     if ( !@{$Checklists} ) {
@@ -3525,17 +3821,24 @@ sub _TicketChecklistListHTML {
             my $Checked = $IsDone ? ' checked' : '';
             my $NextDone = $IsDone ? 0 : 1;
 
-            $HTML .= '<form class="qisutu-ticket-checklist-item-form' . $DoneClass . '" method="post" action="index.pl" data-qisutu-checklist-item-form>';
-            $HTML .= '<input type="hidden" name="Page" value="AgentTicketZoom">';
-            $HTML .= '<input type="hidden" name="Step" value="ChecklistItemToggle">';
-            $HTML .= '<input type="hidden" name="TicketID" value="' . $TicketID . '">';
-            $HTML .= '<input type="hidden" name="ChecklistItemID" value="' . $ItemID . '">';
-            $HTML .= '<input type="hidden" name="ChecklistItemDone" value="' . $NextDone . '">';
+            my $ItemElement = $ReadOnly ? 'div' : 'form';
+            $HTML .= '<' . $ItemElement . ' class="qisutu-ticket-checklist-item-form' . $DoneClass . '"';
+            if (!$ReadOnly) {
+                $HTML .= ' method="post" action="index.pl" data-qisutu-checklist-item-form>';
+                $HTML .= '<input type="hidden" name="Page" value="AgentTicketZoom">';
+                $HTML .= '<input type="hidden" name="Step" value="ChecklistItemToggle">';
+                $HTML .= '<input type="hidden" name="TicketID" value="' . $TicketID . '">';
+                $HTML .= '<input type="hidden" name="ChecklistItemID" value="' . $ItemID . '">';
+                $HTML .= '<input type="hidden" name="ChecklistItemDone" value="' . $NextDone . '">';
+            }
+            else {
+                $HTML .= '>';
+            }
             my $ItemDescription = $Self->_Escape( $Item->{description} || '' );
             $ItemDescription =~ s{\r\n?}{\n}g;
             $ItemDescription =~ s{\n}{<br>}g;
 
-            $HTML .= '<label><input type="checkbox"' . $Checked . ' data-qisutu-checklist-item-toggle><span class="qisutu-ticket-checklist-item-content"><span class="qisutu-ticket-checklist-item-text">' . $Self->_Escape( $Item->{name} || '' ) . '</span>';
+            $HTML .= '<label><input type="checkbox"' . $Checked . ( $ReadOnly ? ' disabled' : ' data-qisutu-checklist-item-toggle' ) . '><span class="qisutu-ticket-checklist-item-content"><span class="qisutu-ticket-checklist-item-text">' . $Self->_Escape( $Item->{name} || '' ) . '</span>';
             if ($ItemDescription) {
                 $HTML .= '<span class="qisutu-ticket-checklist-item-description">' . $ItemDescription . '</span>';
             }
@@ -3548,17 +3851,19 @@ sub _TicketChecklistListHTML {
                 my $CompletionText = $CompletedBy ? $CompletedBy . ' · ' . $Item->{completed_at_display} : $Item->{completed_at_display};
                 $HTML .= '<span class="qisutu-ticket-checklist-completion">' . $Self->_Escape($CompletionText) . '</span>';
             }
-            $HTML .= '</form>';
+            $HTML .= '</' . $ItemElement . '>';
         }
 
         $HTML .= '</div>';
-        $HTML .= '<form class="qisutu-ticket-checklist-remove-form" method="post" action="index.pl" data-qisutu-checklist-remove-form data-confirm="' . $Self->_Escape($RemoveConfirm) . '">';
-        $HTML .= '<input type="hidden" name="Page" value="AgentTicketZoom">';
-        $HTML .= '<input type="hidden" name="Step" value="ChecklistRemove">';
-        $HTML .= '<input type="hidden" name="TicketID" value="' . $TicketID . '">';
-        $HTML .= '<input type="hidden" name="TicketChecklistID" value="' . $ChecklistID . '">';
-        $HTML .= '<button class="qisutu-button qisutu-button-small qisutu-button-danger" type="submit">' . $Self->_Escape($RemoveLabel) . '</button>';
-        $HTML .= '</form>';
+        if (!$ReadOnly) {
+            $HTML .= '<form class="qisutu-ticket-checklist-remove-form" method="post" action="index.pl" data-qisutu-checklist-remove-form data-confirm="' . $Self->_Escape($RemoveConfirm) . '">';
+            $HTML .= '<input type="hidden" name="Page" value="AgentTicketZoom">';
+            $HTML .= '<input type="hidden" name="Step" value="ChecklistRemove">';
+            $HTML .= '<input type="hidden" name="TicketID" value="' . $TicketID . '">';
+            $HTML .= '<input type="hidden" name="TicketChecklistID" value="' . $ChecklistID . '">';
+            $HTML .= '<button class="qisutu-button qisutu-button-small qisutu-button-danger" type="submit">' . $Self->_Escape($RemoveLabel) . '</button>';
+            $HTML .= '</form>';
+        }
         $HTML .= '</details>';
     }
     $HTML .= '</div>';
@@ -3570,7 +3875,7 @@ sub _TicketChecklistAddFormHTML {
     my ( $Self, %Param ) = @_;
 
     my $Templates = ref $Param{Templates} eq 'ARRAY' ? $Param{Templates} : [];
-    return '' if !@{$Templates};
+    return '' if $Param{ReadOnly} || !@{$Templates};
 
     my $TicketID = int( $Param{TicketID} || 0 );
     my $Language = $Param{Language} || 'en';
@@ -3591,60 +3896,6 @@ sub _TicketChecklistAddFormHTML {
     $HTML .= '</select><button class="qisutu-button qisutu-button-primary qisutu-button-small" type="submit">' . $Self->_Escape($ButtonLabel) . '</button></div>';
     $HTML .= '</form>';
 
-    return $HTML;
-}
-
-sub _TicketBulkHistoryHTML {
-    my ( $Self, %Param ) = @_;
-
-    my $Entries  = ref $Param{Entries} eq 'ARRAY' ? $Param{Entries} : [];
-    my $Language = $Param{Language} || 'en';
-
-    if ( !@{$Entries} ) {
-        return '<div class="qisutu-ticket-tools-history-placeholder"><span>'
-            . $Self->_Escape( $Self->{Output}->Translate( Key => 'TicketBulkActionHistoryEmpty', Language => $Language ) )
-            . '</span></div>';
-    }
-
-    my $Title = $Self->{Output}->Translate( Key => 'TicketBulkActionTitle', Language => $Language );
-    my $By    = $Self->{Output}->Translate( Key => 'TicketBulkActionHistoryBy', Language => $Language );
-    my $ReasonLabel = $Self->{Output}->Translate( Key => 'TicketBulkActionHistoryReason', Language => $Language );
-    my $HTML = '<div class="qisutu-ticket-bulk-history">';
-
-    for my $Entry ( @{$Entries} ) {
-        my $DateTime = $Self->_DateTimeFormat(
-            DateTime => $Entry->{created_at},
-            Language => $Language,
-        );
-        $HTML .= '<article class="qisutu-ticket-bulk-history-entry">';
-        $HTML .= '<header><strong>' . $Self->_Escape($Title) . ' #' . int( $Entry->{bulk_action_id} || 0 ) . '</strong>';
-        $HTML .= '<time>' . $Self->_Escape($DateTime) . '</time></header>';
-        $HTML .= '<div class="qisutu-ticket-bulk-history-agent"><span>' . $Self->_Escape($By) . '</span><strong>'
-            . $Self->_Escape( $Entry->{agent_name} || '-' ) . '</strong></div>';
-
-        if ( @{ $Entry->{changes} || [] } ) {
-            $HTML .= '<ul>';
-            for my $Change ( @{ $Entry->{changes} } ) {
-                next if ref $Change ne 'HASH';
-                my $Label = $Self->{Output}->Translate(
-                    Key      => $Change->{label_key} || '',
-                    Language => $Language,
-                );
-                $HTML .= '<li><span>' . $Self->_Escape($Label) . '</span><strong>'
-                    . $Self->_Escape( $Change->{old_value} || '-' ) . ' → '
-                    . $Self->_Escape( $Change->{new_value} || '-' ) . '</strong></li>';
-            }
-            $HTML .= '</ul>';
-        }
-
-        if ( defined $Entry->{change_reason} && $Entry->{change_reason} ne '' ) {
-            $HTML .= '<div class="qisutu-ticket-bulk-history-reason"><span>' . $Self->_Escape($ReasonLabel)
-                . '</span><p>' . $Self->_Escape( $Entry->{change_reason} ) . '</p></div>';
-        }
-        $HTML .= '</article>';
-    }
-
-    $HTML .= '</div>';
     return $HTML;
 }
 

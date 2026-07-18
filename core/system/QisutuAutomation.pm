@@ -698,6 +698,9 @@ sub JobProcess {
             $DBH->do( 'SET @qisutu_automation_rule_id = ' . int( $Rule->{id} || 0 ) );
             $DBH->do( 'SET @qisutu_automation_depth = ' . int( $Job->{depth} || 0 ) );
             $DBH->do( 'SET @qisutu_suppress_notifications = ' . ( $Job->{suppress_notifications} ? 1 : 0 ) );
+            $DBH->do( q{SET @qisutu_history_source = 'automation'} );
+            $DBH->do( q{SET @qisutu_history_actor_type = 'system'} );
+            $DBH->do( 'SET @qisutu_history_actor_name = ' . $DBH->quote( 'Automation: ' . ( $Rule->{name} || '' ) ) );
         };
     }
 
@@ -1012,6 +1015,7 @@ sub TicketDeleteComplete {
             for my $Row ( @{$ReferenceTables} ) {
                 my $Table = $Row->{table_name} || '';
                 next if !$Table || $Table eq $ParentTable || $Table !~ m{\A[A-Za-z0-9_]+\z};
+                next if $Table eq 'ticket_history';
                 my $STH = $DBH->prepare(
                     'DELETE FROM `' . $Table . '` WHERE `' . $Column . '` IN (' . $Placeholder . ')'
                 );
@@ -1044,7 +1048,7 @@ sub TicketDeleteComplete {
         for my $Row ( @{$Tables} ) {
             my $Table = $Row->{table_name} || '';
             next if !$Table || $Done{$Table};
-            next if $Table =~ m{\A(?:ticket|automation_job|automation_event|automation_deleted_ticket)\z};
+            next if $Table =~ m{\A(?:ticket|ticket_history|automation_job|automation_event|automation_deleted_ticket)\z};
             next if $Table !~ m{\A[A-Za-z0-9_]+\z};
             my $STH = $DBH->prepare('DELETE FROM `' . $Table . '` WHERE ticket_id = ?');
             $STH->execute($TicketID);
@@ -1722,6 +1726,7 @@ sub _JobSuccess {
          WHERE id = ?',
         'successful', $Job->{rule_id},
     );
+    $Self->_HistoryContextClear();
     return 1;
 }
 
@@ -1750,8 +1755,22 @@ sub _JobFail {
             'failed', $Job->{rule_id},
         );
     }
+    $Self->_HistoryContextClear();
     $Self->{LastError} = $Error;
     return;
+}
+
+sub _HistoryContextClear {
+    my ($Self) = @_;
+    my $DBH = $Self->{DB}->Handle();
+    return if !$DBH;
+    eval {
+        $DBH->do('SET @qisutu_history_source = NULL');
+        $DBH->do('SET @qisutu_history_actor_type = NULL');
+        $DBH->do('SET @qisutu_history_actor_name = NULL');
+        1;
+    };
+    return 1;
 }
 
 sub _AttachmentPaths {

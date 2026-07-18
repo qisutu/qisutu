@@ -61,6 +61,18 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             </div>
                         </div>
 
+                        [% IF TicketMerged %]
+                        <section class="qisutu-ticket-merged-shell" aria-labelledby="qisutu-ticket-merged-title">
+                            <div class="qisutu-ticket-merged-icon" aria-hidden="true">↪</div>
+                            <div>
+                                <h3 id="qisutu-ticket-merged-title">[% Translate.TicketMergedShellTitle %]</h3>
+                                <p>[% Translate.TicketMergedShellText %]</p>
+                                [% IF TicketMergedTargetID %]
+                                <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AgentTicketZoom&amp;TicketID=[% TicketMergedTargetID %]">[% Translate.TicketMergedShellLink %] [% TicketMergedTargetNumber %] – [% TicketMergedTargetTitle %]</a>
+                                [% END %]
+                            </div>
+                        </section>
+                        [% ELSE %]
                         <section class="qisutu-ticket-reply-top-actions" aria-label="[% Translate.TicketReplyActionsTitle %]">
                             <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-reply-mode="note" data-qisutu-reply-title="[% Translate.TicketCreateNote %]" data-qisutu-submit-label="[% Translate.TicketArticleSaveNote %]" data-qisutu-scroll-reply="1">[% Translate.TicketCreateNote %]</button>
                             <button class="qisutu-ticket-tools-button" type="button" aria-label="[% Translate.TicketToolsOpen %]" aria-expanded="[% TicketToolsButtonExpanded %]" data-qisutu-ticket-tools-open>
@@ -330,29 +342,78 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                                 <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="link">
                                     <h4>[% Translate.TicketToolLink %]</h4>
-                                    <div class="qisutu-ticket-tools-form-grid">
-                                        <div class="qisutu-form-field">
-                                            <label for="qisutu-ticket-tool-link-number">[% Translate.TicketToolTicketNumber %]</label>
-                                            <input id="qisutu-ticket-tool-link-number" type="text" disabled>
+                                    <form method="post" action="index.pl" data-qisutu-ticket-tool-form>
+                                        <input type="hidden" name="Page" value="AgentTicketZoom">
+                                        <input type="hidden" name="Step" value="TicketLinkCreate">
+                                        <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                        <input type="hidden" id="qisutu-ticket-tool-link-id" name="TargetTicketID" value="" data-qisutu-autocomplete-target>
+                                        <div class="qisutu-ticket-tools-form-grid">
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide qisutu-autocomplete">
+                                                <label for="qisutu-ticket-tool-link-number">[% Translate.TicketToolTicketNumber %]</label>
+                                                <input id="qisutu-ticket-tool-link-number" type="text" autocomplete="off" placeholder="[% Translate.TicketLinkSearchPlaceholder %]" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketZoom&amp;Step=TicketLookup&amp;TicketID=[% TicketID %]" data-qisutu-autocomplete-hidden="qisutu-ticket-tool-link-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]" data-qisutu-autocomplete-reset-on-panel="1" required>
+                                                <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+                                                <p class="qisutu-form-help">[% Translate.TicketLinkHelp %]</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <p class="qisutu-ticket-tools-placeholder">[% Translate.TicketToolsPlaceholder %]</p>
+                                        <div class="qisutu-form-actions">
+                                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketLinkSubmit %]</button>
+                                        </div>
+                                    </form>
                                 </div>
 
                                 <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="merge">
                                     <h4>[% Translate.TicketToolMerge %]</h4>
-                                    <div class="qisutu-ticket-tools-form-grid">
-                                        <div class="qisutu-form-field">
-                                            <label for="qisutu-ticket-tool-merge-number">[% Translate.TicketToolTargetTicketNumber %]</label>
-                                            <input id="qisutu-ticket-tool-merge-number" type="text" disabled>
+                                    <form method="post" action="index.pl" data-qisutu-ticket-tool-form data-qisutu-merge-form>
+                                        <input type="hidden" name="Page" value="AgentTicketZoom">
+                                        <input type="hidden" name="Step" value="TicketMerge">
+                                        <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                        <input type="hidden" id="qisutu-ticket-tool-merge-id" name="TargetTicketID" value="[% MergeTargetTicketID %]" data-qisutu-autocomplete-target>
+                                        <div class="qisutu-ticket-tools-form-grid">
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide qisutu-autocomplete">
+                                                <label for="qisutu-ticket-tool-merge-number">[% Translate.TicketToolTargetTicketNumber %]</label>
+                                                <input id="qisutu-ticket-tool-merge-number" type="text" name="TargetTicketQuery" value="[% MergeTargetTicketQuery %]" autocomplete="off" placeholder="[% Translate.TicketLinkSearchPlaceholder %]" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketZoom&amp;Step=TicketLookup&amp;TicketID=[% TicketID %]&amp;ExcludeMerged=1" data-qisutu-autocomplete-hidden="qisutu-ticket-tool-merge-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]" data-qisutu-autocomplete-reset-on-panel="1" required>
+                                                <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+                                                <p class="qisutu-form-help">[% Translate.TicketMergeHelp %]</p>
+                                            </div>
+                                            <fieldset class="qisutu-ticket-merge-direction qisutu-ticket-tools-form-wide">
+                                                <legend>[% Translate.TicketMergeDirection %]</legend>
+                                                <label>
+                                                    <input type="radio" name="MergeDirection" value="current_into_selected" [% MergeDirectionCurrentChecked %] required>
+                                                    <span><strong>[% TicketNumber %]</strong> [% Translate.TicketMergeDirectionCurrentIntoSelected %]</span>
+                                                </label>
+                                                <label>
+                                                    <input type="radio" name="MergeDirection" value="selected_into_current" [% MergeDirectionSelectedChecked %] required>
+                                                    <span>[% Translate.TicketMergeDirectionSelectedIntoCurrent %] <strong>[% TicketNumber %]</strong></span>
+                                                </label>
+                                            </fieldset>
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                                <label class="qisutu-form-checkbox" for="qisutu-ticket-tool-merge-confirm">
+                                                    <input id="qisutu-ticket-tool-merge-confirm" type="checkbox" name="MergeConfirmed" value="1" required>
+                                                    <span>[% Translate.TicketMergeConfirmation %]</span>
+                                                </label>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <p class="qisutu-ticket-tools-placeholder">[% Translate.TicketToolsPlaceholder %]</p>
+                                        <div class="qisutu-form-actions">
+                                            <button class="qisutu-button qisutu-button-danger" type="submit">[% Translate.TicketMergeSubmit %]</button>
+                                        </div>
+                                    </form>
                                 </div>
 
                                 <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="history">
                                     <h4>[% Translate.TicketToolHistory %]</h4>
-                                    [% RAW.TicketBulkHistoryHTML %]
+                                    <div class="qisutu-ticket-history" data-qisutu-ticket-history data-qisutu-ticket-history-url="index.pl?Page=AgentTicketZoom&amp;Step=TicketHistory&amp;TicketID=[% TicketID %]" data-qisutu-ticket-history-error="[% Translate.TicketHistoryLoadError %]" data-qisutu-ticket-history-loading="[% Translate.TicketHistoryLoading %]">
+                                        <div class="qisutu-ticket-history-filters" role="group" aria-label="[% Translate.TicketHistoryFilterLabel %]">
+                                            <button class="qisutu-button qisutu-button-secondary qisutu-button-small qisutu-ticket-history-filter-active" type="button" data-qisutu-ticket-history-filter="all" aria-pressed="true">[% Translate.TicketHistoryFilterAll %]</button>
+                                            <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-ticket-history-filter="change" aria-pressed="false">[% Translate.TicketHistoryFilterChanges %]</button>
+                                            <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-ticket-history-filter="communication" aria-pressed="false">[% Translate.TicketHistoryFilterCommunication %]</button>
+                                            <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-ticket-history-filter="time" aria-pressed="false">[% Translate.TicketHistoryFilterTime %]</button>
+                                            <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-ticket-history-filter="system" aria-pressed="false">[% Translate.TicketHistoryFilterSystem %]</button>
+                                        </div>
+                                        <div class="qisutu-ticket-history-list" data-qisutu-ticket-history-list aria-live="polite">[% RAW.TicketHistoryHTML %]</div>
+                                        <div class="qisutu-ticket-history-actions">
+                                            <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-ticket-history-more data-before-id="[% TicketHistoryNextBeforeID %]" [% TicketHistoryLoadMoreHidden %]>[% Translate.TicketHistoryLoadMore %]</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -369,7 +430,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                             <div class="qisutu-ticket-article-list">
                                 [% FOREACH Article IN ArticleList %]
-                                <article class="qisutu-ticket-article [% Article.article_open_class %] [% Article.article_sender_class %]" data-qisutu-ticket-article>
+                                <article id="qisutu-ticket-article-[% Article.id %]" class="qisutu-ticket-article [% Article.article_open_class %] [% Article.article_sender_class %]" data-qisutu-ticket-article>
                                     <div class="qisutu-ticket-article-shell">
                                         <div class="qisutu-ticket-article-avatar" title="[% Article.sender_role_label %]">[% Article.sender_initials %]</div>
 
@@ -387,11 +448,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                                     <span class="qisutu-ticket-article-badges">
                                                         <span class="qisutu-ticket-article-role">[% Article.sender_role_label %]</span>
                                                         <span class="qisutu-ticket-article-label">[% Article.visibility_label %]</span>
+                                                        <a class="qisutu-ticket-article-origin [% Article.origin_class %]" href="index.pl?Page=AgentTicketZoom&amp;TicketID=[% Article.origin_ticket_id %]" title="[% Article.origin_title %]">[% Article.origin_label %] [% Article.origin_ticket_number %]</a>
                                                     </span>
 
                                                     <div class="qisutu-ticket-article-top-actions">
                                                         <button class="qisutu-button qisutu-button-secondary qisutu-button-small [% Article.reply_button_class %]" type="button" data-qisutu-article-reply-button data-qisutu-reply-article-id="[% Article.id %]" data-qisutu-reply-to="[% Article.reply_to %]" data-qisutu-reply-cc="[% Article.reply_cc %]" data-qisutu-reply-subject="[% Article.reply_subject %]">[% Translate.TicketReplyCustomer %]</button>
                                                         <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-article-forward-button data-qisutu-forward-article-id="[% Article.id %]" data-qisutu-forward-subject="[% Article.forward_subject %]" data-qisutu-forward-title="[% Translate.TicketToolForward %]" data-qisutu-forward-submit-label="[% Translate.TicketToolForwardSend %]">[% Translate.TicketToolForward %]</button>
+                                                        <button class="qisutu-button qisutu-button-secondary qisutu-button-small [% Article.split_button_class %]" type="button" data-qisutu-article-split-button data-qisutu-split-article-id="[% Article.id %]" data-qisutu-split-title="[% Article.split_title %]">[% Translate.TicketArticleSplit %]</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -432,6 +495,75 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 </div>
                             </div>
                         </section>
+
+                        <dialog class="qisutu-ticket-split-dialog" data-qisutu-ticket-split-dialog [% SplitDialogOpen %]>
+                            <form method="post" action="index.pl" data-qisutu-ticket-split-form>
+                                <input type="hidden" name="Page" value="AgentTicketZoom">
+                                <input type="hidden" name="Step" value="TicketArticleSplit">
+                                <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                <input type="hidden" name="SourceArticleID" value="[% SplitArticleID %]" data-qisutu-split-article-id>
+
+                                <div class="qisutu-dialog-header">
+                                    <div>
+                                        <h3>[% Translate.TicketArticleSplitTitle %]</h3>
+                                        <p>[% Translate.TicketArticleSplitIntro %]</p>
+                                    </div>
+                                    <button class="qisutu-ticket-tools-close" type="button" aria-label="[% Translate.CommonClose %]" data-qisutu-ticket-split-close>×</button>
+                                </div>
+
+                                <div class="qisutu-form-error [% SplitActionErrorClass %]">[% SplitActionError %]</div>
+
+                                <div class="qisutu-ticket-tools-form-grid">
+                                    <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                        <label for="qisutu-ticket-split-title">[% Translate.TicketTitle %] *</label>
+                                        <input id="qisutu-ticket-split-title" type="text" name="SplitTitle" value="[% SplitTitle %]" maxlength="500" required data-qisutu-split-title>
+                                    </div>
+                                    <div class="qisutu-form-field">
+                                        <label for="qisutu-ticket-split-queue">[% Translate.TicketQueue %] *</label>
+                                        <select id="qisutu-ticket-split-queue" name="SplitQueueID" required>[% RAW.SplitQueueOptionsHTML %]</select>
+                                    </div>
+                                    <div class="qisutu-form-field">
+                                        <label for="qisutu-ticket-split-state">[% Translate.TicketState %] *</label>
+                                        <select id="qisutu-ticket-split-state" name="SplitStateID" required>[% RAW.SplitStateOptionsHTML %]</select>
+                                    </div>
+                                    <div class="qisutu-form-field">
+                                        <label for="qisutu-ticket-split-priority">[% Translate.TicketPriority %] *</label>
+                                        <select id="qisutu-ticket-split-priority" name="SplitPriorityID" required>[% RAW.SplitPriorityOptionsHTML %]</select>
+                                    </div>
+                                    <div class="qisutu-form-field qisutu-autocomplete">
+                                        <label for="qisutu-ticket-split-owner">[% Translate.TicketOwner %] *</label>
+                                        <input type="hidden" id="qisutu-ticket-split-owner-id" name="SplitOwnerUserID" value="[% SplitOwnerUserID %]" data-qisutu-autocomplete-target>
+                                        <input id="qisutu-ticket-split-owner" type="text" name="SplitOwnerValue" value="[% SplitOwnerValue %]" autocomplete="off" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketZoom&amp;Step=AgentLookup&amp;TicketID=[% TicketID %]" data-qisutu-autocomplete-hidden="qisutu-ticket-split-owner-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]" required>
+                                        <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+                                    </div>
+                                    <div class="qisutu-form-field qisutu-autocomplete">
+                                        <label for="qisutu-ticket-split-responsible">[% Translate.TicketResponsible %]</label>
+                                        <input type="hidden" id="qisutu-ticket-split-responsible-id" name="SplitResponsibleUserID" value="[% SplitResponsibleUserID %]" data-qisutu-autocomplete-target>
+                                        <input id="qisutu-ticket-split-responsible" type="text" name="SplitResponsibleValue" value="[% SplitResponsibleValue %]" autocomplete="off" data-qisutu-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketZoom&amp;Step=AgentLookup&amp;TicketID=[% TicketID %]" data-qisutu-autocomplete-hidden="qisutu-ticket-split-responsible-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]">
+                                        <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+                                    </div>
+                                    <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                        <dl class="qisutu-ticket-info-list qisutu-ticket-split-customer">
+                                            <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketCustomer %]</dt><dd>[% TicketCustomer %]</dd></div>
+                                            <div class="qisutu-ticket-info-row"><dt>[% Translate.TicketCustomerUser %]</dt><dd>[% TicketCustomerUser %]</dd></div>
+                                        </dl>
+                                        <p class="qisutu-form-help">[% Translate.TicketSplitCustomerInherited %]</p>
+                                    </div>
+                                    <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                        <label class="qisutu-form-checkbox" for="qisutu-ticket-split-attachments">
+                                            <input id="qisutu-ticket-split-attachments" type="checkbox" name="SplitCopyAttachments" value="1" [% SplitCopyAttachmentsChecked %]>
+                                            <span>[% Translate.TicketSplitCopyAttachments %]</span>
+                                        </label>
+                                        <p class="qisutu-form-help">[% Translate.TicketSplitNoNotifications %]</p>
+                                    </div>
+                                </div>
+
+                                <div class="qisutu-form-actions">
+                                    <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-ticket-split-close>[% Translate.CommonCancel %]</button>
+                                    <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketSplitSubmit %]</button>
+                                </div>
+                            </form>
+                        </dialog>
 
                         <section class="qisutu-ticket-reply" aria-label="[% Translate.TicketReplyActionsTitle %]">
                             <div class="qisutu-ticket-reply-actions">
@@ -552,6 +684,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 </div>
                             </div>
                         </section>
+                        [% END %]
                     </article>
 
                     <aside class="qisutu-panel qisutu-ticket-sidebar">
@@ -619,6 +752,31 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                         <dd>[% TicketChangedAt %]</dd>
                                     </div>
                                 </dl>
+                            </div>
+                        </div>
+
+                        <div id="qisutu-ticket-links" class="qisutu-ticket-info-block [% IF HasTicketLinks %]qisutu-ticket-info-block-open[% END %]" data-qisutu-ticket-info-section>
+                            <h3>
+                                <button class="qisutu-ticket-info-toggle" type="button" aria-expanded="[% IF HasTicketLinks %]true[% ELSE %]false[% END %]" aria-controls="qisutu-ticket-info-links" data-qisutu-ticket-info-toggle>
+                                    <span>[% Translate.TicketLinkedTickets %] · [% TicketLinkCount %]</span>
+                                    <span class="qisutu-ticket-info-chevron" aria-hidden="true"></span>
+                                </button>
+                            </h3>
+                            <div id="qisutu-ticket-info-links" class="qisutu-ticket-info-content" data-qisutu-ticket-info-content [% TicketLinksHiddenAttribute %]>
+                                [% IF HasTicketLinks %]
+                                <ul class="qisutu-ticket-link-list">
+                                    [% FOREACH Link IN TicketLinks %]
+                                    <li>
+                                        <a href="index.pl?Page=AgentTicketZoom&amp;TicketID=[% Link.ticket_id %]">[% Link.ticket_number %]</a>
+                                        <span>[% Link.label_key %]</span>
+                                        <small>[% Link.title %] · [% Link.state %]</small>
+                                        <small>[% Link.created_at_display %] · [% Link.created_by_name %]</small>
+                                    </li>
+                                    [% END %]
+                                </ul>
+                                [% ELSE %]
+                                <p class="qisutu-form-help">[% Translate.TicketLinkedTicketsEmpty %]</p>
+                                [% END %]
                             </div>
                         </div>
 
@@ -778,4 +936,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
-            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071705"></script>
+            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071802"></script>
