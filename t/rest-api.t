@@ -29,7 +29,7 @@ use QisutuRESTAPI;
 }
 
 my $DB = Local::RESTDB->new();
-my $Config = { System=>{Version=>'0.0.44',WebPath=>'/qisutu',BaseURL=>''},Language=>{Default=>'de'} };
+my $Config = { System=>{Version=>'0.0.46',WebPath=>'/qisutu',BaseURL=>''},Language=>{Default=>'de'} };
 my $Auth = QisutuAPIAuth->new( Config=>$Config, DB=>$DB );
 
 my $Definitions = $Auth->ScopeDefinitions();
@@ -53,7 +53,7 @@ ok( !$Invalid, 'invalid allowed IP input is rejected' );
 my $API = QisutuRESTAPI->new( Config=>$Config, DB=>$DB );
 my $Ping = $API->Handle(Method=>'GET',Path=>'/v1/ping',Query=>{},Body=>{},Headers=>{},RemoteIP=>'127.0.0.1',RequestID=>'test-request');
 is( $Ping->{Status}, 200, 'public health endpoint works' );
-is( $Ping->{Body}->{data}->{version}, '0.0.44', 'health endpoint reports program version' );
+is( $Ping->{Body}->{data}->{version}, '0.0.46', 'health endpoint reports program version' );
 
 my $OpenAPI = $API->OpenAPIDocument();
 is( $OpenAPI->{openapi}, '3.0.3', 'local OpenAPI document is available' );

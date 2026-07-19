@@ -28,7 +28,12 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <h1 id="qisutu-agent-ticket-zoom-title">[% ProgramTitle %]</h1>
                         <p>[% ProgramDescription %]</p>
                     </div>
-                    <a class="qisutu-button qisutu-button-secondary" href="[% TicketListURL %]">[% Translate.TicketBackToList %]</a>
+                    <div class="qisutu-dashboard-header-actions">
+                        [% IF TicketFound %]
+                        <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AgentTicketZoom&amp;Step=TicketPrint&amp;TicketID=[% TicketID %]">[% Translate.TicketPrintWhole %]</a>
+                        [% END %]
+                        <a class="qisutu-button qisutu-button-secondary" href="[% TicketListURL %]">[% Translate.TicketBackToList %]</a>
+                    </div>
                 </div>
 
                 [% IF TicketFound %]
@@ -452,6 +457,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                                     </span>
 
                                                     <div class="qisutu-ticket-article-top-actions">
+                                                        <a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AgentTicketZoom&amp;Step=TicketPrint&amp;TicketID=[% TicketID %]&amp;ArticleID=[% Article.id %]">[% Translate.TicketPrintArticle %]</a>
                                                         <button class="qisutu-button qisutu-button-secondary qisutu-button-small [% Article.reply_button_class %]" type="button" data-qisutu-article-reply-button data-qisutu-reply-article-id="[% Article.id %]" data-qisutu-reply-to="[% Article.reply_to %]" data-qisutu-reply-cc="[% Article.reply_cc %]" data-qisutu-reply-subject="[% Article.reply_subject %]">[% Translate.TicketReplyCustomer %]</button>
                                                         <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-article-forward-button data-qisutu-forward-article-id="[% Article.id %]" data-qisutu-forward-subject="[% Article.forward_subject %]" data-qisutu-forward-title="[% Translate.TicketToolForward %]" data-qisutu-forward-submit-label="[% Translate.TicketToolForwardSend %]">[% Translate.TicketToolForward %]</button>
                                                         <button class="qisutu-button qisutu-button-secondary qisutu-button-small [% Article.split_button_class %]" type="button" data-qisutu-article-split-button data-qisutu-split-article-id="[% Article.id %]" data-qisutu-split-title="[% Article.split_title %]">[% Translate.TicketArticleSplit %]</button>

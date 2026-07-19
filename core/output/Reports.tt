@@ -1,39 +1,136 @@
-[%#
-Qisutu - Open Source Ticket System
-Copyright (C) 2026 Franziska Steps
-Qisutu - Kim-KI, https://qisutu.de
+[%# Qisutu flexible reports - SPDX-License-Identifier: AGPL-3.0-or-later %]
 
-This file is part of Qisutu.
-
-Qisutu is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Qisutu is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
-
-SPDX-FileCopyrightText: 2026 Franziska Steps
-SPDX-License-Identifier: AGPL-3.0-or-later
-%]
-
-            <section class="qisutu-dashboard" aria-labelledby="qisutu-reports-title">
+            <section class="qisutu-dashboard qisutu-reports" aria-labelledby="qisutu-reports-title" data-report-delete-confirm="[% DeleteConfirm %]">
                 <div class="qisutu-dashboard-header">
                     <div>
                         <h1 id="qisutu-reports-title">[% ProgramTitle %]</h1>
                         <p>[% ProgramDescription %]</p>
                     </div>
+                    [% IF IsReportList %]
+                    <a class="qisutu-button qisutu-button-primary" href="[% CreateURL %]">[% Translate.ReportCreate %]</a>
+                    [% ELSE %]
+                    <a class="qisutu-button qisutu-button-secondary" href="[% ListURL %]">[% Translate.ReportBackToList %]</a>
+                    [% END %]
                 </div>
 
+                <div class="qisutu-alert qisutu-alert-success [% NoticeClass %]">[% NoticeMessage %]</div>
+                <div class="qisutu-alert qisutu-alert-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+                [% IF IsReportList %]
                 <section class="qisutu-panel">
                     <div class="qisutu-panel-header">
-                        <h2>[% Translate.NavigationReports %]</h2>
+                        <div><h2>[% Translate.ReportSavedReports %]</h2><p>[% ReportCount %] [% Translate.ReportEntries %]</p></div>
                     </div>
-                    <p>[% Translate.ProgramReportsDescription %]</p>
+                    [% IF HasReports %]
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-report-list-table">
+                            <thead><tr><th>[% Translate.ReportName %]</th><th>[% Translate.ReportDataSource %]</th><th>[% Translate.ReportOwner %]</th><th>[% Translate.ReportVisibility %]</th><th>[% Translate.ReportChangedAt %]</th><th>[% Translate.Action %]</th></tr></thead>
+                            <tbody>
+                            [% FOREACH Report IN ReportList %]
+                            <tr>
+                                <td><a href="[% Report.open_url %]"><strong>[% Report.name %]</strong></a><small>[% Report.description %]</small></td>
+                                <td>[% Report.source_label %]</td><td>[% Report.owner_name %]</td><td>[% Report.visibility_label %]</td><td>[% Report.changed_at %]</td>
+                                <td class="qisutu-table-actions">[% RAW.Report.action_html %]</td>
+                            </tr>
+                            [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                    [% ELSE %]
+                    <div class="qisutu-empty"><strong>[% Translate.ReportNoReportsTitle %]</strong><p>[% Translate.ReportNoReportsText %]</p><a class="qisutu-button qisutu-button-primary" href="[% CreateURL %]">[% Translate.ReportCreateFirst %]</a></div>
+                    [% END %]
                 </section>
+                [% END %]
+
+                [% IF IsReportDesigner %]
+                <div class="qisutu-alert qisutu-alert-info [% ReadOnlyAlertClass %]">[% ReportReadOnlyHint %]</div>
+                <form method="post" action="index.pl" class="qisutu-report-designer [% ReadOnlyClass %]" data-qisutu-report-designer
+                    data-option-search-url="[% OptionSearchURL %]" data-preview-error="[% JSPreviewError %]" data-no-values="[% JSNoValues %]"
+                    data-filter-value="[% JSFilterValue %]" data-filter-values="[% JSFilterValues %]" data-select-values="[% JSSelectValues %]"
+                    data-search="[% JSSearch %]" data-apply="[% JSApply %]" data-cancel="[% JSCancel %]" data-no-matches="[% JSNoMatches %]"
+                    data-metric-value="[% JSMetricValue %]" data-detail-limited="[% JSDetailLimited %]"
+                    data-metric-limit="[% JSMetricLimit %]" data-column-limit="[% JSColumnLimit %]" data-remove="[% JSRemove %]">
+                    <input type="hidden" name="Page" value="Reports">
+                    <input type="hidden" name="ReportID" value="[% ReportIDField %]">
+                    <input type="hidden" name="ConfigurationJSON" value="" data-report-configuration-input>
+
+                    <section class="qisutu-panel qisutu-report-meta-panel">
+                        <div class="qisutu-panel-header"><div><h2>[% Translate.ReportBasicData %]</h2><p>[% Translate.ReportBasicDataHint %]</p></div></div>
+                        <div class="qisutu-form-grid">
+                            <label><span>[% Translate.ReportName %] *</span><input type="text" name="Name" maxlength="190" value="[% ReportName %]" required></label>
+                            <label><span>[% Translate.ReportVisibility %]</span><select name="Visibility" data-report-visibility><option value="private" [% VisibilityPrivateSelected %]>[% Translate.ReportVisibilityPrivate %]</option><option value="shared" [% VisibilitySharedSelected %]>[% Translate.ReportVisibilityShared %]</option></select></label>
+                            <label class="qisutu-form-grid-wide"><span>[% Translate.ReportDescription %]</span><textarea name="Description" rows="2">[% ReportDescription %]</textarea></label>
+                            <label class="qisutu-form-grid-wide" data-report-groups><span>[% Translate.ReportShareGroups %]</span><select name="GroupID" multiple size="4">
+                                [% FOREACH Group IN GroupOptions %]<option value="[% Group.id %]" [% Group.selected %]>[% Group.name %] — [% Group.description %]</option>[% END %]
+                            </select><small>[% Translate.ReportShareGroupsHint %]</small></label>
+                        </div>
+                    </section>
+
+                    <div class="qisutu-report-builder-grid">
+                        <section class="qisutu-panel qisutu-report-step">
+                            <span class="qisutu-report-step-number">1</span><h2>[% Translate.ReportStepSource %]</h2><p>[% Translate.ReportStepSourceHint %]</p>
+                            <label><span>[% Translate.ReportDataSource %]</span><select data-report-source></select></label>
+                            <div class="qisutu-report-source-description" data-report-source-description></div>
+                        </section>
+
+                        <section class="qisutu-panel qisutu-report-step">
+                            <span class="qisutu-report-step-number">2</span><div class="qisutu-panel-header"><div><h2>[% Translate.ReportStepFilters %]</h2><p>[% Translate.ReportStepFiltersHint %]</p></div><button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-report-add-filter>[% Translate.ReportAddFilter %]</button></div>
+                            <label class="qisutu-report-filter-logic"><span>[% Translate.ReportFilterLogic %]</span><select data-report-filter-logic><option value="all">[% Translate.ReportFilterAll %]</option><option value="any">[% Translate.ReportFilterAny %]</option></select></label>
+                            <div class="qisutu-report-filter-list" data-report-filter-list></div>
+                            <div class="qisutu-empty qisutu-report-filter-empty" data-report-filter-empty>[% Translate.ReportNoFilters %]</div>
+                        </section>
+
+                        <section class="qisutu-panel qisutu-report-step">
+                            <span class="qisutu-report-step-number">3</span><h2>[% Translate.ReportStepAnalysis %]</h2><p>[% Translate.ReportStepAnalysisHint %]</p>
+                            <div class="qisutu-form-grid">
+                                <label><span>[% Translate.ReportGrouping %]</span><select data-report-group></select></label>
+                                <label><span>[% Translate.ReportChartType %]</span><select data-report-chart></select></label>
+                                <label><span>[% Translate.ReportSort %]</span><select data-report-sort></select></label>
+                                <label><span>[% Translate.ReportResultLimit %]</span><input type="number" min="5" max="100" value="25" data-report-limit></label>
+                            </div>
+                            <fieldset class="qisutu-report-choice-fieldset"><legend>[% Translate.ReportMetrics %] <small>[% Translate.ReportMetricsHint %]</small></legend><div class="qisutu-report-choice-grid" data-report-metrics></div></fieldset>
+                            <fieldset class="qisutu-report-choice-fieldset"><legend>[% Translate.ReportDetailColumns %] <small>[% Translate.ReportDetailColumnsHint %]</small></legend><div class="qisutu-report-choice-grid" data-report-columns></div></fieldset>
+                        </section>
+                    </div>
+
+                    <section class="qisutu-panel qisutu-report-actions-panel">
+                        <div class="qisutu-report-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="button" data-report-preview>[% Translate.ReportPreview %]</button>
+                            <button class="qisutu-button qisutu-button-primary [% SaveButtonClass %]" type="submit" name="Step" value="Save">[% Translate.Save %]</button>
+                            <button class="qisutu-button qisutu-button-secondary [% CopyButtonClass %]" type="submit" name="Step" value="Copy">[% Translate.ReportCopyAsOwn %]</button>
+                            <button class="qisutu-button qisutu-button-secondary" type="submit" name="Step" value="ExportCSVAnalysis">[% Translate.ReportExportCSVAnalysis %]</button>
+                            <button class="qisutu-button qisutu-button-secondary" type="submit" name="Step" value="ExportCSVDetail">[% Translate.ReportExportCSVDetails %]</button>
+                            <button class="qisutu-button qisutu-button-secondary" type="submit" name="Step" value="ExportPDF">[% Translate.ReportExportPDF %]</button>
+                        </div>
+                    </section>
+
+                    <section class="qisutu-panel qisutu-report-preview-panel" data-report-preview-panel>
+                        <div class="qisutu-panel-header"><div><h2>[% Translate.ReportPreviewTitle %]</h2><p>[% Translate.ReportPreviewHint %]</p></div><span class="qisutu-report-preview-duration" data-report-duration></span></div>
+                        <div class="qisutu-alert qisutu-alert-error qisutu-hidden" data-report-preview-error></div>
+                        <div class="qisutu-report-loading qisutu-hidden" data-report-loading>[% Translate.ReportLoading %]</div>
+                        <div class="qisutu-report-preview-content qisutu-hidden" data-report-preview-content>
+                            <div class="qisutu-dashboard-metrics" data-report-summary></div>
+                            <div class="qisutu-report-chart-wrap"><canvas data-report-chart-canvas></canvas></div>
+                            <div class="qisutu-table-wrap"><table class="qisutu-table"><thead data-report-analysis-head></thead><tbody data-report-analysis-body></tbody></table></div>
+                            <h3>[% Translate.ReportDetails %]</h3><div class="qisutu-table-wrap"><table class="qisutu-table qisutu-report-detail-table"><thead data-report-detail-head></thead><tbody data-report-detail-body></tbody></table></div>
+                            <p class="qisutu-form-hint qisutu-hidden" data-report-limited></p>
+                        </div>
+                    </section>
+                </form>
+
+                <div class="qisutu-modal qisutu-hidden" data-report-option-modal aria-hidden="true">
+                    <div class="qisutu-modal-backdrop" data-report-option-close></div>
+                    <section class="qisutu-modal-dialog qisutu-report-option-dialog" role="dialog" aria-modal="true" aria-labelledby="qisutu-report-option-title">
+                        <div class="qisutu-panel-header"><h2 id="qisutu-report-option-title" data-report-option-title>[% Translate.ReportSelectValues %]</h2><button class="qisutu-modal-close" type="button" data-report-option-close aria-label="[% Translate.Close %]">×</button></div>
+                        <label><span>[% Translate.Search %]</span><input type="search" data-report-option-search autocomplete="off"></label>
+                        <div class="qisutu-report-option-results" data-report-option-results></div>
+                        <div class="qisutu-report-option-actions"><button class="qisutu-button qisutu-button-secondary" type="button" data-report-option-close>[% Translate.Cancel %]</button><button class="qisutu-button qisutu-button-primary" type="button" data-report-option-apply>[% Translate.ReportApplySelection %]</button></div>
+                    </section>
+                </div>
+
+                <script type="application/json" data-report-catalog>[% RAW.CatalogJSON %]</script>
+                <script type="application/json" data-report-configuration>[% RAW.ConfigurationJSON %]</script>
+                <script src="[% StaticBase %]/js/chartjs/chart.umd.min.js?v=4.5.1"></script>
+                <script src="[% StaticBase %]/js/qisutu-reports.js?v=2026071801"></script>
+                [% END %]
             </section>

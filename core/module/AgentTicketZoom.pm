@@ -26,6 +26,7 @@ use strict;
 use warnings;
 use utf8;
 use JSON::PP qw(encode_json);
+use POSIX qw(strftime);
 use Time::Local qw(timelocal);
 use QisutuService;
 use QisutuChecklist;
@@ -35,6 +36,7 @@ use QisutuTicketLink;
 use QisutuTicketHistory;
 use QisutuCMDB;
 use QisutuKnowledgeBase;
+use QisutuTicketPDF;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -100,6 +102,16 @@ sub Run {
             Data => $Self->_CustomerUserLookup(
                 Query => $Request->{Term} || $Request->{term} || $Request->{Query} || $Request->{query} || $Request->{q} || '',
             ),
+        );
+    }
+
+    if ( ( $Request->{Step} || '' ) eq 'TicketPrint' ) {
+        return $Self->_TicketPrintResponse(
+            TicketObject => $TicketObject,
+            TicketID     => $TicketID,
+            ArticleID    => $Request->{ArticleID} || 0,
+            User         => $Param{User} || {},
+            Language     => $Language,
         );
     }
 
@@ -3115,6 +3127,150 @@ sub _TicketFormObject {
         Output => $Self->{Output},
     );
     return $Self->{TicketFormObject};
+}
+
+sub _TicketPrintResponse {
+    my ( $Self, %Param ) = @_;
+
+    my $TicketObject = $Param{TicketObject};
+    my $TicketID     = $Param{TicketID} || 0;
+    my $ArticleID    = $Param{ArticleID} || 0;
+    my $User         = $Param{User} || {};
+    my $Language     = $Param{Language} || 'en';
+    my $FallbackURL  = 'index.pl?Page=AgentTicketZoom&TicketID=' . int($TicketID);
+
+    return { Redirect => $FallbackURL }
+        if !$TicketObject || !$TicketID || ( $User->{account_type} || '' ) ne 'agent';
+    return { Redirect => $FallbackURL }
+        if $ArticleID && $ArticleID !~ m{\A\d+\z};
+
+    my $Ticket = $TicketObject->TicketGet(
+        TicketID => $TicketID,
+        User     => $User,
+        Language => $Language,
+    );
+    return { Redirect => 'index.pl?Page=AgentTicketList' } if !$Ticket;
+
+    my $Articles = $TicketObject->ArticleList(
+        TicketID => $TicketID,
+        User     => $User,
+        Language => $Language,
+        All      => 1,
+    ) || [];
+
+    if ($ArticleID) {
+        my @Selected = grep { ( $_->{id} || 0 ) == $ArticleID } @{$Articles};
+        return { Redirect => $FallbackURL } if !@Selected;
+        $Articles = \@Selected;
+    }
+
+    $Ticket->{created_at_display} = $Self->_DateTimeFormat(
+        DateTime => $Ticket->{created_at},
+        Language => $Language,
+    );
+    $Ticket->{changed_at_display} = $Self->_DateTimeFormat(
+        DateTime => $Ticket->{changed_at},
+        Language => $Language,
+    );
+    for my $Field (qw(state_name_display priority_name_display)) {
+        $Ticket->{$Field} = $Self->_TranslationResolve(
+            Value    => $Ticket->{$Field},
+            Language => $Language,
+        );
+    }
+
+    for my $Article ( @{$Articles} ) {
+        $Article->{created_at_display} = $Self->_DateTimeFormat(
+            DateTime => $Article->{created_at},
+            Language => $Language,
+        );
+        $Article->{visibility_label_display} = $Self->_TranslationResolve(
+            Value    => $Article->{visibility_label},
+            Language => $Language,
+        );
+    }
+
+    my %LabelKey = (
+        Ticket             => 'TicketPrintTicket',
+        Queue              => 'TicketQueue',
+        Status             => 'TicketState',
+        Priority           => 'TicketPriority',
+        Customer           => 'TicketCustomer',
+        Contact            => 'TicketCustomerUser',
+        Email              => 'TicketCustomerEmail',
+        Owner              => 'TicketOwner',
+        Responsible        => 'TicketResponsible',
+        CreatedAt          => 'TicketCreated',
+        ChangedAt          => 'TicketChanged',
+        Article            => 'TicketPrintArticle',
+        From               => 'TicketArticleFrom',
+        To                 => 'TicketArticleTo',
+        Cc                 => 'TicketArticleReplyCc',
+        Channel            => 'TicketArticleChannel',
+        Visibility         => 'TicketArticleVisibility',
+        VisibilityAgent    => 'TicketArticleVisibilityAgent',
+        VisibilityBoth     => 'TicketArticleVisibilityBoth',
+        Attachments        => 'TicketArticleAttachments',
+        AllArticlesTitle   => 'TicketPrintWholeTitle',
+        SingleArticleTitle => 'TicketPrintSingleTitle',
+        Internal           => 'TicketPrintInternal',
+        NoArticles         => 'TicketPrintNoArticles',
+        EmptyArticle       => 'TicketPrintEmptyArticle',
+        Page               => 'TicketPrintPage',
+        GeneratedAt        => 'TicketPrintGeneratedAt',
+    );
+    my %Labels = map {
+        $_ => $Self->{Output}->Translate( Key => $LabelKey{$_}, Language => $Language ) || $LabelKey{$_}
+    } keys %LabelKey;
+
+    my $GeneratedAt = strftime( '%Y-%m-%d %H:%M:%S', localtime );
+    $GeneratedAt = $Self->_DateTimeFormat( DateTime => $GeneratedAt, Language => $Language );
+    my $LogoPath = ( $Self->{Config}->{Paths}->{Static} || '' ) . '/img/logo-pdf.jpg';
+
+    my $PDFObject = QisutuTicketPDF->new( Config => $Self->{Config} );
+    my $PDF = $PDFObject->Create(
+        Ticket        => $Ticket,
+        Articles      => $Articles,
+        Labels        => \%Labels,
+        SystemName    => $Self->{Config}->{System}->{Name} || 'Qisutu',
+        LogoPath      => $LogoPath,
+        GeneratedAt   => $GeneratedAt,
+        SingleArticle => $ArticleID ? 1 : 0,
+    );
+    return { Redirect => $FallbackURL } if !$PDF;
+
+    my $Filename = 'qisutu-ticket-' . ( $Ticket->{ticket_number} || $TicketID );
+    if ($ArticleID) {
+        my $ArticleNumber = $Articles->[0]->{article_number} || $ArticleID;
+        $Filename .= '-article-' . $ArticleNumber;
+    }
+    $Filename =~ s{[^A-Za-z0-9_-]+}{-}g;
+    $Filename =~ s{\A-+|-+\z}{}g;
+    $Filename ||= 'qisutu-ticket';
+
+    return {
+        Response => $Self->{Output}->Response(
+            Body        => $PDF,
+            ContentType => 'application/pdf',
+            Headers     => [
+                'Content-Disposition: attachment; filename="' . $Filename . '.pdf"',
+                'Cache-Control: private, no-store, max-age=0',
+                'X-Content-Type-Options: nosniff',
+            ],
+        ),
+    };
+}
+
+sub _TranslationResolve {
+    my ( $Self, %Param ) = @_;
+
+    my $Value = defined $Param{Value} ? $Param{Value} : '';
+    return $Value if $Value !~ m{\ATranslate:(.+)\z};
+
+    return $Self->{Output}->Translate(
+        Key      => $1,
+        Language => $Param{Language} || 'en',
+    ) || $1;
 }
 
 sub _TicketObject {

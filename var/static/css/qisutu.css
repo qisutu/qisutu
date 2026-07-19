@@ -633,6 +633,14 @@ a:hover {
     gap: 20px;
 }
 
+.qisutu-dashboard-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .qisutu-dashboard h1 {
     margin: 0;
     font-size: 30px;
@@ -2756,6 +2764,15 @@ a:hover {
 
     .qisutu-main {
         padding: 20px;
+    }
+
+    .qisutu-dashboard-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .qisutu-dashboard-header-actions {
+        justify-content: flex-start;
     }
 
     .qisutu-panel-header {
@@ -7909,4 +7926,40 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 @media (max-width: 720px) {
     .qisutu-api-secret-row,
     .qisutu-api-user-picker { align-items: stretch; flex-direction: column; }
+}
+
+/* Flexible reports */
+.qisutu-report-list-table td:first-child small { display: block; margin-top: 3px; color: #647387; }
+.qisutu-report-builder-grid { display: grid; gap: 18px; }
+.qisutu-report-step { position: relative; padding-top: 24px; }
+.qisutu-report-step-number {
+    position: absolute; top: -14px; left: 20px; display: grid; width: 30px; height: 30px;
+    place-items: center; color: #fff; border-radius: 50%; background: #00617a; font-weight: 800;
+}
+.qisutu-report-source-description { margin-top: 10px; color: #647387; }
+.qisutu-report-filter-logic { display: grid; max-width: 380px; margin-bottom: 12px; gap: 6px; }
+.qisutu-report-filter-list { display: grid; gap: 8px; }
+.qisutu-report-filter-row { display: grid; grid-template-columns: minmax(180px,1.1fr) minmax(145px,.8fr) minmax(220px,1.6fr) auto; align-items: center; gap: 8px; }
+.qisutu-report-filter-value { display: flex; min-width: 0; gap: 7px; }
+.qisutu-report-filter-value > * { min-width: 0; flex: 1; }
+.qisutu-report-choice-fieldset { margin-top: 18px; padding: 15px; border: 1px solid #d6e0e8; border-radius: 8px; }
+.qisutu-report-choice-fieldset legend { padding: 0 7px; font-weight: 800; }
+.qisutu-report-choice-fieldset legend small { color: #647387; font-weight: 400; }
+.qisutu-report-choice-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 5px 15px; }
+.qisutu-report-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.qisutu-report-preview-duration { color: #647387; font-variant-numeric: tabular-nums; }
+.qisutu-report-chart-wrap { position: relative; height: 370px; margin-bottom: 18px; }
+.qisutu-report-detail-table { min-width: 850px; }
+.qisutu-report-loading { padding: 30px; text-align: center; color: #00617a; font-weight: 800; }
+.qisutu-report-option-dialog { width: min(720px,calc(100vw - 32px)); }
+.qisutu-report-option-dialog > label { display: grid; padding: 0 18px 12px; gap: 6px; }
+.qisutu-report-option-results { max-height: 360px; margin: 0 18px; overflow: auto; border: 1px solid #d6e0e8; border-radius: 7px; }
+.qisutu-report-option-item { display: flex; align-items: center; padding: 9px 11px; gap: 9px; border-bottom: 1px solid #e4eaef; cursor: pointer; }
+.qisutu-report-option-item:last-child { border-bottom: 0; }
+.qisutu-report-option-item:hover { background: #edf7fa; }
+.qisutu-report-option-actions { display: flex; justify-content: flex-end; padding: 14px 18px 18px; gap: 8px; }
+@media (max-width: 800px) {
+    .qisutu-report-filter-row { grid-template-columns: 1fr; }
+    .qisutu-report-filter-row > button { justify-self: end; }
+    .qisutu-report-chart-wrap { height: 290px; }
 }

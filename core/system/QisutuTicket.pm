@@ -2771,6 +2771,7 @@ sub ArticleList {
 
     my $TicketID = $Param{TicketID} || 0;
     my $Limit    = $Param{Limit}    || 100;
+    my $All      = $Param{All} ? 1 : 0;
     my $User     = $Param{User}     || {};
     my $Language = $Param{Language} || 'en';
 
@@ -2789,17 +2790,19 @@ sub ArticleList {
         return [];
     }
 
-    if ( $Limit !~ m{\A\d+\z} ) {
+    if ( !$All && $Limit !~ m{\A\d+\z} ) {
         $Limit = 100;
     }
 
-    if ( $Limit < 1 ) {
+    if ( !$All && $Limit < 1 ) {
         $Limit = 1;
     }
 
-    if ( $Limit > 500 ) {
+    if ( !$All && $Limit > 500 ) {
         $Limit = 500;
     }
+
+    my $LimitSQL = $All ? '' : ' LIMIT ' . $Limit;
 
     my $IsCustomerView = $Self->_CustomerAccessData( User => $User ) ? 1 : 0;
     my $VisibilitySQL  = $Self->_TicketArticleVisibilityColumnExists()
@@ -2835,8 +2838,8 @@ sub ArticleList {
          LEFT JOIN user_account created_account ON created_account.id = a.created_by_user_id
          LEFT JOIN user_account changed_account ON changed_account.id = a.changed_by_user_id
          WHERE a.ticket_id = ?
-         ORDER BY a.created_at ASC, a.id ASC
-         LIMIT ' . $Limit,
+         ORDER BY a.created_at ASC, a.id ASC'
+         . $LimitSQL,
         $TicketID
     );
 
