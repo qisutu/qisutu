@@ -283,6 +283,7 @@
                         body: new URLSearchParams({
                             Page: 'AgentKnowledgeBase',
                             Step: 'UsageRecord',
+                            CSRFToken: (document.querySelector('input[name="CSRFToken"]') || {}).value || '',
                             ArticleID: selectedArticle.id,
                             TicketID: root.dataset.ticketId || '0',
                             Context: context(root),

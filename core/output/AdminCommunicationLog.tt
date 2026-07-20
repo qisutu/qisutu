@@ -1,0 +1,201 @@
+[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
+<section class="qisutu-dashboard qisutu-communication-log" aria-labelledby="qisutu-communication-log-title">
+    <div class="qisutu-dashboard-header">
+        <div>
+            <h1 id="qisutu-communication-log-title">[% ProgramTitle %]</h1>
+            <p>[% ProgramDescription %]</p>
+        </div>
+    </div>
+
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+
+    <form class="qisutu-panel qisutu-communication-filter" method="get" action="index.pl">
+        <input type="hidden" name="Page" value="AdminCommunicationLog">
+        <div class="qisutu-panel-header">
+            <div><h2>[% Translate.CommunicationLogFilterTitle %]</h2><p>[% Translate.CommunicationLogFilterDescription %]</p></div>
+        </div>
+        <div class="qisutu-communication-filter-grid">
+            <div class="qisutu-form-field">
+                <label for="communication-period">[% Translate.CommunicationLogPeriod %]</label>
+                <select id="communication-period" name="Period">
+                    <option value="1h" [% Period1hSelected %]>[% Translate.CommunicationLogPeriod1h %]</option>
+                    <option value="24h" [% Period24hSelected %]>[% Translate.CommunicationLogPeriod24h %]</option>
+                    <option value="7d" [% Period7dSelected %]>[% Translate.CommunicationLogPeriod7d %]</option>
+                    <option value="30d" [% Period30dSelected %]>[% Translate.CommunicationLogPeriod30d %]</option>
+                    <option value="custom" [% PeriodCustomSelected %]>[% Translate.CommunicationLogPeriodCustom %]</option>
+                </select>
+            </div>
+            <div class="qisutu-form-field"><label for="communication-from">[% Translate.CommunicationLogDateFrom %]</label><input id="communication-from" type="date" name="DateFrom" value="[% FilterDateFrom %]"></div>
+            <div class="qisutu-form-field"><label for="communication-to">[% Translate.CommunicationLogDateTo %]</label><input id="communication-to" type="date" name="DateTo" value="[% FilterDateTo %]"></div>
+            <div class="qisutu-form-field">
+                <label for="communication-protocol">[% Translate.CommunicationLogProtocol %]</label>
+                <select id="communication-protocol" name="Protocol">
+                    <option value="" [% ProtocolAllSelected %]>[% Translate.CommunicationLogAllProtocols %]</option>
+                    <option value="imap" [% ProtocolIMAPSelected %]>IMAP</option>
+                    <option value="smtp" [% ProtocolSMTPSelected %]>SMTP</option>
+                    <option value="oauth2" [% ProtocolOAuth2Selected %]>OAuth2</option>
+                </select>
+            </div>
+            <div class="qisutu-form-field">
+                <label for="communication-direction">[% Translate.CommunicationLogDirection %]</label>
+                <select id="communication-direction" name="Direction">
+                    <option value="" [% DirectionAllSelected %]>[% Translate.CommunicationLogAllDirections %]</option>
+                    <option value="incoming" [% DirectionIncomingSelected %]>[% Translate.CommunicationLogDirectionIncoming %]</option>
+                    <option value="outgoing" [% DirectionOutgoingSelected %]>[% Translate.CommunicationLogDirectionOutgoing %]</option>
+                    <option value="system" [% DirectionSystemSelected %]>[% Translate.CommunicationLogDirectionSystem %]</option>
+                </select>
+            </div>
+            <div class="qisutu-form-field">
+                <label for="communication-status">[% Translate.CommunicationLogStatus %]</label>
+                <select id="communication-status" name="Status">
+                    <option value="" [% StatusAllSelected %]>[% Translate.CommunicationLogAllStatuses %]</option>
+                    <option value="running" [% StatusRunningSelected %]>[% Translate.CommunicationLogStatusRunning %]</option>
+                    <option value="success" [% StatusSuccessSelected %]>[% Translate.CommunicationLogStatusSuccess %]</option>
+                    <option value="warning" [% StatusWarningSelected %]>[% Translate.CommunicationLogStatusWarning %]</option>
+                    <option value="error" [% StatusErrorSelected %]>[% Translate.CommunicationLogStatusError %]</option>
+                </select>
+            </div>
+            <div class="qisutu-form-field">
+                <label for="communication-account">[% Translate.CommunicationLogAccount %]</label>
+                <select id="communication-account" name="Account">[% RAW.AccountOptionsHTML %]</select>
+            </div>
+            <div class="qisutu-form-field qisutu-communication-search">
+                <label for="communication-search">[% Translate.SearchTitle %]</label>
+                <input id="communication-search" type="search" name="Search" value="[% FilterSearch %]" placeholder="[% Translate.CommunicationLogSearchPlaceholder %]">
+            </div>
+        </div>
+        <div class="qisutu-form-actions">
+            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCommunicationLog">[% Translate.SearchReset %]</a>
+            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.SearchSubmit %]</button>
+        </div>
+    </form>
+
+    <section class="qisutu-communication-kpis" aria-label="[% Translate.CommunicationLogOverview %]">
+        <div class="qisutu-communication-kpi"><span>[% Translate.CommunicationLogConnections %]</span><strong>[% TotalCount %]</strong></div>
+        <div class="qisutu-communication-kpi is-success"><span>[% Translate.CommunicationLogSuccessful %]</span><strong>[% SuccessCount %]</strong></div>
+        <div class="qisutu-communication-kpi is-warning"><span>[% Translate.CommunicationLogWarnings %]</span><strong>[% WarningCount %]</strong></div>
+        <div class="qisutu-communication-kpi is-error"><span>[% Translate.CommunicationLogErrors %]</span><strong>[% ErrorCount %]</strong></div>
+        <div class="qisutu-communication-kpi"><span>[% Translate.CommunicationLogRunning %]</span><strong>[% RunningCount %]</strong></div>
+        <div class="qisutu-communication-kpi"><span>[% Translate.CommunicationLogMessagesInOut %]</span><strong>[% ReceivedCount %] / [% SentCount %]</strong></div>
+        <div class="qisutu-communication-kpi"><span>[% Translate.CommunicationLogAverageDuration %]</span><strong>[% AverageDuration %]</strong></div>
+    </section>
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header">
+            <div><h2>[% Translate.CommunicationLogConnectionsTitle %]</h2><span class="qisutu-panel-subtitle">[% TotalCount %]</span></div>
+            [% RAW.PaginationHTML %]
+        </div>
+        [% IF HasLogs %]
+            <div class="qisutu-communication-list" role="table" aria-label="[% Translate.CommunicationLogConnectionsTitle %]">
+                <div class="qisutu-communication-list-head" role="row">
+                    <span role="columnheader">[% Translate.CommunicationLogStatus %]</span>
+                    <span role="columnheader">[% Translate.CommunicationLogProtocol %]</span>
+                    <span role="columnheader">[% Translate.CommunicationLogDirection %]</span>
+                    <span role="columnheader">[% Translate.CommunicationLogAccount %]</span>
+                    <span role="columnheader">[% Translate.CommunicationLogStart %]</span>
+                    <span role="columnheader">[% Translate.CommunicationLogEnd %]</span>
+                    <span role="columnheader">[% Translate.CommunicationLogDuration %]</span>
+                </div>
+                [% FOREACH Log IN Logs %]
+                    <a class="qisutu-communication-list-row [% Log.status_class %]" role="row" href="[% Log.detail_url %]" title="[% Log.row_title %]">
+                        <span class="qisutu-communication-list-status" role="cell" data-label="[% Translate.CommunicationLogStatus %]"><i aria-hidden="true">[% Log.status_symbol %]</i><em>[% Log.status_display %]</em></span>
+                        <span role="cell" data-label="[% Translate.CommunicationLogProtocol %]"><strong>[% Log.protocol_display %]</strong><small>[% Log.operation_display %]</small></span>
+                        <span class="qisutu-communication-list-direction" role="cell" data-label="[% Translate.CommunicationLogDirection %]"><strong aria-hidden="true">[% Log.direction_symbol %]</strong><small>[% Log.direction_display %]</small></span>
+                        <span role="cell" data-label="[% Translate.CommunicationLogAccount %]"><strong>[% Log.account_display %]</strong><small>[% Log.server_display %]</small></span>
+                        <span class="qisutu-communication-list-time" role="cell" data-label="[% Translate.CommunicationLogStart %]">[% Log.started_at %]</span>
+                        <span class="qisutu-communication-list-time" role="cell" data-label="[% Translate.CommunicationLogEnd %]">[% Log.finished_display %]</span>
+                        <span class="qisutu-communication-list-duration" role="cell" data-label="[% Translate.CommunicationLogDuration %]">[% Log.duration_display %]</span>
+                    </a>
+                [% END %]
+            </div>
+            <div class="qisutu-communication-pagination-bottom">[% RAW.PaginationHTML %]</div>
+        [% ELSE %]
+            <div class="qisutu-empty-state"><strong>[% Translate.CommunicationLogNoEntriesTitle %]</strong><p>[% Translate.CommunicationLogNoEntriesText %]</p></div>
+        [% END %]
+    </section>
+</section>
+
+[% IF HasDetail %]
+<div class="qisutu-modal-backdrop qisutu-communication-detail-backdrop" aria-hidden="false">
+    <section class="qisutu-modal qisutu-communication-detail" role="dialog" aria-modal="true" aria-labelledby="communication-detail-title">
+        <div class="qisutu-modal-header">
+            <div><h2 id="communication-detail-title">[% Translate.CommunicationLogDetailTitle %]</h2><p>[% DetailProtocolDisplay %] · [% DetailOperationDisplay %] · [% DetailStartedAt %]</p></div>
+            <a class="qisutu-modal-close" href="[% DetailCloseURL %]" aria-label="[% Translate.CommonClose %]">×</a>
+        </div>
+        <div class="qisutu-communication-detail-content">
+            <div class="qisutu-communication-detail-context" aria-label="[% Translate.CommunicationLogDetailTitle %]">
+                <strong class="qisutu-communication-status [% DetailStatusClass %]">[% DetailStatusDisplay %]</strong>
+                <span><small>[% Translate.CommunicationLogAccount %]</small><b>[% DetailAccountDisplay %]</b></span>
+                <span><small>[% Translate.CommunicationLogDirection %]</small><b>[% DetailDirectionDisplay %]</b></span>
+                <span><small>[% Translate.CommunicationLogDuration %]</small><b>[% DetailDurationDisplay %]</b></span>
+                <span class="qisutu-communication-detail-result"><small>[% Translate.CommunicationLogResult %]</small><b>[% DetailResult %]</b></span>
+            </div>
+
+            <section class="qisutu-communication-protocol-details">
+                <div class="qisutu-communication-detail-section-head">
+                    <div><h3>[% Translate.CommunicationLogSteps %]</h3><p>[% Translate.CommunicationLogStepsDescription %]</p></div>
+                    <strong class="qisutu-communication-step-count">[% DetailStepCount %]</strong>
+                </div>
+                [% IF HasDetailSteps %]
+                    <ol class="qisutu-communication-timeline">
+                    [% FOREACH Step IN DetailSteps %]
+                        <li class="[% Step.level_class %] [% Step.is_child_class %]">
+                            <span class="qisutu-communication-step-number">[% Step.step_number %]</span>
+                            <div class="qisutu-communication-step-body">
+                                <div class="qisutu-communication-step-head"><time>[% Step.created_at %]</time><strong>[% Step.source_display %]</strong><b>[% Step.stage_display %]</b><span>[% Step.level_display %]</span></div>
+                                <p>[% Step.message_display %]</p>
+                                [% RAW.Step.technical_details_html %]
+                            </div>
+                        </li>
+                    [% END %]
+                    </ol>
+                [% ELSE %]
+                    <div class="qisutu-empty-state"><strong>[% Translate.CommunicationLogNoStepsTitle %]</strong><p>[% Translate.CommunicationLogNoStepsText %]</p></div>
+                [% END %]
+            </section>
+
+            [% IF HasMessageMetadata %]
+                <details class="qisutu-communication-detail-extra qisutu-communication-message-meta">
+                    <summary>[% Translate.CommunicationLogMessageMetadata %]</summary>
+                    <dl>
+                        <dt>[% Translate.CommunicationLogSender %]</dt><dd>[% DetailSender %]</dd>
+                        <dt>[% Translate.CommunicationLogRecipient %]</dt><dd>[% DetailRecipient %]</dd>
+                        <dt>[% Translate.ReportFieldSubject %]</dt><dd>[% DetailSubject %]</dd>
+                        <dt>Message-ID</dt><dd>[% DetailMessageID %]</dd>
+                        <dt>[% Translate.Ticket %]</dt><dd>[% RAW.DetailTicketHTML %]</dd>
+                        <dt>[% Translate.CommunicationLogArticle %]</dt><dd>[% DetailArticle %]</dd>
+                    </dl>
+                </details>
+            [% END %]
+
+            [% IF HasProcessingData %]
+                <details class="qisutu-communication-detail-extra qisutu-communication-processing-summary">
+                    <summary>[% Translate.CommunicationLogProcessingSummary %]</summary>
+                    <div>
+                        <span><small>[% Translate.CommunicationLogFound %]</small><strong>[% DetailMessagesFound %]</strong></span>
+                        <span><small>[% Translate.CommunicationLogReceived %]</small><strong>[% DetailMessagesProcessed %]</strong></span>
+                        <span><small>[% Translate.CommunicationLogCreated %]</small><strong>[% DetailMessagesCreated %]</strong></span>
+                        <span><small>[% Translate.CommunicationLogUpdated %]</small><strong>[% DetailMessagesUpdated %]</strong></span>
+                        <span><small>[% Translate.CommunicationLogIgnored %]</small><strong>[% DetailMessagesIgnored %]</strong></span>
+                        <span><small>[% Translate.CommunicationLogFailed %]</small><strong>[% DetailMessagesFailed %]</strong></span>
+                        <span><small>[% Translate.CommunicationLogSent %]</small><strong>[% DetailMessagesSent %]</strong></span>
+                        <span><small>[% Translate.CommunicationLogBytes %]</small><strong>[% DetailBytesTransferred %]</strong></span>
+                    </div>
+                </details>
+            [% END %]
+
+            <details class="qisutu-communication-detail-extra qisutu-communication-connection-technical">
+                <summary>[% Translate.CommunicationLogTechnicalDetails %]</summary>
+                <dl>
+                    <dt>[% Translate.CommunicationLogServer %]</dt><dd>[% DetailServerDisplay %]</dd>
+                    <dt>[% Translate.CommunicationLogSecurity %]</dt><dd>[% DetailSecurity %]</dd>
+                    <dt>[% Translate.CommunicationLogStart %]</dt><dd>[% DetailStartedAt %]</dd>
+                    <dt>[% Translate.CommunicationLogEnd %]</dt><dd>[% DetailFinishedAt %]</dd>
+                    <dt>[% Translate.CommunicationLogTraceID %]</dt><dd><code>[% DetailTraceID %]</code></dd>
+                </dl>
+            </details>
+        </div>
+        <div class="qisutu-communication-detail-actions"><a class="qisutu-button qisutu-button-primary" href="[% DetailCloseURL %]">[% Translate.CommonClose %]</a></div>
+    </section>
+</div>
+[% END %]

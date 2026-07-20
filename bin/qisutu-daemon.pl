@@ -52,6 +52,7 @@ sub main {
     my $Once = 0;
     my $SleepSeconds = 3;
     my $MaxJobs = 100;
+    my $MailFetchInterval = 300;
 
     for ( my $Index = 0; $Index < @ARGV; $Index++ ) {
         my $Arg = $ARGV[$Index] || '';
@@ -101,13 +102,19 @@ sub main {
     my $Automation = QisutuAutomation->new( Config => $Config, DB => $DB );
     my $TicketObject = QisutuTicket->new( Config => $Config, DB => $DB );
     my $LastEscalationCheck = 0;
+    my $LastMailFetch = 0;
 
-    _Log("Automation daemon started as $Worker");
+    _Log("Automation and mail daemon started as $Worker");
 
     while ( !$Stop ) {
         if ( QisutuRuntimeLock::MaintenanceActive( RootPath => $QisutuHome ) ) {
             _Log('Update lock detected. Automation daemon is stopping.');
             last;
+        }
+
+        if ( time - $LastMailFetch >= $MailFetchInterval ) {
+            $LastMailFetch = time;
+            _MailFetchRun( QisutuHome => $QisutuHome );
         }
 
         my $Recovered = $Automation->JobRecoverStale();
@@ -168,8 +175,42 @@ sub main {
     }
 
     $DB->Disconnect();
-    _Log('Automation daemon stopped');
+    _Log('Automation and mail daemon stopped');
     return;
+}
+
+sub _MailFetchRun {
+    my (%Param) = @_;
+
+    my $QisutuHome = $Param{QisutuHome} || '';
+    my $MailFetchScript = File::Spec->catfile( $QisutuHome, 'bin', 'qisutu-mail-fetch.pl' );
+
+    if ( !$QisutuHome || !-f $MailFetchScript || !-r $MailFetchScript ) {
+        _Log("ERROR: Mail-fetch program is missing or unreadable: $MailFetchScript");
+        return;
+    }
+
+    local $ENV{QISUTU_HOME} = $QisutuHome;
+    _Log("Mail fetch started for $QisutuHome");
+
+    my $Status = system { $^X } $^X, $MailFetchScript;
+    if ( $Status == -1 ) {
+        _Log("ERROR: Mail fetch could not be started: $!");
+        return;
+    }
+    if ( $Status & 127 ) {
+        _Log( 'ERROR: Mail fetch was terminated by signal ' . ( $Status & 127 ) );
+        return;
+    }
+
+    my $ExitCode = $Status >> 8;
+    if ($ExitCode) {
+        _Log("ERROR: Mail fetch exited with status $ExitCode");
+        return;
+    }
+
+    _Log("Mail fetch finished for $QisutuHome");
+    return 1;
 }
 
 sub _Log {

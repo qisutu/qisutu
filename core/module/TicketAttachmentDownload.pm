@@ -26,6 +26,8 @@ use strict;
 use warnings;
 use utf8;
 
+use Encode qw(encode);
+
 sub new {
     my ( $Class, %Param ) = @_;
 
@@ -69,6 +71,7 @@ sub Run {
     }
 
     my $Filename    = $Self->_FilenameForHeader( $Attachment->{filename} || 'attachment.bin' );
+    my $Disposition = $Self->_ContentDisposition( $Attachment->{filename} || 'attachment.bin' );
     my $ContentType = $Self->_ContentTypeForHeader( $Attachment->{content_type} || 'application/octet-stream' );
     my $Content     = $Attachment->{content};
     $Content = '' if !defined $Content;
@@ -79,7 +82,7 @@ sub Run {
             ContentType => $ContentType,
             Body        => $Content,
             Headers     => [
-                'Content-Disposition: attachment; filename="' . $Filename . '"',
+                'Content-Disposition: ' . $Disposition,
                 'Content-Length: ' . length($Content),
                 'X-Content-Type-Options: nosniff',
             ],
@@ -143,6 +146,26 @@ sub _FilenameForHeader {
     return $Filename;
 }
 
+sub _ContentDisposition {
+    my ( $Self, $Filename ) = @_;
+
+    $Filename ||= 'attachment.bin';
+    $Filename =~ s{\\}{/}g;
+    $Filename =~ s{\A.*/}{}g;
+    $Filename =~ s{[\r\n\x00]}{}g;
+    $Filename =~ s{\A\s+|\s+\z}{}g;
+    $Filename ||= 'attachment.bin';
+
+    my $Fallback = $Self->_FilenameForHeader($Filename);
+    my $Bytes = encode( 'UTF-8', $Filename );
+    my $Encoded = join '', map {
+        my $Character = chr($_);
+        $Character =~ m{[A-Za-z0-9!#\x24&+.^_`|~-]} ? $Character : sprintf( '%%%02X', $_ )
+    } unpack( 'C*', $Bytes );
+
+    return 'attachment; filename="' . $Fallback . '"; filename*=UTF-8\'\'' . $Encoded;
+}
+
 sub _ContentTypeForHeader {
     my ( $Self, $ContentType ) = @_;
 
@@ -151,7 +174,7 @@ sub _ContentTypeForHeader {
     $ContentType =~ s{;.*\z}{};
     $ContentType =~ s{\A\s+|\s+\z}{}g;
     $ContentType = lc $ContentType;
-    $ContentType = 'application/octet-stream' if $ContentType !~ m{\A[a-z0-9!#$&.+\-^_]+/[a-z0-9!#$&.+\-^_]+\z};
+    $ContentType = 'application/octet-stream' if $ContentType !~ m{\A[a-z0-9!#\x24&.+\-^_]+/[a-z0-9!#\x24&.+\-^_]+\z};
 
     return $ContentType;
 }

@@ -51,6 +51,7 @@ sub new {
         LastAgentNotificationError => '',
         LastEmailImportAction      => '',
         LastEmailImportTicketID    => 0,
+        LastEmailImportArticleID   => 0,
         LastChecklistOpenItems     => [],
     };
 
@@ -1099,6 +1100,7 @@ sub TicketCreateFromEmail {
 
     $Self->{LastEmailImportAction}   = '';
     $Self->{LastEmailImportTicketID} = 0;
+    $Self->{LastEmailImportArticleID} = 0;
 
     if ($ExistingTicketID) {
         return $Self->_TicketReplyCreateFromEmail(
@@ -1261,6 +1263,7 @@ sub TicketCreateFromEmail {
 
     $Self->{LastEmailImportAction}   = 'created';
     $Self->{LastEmailImportTicketID} = $TicketID;
+    $Self->{LastEmailImportArticleID} = $ArticleID;
 
     return $TicketID;
 }
@@ -1440,6 +1443,7 @@ sub _TicketReplyCreateFromEmail {
 
     $Self->{LastEmailImportAction}   = 'updated';
     $Self->{LastEmailImportTicketID} = $TicketID;
+    $Self->{LastEmailImportArticleID} = $ArticleID;
 
     return $TicketID;
 }
@@ -2525,6 +2529,8 @@ sub TicketCreateFromAgent {
             DB     => $Self->{DB},
         )->SMTPSend(
             Account     => $SMTPAccount,
+            TicketID    => $TicketID,
+            ArticleID   => $ArticleID,
             FromName    => $FromName,
             FromEmail   => $FromEmail,
             ToName      => $ToName,
@@ -2624,6 +2630,12 @@ sub LastEmailImportTicketID {
     my ($Self) = @_;
 
     return $Self->{LastEmailImportTicketID} || 0;
+}
+
+sub LastEmailImportArticleID {
+    my ($Self) = @_;
+
+    return $Self->{LastEmailImportArticleID} || 0;
 }
 
 sub TicketIDFromSubject {

@@ -45,6 +45,8 @@ sub new {
 sub Connect {
     my ($Self) = @_;
 
+    $Self->{LastError} = '';
+
     my $DatabaseConfig = $Self->{Config}->{Database};
 
     my $DSN = sprintf(
@@ -92,6 +94,8 @@ sub Handle {
 sub Do {
     my ( $Self, $SQL, @Bind ) = @_;
 
+    $Self->{LastError} = '';
+
     my $DBH = $Self->Handle() || return;
 
     my $STH = $DBH->prepare($SQL);
@@ -111,6 +115,8 @@ sub Do {
 
 sub SelectRow {
     my ( $Self, $SQL, @Bind ) = @_;
+
+    $Self->{LastError} = '';
 
     my $DBH = $Self->Handle() || return;
 
@@ -134,6 +140,8 @@ sub SelectRow {
 sub SelectAll {
     my ( $Self, $SQL, @Bind ) = @_;
 
+    $Self->{LastError} = '';
+
     my $DBH = $Self->Handle() || return;
 
     my $STH = $DBH->prepare($SQL);
@@ -156,9 +164,16 @@ sub SelectAll {
 sub LastInsertID {
     my ( $Self, $Table ) = @_;
 
+    $Self->{LastError} = '';
+
     my $DBH = $Self->Handle() || return;
 
     my $ID = $DBH->last_insert_id( undef, undef, $Table, undef );
+
+    if ( !defined $ID ) {
+        $Self->{LastError} = $DBH->errstr || 'Last insert ID could not be loaded';
+        return;
+    }
 
     return $ID;
 }

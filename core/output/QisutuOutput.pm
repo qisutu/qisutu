@@ -71,6 +71,11 @@ sub Render {
         $Content .= $Part;
     }
 
+    $Content = $Self->_CSRFFieldsInject(
+        Content => $Content,
+        Token   => $Data->{CSRFToken} || '',
+    );
+
     return $Content;
 }
 
@@ -85,9 +90,16 @@ sub RenderSingle {
         return;
     }
 
-    return $Self->_TemplateLoad(
+    my $Content = $Self->_TemplateLoad(
         Template => $Template,
         Data     => $Data,
+    );
+
+    return if !defined $Content;
+
+    return $Self->_CSRFFieldsInject(
+        Content => $Content,
+        Token   => $Data->{CSRFToken} || '',
     );
 }
 
@@ -108,6 +120,19 @@ sub Response {
 
     push @Header, "Status: $Status";
     push @Header, "Content-Type: $ContentType";
+
+    my %Existing = map {
+        my ($Name) = split /:/, $_ || '', 2;
+        ( lc( $Name || '' ) => 1 )
+    } @{$Headers};
+
+    push @Header, 'X-Content-Type-Options: nosniff' if !$Existing{'x-content-type-options'};
+    push @Header, 'Referrer-Policy: strict-origin-when-cross-origin' if !$Existing{'referrer-policy'};
+    push @Header, 'X-Frame-Options: DENY' if !$Existing{'x-frame-options'} && !$Param{AllowFrame};
+    push @Header, 'Permissions-Policy: camera=(), microphone=(), geolocation=()' if !$Existing{'permissions-policy'};
+    if ( ( $ENV{HTTPS} || '' ) eq 'on' && !$Existing{'strict-transport-security'} ) {
+        push @Header, 'Strict-Transport-Security: max-age=31536000';
+    }
 
     if ($Cookie) {
         push @Header, "Set-Cookie: $Cookie";
@@ -142,6 +167,13 @@ sub Redirect {
 
     push @Header, 'Status: 302 Found';
     push @Header, "Location: $Location";
+    push @Header, 'X-Content-Type-Options: nosniff';
+    push @Header, 'Referrer-Policy: strict-origin-when-cross-origin';
+    push @Header, 'X-Frame-Options: DENY';
+    push @Header, 'Permissions-Policy: camera=(), microphone=(), geolocation=()';
+    if ( ( $ENV{HTTPS} || '' ) eq 'on' ) {
+        push @Header, 'Strict-Transport-Security: max-age=31536000';
+    }
 
     if ($Cookie) {
         push @Header, "Set-Cookie: $Cookie";
@@ -205,6 +237,22 @@ sub CookieDelete {
         'Max-Age=0',
         'HttpOnly',
         'SameSite=Lax';
+}
+
+sub _CSRFFieldsInject {
+    my ( $Self, %Param ) = @_;
+
+    my $Content = defined $Param{Content} ? $Param{Content} : '';
+    my $Token   = $Param{Token} || '';
+    return $Content if !$Token;
+
+    my $Escaped = $Self->HTMLEscape($Token);
+    $Content =~ s{
+        (<form\b(?=[^>]*\bmethod\s*=\s*["']?post\b)[^>]*>)
+        (?!\s*<input\b[^>]*\bname\s*=\s*["']CSRFToken["'])
+    }{$1 . '<input type="hidden" name="CSRFToken" value="' . $Escaped . '">'}egix;
+
+    return $Content;
 }
 
 sub _FileRead {

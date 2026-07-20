@@ -115,6 +115,47 @@ command_required() {
     command -v "$1" >/dev/null 2>&1 || fail "Benötigtes Programm wurde nicht gefunden: $1"
 }
 
+ensure_qisutu_runtime_user() {
+    local nologin_shell="/usr/sbin/nologin"
+
+    if [[ ! -x "$nologin_shell" ]]; then
+        nologin_shell="/sbin/nologin"
+    fi
+    if [[ ! -x "$nologin_shell" ]]; then
+        nologin_shell="/bin/false"
+    fi
+
+    if ! id "$QISUTU_RUNTIME_USER" >/dev/null 2>&1; then
+        useradd \
+            --system \
+            --no-create-home \
+            --home-dir /nonexistent \
+            --shell "$nologin_shell" \
+            --gid "$APACHE_GROUP" \
+            "$QISUTU_RUNTIME_USER"
+    fi
+
+    usermod -a -G "$APACHE_GROUP" "$QISUTU_RUNTIME_USER"
+}
+
+daemon_runtime_user_migrate() {
+    case "$APACHE_USER" in
+        "$QISUTU_RUNTIME_USER")
+            return
+            ;;
+        www-data|apache|wwwrun)
+            sed -i "s/^User=.*/User=$QISUTU_RUNTIME_USER/" "$SYSTEMD_FILE"
+            grep -Fxq "User=$QISUTU_RUNTIME_USER" "$SYSTEMD_FILE" \
+                || fail "Der Laufzeitbenutzer konnte im Daemon-Dienst nicht korrigiert werden."
+            DAEMON_USER_CHANGED=1
+            systemctl daemon-reload
+            ;;
+        *)
+            printf 'Hinweis: Der individuell konfigurierte Daemon-Benutzer %s bleibt unverändert.\n' "$APACHE_USER"
+            ;;
+    esac
+}
+
 mysql_config_create() {
     QISUTU_HOME="$TARGET_ROOT" perl \
         -I"$TARGET_ROOT/core/config" \
@@ -340,6 +381,7 @@ path_is_protected() {
         var/log|var/log/*) return 0 ;;
         var/cache|var/cache/*) return 0 ;;
         var/tmp|var/tmp/*) return 0 ;;
+        var/secure|var/secure/*) return 0 ;;
         log|log/*) return 0 ;;
         scriptfiles/"$INSTANCE_ID"-apache-runtime.conf) return 0 ;;
     esac
@@ -636,8 +678,12 @@ package_files_copy_direct() {
 
 installation_permissions_apply() {
     local checksum manifest_path extra relative_path target_file source_directory relative_directory target_directory
+    local security_key_file previous_umask
     local -a managed_files=()
     local -a managed_directories=()
+
+    chown "$TARGET_OWNER:$TARGET_GROUP" "$TARGET_ROOT"
+    chmod 0755 "$TARGET_ROOT"
 
     while IFS= read -r -d '' source_directory; do
         [[ "$source_directory" != "$SOURCE_ROOT" ]] || continue
@@ -676,6 +722,22 @@ installation_permissions_apply() {
         chown "$TARGET_OWNER:$TARGET_GROUP" "$TARGET_ROOT/$target_directory"
         chmod 0770 "$TARGET_ROOT/$target_directory"
     done
+
+    mkdir -p "$TARGET_ROOT/var/secure"
+    chown root:"$APACHE_GROUP" "$TARGET_ROOT/var/secure"
+    chmod 0750 "$TARGET_ROOT/var/secure"
+    security_key_file="$TARGET_ROOT/var/secure/security.key"
+    if [[ ! -f "$security_key_file" ]]; then
+        previous_umask="$(umask)"
+        umask 0137
+        od -An -N32 -tx1 /dev/urandom | tr -d ' \n' > "$security_key_file"
+        printf '\n' >> "$security_key_file"
+        umask "$previous_umask"
+    fi
+    chown root:"$APACHE_GROUP" "$security_key_file"
+    chmod 0640 "$security_key_file"
+    [[ "$(tr -d '[:space:]' < "$security_key_file")" =~ ^[0-9a-fA-F]{64}$ ]] \
+        || fail "Der installationsabhängige Sicherheitsschlüssel ist ungültig."
 
     chown "$TARGET_OWNER:$TARGET_GROUP" "$TARGET_ROOT/core/config/QisutuConfig.pm"
     chmod 0660 "$TARGET_ROOT/core/config/QisutuConfig.pm"
@@ -1032,6 +1094,8 @@ TARGET_GROUP="$(stat -c '%G' "$TARGET_ROOT")"
 [[ "$TARGET_GROUP" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]] || fail "Die bisherige Gruppe der Qisutu-Installation konnte nicht bestimmt werden."
 id "$TARGET_OWNER" >/dev/null 2>&1 || fail "Der bisherige Besitzer der Qisutu-Installation existiert nicht: $TARGET_OWNER"
 getent group "$TARGET_GROUP" >/dev/null 2>&1 || fail "Die bisherige Gruppe der Qisutu-Installation existiert nicht: $TARGET_GROUP"
+QISUTU_RUNTIME_USER="qisutu"
+DAEMON_USER_CHANGED=0
 
 PRODUCT=""
 RELEASE_VERSION=""
@@ -1084,6 +1148,9 @@ command_required mkdir
 command_required chmod
 command_required chown
 command_required readlink
+command_required openssl
+command_required useradd
+command_required usermod
 
 package_manifest_source_validate
 package_obsolete_source_files_remove
@@ -1113,6 +1180,9 @@ APACHE_GROUP="$(sed -n 's/^Group=//p' "$SYSTEMD_FILE" | head -n 1)"
 [[ "$APACHE_GROUP" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]] || fail "Die Gruppe des Daemon-Dienstes konnte nicht bestimmt werden."
 id "$APACHE_USER" >/dev/null 2>&1 || fail "Der Qisutu-Systembenutzer existiert nicht: $APACHE_USER"
 getent group "$APACHE_GROUP" >/dev/null 2>&1 || fail "Die Qisutu-Systemgruppe existiert nicht: $APACHE_GROUP"
+ensure_qisutu_runtime_user
+TARGET_OWNER="$QISUTU_RUNTIME_USER"
+TARGET_GROUP="$APACHE_GROUP"
 
 CURRENT_PROGRAM_VERSION="$(config_value_get program_version)"
 CONFIG_DB_NAME="$(config_value_get database_name)"
@@ -1177,8 +1247,14 @@ SERVICE_WAS_ACTIVE=0
 RUNTIME_LOCK_FD=""
 
 mkdir -p "$RUNTIME_LOCK_DIR"
-chown "root:$APACHE_GROUP" "$RUNTIME_LOCK_DIR"
+chown "$QISUTU_RUNTIME_USER:$APACHE_GROUP" "$RUNTIME_LOCK_DIR"
 chmod 0770 "$RUNTIME_LOCK_DIR"
+
+mkdir -p /etc/tmpfiles.d
+cat > /etc/tmpfiles.d/qisutu-runtime-lock.conf <<EOF_TMPFILES
+d /run/lock/qisutu 0770 $QISUTU_RUNTIME_USER $APACHE_GROUP -
+EOF_TMPFILES
+chmod 0644 /etc/tmpfiles.d/qisutu-runtime-lock.conf
 
 exec {UPDATE_MANAGER_FD}>>"$UPDATE_MANAGER_LOCK_FILE"
 chown "root:$APACHE_GROUP" "$UPDATE_MANAGER_LOCK_FILE"
@@ -1252,7 +1328,7 @@ fi
 
 
 touch "$RUNTIME_LOCK_FILE"
-chown "$APACHE_USER:$APACHE_GROUP" "$RUNTIME_LOCK_FILE"
+chown "$QISUTU_RUNTIME_USER:$APACHE_GROUP" "$RUNTIME_LOCK_FILE"
 chmod 0660 "$RUNTIME_LOCK_FILE"
 exec {RUNTIME_LOCK_FD}>>"$RUNTIME_LOCK_FILE"
 echo "Warte, bis laufende Prozesse dieser Instanz beendet sind."
@@ -1309,6 +1385,8 @@ config_preservation_verify
 INSTALLED_VERSION_AFTER="$(config_value_get program_version)"
 [[ "$INSTALLED_VERSION_AFTER" == "$RELEASE_VERSION" ]] || fail "Die installierte Programmversion ist nach dem Update nicht korrekt."
 
+daemon_runtime_user_migrate
+
 rm -f "$UPDATE_LOCK_FILE"
 
 if (( SERVICE_WAS_ACTIVE == 1 || UPDATE_LOCK_PREEXISTED == 1 )); then
@@ -1331,5 +1409,9 @@ else
     printf '  DB-Sicherung: nicht erstellt\n'
 fi
 printf '  Apache:       vorhandene Konfiguration unverändert\n'
-printf '  systemd:      vorhandene Konfiguration unverändert\n'
+if (( DAEMON_USER_CHANGED == 1 )); then
+    printf '  systemd:      Daemon-Laufzeitbenutzer auf %s korrigiert\n' "$QISUTU_RUNTIME_USER"
+else
+    printf '  systemd:      vorhandene Konfiguration unverändert\n'
+fi
 printf '  Webadresse:   %s\n' "$WEB_PATH"

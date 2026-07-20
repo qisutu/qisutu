@@ -6756,6 +6756,75 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     display: inline;
 }
 
+.qisutu-admin-security-action {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--qisutu-border, #d4dee7);
+}
+
+.qisutu-admin-security-action h3 {
+    margin: 0 0 .35rem;
+}
+
+.qisutu-admin-security-action p {
+    margin: 0 0 .85rem;
+    color: var(--qisutu-muted, #627286);
+}
+
+.qisutu-two-factor-secret {
+    display: inline-block;
+    max-width: 100%;
+    padding: .7rem .9rem;
+    border: 1px solid var(--qisutu-border, #d4dee7);
+    border-radius: .35rem;
+    background: #f5f8fa;
+    font-size: 1rem;
+    letter-spacing: .08em;
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+
+.qisutu-two-factor-setup-grid {
+    display: grid;
+    grid-template-columns: minmax(15rem, 18rem) minmax(16rem, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+    margin: 1rem 0 1.25rem;
+}
+
+.qisutu-two-factor-setup-grid p {
+    margin-top: 0;
+}
+
+.qisutu-two-factor-qr {
+    width: min(100%, 17rem);
+    min-height: 17rem;
+    display: grid;
+    place-items: center;
+    padding: .65rem;
+    border: 1px solid var(--qisutu-border, #d4dee7);
+    border-radius: .5rem;
+    background: #fff;
+}
+
+.qisutu-two-factor-qr:not(.qisutu-two-factor-qr-ready) {
+    display: none;
+}
+
+.qisutu-two-factor-qr svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.qisutu-recovery-code-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: .45rem .9rem;
+    padding: 0;
+    list-style: none;
+}
+
 .qisutu-postmaster-log-table small {
     overflow-wrap: anywhere;
 }
@@ -6772,6 +6841,10 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 }
 
 @media (max-width: 720px) {
+    .qisutu-two-factor-setup-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .qisutu-panel-header-actions,
     .qisutu-postmaster-checkboxes {
         align-items: stretch;
@@ -7962,4 +8035,336 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     .qisutu-report-filter-row { grid-template-columns: 1fr; }
     .qisutu-report-filter-row > button { justify-self: end; }
     .qisutu-report-chart-wrap { height: 290px; }
+}
+.qisutu-inline-form{display:inline;margin:0;padding:0}.qisutu-link-button{appearance:none;border:0;background:transparent;font:inherit;cursor:pointer;padding:0;text-align:left;color:inherit}
+
+/* Communication log */
+.qisutu-communication-filter { padding-bottom: 18px; }
+.qisutu-communication-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    padding: 0 20px 12px;
+    gap: 12px;
+}
+.qisutu-communication-search { grid-column: span 2; }
+.qisutu-communication-kpis {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(120px, 1fr));
+    margin: 18px 0;
+    gap: 12px;
+}
+.qisutu-communication-kpi {
+    min-width: 0;
+    padding: 15px;
+    border: 1px solid #d7e1e8;
+    border-top: 4px solid #00617a;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(24, 47, 65, .05);
+}
+.qisutu-communication-kpi.is-success { border-top-color: #27824c; }
+.qisutu-communication-kpi.is-warning { border-top-color: #c8871c; }
+.qisutu-communication-kpi.is-error { border-top-color: #bd342d; }
+.qisutu-communication-kpi span { display: block; margin-bottom: 6px; color: #647387; font-size: 12px; }
+.qisutu-communication-kpi strong { font-size: 24px; font-variant-numeric: tabular-nums; }
+.qisutu-communication-list { min-width: 0; padding: 0 20px 18px; }
+.qisutu-communication-list-head,
+.qisutu-communication-list-row {
+    display: grid;
+    grid-template-columns: 72px 125px 105px minmax(170px, 1fr) minmax(145px, .8fr) minmax(145px, .8fr) 86px;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+}
+.qisutu-communication-list-head {
+    min-height: 34px;
+    padding: 0 10px;
+    border-bottom: 1px solid #cfdbe3;
+    color: #647387;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+}
+.qisutu-communication-list-row {
+    min-height: 52px;
+    padding: 7px 10px;
+    border-bottom: 1px solid #dce5eb;
+    color: #1f2d38;
+    text-decoration: none;
+    transition: background-color .15s ease, box-shadow .15s ease;
+}
+.qisutu-communication-list-row:nth-child(odd) { background: #f8fafb; }
+.qisutu-communication-list-row:hover,
+.qisutu-communication-list-row:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 0;
+    background: #e6f2f6;
+    box-shadow: inset 4px 0 #00617a;
+}
+.qisutu-communication-list-row > span { min-width: 0; overflow-wrap: anywhere; }
+.qisutu-communication-list-row strong,
+.qisutu-communication-list-row small { display: block; }
+.qisutu-communication-list-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qisutu-communication-list-row small { margin-top: 2px; overflow: hidden; color: #647387; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.qisutu-communication-list-status { display: flex; align-items: center; gap: 7px; }
+.qisutu-communication-list-status i {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    place-items: center;
+    border-radius: 50%;
+    color: #315263;
+    background: #e9f1f5;
+    font-style: normal;
+    font-weight: 900;
+}
+.qisutu-communication-list-status em { overflow: hidden; font-size: 11px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.qisutu-communication-list-row.is-success .qisutu-communication-list-status i { color: #176b36; background: #e5f5e9; }
+.qisutu-communication-list-row.is-warning .qisutu-communication-list-status i { color: #855307; background: #fff1d5; }
+.qisutu-communication-list-row.is-error .qisutu-communication-list-status i { color: #9d2b25; background: #fdebea; }
+.qisutu-communication-list-row.is-running .qisutu-communication-list-status i { color: #075f7b; background: #e2f3f8; }
+.qisutu-communication-list-direction strong { font-size: 20px; line-height: 1; }
+.qisutu-communication-list-time,
+.qisutu-communication-list-duration { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.qisutu-communication-pagination {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+}
+.qisutu-communication-pagination a,
+.qisutu-communication-pagination strong {
+    display: grid;
+    min-width: 30px;
+    height: 30px;
+    place-items: center;
+    border: 1px solid #cedae2;
+    border-radius: 5px;
+    color: #005a73;
+    background: #fff;
+    text-decoration: none;
+}
+.qisutu-communication-pagination a:hover { color: #fff; border-color: #00617a; background: #00617a; }
+.qisutu-communication-pagination strong { color: #fff; border-color: #00617a; background: #00617a; }
+.qisutu-communication-pagination span { margin-left: 5px; color: #647387; font-size: 12px; white-space: nowrap; }
+.qisutu-communication-pagination-bottom { padding: 0 20px 18px; }
+.qisutu-communication-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    color: #315263;
+    background: #e9f1f5;
+    font-size: 12px;
+    font-weight: 800;
+}
+.qisutu-communication-status.is-success { color: #176b36; background: #e5f5e9; }
+.qisutu-communication-status.is-warning { color: #855307; background: #fff1d5; }
+.qisutu-communication-status.is-error { color: #9d2b25; background: #fdebea; }
+.qisutu-communication-status.is-running { color: #075f7b; background: #e2f3f8; }
+.qisutu-communication-detail-backdrop {
+    position: fixed;
+    z-index: 2000;
+    inset: 0 0 0 248px;
+    display: grid;
+    padding: 16px;
+    overflow: hidden;
+    place-items: center;
+    background: rgba(20, 36, 49, .55);
+}
+html.qisutu-sidebar-collapsed .qisutu-communication-detail-backdrop { left: 68px; }
+.qisutu-communication-detail {
+    display: flex;
+    width: min(1040px, 100%);
+    height: min(780px, calc(100vh - 32px));
+    max-height: calc(100vh - 32px);
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, .28);
+}
+.qisutu-communication-detail .qisutu-modal-header {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 20px 22px;
+    border-bottom: 1px solid #d7e1e8;
+    gap: 18px;
+}
+.qisutu-communication-detail .qisutu-modal-header h2 { margin: 0 0 4px; }
+.qisutu-communication-detail .qisutu-modal-header p { margin: 0; color: #647387; }
+.qisutu-communication-detail .qisutu-modal-close {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    place-items: center;
+    border: 1px solid #d0dce4;
+    border-radius: 50%;
+    color: #405465;
+    background: #fff;
+    font-size: 26px;
+    line-height: 1;
+    text-decoration: none;
+}
+.qisutu-communication-detail .qisutu-modal-close:hover { color: #fff; background: #00617a; }
+.qisutu-communication-detail-content {
+    min-height: 0;
+    flex: 1 1 auto;
+    padding: 18px 22px 22px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.qisutu-communication-detail-context {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 0;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border: 1px solid #dbe5eb;
+    border-radius: 8px;
+    background: #f6f9fa;
+}
+.qisutu-communication-detail-context > .qisutu-communication-status { margin-right: 14px; }
+.qisutu-communication-detail-context > span {
+    min-width: 120px;
+    padding: 0 14px;
+    border-left: 1px solid #d8e2e8;
+}
+.qisutu-communication-detail-context small,
+.qisutu-communication-detail-context b { display: block; }
+.qisutu-communication-detail-context small { margin-bottom: 2px; color: #647387; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.qisutu-communication-detail-context b { overflow-wrap: anywhere; font-size: 13px; }
+.qisutu-communication-detail-context .qisutu-communication-detail-result { min-width: 230px; flex: 1 1 230px; }
+.qisutu-communication-protocol-details { min-width: 0; }
+.qisutu-communication-detail-section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    gap: 16px;
+}
+.qisutu-communication-detail-section-head h3 { margin: 0; }
+.qisutu-communication-detail-section-head p { margin: 3px 0 0; color: #647387; font-size: 13px; }
+.qisutu-communication-step-count {
+    display: grid;
+    min-width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    background: #00617a;
+    font-size: 12px;
+}
+.qisutu-communication-detail-extra {
+    margin-top: 12px;
+    overflow: hidden;
+    border: 1px solid #dbe5eb;
+    border-radius: 7px;
+    background: #fff;
+}
+.qisutu-communication-detail-extra > summary {
+    padding: 11px 13px;
+    color: #15384a;
+    background: #f6f9fa;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 800;
+}
+.qisutu-communication-detail-extra[open] > summary { border-bottom: 1px solid #dbe5eb; }
+.qisutu-communication-message-meta { margin-bottom: 0; }
+.qisutu-communication-message-meta dl { display: grid; grid-template-columns: 150px minmax(0, 1fr); margin: 0; }
+.qisutu-communication-message-meta dt,
+.qisutu-communication-message-meta dd { margin: 0; padding: 7px 9px; border-bottom: 1px solid #e1e8ed; overflow-wrap: anywhere; }
+.qisutu-communication-message-meta dt { color: #647387; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.qisutu-communication-processing-summary > div {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(75px, 1fr));
+    padding: 10px;
+    gap: 8px;
+}
+.qisutu-communication-processing-summary span { min-width: 0; padding: 9px; border-radius: 6px; background: #f2f6f8; }
+.qisutu-communication-processing-summary small { display: block; overflow: hidden; color: #647387; font-size: 10px; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.qisutu-communication-processing-summary strong { display: block; margin-top: 4px; font-size: 17px; font-variant-numeric: tabular-nums; }
+.qisutu-communication-timeline { display: grid; margin: 0; padding: 0; list-style: none; gap: 7px; }
+.qisutu-communication-timeline li { position: relative; display: grid; grid-template-columns: 38px minmax(0, 1fr); margin: 0; overflow: hidden; border: 1px solid #dce5eb; border-left: 5px solid #7893a3; border-radius: 7px; background: #fff; }
+.qisutu-communication-timeline li.is-child-operation { background: #f7fafb; }
+.qisutu-communication-timeline li.is-success { border-left-color: #27824c; }
+.qisutu-communication-timeline li.is-warning { border-left-color: #c8871c; }
+.qisutu-communication-timeline li.is-error { border-left-color: #bd342d; }
+.qisutu-communication-step-number { display: grid; place-items: center; border-right: 1px solid #dce5eb; color: #647387; font-size: 11px; font-weight: 800; }
+.qisutu-communication-step-body { min-width: 0; padding: 8px 10px; }
+.qisutu-communication-step-head { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 14px; }
+.qisutu-communication-step-head time { min-width: 185px; color: #647387; font-variant-numeric: tabular-nums; }
+.qisutu-communication-step-head strong { min-width: 160px; }
+.qisutu-communication-step-head b { font-size: 12px; }
+.qisutu-communication-step-head span { margin-left: auto; color: #647387; font-size: 12px; }
+.qisutu-communication-timeline p { margin: 4px 0 0; }
+.qisutu-communication-timeline details { margin-top: 5px; }
+.qisutu-communication-timeline summary { width: max-content; color: #00617a; cursor: pointer; font-size: 12px; font-weight: 700; }
+.qisutu-communication-timeline pre { margin: 8px 0 0; padding: 10px; overflow: auto; border-radius: 5px; background: #f3f6f8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.qisutu-communication-timeline pre:empty { display: none; }
+.qisutu-communication-connection-technical dl { display: grid; grid-template-columns: 170px minmax(0, 1fr); margin: 0; }
+.qisutu-communication-connection-technical dt,
+.qisutu-communication-connection-technical dd { margin: 0; padding: 8px 11px; border-bottom: 1px solid #e1e8ed; overflow-wrap: anywhere; }
+.qisutu-communication-connection-technical dt { color: #647387; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.qisutu-communication-detail-actions {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    padding: 12px 22px;
+    border-top: 1px solid #d7e1e8;
+    background: #fff;
+}
+@media (max-width: 1100px) {
+    .qisutu-communication-filter-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+    .qisutu-communication-kpis { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+    .qisutu-communication-list-head,
+    .qisutu-communication-list-row { grid-template-columns: 62px 110px 90px minmax(150px, 1fr) minmax(130px, .8fr) 76px; }
+    .qisutu-communication-list-head > :nth-child(6),
+    .qisutu-communication-list-row > :nth-child(6) { display: none; }
+    .qisutu-communication-processing-summary > div { grid-template-columns: repeat(4, minmax(75px, 1fr)); }
+}
+@media (max-width: 900px) {
+    .qisutu-communication-detail-backdrop,
+    html.qisutu-sidebar-collapsed .qisutu-communication-detail-backdrop { left: 0; }
+}
+@media (max-width: 650px) {
+    .qisutu-communication-filter-grid { grid-template-columns: 1fr; }
+    .qisutu-communication-search { grid-column: auto; }
+    .qisutu-communication-kpis { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    .qisutu-communication-list { padding: 0 12px 14px; }
+    .qisutu-communication-list-head { display: none; }
+    .qisutu-communication-list-row { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px; gap: 8px 12px; }
+    .qisutu-communication-list-row > span,
+    .qisutu-communication-list-row > :nth-child(6) { display: block; }
+    .qisutu-communication-list-row > span::before { display: block; margin-bottom: 2px; color: #647387; content: attr(data-label); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .qisutu-communication-list-status { display: flex !important; }
+    .qisutu-communication-list-status::before { display: none !important; }
+    .qisutu-communication-pagination span { display: none; }
+    .qisutu-communication-processing-summary > div { grid-template-columns: repeat(2, minmax(75px, 1fr)); }
+    .qisutu-communication-detail-backdrop { padding: 8px; }
+    .qisutu-communication-detail { width: 100%; height: calc(100vh - 16px); max-height: calc(100vh - 16px); }
+    .qisutu-communication-detail .qisutu-modal-header { padding: 14px; }
+    .qisutu-communication-detail-content { padding: 14px; }
+    .qisutu-communication-detail-context { align-items: stretch; }
+    .qisutu-communication-detail-context > .qisutu-communication-status { align-self: flex-start; }
+    .qisutu-communication-detail-context > span { width: 100%; padding: 4px 0 0; border-top: 1px solid #d8e2e8; border-left: 0; }
+    .qisutu-communication-message-meta dl { grid-template-columns: 1fr; }
+    .qisutu-communication-message-meta dt { border-bottom: 0; padding-bottom: 0; }
+    .qisutu-communication-connection-technical dl { grid-template-columns: 1fr; }
+    .qisutu-communication-connection-technical dt { border-bottom: 0; padding-bottom: 0; }
+    .qisutu-communication-step-head time,
+    .qisutu-communication-step-head strong { min-width: 0; }
+    .qisutu-communication-detail-actions { padding: 10px 14px; }
 }

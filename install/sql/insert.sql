@@ -104,6 +104,17 @@ INSERT INTO `user_group_permission` (
     (1, 'admin.view', 1, 1, 1),
     (1, 'time_accounting.correct', 1, 1, 1);
 
+INSERT INTO `system_setting` (
+    `setting_key`,
+    `setting_value`,
+    `created_by_user_id`,
+    `changed_by_user_id`
+) VALUES
+    ('security.2fa.enforce_administrators', '0', 1, 1),
+    ('security.2fa.enforce_agents', '0', 1, 1),
+    ('security.2fa.enforce_customers', '0', 1, 1),
+    ('mail.communication_log_retention_days', '90', 1, 1);
+
 INSERT INTO `ticket_queue` (
     `id`,
     `name`,

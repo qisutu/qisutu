@@ -1,5 +1,17 @@
 # Third-party notices
 
+## QR Code Generator
+
+Qisutu bundles QR Code Generator version 2.0.4 to create TOTP setup QR codes
+locally in the browser.
+
+Copyright (c) 2009 Kazuhiko Arase
+
+QR Code Generator is provided under the MIT License. The bundled license text
+is included as `var/static/js/qrcode-generator/LICENSE.txt`. Qisutu loads the
+library only from its own static file path and does not send the two-factor
+secret to a CDN or another external runtime service.
+
 ## Chart.js
 
 Qisutu bundles Chart.js version 4.5.1 for the offline dashboard charts.

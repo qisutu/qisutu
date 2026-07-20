@@ -172,6 +172,7 @@ sub RequestCreate {
         DB     => $Self->{DB},
     )->SMTPSend(
         Account      => $SMTPAccount,
+        Operation    => 'password_reset',
         FromName     => $SystemEmail->{name} || $Self->_SystemName(),
         FromEmail    => $SystemEmail->{email},
         EnvelopeFrom => $SMTPAccount->{smtp_username} || $SystemEmail->{email},
@@ -506,6 +507,7 @@ sub _PasswordChangedMailSend {
         DB     => $Self->{DB},
     )->SMTPSend(
         Account      => $SMTPAccount,
+        Operation    => 'password_changed',
         FromName     => $SystemEmail->{name} || $Self->_SystemName(),
         FromEmail    => $SystemEmail->{email},
         EnvelopeFrom => $SMTPAccount->{smtp_username} || $SystemEmail->{email},

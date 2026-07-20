@@ -170,12 +170,14 @@ sub main {
         return;
     }
 
-    if ( ( $Param->{Page} || '' ) eq 'Logout' ) {
-        print _Logout(
-            Config  => $Config,
-            Output  => $Output,
-            Session => $Session,
-            Token   => _CookieGet( Name => $Config->{Session}->{CookieName} ),
+    my $Security = _ObjectCreate(
+        Module => 'QisutuSecurity',
+        Param  => { Config => $Config },
+    );
+    if ( !$Security ) {
+        print $Output->Response(
+            Status => '500 Internal Server Error',
+            Body   => 'Qisutu security system could not be loaded.',
         );
         return;
     }
@@ -188,7 +190,43 @@ sub main {
 
         if ($CurrentUser) {
             $Session->Touch( Token => $SessionToken );
+            $CurrentUser->{csrf_token} = $Security->CSRFToken( SessionToken => $SessionToken );
         }
+    }
+
+    if ( ( $Param->{__RequestMethod} || '' ) eq 'POST' ) {
+        my $Valid = $CurrentUser
+            ? $Security->CSRFTokenVerify(
+                SessionToken => $SessionToken,
+                Token        => $Param->{CSRFToken} || '',
+            )
+            : $Security->PublicCSRFTokenVerify(
+                Token   => $Param->{CSRFToken} || '',
+                Purpose => 'public-form',
+            );
+
+        if ( !$Valid ) {
+            print $Output->Response(
+                Status  => '403 Forbidden',
+                Body    => 'Die Anfrage konnte aus Sicherheitsgründen nicht verarbeitet werden. Bitte laden Sie die Seite neu.',
+                Headers => [ 'Cache-Control: no-store' ],
+            );
+            return;
+        }
+    }
+
+    if ( ( $Param->{Page} || '' ) eq 'Logout' ) {
+        if ( !$CurrentUser || ( $Param->{__RequestMethod} || '' ) ne 'POST' ) {
+            print $Output->Response( Status => '405 Method Not Allowed', Body => 'Logout requires POST.' );
+            return;
+        }
+        print _Logout(
+            Config  => $Config,
+            Output  => $Output,
+            Session => $Session,
+            Token   => $SessionToken,
+        );
+        return;
     }
 
     my %PublicLoginStep = map { $_ => 1 } qw(
@@ -201,6 +239,7 @@ sub main {
         CustomerRegistrationSubmit
         CustomerRegistrationPassword
         CustomerRegistrationPasswordSubmit
+        TwoFactorVerify
     );
 
     if ( $CurrentUser && !$PublicLoginStep{ $Param->{Step} || '' } ) {
@@ -219,6 +258,7 @@ sub main {
             DB      => $DB,
             Auth    => $Auth,
             Session => $Session,
+            Security => $Security,
         },
     );
 
@@ -278,6 +318,8 @@ sub _ObjectCreate {
 
 sub _RequestParams {
     my %Param;
+
+    $Param{__RequestMethod} = uc( $ENV{REQUEST_METHOD} || 'GET' );
 
     my $QueryString = $ENV{QUERY_STRING} || '';
     _ParamParse(

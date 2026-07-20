@@ -1535,6 +1535,8 @@ sub _CustomerEmailSend {
     my $ToName = join ' ', grep { $_ } ( $Ticket->{firstname}, $Ticket->{lastname} );
     my $Send = QisutuMail->new( Config => $Self->{Config}, DB => $Self->{DB} )->SMTPSend(
         Account   => $SMTP,
+        TicketID  => $Ticket->{id},
+        Operation => 'automation',
         FromName  => $Ticket->{from_name} || 'Qisutu',
         FromEmail => $Ticket->{from_email},
         ToName    => $ToName,
@@ -1686,6 +1688,8 @@ sub _AgentNotificationSend {
 
         my $Result = $MailObject->SMTPSend(
             Account   => $SMTP,
+            TicketID  => $Ticket->{id},
+            Operation => 'notification',
             FromName  => $Ticket->{from_name} || 'Qisutu',
             FromEmail => $Ticket->{from_email},
             ToName    => $Name,

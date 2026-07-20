@@ -96,6 +96,19 @@ sub Run {
 
         return { Redirect => 'index.pl?Page=AdminCustomerUsers' } if !$Admin->Error();
     }
+    elsif ( $Admin && $Step eq 'CustomerUserTwoFactorReset' ) {
+        my $CustomerUser = $Admin->CustomerUserGet( CustomerUserID => $Request->{CustomerUserID} );
+        my $TwoFactor = $Self->_TwoFactorObject();
+        if ( $CustomerUser && $TwoFactor ) {
+            $TwoFactor->Reset(
+                UserAccountID => $CustomerUser->{user_account_id},
+            );
+            return {
+                Redirect => 'index.pl?Page=AdminCustomerUsers;Action=Edit;CustomerUserID=' . ( $Request->{CustomerUserID} || 0 ) . ';TwoFactorReset=1'
+            } if !$TwoFactor->Error();
+            $Admin->{LastError} = $TwoFactor->Error();
+        }
+    }
     elsif ( $Admin && $Step eq 'CustomerUserDynamicFieldCreate' ) {
         $Admin->CustomerUserDynamicFieldCreate(
             Name            => $Request->{Name},
@@ -231,6 +244,7 @@ sub Run {
             CustomerUserLastname  => $CustomerUser ? $CustomerUser->{lastname} : '',
             CustomerUserCustomer  => $CustomerUser ? $CustomerUser->{customer_number} . ' - ' . $CustomerUser->{customer_name} : '',
             CustomerUserActiveChecked => $CustomerUser && $CustomerUser->{active} ? 'checked' : '',
+            TwoFactorResetSuccess => $Request->{TwoFactorReset} ? 1 : 0,
             CustomerCreateOptionsHTML => $Self->_CustomerOptions(
                 CustomerList => $CustomerList,
             ),
@@ -257,6 +271,13 @@ sub Run {
             ),
         },
     };
+}
+
+sub _TwoFactorObject {
+    my ($Self) = @_;
+    my $Loaded = eval { require QisutuTwoFactor; 1 };
+    return if !$Loaded;
+    return QisutuTwoFactor->new( Config => $Self->{Config}, DB => $Self->{DB} );
 }
 
 sub _CustomerOptions {

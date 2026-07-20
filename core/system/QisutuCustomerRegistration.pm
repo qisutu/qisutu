@@ -172,6 +172,7 @@ sub RequestCreate {
         DB     => $Self->{DB},
     )->SMTPSend(
         Account      => $SMTPAccount,
+        Operation    => 'customer_registration',
         FromName     => $SystemEmail->{name} || $Self->_SystemName(),
         FromEmail    => $SystemEmail->{email},
         EnvelopeFrom => $SMTPAccount->{smtp_username} || $SystemEmail->{email},

@@ -48,6 +48,23 @@ sub Run {
     my $User    = $Param{User}    || {};
     my $Prefs   = $Self->_PreferenceObject();
     my $Step    = $Request->{Step} || '';
+    my $TwoFactor = $Self->_TwoFactorObject();
+    my $RecoveryCodes = [];
+
+    if ( $TwoFactor && $Step eq 'TwoFactorStart' ) {
+        $TwoFactor->SetupStart( UserAccountID => $User->{user_account_id} );
+        return { Redirect => 'index.pl?Page=AgentPreferences;TwoFactorSetup=1' } if !$TwoFactor->Error();
+    }
+    elsif ( $TwoFactor && $Step eq 'TwoFactorEnable' ) {
+        $RecoveryCodes = $TwoFactor->SetupConfirm( UserAccountID => $User->{user_account_id}, Code => $Request->{TwoFactorCode} );
+    }
+    elsif ( $TwoFactor && $Step eq 'TwoFactorDisable' ) {
+        $TwoFactor->Disable( UserAccountID => $User->{user_account_id}, Code => $Request->{TwoFactorCode} );
+        return { Redirect => 'index.pl?Page=AgentPreferences;TwoFactorDisabled=1' } if !$TwoFactor->Error();
+    }
+    elsif ( $TwoFactor && $Step eq 'TwoFactorRecoveryRegenerate' ) {
+        $RecoveryCodes = $TwoFactor->RecoveryCodesRegenerate( UserAccountID => $User->{user_account_id}, Code => $Request->{TwoFactorCode} );
+    }
 
     if ( $Prefs && $Step eq 'PreferenceSave' ) {
         $Prefs->AgentPreferenceSave(
@@ -59,10 +76,15 @@ sub Run {
     }
 
     my $Preference = $Prefs ? $Prefs->AgentPreferenceGet( UserAccountID => $User->{user_account_id} ) : {};
-    my $ErrorMessage = $Prefs ? $Prefs->Error() : 'Preference system could not be loaded.';
+    my $ErrorMessage = $TwoFactor && $TwoFactor->Error() ? $TwoFactor->Error() : ( $Prefs ? $Prefs->Error() : 'Preference system could not be loaded.' );
     my $SuccessMessage = $Request->{Saved} ? 'Translate:PreferencesSaved' : '';
 
     my $AgentList = $Prefs ? $Prefs->AgentSelectionList( CurrentUserAccountID => $User->{user_account_id} ) : [];
+    my $TwoFactorStatus = $TwoFactor ? $TwoFactor->StatusGet( UserAccountID => $User->{user_account_id} ) : {};
+    my $TwoFactorProvisioningURI = $TwoFactor ? $TwoFactor->ProvisioningURI(
+        Secret      => $TwoFactorStatus->{secret} || '',
+        AccountName => $User->{email} || $User->{login} || 'user-' . ( $User->{user_account_id} || 0 ),
+    ) : '';
 
     return {
         Template => 'AgentPreferences.tt',
@@ -86,6 +108,11 @@ sub Run {
             StartPageDashboardSelected       => ( ( $Preference->{start_page} || '' ) eq 'Dashboard' ? 'selected' : '' ),
             StartPageTicketListSelected      => ( ( $Preference->{start_page} || '' ) eq 'AgentTicketList' ? 'selected' : '' ),
             TicketListLimit                  => $Preference->{ticket_list_limit} || 20,
+            TicketListLimit10Selected        => ( $Preference->{ticket_list_limit} || 20 ) == 10 ? 'selected' : '',
+            TicketListLimit20Selected        => ( $Preference->{ticket_list_limit} || 20 ) == 20 ? 'selected' : '',
+            TicketListLimit30Selected        => ( $Preference->{ticket_list_limit} || 20 ) == 30 ? 'selected' : '',
+            TicketListLimit40Selected        => ( $Preference->{ticket_list_limit} || 20 ) == 40 ? 'selected' : '',
+            TicketListLimit50Selected        => ( $Preference->{ticket_list_limit} || 20 ) == 50 ? 'selected' : '',
             AfterReplyStaySelected           => ( ( $Preference->{ticket_after_reply_action} || '' ) eq 'stay' ? 'selected' : '' ),
             AfterReplyListSelected           => ( ( $Preference->{ticket_after_reply_action} || '' ) eq 'list' ? 'selected' : '' ),
             AfterReplyNextSelected           => ( ( $Preference->{ticket_after_reply_action} || '' ) eq 'next' ? 'selected' : '' ),
@@ -102,8 +129,22 @@ sub Run {
                 Language  => $Preference->{language},
             ),
             AbsenceNote                      => $Preference->{absence_note} || '',
+            TwoFactorEnabled                 => $TwoFactorStatus->{enabled} ? 1 : 0,
+            TwoFactorSetup                   => !$TwoFactorStatus->{enabled} && $TwoFactorStatus->{configured} ? 1 : 0,
+            TwoFactorSecret                  => $TwoFactorStatus->{secret} || '',
+            TwoFactorProvisioningURI         => $TwoFactorProvisioningURI,
+            TwoFactorRecoveryRemaining       => $TwoFactorStatus->{recovery_codes_remaining} || 0,
+            RecoveryCodesHTML                => join( '', map { '<li><code>' . $Self->{Output}->HTMLEscape($_) . '</code></li>' } @{ $RecoveryCodes || [] } ),
+            ShowRecoveryCodes                => @{ $RecoveryCodes || [] } ? 1 : 0,
         },
     };
+}
+
+sub _TwoFactorObject {
+    my ($Self) = @_;
+    my $Loaded = eval { require QisutuTwoFactor; 1 };
+    return if !$Loaded;
+    return QisutuTwoFactor->new( Config => $Self->{Config}, DB => $Self->{DB} );
 }
 
 sub _PreferenceObject {

@@ -24,10 +24,11 @@ Jede Qisutu-Instanz benötigt ein eigenes Hauptverzeichnis.
 Beispiele:
 
     /opt/qisutu
-    /opt/qisutu-test
+    /opt/qisututest
 
 Für ein Testsystem muss das entpackte Verzeichnis daher vor der Installation
-beispielsweise `/opt/qisutu-test` heißen.
+beispielsweise `/opt/qisututest` heißen. Der Verzeichnisname ist gleichzeitig
+die vollständige Instanzkennung; der Installer ergänzt kein Präfix.
 
 ## 2. Systemvorbereitung starten
 
@@ -52,32 +53,29 @@ Automatisch verwendet werden unter anderem:
 
 Jede weitere Instanz wird in ein eigenes Verzeichnis entpackt, zum Beispiel:
 
-    /opt/qisutu-test
+    /opt/qisututest
 
-Beim ersten Aufruf fragt `install.sh` ausschließlich nach einem kurzen,
-verständlichen Namen:
+`install.sh` übernimmt den Verzeichnisnamen unverändert als vollständige
+Instanzkennung. Alle technischen Namen werden unmittelbar daraus erzeugt:
 
-    Name der zusätzlichen Instanz [test]:
+    Instanzkennung:   qisututest
+    Webpfad:          /qisututest
+    Apache-Datei:     qisututest.conf
+    systemd-Dienst:   qisututest-daemon.service
+    Session-Cookie:   QISUTUTEST_SESSION
+    Datenbank:        qisututest
+    Datenbankbenutzer:qisututest
 
-Mit der Eingabetaste wird der Vorschlag übernommen. Alle technischen Namen
-werden daraus automatisch erzeugt:
-
-    Webpfad:          /qisutu-test
-    Apache-Datei:     qisutu-test.conf
-    systemd-Dienst:   qisutu-test-daemon.service
-    Session-Cookie:   QISUTU_TEST_SESSION
-    Datenbank:        qisutu_test
-    Datenbankbenutzer:qisutu_test
-
-Falsche technische Angaben wie Webpfad, Dienstname oder Cookie können dadurch
-nicht mehr eingegeben werden. Der Name wird unmittelbar geprüft; bei einer
-ungültigen Eingabe fragt das Skript erneut, statt die Installation am Ende
-abzubrechen.
+Der Verzeichnisname muss mit einem Kleinbuchstaben beginnen und darf höchstens
+24 Kleinbuchstaben, Zahlen oder Bindestriche enthalten. Bei Bindestrichen
+verwendet nur MariaDB technisch notwendige Unterstriche. Ein zusätzliches
+`qisutu-`-Präfix wird niemals erzeugt.
 
 Die automatisch ermittelten Werte werden in `var/install/instance.conf`
-gespeichert. Bei späteren Aufrufen von `install.sh` wird diese vorhandene
-Instanzkonfiguration unverändert wiederverwendet und es erscheint keine neue
-Abfrage.
+gespeichert. Bei späteren Aufrufen von `install.sh` wird eine vollständig
+installierte Instanz nicht verändert. Bei einer noch nicht abgeschlossenen
+Installation werden veraltete, vom früheren Installer erzeugte Präfixe sicher
+an den tatsächlichen Verzeichnisnamen angepasst.
 
 Das Skript installiert Apache, MariaDB beziehungsweise MySQL-Clientwerkzeuge,
 Perl und die benötigten Perl-Module einschließlich `Authen::SASL`. Nach der
@@ -95,7 +93,7 @@ Jede Instanz erhält außerdem eigene systemd-Dateien. Dadurch können
 beispielsweise folgende Dienste parallel laufen:
 
     qisutu-daemon.service
-    qisutu-test-daemon.service
+    qisututest-daemon.service
 
 Auf Systemen der RHEL-Familie richtet das Skript bei aktivem SELinux die
 notwendigen Dateikontexte und SELinux-Schalter für CGI-, Datenbank- und
@@ -115,7 +113,7 @@ Produktivbeispiel:
 
 Testbeispiel:
 
-    http://SERVER/qisutu-test/install.pl
+    http://qisututest.qisutu.de/qisututest/install.pl
 
 Der Assistent führt durch:
 
@@ -148,12 +146,12 @@ Instanz gehörenden Qisutu-Daemon.
 Beispielzugänge:
 
     http://SERVER/qisutu/index.pl
-    http://SERVER/qisutu-test/index.pl
+    http://qisututest.qisutu.de/qisututest/index.pl
 
 ## Mehrere Instanzen auf demselben Server
 
 Jede Instanz benötigt nur ein eigenes Hauptverzeichnis. Aus `/opt/qisutu`
-und `/opt/qisutu-test` erzeugt das Installationsskript automatisch getrennte
+und `/opt/qisututest` erzeugt das Installationsskript automatisch getrennte
 Webpfade, Apache-Dateien, systemd-Dienste, Session-Cookies, Datenbanken und
 Datenbankbenutzer. Diese internen Werte müssen nicht vom Benutzer eingegeben
 werden.
@@ -212,6 +210,27 @@ Zugangsdaten und OAuth2-Tokens werden dabei entfernt. Bereits vorhandene
 Postmaster-Verarbeitungsprotokolle bleiben als Historie erhalten, verlieren
 aber die Verknüpfung zum gelöschten Konto.
 
+## Ausgehender SMTP-Versand und OAuth2
+
+Unter `Administration > SMTP settings` stehen drei getrennte Einrichtungsarten
+zur Verfügung:
+
+- `Standard-SMTP` verwendet Benutzername und Passwort.
+- `Microsoft 365` verwendet `smtp.office365.com`, Port 587, STARTTLS und
+  OAuth2/XOAUTH2 mit `offline_access` sowie
+  `https://outlook.office.com/SMTP.Send`.
+- `Google Workspace/Gmail` verwendet `smtp.gmail.com`, Port 587, STARTTLS und
+  OAuth2/XOAUTH2 mit `https://mail.google.com/`.
+
+Für OAuth2 wird wie beim IMAP-Abruf eine Webanwendung beim jeweiligen Anbieter
+benötigt. Die in der SMTP-Kontomaske angezeigte Redirect-URI muss dort exakt
+registriert sein. Nach dem Speichern führt Qisutu zur Anmeldung beim Anbieter,
+speichert Access- und Refresh-Token verschlüsselt und führt einen echten
+SMTP-Test mit `AUTH XOAUTH2` aus. Nur bei erfolgreichem Test wird das Konto
+aktiviert. Access-Tokens werden bei Bedarf automatisch erneuert. Die Aktionen
+`Neu verbinden` und `OAuth-Verbindung trennen` verwalten die lokale
+Token-Verbindung; beim Trennen wird das SMTP-Konto sofort deaktiviert.
+
 ## Öffentliche Webformulare einbetten
 
 Formulare werden nach der Installation unter `Administration > Formulare`
@@ -244,6 +263,21 @@ Jede Instanz besitzt ihr eigenes Installationsprotokoll:
 
 Passwörter werden nicht in das Installationsprotokoll geschrieben.
 
+## Systembenutzer und Dateirechte
+
+Qisutu verwendet für Hintergrundprozesse den Systembenutzer `qisutu`. Der
+Installer legt diesen Benutzer bei Bedarf an und nimmt ihn in die Gruppe des
+Webservers auf. Auf Ubuntu und Debian gehören die Installation und ihre
+beschreibbaren Laufzeitverzeichnisse deshalb `qisutu:www-data`.
+
+Der instanzbezogene Daemon läuft ebenfalls als `qisutu` und ruft die
+eingerichteten Postfächer automatisch alle fünf Minuten ab. Ein zusätzlicher
+Cronjob für `qisutu-mail-fetch.pl` ist nicht erforderlich. Gemeinsame
+Runtime-Lockdateien unter `/run/lock/qisutu` sind für `qisutu` und die
+Webserver-Gruppe beschreibbar und werden nach einem Neustart automatisch mit
+den richtigen Rechten wiederhergestellt. Eine eigene instanzbezogene
+Mailabruf-Sperre verhindert parallel laufende Abrufe.
+
 ## Temporäre Abschlussdienste
 
 Während der Webinstallation wartet eine instanzbezogene systemd-Path-Unit auf `var/install/installed.lock`. Nach erfolgreichem Abschluss startet die zugehörige einmalige Service-Unit den Qisutu-Daemon. Anschließend werden beide temporären Abschluss-Units automatisch deaktiviert und aus `/etc/systemd/system` entfernt. Dauerhaft aktiv bleibt ausschließlich der jeweilige Qisutu-Daemon.
@@ -252,6 +286,12 @@ Während der Webinstallation wartet eine instanzbezogene systemd-Path-Unit auf `
 Vor jedem Update muss entsprechend der Betreiberanweisung eine vollständige
 Systemsicherung der Qisutu-Installation und ihrer Datenbank vorhanden sein.
 Qisutu erstellt keine zusätzliche Programmsicherung.
+
+Zur Systemsicherung gehört insbesondere `var/secure/security.key`. Dieser
+installationsabhängige Schlüssel wird nicht in der Datenbank gespeichert und
+wird benötigt, um verschlüsselte E-Mail- und OAuth-Zugangsdaten sowie
+Zwei-Faktor-Geheimnisse wiederherzustellen. Der Schlüssel darf nur zusammen
+mit einer geschützten Sicherung aufbewahrt und niemals veröffentlicht werden.
 
 Ein neues Qisutu-Release wird in ein separates Verzeichnis entpackt. Das neue
 Paket darf nicht direkt über die bestehende Installation entpackt werden.
@@ -266,7 +306,7 @@ Produktivinstanz aktualisieren:
 Zusätzliche Instanz aktualisieren:
 
     cd /tmp/qisutu-neue-version/qisutu
-    sudo ./update.sh /opt/qisutu-test
+    sudo ./update.sh /opt/qisututest
 
 Das Updateprogramm liest die vorhandene `var/install/instance.conf` und zeigt
 vor der Bestätigung Installationspfad, Instanzkennung, Webpfad, Datenbank und
@@ -286,8 +326,8 @@ Während des Updates führt das Programm folgende Schritte aus:
 5. Instanz- und Betreiberdateien unverändert erhalten. Dazu gehören
    `core/config/QisutuConfig.pm` mit Ausnahme der Versionsnummer,
    `var/install/instance.conf`, Logs, Cache, temporäre Laufzeitdaten,
-   instanzbezogene Runtime-Dateien, die bestehende Apache-Konfiguration und die
-   bestehende systemd-Konfiguration.
+   `var/secure/security.key`, instanzbezogene Runtime-Dateien, die bestehende
+   Apache-Konfiguration und die bestehende systemd-Konfiguration.
 6. Die aktuelle Datenbank-Sollstruktur aus `install/sql/schema.sql` mit der
    vorhandenen Datenbank vergleichen und fehlende Tabellen, Spalten, Indizes,
    Primärschlüssel und Fremdschlüssel ergänzen.

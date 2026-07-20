@@ -1,0 +1,37 @@
+[%# SPDX-License-Identifier: AGPL-3.0-or-later %]
+<main class="qisutu-login-main">
+    <section class="qisutu-login-card">
+        <div class="qisutu-login-card-header">
+            <h1>[% Translate.TwoFactorLoginTitle %]</h1>
+            <p>[% Translate.TwoFactorLoginDescription %]</p>
+        </div>
+        <div class="qisutu-login-error [% IF ErrorMessage %][% ELSE %]qisutu-hidden[% END %]">[% ErrorMessage %]</div>
+        [% IF TwoFactorSetup %]
+        <div class="qisutu-login-info">
+            <strong>[% Translate.TwoFactorSetupRequired %]</strong>
+            <div class="qisutu-two-factor-setup-grid">
+                <div>
+                    <p>[% Translate.TwoFactorSetupScanHint %]</p>
+                    <div class="qisutu-two-factor-qr" data-qisutu-two-factor-uri="[% TwoFactorProvisioningURI %]" data-qisutu-two-factor-label="[% Translate.TwoFactorQRCodeLabel %]"></div>
+                </div>
+                <div>
+                    <p>[% Translate.TwoFactorSetupManualHint %]</p>
+                    <code class="qisutu-two-factor-secret">[% TwoFactorSecret %]</code>
+                </div>
+            </div>
+        </div>
+        <script src="[% StaticBase %]/js/qrcode-generator/qrcode.js?v=2.0.4"></script>
+        <script src="[% StaticBase %]/js/qisutu-two-factor.js?v=2026072001"></script>
+        [% END %]
+        <form class="qisutu-login-form" method="post" action="[% FormAction %]" autocomplete="off">
+            <input type="hidden" name="Step" value="TwoFactorVerify">
+            <input type="hidden" name="ChallengeToken" value="[% ChallengeToken %]">
+            <input type="hidden" name="TwoFactorMode" value="[% TwoFactorMode %]">
+            <input type="hidden" name="TwoFactorSecret" value="[% TwoFactorSecret %]">
+            <input type="hidden" name="TwoFactorAccountName" value="[% TwoFactorAccountName %]">
+            <label for="TwoFactorCode">[% Translate.TwoFactorCodeOrRecoveryCode %]</label>
+            <input id="TwoFactorCode" type="text" name="TwoFactorCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" autofocus required>
+            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TwoFactorVerify %]</button>
+        </form>
+    </section>
+</main>

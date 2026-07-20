@@ -68,11 +68,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 <div class="qisutu-form-field">
                     <label>[% Translate.PreferencesTicketListLimit %]</label>
                     <select name="TicketListLimit">
-                        <option value="10" [% IF TicketListLimit == 10 %]selected[% END %]>10</option>
-                        <option value="20" [% IF TicketListLimit == 20 %]selected[% END %]>20</option>
-                        <option value="30" [% IF TicketListLimit == 30 %]selected[% END %]>30</option>
-                        <option value="40" [% IF TicketListLimit == 40 %]selected[% END %]>40</option>
-                        <option value="50" [% IF TicketListLimit == 50 %]selected[% END %]>50</option>
+                        <option value="10" [% TicketListLimit10Selected %]>10</option>
+                        <option value="20" [% TicketListLimit20Selected %]>20</option>
+                        <option value="30" [% TicketListLimit30Selected %]>30</option>
+                        <option value="40" [% TicketListLimit40Selected %]>40</option>
+                        <option value="50" [% TicketListLimit50Selected %]>50</option>
                     </select>
                 </div>
             </div>
@@ -185,4 +185,35 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
         </div>
     </form>
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.TwoFactorTitle %]</h2><span class="qisutu-panel-subtitle">[% Translate.TwoFactorPreferencesDescription %]</span></div></div>
+        [% IF ShowRecoveryCodes %]
+        <div class="qisutu-form-error qisutu-form-success"><strong>[% Translate.TwoFactorRecoveryCodesTitle %]</strong><p>[% Translate.TwoFactorRecoveryCodesDescription %]</p><ul class="qisutu-recovery-code-list">[% RAW.RecoveryCodesHTML %]</ul><p>[% Translate.TwoFactorRecoveryCodesOnce %]</p></div>
+        [% END %]
+        [% IF TwoFactorSetup %]
+        <div class="qisutu-two-factor-setup-grid">
+            <div>
+                <p>[% Translate.TwoFactorSetupScanHint %]</p>
+                <div class="qisutu-two-factor-qr" data-qisutu-two-factor-uri="[% TwoFactorProvisioningURI %]" data-qisutu-two-factor-label="[% Translate.TwoFactorQRCodeLabel %]"></div>
+            </div>
+            <div>
+                <p>[% Translate.TwoFactorSetupManualHint %]</p>
+                <code class="qisutu-two-factor-secret">[% TwoFactorSecret %]</code>
+            </div>
+        </div>
+        <form class="qisutu-admin-form" method="post" action="[% FormAction %]"><input type="hidden" name="Page" value="AgentPreferences"><input type="hidden" name="Step" value="TwoFactorEnable"><div class="qisutu-form-field"><label>[% Translate.TwoFactorAuthenticatorCode %]</label><input type="text" name="TwoFactorCode" inputmode="numeric" autocomplete="one-time-code" required></div><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TwoFactorEnable %]</button></form>
+        <script src="[% StaticBase %]/js/qrcode-generator/qrcode.js?v=2.0.4"></script>
+        <script src="[% StaticBase %]/js/qisutu-two-factor.js?v=2026072001"></script>
+        [% ELSE %]
+        [% IF TwoFactorEnabled %]
+        <p>[% Translate.TwoFactorEnabledText %] [% TwoFactorRecoveryRemaining %]</p>
+        <div class="qisutu-admin-form-columns">
+        <form class="qisutu-admin-form" method="post" action="[% FormAction %]"><input type="hidden" name="Page" value="AgentPreferences"><input type="hidden" name="Step" value="TwoFactorRecoveryRegenerate"><div class="qisutu-form-field"><label>[% Translate.TwoFactorAuthenticatorCode %]</label><input type="text" name="TwoFactorCode" inputmode="numeric" required></div><button class="qisutu-button qisutu-button-secondary" type="submit">[% Translate.TwoFactorRecoveryRegenerate %]</button></form>
+        <form class="qisutu-admin-form" method="post" action="[% FormAction %]"><input type="hidden" name="Page" value="AgentPreferences"><input type="hidden" name="Step" value="TwoFactorDisable"><div class="qisutu-form-field"><label>[% Translate.TwoFactorCodeOrRecoveryCode %]</label><input type="text" name="TwoFactorCode" required></div><button class="qisutu-button qisutu-button-danger" type="submit">[% Translate.TwoFactorDisable %]</button></form>
+        </div>
+        [% ELSE %]
+        <form class="qisutu-admin-form" method="post" action="[% FormAction %]"><input type="hidden" name="Page" value="AgentPreferences"><input type="hidden" name="Step" value="TwoFactorStart"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TwoFactorStart %]</button></form>
+        [% END %]
+        [% END %]
+    </section>
 </div>

@@ -60,7 +60,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <div class="qisutu-sidebar-user-text">
                 <div class="qisutu-sidebar-user-name">[% UserDisplayName %]</div>
                 <div class="qisutu-sidebar-user-links">
-                    <a class="qisutu-sidebar-user-link" href="index.pl?Page=Logout">[% Translate.StartLogout %]</a>
+                    <form class="qisutu-inline-form" method="post" action="index.pl">
+                        <input type="hidden" name="Page" value="Logout">
+                        <button class="qisutu-sidebar-user-link qisutu-link-button" type="submit">[% Translate.StartLogout %]</button>
+                    </form>
                 </div>
             </div>
             [% IF UserHasPreferences %]
@@ -69,7 +72,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
             <div class="qisutu-sidebar-user-flyout" aria-label="[% UserDisplayName %]">
                 <div class="qisutu-sidebar-user-flyout-name">[% UserDisplayName %]</div>
-                <a class="qisutu-sidebar-user-flyout-link" href="index.pl?Page=Logout">[% Translate.StartLogout %]</a>
+                <form class="qisutu-inline-form" method="post" action="index.pl">
+                    <input type="hidden" name="Page" value="Logout">
+                    <button class="qisutu-sidebar-user-flyout-link qisutu-link-button" type="submit">[% Translate.StartLogout %]</button>
+                </form>
                 [% IF UserHasPreferences %]
                     <a class="qisutu-sidebar-user-flyout-link" href="[% UserPreferencesURL %]">[% UserPreferencesTitle %]</a>
                 [% END %]

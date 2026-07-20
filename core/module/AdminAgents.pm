@@ -85,6 +85,18 @@ sub Run {
 
         return { Redirect => 'index.pl?Page=AdminAgents' } if !$Admin->Error();
     }
+    elsif ( $Admin && $Step eq 'AgentTwoFactorReset' ) {
+        my $TwoFactor = $Self->_TwoFactorObject();
+        if ($TwoFactor) {
+            $TwoFactor->Reset(
+                UserAccountID => $Request->{UserAccountID},
+            );
+            return {
+                Redirect => 'index.pl?Page=AdminAgents;Action=Edit;UserAccountID=' . ( $Request->{UserAccountID} || 0 ) . ';TwoFactorReset=1'
+            } if !$TwoFactor->Error();
+            $Admin->{LastError} = $TwoFactor->Error();
+        }
+    }
     elsif ( $Admin && $Step eq 'AgentGroupPermissionUpdate' ) {
         $Admin->UserGroupPermissionUpdate(
             UserAccountID   => $Request->{UserAccountID},
@@ -246,6 +258,7 @@ sub Run {
             AgentLastname      => $Agent ? $Agent->{lastname} : '',
             AgentGroups        => $Agent ? $Agent->{group_names} : '',
             AgentActiveChecked => $Agent && $Agent->{is_active} ? 'checked' : '',
+            TwoFactorResetSuccess => $Request->{TwoFactorReset} ? 1 : 0,
             FieldID            => $Field ? $Field->{id} : '',
             FieldName          => $Field ? $Field->{name} : '',
             FieldType          => $Field ? $Field->{field_type} : '',
@@ -265,6 +278,13 @@ sub Run {
             ),
         },
     };
+}
+
+sub _TwoFactorObject {
+    my ($Self) = @_;
+    my $Loaded = eval { require QisutuTwoFactor; 1 };
+    return if !$Loaded;
+    return QisutuTwoFactor->new( Config => $Self->{Config}, DB => $Self->{DB} );
 }
 
 sub _DynamicFieldFormFields {

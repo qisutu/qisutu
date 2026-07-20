@@ -164,6 +164,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
                         </div>
                     </form>
+
                 </section>
                 [% END %]
 
@@ -222,6 +223,18 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
                         </div>
                     </form>
+
+                    <div class="qisutu-admin-security-action">
+                        [% IF TwoFactorResetSuccess %]<div class="qisutu-form-error qisutu-form-success">[% Translate.TwoFactorAdminResetSuccess %]</div>[% END %]
+                        <h3>[% Translate.TwoFactorTitle %]</h3>
+                        <p>[% Translate.TwoFactorAdminResetHint %]</p>
+                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                            <input type="hidden" name="Page" value="AdminCustomerUsers">
+                            <input type="hidden" name="Step" value="CustomerUserTwoFactorReset">
+                            <input type="hidden" name="CustomerUserID" value="[% CustomerUserID %]">
+                            <button class="qisutu-button qisutu-button-danger" type="submit">[% Translate.TwoFactorAdminReset %]</button>
+                        </form>
+                    </div>
                 </section>
                 [% END %]
 

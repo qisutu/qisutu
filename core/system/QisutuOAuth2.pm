@@ -34,7 +34,9 @@ use utf8;
 use Digest::SHA qw(sha256_hex);
 use HTTP::Tiny;
 use JSON::PP;
+use QisutuCommunicationLog;
 use QisutuSystemSetting;
+use QisutuSecurity;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -44,6 +46,12 @@ sub new {
         DB         => $Param{DB},
         HTTPClient => $Param{HTTPClient},
         LastError  => '',
+        Security   => QisutuSecurity->new( Config => $Param{Config} ),
+        CommunicationLog => QisutuCommunicationLog->new(
+            Config      => $Param{Config},
+            DB          => $Param{DB},
+            Independent => 1,
+        ),
     };
 
     bless $Self, $Class;
@@ -63,10 +71,21 @@ sub ProviderNormalize {
     return '';
 }
 
+sub AccountTypeNormalize {
+    my ( $Self, $Value ) = @_;
+
+    $Value = lc( $Value || '' );
+    return 'smtp' if $Value eq 'smtp';
+    return 'imap';
+}
+
 sub ProviderDefinition {
     my ( $Self, %Param ) = @_;
 
     my $Account  = $Param{Account} || {};
+    my $AccountType = $Self->AccountTypeNormalize(
+        $Param{AccountType} || ( exists $Account->{smtp_host} ? 'smtp' : 'imap' )
+    );
     my $Provider = $Self->ProviderNormalize( $Param{Provider} || $Account->{oauth_provider} );
 
     if ( $Provider eq 'microsoft' ) {
@@ -74,7 +93,7 @@ sub ProviderDefinition {
         $Tenant =~ s{\A\s+|\s+\z}{}g;
         $Tenant = 'common' if $Tenant !~ m{\A[A-Za-z0-9.-]+\z};
 
-        return {
+        my $Definition = {
             Key          => 'microsoft',
             Name         => 'Microsoft 365',
             AuthURL      => 'https://login.microsoftonline.com/' . $Tenant . '/oauth2/v2.0/authorize',
@@ -82,8 +101,14 @@ sub ProviderDefinition {
             IMAPHost     => 'outlook.office365.com',
             IMAPSecurity => 'imaps',
             IMAPPort     => 993,
-            Scope        => 'offline_access https://outlook.office.com/IMAP.AccessAsUser.All',
+            SMTPHost     => 'smtp.office365.com',
+            SMTPSecurity => 'smtp_starttls',
+            SMTPPort     => 587,
         };
+        $Definition->{Scope} = $AccountType eq 'smtp'
+            ? 'offline_access https://outlook.office.com/SMTP.Send'
+            : 'offline_access https://outlook.office.com/IMAP.AccessAsUser.All';
+        return $Definition;
     }
 
     if ( $Provider eq 'google' ) {
@@ -95,6 +120,9 @@ sub ProviderDefinition {
             IMAPHost     => 'imap.gmail.com',
             IMAPSecurity => 'imaps',
             IMAPPort     => 993,
+            SMTPHost     => 'smtp.gmail.com',
+            SMTPSecurity => 'smtp_starttls',
+            SMTPPort     => 587,
             Scope        => 'https://mail.google.com/',
         };
     }
@@ -103,7 +131,9 @@ sub ProviderDefinition {
 }
 
 sub RedirectURI {
-    my ($Self) = @_;
+    my ( $Self, %Param ) = @_;
+
+    my $AccountType = $Self->AccountTypeNormalize( $Param{AccountType} );
 
     my $BaseURL = QisutuSystemSetting->new(
         Config => $Self->{Config},
@@ -118,19 +148,23 @@ sub RedirectURI {
         return '';
     }
 
-    return $BaseURL . '/index.pl?Page=AdminPostmasterIMAPAccounts&Action=OAuthCallback';
+    my $Page = $AccountType eq 'smtp' ? 'AdminSMTPAccount' : 'AdminPostmasterIMAPAccounts';
+    return $BaseURL . '/index.pl?Page=' . $Page . '&Action=OAuthCallback';
 }
 
 sub AuthorizationBegin {
     my ( $Self, %Param ) = @_;
 
     my $Account         = $Param{Account} || {};
+    my $AccountType     = $Self->AccountTypeNormalize(
+        $Param{AccountType} || ( exists $Account->{smtp_host} ? 'smtp' : 'imap' )
+    );
     my $AccountID       = $Account->{id} || 0;
     my $UserID          = $Param{UserID} || 0;
     my $RequestedActive = $Param{RequestedActive} ? 1 : 0;
-    my $ReturnPage      = $Self->_ReturnPageClean( $Param{ReturnPage}, $Account->{oauth_provider} );
-    my $Provider        = $Self->ProviderDefinition( Account => $Account );
-    my $RedirectURI     = $Self->RedirectURI();
+    my $ReturnPage      = $Self->_ReturnPageClean( $Param{ReturnPage}, $Account->{oauth_provider}, $AccountType );
+    my $Provider        = $Self->ProviderDefinition( Account => $Account, AccountType => $AccountType );
+    my $RedirectURI     = $Self->RedirectURI( AccountType => $AccountType );
 
     if ( !$AccountID || $AccountID !~ m{\A\d+\z} || !$UserID || $UserID !~ m{\A\d+\z} ) {
         $Self->{LastError} = 'Translate:AdminOAuthAccountMissing';
@@ -146,7 +180,9 @@ sub AuthorizationBegin {
 
     my $ClientID     = $Account->{oauth_client_id} || '';
     my $ClientSecret = $Account->{oauth_client_secret} || '';
-    my $Login        = $Account->{imap_username} || $Account->{email} || '';
+    my $Login        = $AccountType eq 'smtp'
+        ? ( $Account->{smtp_username} || '' )
+        : ( $Account->{imap_username} || $Account->{email} || '' );
     my $Scope        = $Account->{oauth_scope} || $Provider->{Scope};
 
     if ( !$ClientID || !$ClientSecret || !$Login || !$Scope ) {
@@ -161,7 +197,8 @@ sub AuthorizationBegin {
 
     $Self->{DB}->Do('DELETE FROM oauth2_authorization_state WHERE expires_at < NOW()');
     $Self->{DB}->Do(
-        'DELETE FROM oauth2_authorization_state WHERE account_id = ? AND user_account_id = ?',
+        'DELETE FROM oauth2_authorization_state WHERE account_type = ? AND account_id = ? AND user_account_id = ?',
+        $AccountType,
         $AccountID,
         $UserID,
     );
@@ -169,14 +206,16 @@ sub AuthorizationBegin {
     my $Stored = $Self->{DB}->Do(
         'INSERT INTO oauth2_authorization_state (
             state_hash,
+            account_type,
             account_id,
             user_account_id,
             provider,
             requested_active,
             return_page,
             expires_at
-         ) VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))',
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))',
         $StateHash,
+        $AccountType,
         $AccountID,
         $UserID,
         $Provider->{Key},
@@ -264,10 +303,16 @@ sub AuthorizationComplete {
 
     my $ResultBase = {
         AccountID      => $StateRow->{account_id},
+        AccountType    => $Self->AccountTypeNormalize( $StateRow->{account_type} ),
         Provider       => $StateRow->{provider},
         RequestedActive => $StateRow->{requested_active} ? 1 : 0,
-        ReturnPage     => $Self->_ReturnPageClean( $StateRow->{return_page}, $StateRow->{provider} ),
+        ReturnPage     => $Self->_ReturnPageClean(
+            $StateRow->{return_page},
+            $StateRow->{provider},
+            $Self->AccountTypeNormalize( $StateRow->{account_type} ),
+        ),
     };
+    my $AccountType = $ResultBase->{AccountType};
 
     my $ProviderError = $Self->_Scalar( $Request->{error} );
     if ($ProviderError) {
@@ -276,10 +321,18 @@ sub AuthorizationComplete {
         $Message =~ s{[\r\n]+}{ }g;
         $Message = substr( $Message, 0, 1000 );
         $Self->_AccountStatusSet(
+            AccountType => $AccountType,
             AccountID => $StateRow->{account_id},
             Status    => 'error',
             Message   => $Message,
             UserID    => $UserID,
+        );
+        $Self->_OAuthEventSave(
+            AccountType => $AccountType,
+            AccountID => $StateRow->{account_id},
+            Provider  => $StateRow->{provider},
+            Status    => 'error',
+            Message   => $Message || 'Translate:AdminOAuthAuthorizationDenied',
         );
         $Self->{LastError} = $Message || 'Translate:AdminOAuthAuthorizationDenied';
         return { %{$ResultBase}, Success => 0, Message => $Self->{LastError} };
@@ -289,21 +342,29 @@ sub AuthorizationComplete {
     if ( !$Code ) {
         $Self->{LastError} = 'Translate:AdminOAuthAuthorizationCodeMissing';
         $Self->_AccountStatusSet(
+            AccountType => $AccountType,
             AccountID => $StateRow->{account_id},
             Status    => 'error',
             Message   => $Self->{LastError},
             UserID    => $UserID,
         );
+        $Self->_OAuthEventSave(
+            AccountType => $AccountType,
+            AccountID => $StateRow->{account_id},
+            Provider  => $StateRow->{provider},
+            Status    => 'error',
+            Message   => $Self->{LastError},
+        );
         return { %{$ResultBase}, Success => 0, Message => $Self->{LastError} };
     }
 
-    my $Account = $Self->_AccountGet( AccountID => $StateRow->{account_id} );
+    my $Account = $Self->_AccountGet( AccountType => $AccountType, AccountID => $StateRow->{account_id} );
     if ( !$Account ) {
         $Self->{LastError} = 'Translate:AdminOAuthAccountMissing';
         return { %{$ResultBase}, Success => 0, Message => $Self->{LastError} };
     }
 
-    my $Provider = $Self->ProviderDefinition( Account => $Account );
+    my $Provider = $Self->ProviderDefinition( Account => $Account, AccountType => $AccountType );
     if ( !$Provider || $Provider->{Key} ne $StateRow->{provider} ) {
         $Self->{LastError} = 'Translate:AdminOAuthProviderInvalid';
         return { %{$ResultBase}, Success => 0, Message => $Self->{LastError} };
@@ -311,14 +372,16 @@ sub AuthorizationComplete {
 
     my $Token = $Self->_TokenRequest(
         Account     => $Account,
+        AccountType => $AccountType,
         Provider    => $Provider,
         GrantType   => 'authorization_code',
         Code        => $Code,
-        RedirectURI => $Self->RedirectURI(),
+        RedirectURI => $Self->RedirectURI( AccountType => $AccountType ),
     );
 
     if ( !$Token ) {
         $Self->_AccountStatusSet(
+            AccountType => $AccountType,
             AccountID => $StateRow->{account_id},
             Status    => 'error',
             Message   => $Self->{LastError},
@@ -331,6 +394,7 @@ sub AuthorizationComplete {
     if ( !$RefreshToken ) {
         $Self->{LastError} = 'Translate:AdminOAuthRefreshTokenMissing';
         $Self->_AccountStatusSet(
+            AccountType => $AccountType,
             AccountID => $StateRow->{account_id},
             Status    => 'error',
             Message   => $Self->{LastError},
@@ -341,6 +405,7 @@ sub AuthorizationComplete {
 
     if ( !$Self->_TokenStore(
             AccountID   => $StateRow->{account_id},
+            AccountType => $AccountType,
             AccessToken => $Token->{access_token},
             RefreshToken => $RefreshToken,
             ExpiresIn   => $Token->{expires_in},
@@ -362,6 +427,9 @@ sub AccessTokenGet {
     my ( $Self, %Param ) = @_;
 
     my $Account   = $Param{Account} || {};
+    my $AccountType = $Self->AccountTypeNormalize(
+        $Param{AccountType} || ( exists $Account->{smtp_host} ? 'smtp' : 'imap' )
+    );
     my $AccountID = $Account->{id} || 0;
 
     if ( !$AccountID || $AccountID !~ m{\A\d+\z} ) {
@@ -369,7 +437,7 @@ sub AccessTokenGet {
         return;
     }
 
-    my $Stored = $Self->_AccountGet( AccountID => $AccountID );
+    my $Stored = $Self->_AccountGet( AccountType => $AccountType, AccountID => $AccountID );
     return if !$Stored;
 
     if (
@@ -386,7 +454,7 @@ sub AccessTokenGet {
         return;
     }
 
-    my $Provider = $Self->ProviderDefinition( Account => $Stored );
+    my $Provider = $Self->ProviderDefinition( Account => $Stored, AccountType => $AccountType );
     if ( !$Provider ) {
         $Self->{LastError} = 'Translate:AdminOAuthProviderInvalid';
         return;
@@ -394,6 +462,7 @@ sub AccessTokenGet {
 
     my $Token = $Self->_TokenRequest(
         Account      => $Stored,
+        AccountType  => $AccountType,
         Provider     => $Provider,
         GrantType    => 'refresh_token',
         RefreshToken => $RefreshToken,
@@ -404,6 +473,7 @@ sub AccessTokenGet {
 
     return if !$Self->_TokenStore(
         AccountID    => $AccountID,
+        AccountType  => $AccountType,
         AccessToken  => $Token->{access_token},
         RefreshToken => $NewRefreshToken,
         ExpiresIn    => $Token->{expires_in},
@@ -413,18 +483,82 @@ sub AccessTokenGet {
     return $Token->{access_token};
 }
 
+sub AuthorizationDisconnect {
+    my ( $Self, %Param ) = @_;
+
+    my $AccountType = $Self->AccountTypeNormalize( $Param{AccountType} );
+    my $AccountID   = $Param{AccountID} || 0;
+    my $UserID      = $Param{UserID} || 1;
+    if ( !$AccountID || $AccountID !~ m{\A\d+\z} ) {
+        $Self->{LastError} = 'Translate:AdminOAuthAccountMissing';
+        return;
+    }
+
+    my $Table = $AccountType eq 'smtp' ? 'smtp_account' : 'postmaster_imap_account';
+    my $Disconnected = $Self->{DB}->Do(
+        'UPDATE ' . $Table . '
+         SET oauth_access_token = NULL,
+             oauth_refresh_token = NULL,
+             oauth_token_expires_at = NULL,
+             active = 0,
+             last_check_at = NOW(),
+             last_check_status = ?,
+             last_check_message = ?,
+             changed_by_user_id = ?
+         WHERE id = ?',
+        'disconnected',
+        'Translate:AdminOAuthDisconnected',
+        $UserID,
+        $AccountID,
+    );
+    if ( !$Disconnected ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminOAuthDisconnectFailed';
+        return;
+    }
+
+    $Self->{DB}->Do(
+        'DELETE FROM oauth2_authorization_state WHERE account_type = ? AND account_id = ?',
+        $AccountType,
+        $AccountID,
+    );
+    $Self->_OAuthEventSave(
+        AccountType => $AccountType,
+        AccountID   => $AccountID,
+        Status      => 'success',
+        Message     => 'OAuth2 connection disconnected',
+    );
+
+    return 1;
+}
+
 sub _TokenRequest {
     my ( $Self, %Param ) = @_;
 
     my $Account      = $Param{Account} || {};
+    my $AccountType  = $Self->AccountTypeNormalize( $Param{AccountType} );
     my $Provider     = $Param{Provider} || {};
     my $GrantType    = $Param{GrantType} || '';
     my $ClientID     = $Account->{oauth_client_id} || '';
     my $ClientSecret = $Account->{oauth_client_secret} || '';
     my $Scope        = $Account->{oauth_scope} || $Provider->{Scope} || '';
+    my $Log = $Self->{CommunicationLog}->Start(
+        Protocol     => 'oauth2',
+        Direction    => 'system',
+        Operation    => $GrantType eq 'refresh_token' ? 'token_refresh' : 'token_authorization',
+        AccountType  => $AccountType,
+        AccountID    => $Account->{id},
+        AccountName  => $Account->{name},
+        AccountEmail => $AccountType eq 'smtp'
+            ? $Account->{smtp_username}
+            : ( $Account->{email} || $Account->{imap_username} ),
+        ServerHost   => $Provider->{TokenURL},
+        ConnectionSecurity => 'https',
+    );
+    my $LogID = $Log && $Log->{ID} ? $Log->{ID} : 0;
 
     if ( !$Provider->{TokenURL} || !$ClientID || !$ClientSecret || !$GrantType ) {
         $Self->{LastError} = 'Translate:AdminOAuthConfigurationIncomplete';
+        $Self->_OAuthLogFinish( LogID => $LogID, Status => 'error', Message => $Self->{LastError}, Stage => 'configuration' );
         return;
     }
 
@@ -439,6 +573,7 @@ sub _TokenRequest {
         my $RedirectURI = $Param{RedirectURI} || '';
         if ( !$Code || !$RedirectURI ) {
             $Self->{LastError} = 'Translate:AdminOAuthAuthorizationCodeMissing';
+            $Self->_OAuthLogFinish( LogID => $LogID, Status => 'error', Message => $Self->{LastError}, Stage => 'configuration' );
             return;
         }
         push @Form,
@@ -450,6 +585,7 @@ sub _TokenRequest {
         my $RefreshToken = $Param{RefreshToken} || '';
         if ( !$RefreshToken ) {
             $Self->{LastError} = 'Translate:AdminOAuthRefreshTokenMissing';
+            $Self->_OAuthLogFinish( LogID => $LogID, Status => 'error', Message => $Self->{LastError}, Stage => 'configuration' );
             return;
         }
         push @Form, [ refresh_token => $RefreshToken ];
@@ -457,8 +593,17 @@ sub _TokenRequest {
     }
     else {
         $Self->{LastError} = 'Translate:AdminOAuthGrantInvalid';
+        $Self->_OAuthLogFinish( LogID => $LogID, Status => 'error', Message => $Self->{LastError}, Stage => 'configuration' );
         return;
     }
+
+    $Self->{CommunicationLog}->StepAdd(
+        CommunicationID => $LogID,
+        Stage   => 'request',
+        Message => 'OAuth2 token request started',
+        Details => 'Provider: ' . ( $Provider->{Name} || $Provider->{Key} || '' )
+            . "\nGrant type: " . $GrantType,
+    ) if $LogID;
 
     my $HTTP = $Self->{HTTPClient} || HTTP::Tiny->new(
         agent      => 'Qisutu-OAuth2/1.0',
@@ -482,8 +627,17 @@ sub _TokenRequest {
 
     if ( !$Response || ref $Response ne 'HASH' ) {
         $Self->{LastError} = 'Translate:AdminOAuthTokenConnectionFailed';
+        $Self->_OAuthLogFinish( LogID => $LogID, Status => 'error', Message => $Self->{LastError}, Stage => 'connect' );
         return;
     }
+
+    $Self->{CommunicationLog}->StepAdd(
+        CommunicationID => $LogID,
+        Level   => $Response->{success} ? 'success' : 'error',
+        Stage   => 'response',
+        Message => 'OAuth2 provider responded with HTTP ' . ( $Response->{status} || 0 ),
+        Details => $Response->{reason} || '',
+    ) if $LogID;
 
     my $Data = eval { JSON::PP->new->utf8(1)->decode( $Response->{content} || '{}' ) };
     $Data = {} if !$Data || ref $Data ne 'HASH';
@@ -492,11 +646,13 @@ sub _TokenRequest {
         my $Message = $Data->{error_description} || $Data->{error} || $Response->{reason} || 'OAuth2 token request failed';
         $Message =~ s{[\r\n]+}{ }g;
         $Self->{LastError} = substr( $Message, 0, 1000 );
+        $Self->_OAuthLogFinish( LogID => $LogID, Status => 'error', Message => $Self->{LastError}, Stage => 'response' );
         return;
     }
 
     if ( !$Data->{access_token} ) {
         $Self->{LastError} = 'Translate:AdminOAuthAccessTokenMissing';
+        $Self->_OAuthLogFinish( LogID => $LogID, Status => 'error', Message => $Self->{LastError}, Stage => 'response' );
         return;
     }
 
@@ -506,15 +662,88 @@ sub _TokenRequest {
     $ExpiresIn = 86400 if $ExpiresIn > 86400;
     $Data->{expires_in} = $ExpiresIn;
 
+    $Self->{CommunicationLog}->StepAdd(
+        CommunicationID => $LogID,
+        Level   => 'success',
+        Stage   => 'token',
+        Message => 'OAuth2 access token received',
+        Details => 'Valid for ' . $ExpiresIn . ' seconds',
+    ) if $LogID;
+    $Self->_OAuthLogFinish(
+        LogID   => $LogID,
+        Status  => 'success',
+        Message => $GrantType eq 'refresh_token'
+            ? 'OAuth2 access token refreshed'
+            : 'OAuth2 authorization token received',
+        Stage   => 'token',
+    );
+
     return $Data;
+}
+
+sub _OAuthLogFinish {
+    my ( $Self, %Param ) = @_;
+    my $LogID = $Param{LogID} || 0;
+    return 1 if !$LogID;
+    if ( ( $Param{Status} || '' ) ne 'success' ) {
+        $Self->{CommunicationLog}->StepAdd(
+            CommunicationID => $LogID,
+            Level   => 'error',
+            Stage   => $Param{Stage} || 'result',
+            Message => $Param{Message} || 'OAuth2 communication failed',
+        );
+    }
+    $Self->{CommunicationLog}->Finish(
+        CommunicationID => $LogID,
+        Status       => $Param{Status} || 'error',
+        Summary      => $Param{Message} || '',
+        ErrorMessage => ( $Param{Status} || '' ) eq 'success' ? '' : ( $Param{Message} || '' ),
+    );
+    return 1;
+}
+
+sub _OAuthEventSave {
+    my ( $Self, %Param ) = @_;
+    my $Log = $Self->{CommunicationLog}->Start(
+        Protocol    => 'oauth2',
+        Direction   => 'system',
+        Operation   => 'authorization_callback',
+        AccountType => $Self->AccountTypeNormalize( $Param{AccountType} ),
+        AccountID   => $Param{AccountID},
+        AccountName => $Param{Provider},
+        ConnectionSecurity => 'https',
+    );
+    my $LogID = $Log && $Log->{ID} ? $Log->{ID} : 0;
+    return 1 if !$LogID;
+    $Self->{CommunicationLog}->StepAdd(
+        CommunicationID => $LogID,
+        Level   => ( $Param{Status} || '' ) eq 'success' ? 'success' : 'error',
+        Stage   => 'authorization',
+        Message => $Param{Message} || 'OAuth2 authorization callback received',
+    );
+    $Self->{CommunicationLog}->Finish(
+        CommunicationID => $LogID,
+        Status       => $Param{Status} || 'error',
+        Summary      => $Param{Message} || '',
+        ErrorMessage => ( $Param{Status} || '' ) eq 'success' ? '' : ( $Param{Message} || '' ),
+    );
+    return 1;
 }
 
 sub _TokenStore {
     my ( $Self, %Param ) = @_;
 
     my $ExpiresAt = time() + ( $Param{ExpiresIn} || 3600 );
+    my $AccessToken = $Self->{Security}->Encrypt( Value => $Param{AccessToken} || '' );
+    my $RefreshToken = $Self->{Security}->Encrypt( Value => $Param{RefreshToken} || '' );
+    if ( !defined $AccessToken || !defined $RefreshToken ) {
+        $Self->{LastError} = $Self->{Security}->Error() || 'Translate:AdminOAuthTokenStoreFailed';
+        return;
+    }
+    my $AccountType = $Self->AccountTypeNormalize( $Param{AccountType} );
+    my $Table = $AccountType eq 'smtp' ? 'smtp_account' : 'postmaster_imap_account';
     my $Stored = $Self->{DB}->Do(
-        'UPDATE postmaster_imap_account
+        'UPDATE ' . $Table . '
          SET oauth_access_token = ?,
              oauth_refresh_token = ?,
              oauth_token_expires_at = FROM_UNIXTIME(?),
@@ -523,8 +752,8 @@ sub _TokenStore {
              last_check_message = ?,
              changed_by_user_id = ?
          WHERE id = ?',
-        $Param{AccessToken} || '',
-        $Param{RefreshToken} || '',
+        $AccessToken,
+        $RefreshToken,
         $ExpiresAt,
         'authorized',
         'Translate:AdminOAuthAuthorizationSuccessful',
@@ -543,9 +772,11 @@ sub _TokenStore {
 sub _AccountGet {
     my ( $Self, %Param ) = @_;
 
+    my $AccountType = $Self->AccountTypeNormalize( $Param{AccountType} );
+    my $Table = $AccountType eq 'smtp' ? 'smtp_account' : 'postmaster_imap_account';
     my $Account = $Self->{DB}->SelectRow(
         'SELECT *, UNIX_TIMESTAMP(oauth_token_expires_at) AS oauth_token_expires_epoch
-         FROM postmaster_imap_account
+         FROM ' . $Table . '
          WHERE id = ?
          LIMIT 1',
         $Param{AccountID},
@@ -556,14 +787,26 @@ sub _AccountGet {
         return;
     }
 
+    for my $Key ( qw(oauth_client_secret oauth_access_token oauth_refresh_token) ) {
+        next if ( $Account->{$Key} || '' ) !~ m{\Aqse1:};
+        my $Plain = $Self->{Security}->Decrypt( Value => $Account->{$Key} );
+        if ( !defined $Plain ) {
+            $Self->{LastError} = $Self->{Security}->Error() || 'Translate:AdminOAuthConfigurationIncomplete';
+            return;
+        }
+        $Account->{$Key} = $Plain;
+    }
+
     return $Account;
 }
 
 sub _AccountStatusSet {
     my ( $Self, %Param ) = @_;
 
+    my $AccountType = $Self->AccountTypeNormalize( $Param{AccountType} );
+    my $Table = $AccountType eq 'smtp' ? 'smtp_account' : 'postmaster_imap_account';
     return $Self->{DB}->Do(
-        'UPDATE postmaster_imap_account
+        'UPDATE ' . $Table . '
          SET active = 0,
              last_check_at = NOW(),
              last_check_status = ?,
@@ -619,17 +862,27 @@ sub _URLEncode {
 }
 
 sub _ReturnPageClean {
-    my ( $Self, $Page, $Provider ) = @_;
+    my ( $Self, $Page, $Provider, $AccountType ) = @_;
+
+    $AccountType = $Self->AccountTypeNormalize($AccountType);
 
     my %Allowed = map { $_ => 1 } qw(
         AdminPostmasterIMAPAccount
         AdminPostmasterMicrosoft365
         AdminPostmasterGoogleMail
+        AdminSMTPStandard
+        AdminSMTPMicrosoft365
+        AdminSMTPGoogleMail
     );
 
     return $Page if $Allowed{$Page || ''};
 
     my $Key = $Self->ProviderNormalize($Provider);
+    if ( $AccountType eq 'smtp' ) {
+        return 'AdminSMTPMicrosoft365' if $Key eq 'microsoft';
+        return 'AdminSMTPGoogleMail'    if $Key eq 'google';
+        return 'AdminSMTPStandard';
+    }
     return 'AdminPostmasterMicrosoft365' if $Key eq 'microsoft';
     return 'AdminPostmasterGoogleMail'    if $Key eq 'google';
     return 'AdminPostmasterIMAPAccount';

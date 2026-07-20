@@ -28,6 +28,7 @@ use utf8;
 
 use QisutuPasswordReset;
 use QisutuCustomerRegistration;
+use QisutuTwoFactor;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -38,8 +39,10 @@ sub new {
         DB            => $Param{DB},
         Auth          => $Param{Auth},
         Session       => $Param{Session},
+        Security      => $Param{Security},
         PasswordReset        => $Param{PasswordReset},
         CustomerRegistration  => $Param{CustomerRegistration},
+        TwoFactor             => $Param{TwoFactor},
         LastError             => '',
     };
 
@@ -52,6 +55,13 @@ sub new {
 
     if ( !$Self->{CustomerRegistration} ) {
         $Self->{CustomerRegistration} = QisutuCustomerRegistration->new(
+            Config => $Self->{Config},
+            DB     => $Self->{DB},
+        );
+    }
+
+    if ( !$Self->{TwoFactor} ) {
+        $Self->{TwoFactor} = QisutuTwoFactor->new(
             Config => $Self->{Config},
             DB     => $Self->{DB},
         );
@@ -103,6 +113,10 @@ sub Run {
         return $Self->_CustomerRegistrationPasswordSubmit(%Param);
     }
 
+    if ( $Step eq 'TwoFactorVerify' ) {
+        return $Self->_TwoFactorVerify(%Param);
+    }
+
     return $Self->_LoginShow(%Param);
 }
 
@@ -147,6 +161,30 @@ sub _LoginSubmit {
         );
     }
 
+    if ( $Self->{TwoFactor}->Required( User => $User ) ) {
+        my $Challenge = $Self->{TwoFactor}->ChallengeCreate( User => $User );
+        if ( !$Challenge ) {
+            return $Self->_LoginShow(
+                ErrorMessage => $Self->{TwoFactor}->Error() || 'Translate:LoginCouldNotBeFinished',
+                LoginValue   => $Login,
+                AccountType  => $AccountType,
+                FormAction   => $Param{FormAction} || 'index.pl',
+            );
+        }
+        return $Self->_TwoFactorShow(
+            %Param,
+            Challenge => $Challenge,
+        );
+    }
+
+    return $Self->_LoginFinish( User => $User, %Param );
+}
+
+sub _LoginFinish {
+    my ( $Self, %Param ) = @_;
+
+    my $User = $Param{User} || {};
+
     my $Session = $Self->{Session}->Create(
         UserID    => $User->{id},
         IPAddress => $Param{IPAddress} || '',
@@ -156,8 +194,8 @@ sub _LoginSubmit {
     if ( !$Session ) {
         return $Self->_LoginShow(
             ErrorMessage => 'Translate:LoginCouldNotBeFinished',
-            LoginValue   => $Login,
-            AccountType  => $AccountType,
+            LoginValue   => $User->{login} || '',
+            AccountType  => $User->{account_type} || 'agent',
             FormAction   => $Param{FormAction} || 'index.pl',
         );
     }
@@ -178,6 +216,82 @@ sub _LoginSubmit {
         Location => $Location,
         Cookie   => $Cookie,
     );
+}
+
+sub _TwoFactorShow {
+    my ( $Self, %Param ) = @_;
+    my $Challenge = $Param{Challenge} || {};
+    my $Mode = $Challenge->{Mode} || $Param{TwoFactorMode} || 'login';
+    my $Secret = $Challenge->{Secret} || $Param{TwoFactorSecret} || '';
+    my $AccountName = $Challenge->{AccountName} || $Param{TwoFactorAccountName} || '';
+    my $ProvisioningURI = $Challenge->{ProvisioningURI} || '';
+    if ( !$ProvisioningURI && $Mode eq 'setup' && $Secret && $AccountName ) {
+        $ProvisioningURI = $Self->{TwoFactor}->ProvisioningURI(
+            Secret      => $Secret,
+            AccountName => $AccountName,
+        );
+    }
+
+    return $Self->_RenderPublicPage(
+        Template => 'TwoFactorChallenge.tt',
+        Data     => $Self->_TemplateData(
+            PageTitle      => 'Translate:TwoFactorLoginTitle',
+            ErrorMessage   => $Param{ErrorMessage} || '',
+            FormAction     => $Param{FormAction} || 'index.pl',
+            ChallengeToken => $Challenge->{Token} || $Param{ChallengeToken} || '',
+            TwoFactorMode             => $Mode,
+            TwoFactorSetup            => $Mode eq 'setup' ? 1 : 0,
+            TwoFactorSecret           => $Secret,
+            TwoFactorAccountName      => $AccountName,
+            TwoFactorProvisioningURI  => $ProvisioningURI,
+        ),
+    );
+}
+
+sub _TwoFactorVerify {
+    my ( $Self, %Param ) = @_;
+    my $Result = $Self->{TwoFactor}->ChallengeVerify(
+        Token => $Param{ChallengeToken} || '',
+        Code  => $Param{TwoFactorCode} || '',
+    );
+    if ( !$Result ) {
+        return $Self->_TwoFactorShow(
+            %Param,
+            ChallengeToken => $Param{ChallengeToken} || '',
+            TwoFactorMode  => $Param{TwoFactorMode} || 'login',
+            TwoFactorSecret => $Param{TwoFactorSecret} || '',
+            TwoFactorAccountName => $Param{TwoFactorAccountName} || '',
+            ErrorMessage   => $Self->{TwoFactor}->Error() || 'Translate:TwoFactorCodeInvalid',
+        );
+    }
+
+    my $User = $Result->{User} || {};
+    $User->{id} = $User->{user_account_id};
+    my $Codes = $Result->{RecoveryCodes} || [];
+    if ( @{$Codes} ) {
+        my $Session = $Self->{Session}->Create(
+            UserID    => $User->{id},
+            IPAddress => $Param{IPAddress} || '',
+            UserAgent => $Param{UserAgent} || '',
+        );
+        return $Self->_LoginShow( ErrorMessage => 'Translate:LoginCouldNotBeFinished' ) if !$Session;
+        my $Cookie = $Self->{Output}->CookieCreate(
+            Name => $Self->{Config}->{Session}->{CookieName}, Value => $Session->{Token},
+            MaxAge => $Self->{Config}->{Session}->{LifetimeSeconds}, Path => '/', SameSite => 'Lax',
+            Secure => $Param{SecureCookie} || 0, HttpOnly => 1,
+        );
+        return $Self->_RenderPublicPage(
+            Template => 'TwoFactorRecoveryCodes.tt',
+            Cookie   => $Cookie,
+            Data     => $Self->_TemplateData(
+                PageTitle         => 'Translate:TwoFactorRecoveryCodesTitle',
+                FormAction        => $Param{SuccessLocation} || 'index.pl',
+                RecoveryCodesHTML => join( '', map { '<li><code>' . $Self->{Output}->HTMLEscape($_) . '</code></li>' } @{$Codes} ),
+            ),
+        );
+    }
+
+    return $Self->_LoginFinish( User => $User, %Param );
 }
 
 sub _PasswordForgotShow {
@@ -503,6 +617,16 @@ sub _TemplateData {
         AccountType     => $AccountType,
         AgentChecked    => ( $AccountType eq 'agent' ? 'checked' : '' ),
         CustomerChecked => ( $AccountType eq 'customer' ? 'checked' : '' ),
+        CSRFToken       => $Self->{Security}
+            ? $Self->{Security}->PublicCSRFTokenCreate( Purpose => 'public-form' )
+            : '',
+        ChallengeToken  => $Param{ChallengeToken} || '',
+        TwoFactorMode   => $Param{TwoFactorMode} || 'login',
+        TwoFactorSetup  => $Param{TwoFactorSetup} ? 1 : 0,
+        TwoFactorSecret => $Param{TwoFactorSecret} || '',
+        TwoFactorAccountName     => $Param{TwoFactorAccountName} || '',
+        TwoFactorProvisioningURI => $Param{TwoFactorProvisioningURI} || '',
+        RecoveryCodesHTML => $Param{RecoveryCodesHTML} || '',
     };
 }
 

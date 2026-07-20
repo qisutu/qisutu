@@ -21,13 +21,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 [Unit]
-Description=Qisutu Automation Daemon (__QISUTU_INSTANCE__)
+Description=Qisutu Automation and Mail Daemon (__QISUTU_INSTANCE__)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=__QISUTU_APACHE_USER__
+User=__QISUTU_RUNTIME_USER__
 Group=__QISUTU_APACHE_GROUP__
 WorkingDirectory=__QISUTU_ROOT__
 Environment=QISUTU_HOME=__QISUTU_ROOT__

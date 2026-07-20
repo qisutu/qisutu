@@ -310,6 +310,8 @@ sub Send {
 
         my $Result = QisutuMail->new( Config => $Self->{Config}, DB => $Self->{DB} )->SMTPSend(
             Account      => $SMTPAccount,
+            TicketID     => $TicketID,
+            Operation    => 'notification',
             FromName     => $FromName,
             FromEmail    => $FromEmail,
             ReplyToName  => $Ticket->{system_email_name} || $FromName,

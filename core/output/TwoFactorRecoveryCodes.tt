@@ -1,0 +1,12 @@
+[%# SPDX-License-Identifier: AGPL-3.0-or-later %]
+<main class="qisutu-login-main">
+    <section class="qisutu-login-card">
+        <div class="qisutu-login-card-header">
+            <h1>[% Translate.TwoFactorRecoveryCodesTitle %]</h1>
+            <p>[% Translate.TwoFactorRecoveryCodesDescription %]</p>
+        </div>
+        <ul class="qisutu-recovery-code-list">[% RAW.RecoveryCodesHTML %]</ul>
+        <p>[% Translate.TwoFactorRecoveryCodesOnce %]</p>
+        <a class="qisutu-button qisutu-button-primary" href="[% FormAction %]">[% Translate.TwoFactorContinue %]</a>
+    </section>
+</main>

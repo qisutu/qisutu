@@ -1,28 +1,6 @@
-[%#
-Qisutu - Open Source Ticket System
-Copyright (C) 2026 Franziska Steps
-Qisutu - Kim-KI, https://qisutu.de
+[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
 
-This file is part of Qisutu.
-
-Qisutu is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Qisutu is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
-
-SPDX-FileCopyrightText: 2026 Franziska Steps
-SPDX-License-Identifier: AGPL-3.0-or-later
-%]
-
-            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-smtp-title">
+            <section class="qisutu-dashboard qisutu-mail-account-page" aria-labelledby="qisutu-admin-smtp-title">
                 <div class="qisutu-dashboard-header">
                     <div>
                         <h1 id="qisutu-admin-smtp-title">[% ProgramTitle %]</h1>
@@ -30,18 +8,44 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     </div>
                 </div>
 
-                <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
-                <div class="qisutu-form-error [% TestClass %]">[% TestMessage %]</div>
+                <div class="[% ErrorClass %]">[% ErrorMessage %]</div>
+                <div class="[% NoticeClass %]">[% NoticeMessage %]</div>
 
                 [% IF ShowList %]
+                <section class="qisutu-panel qisutu-mail-account-selector">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminSMTPAccountSelectTitle %]</h2>
+                            <span class="qisutu-panel-subtitle">[% Translate.AdminSMTPAccountSelectDescription %]</span>
+                        </div>
+                    </div>
+                    <div class="qisutu-mail-account-choice-grid">
+                        <a class="qisutu-mail-account-choice" href="index.pl?Page=AdminSMTPStandard">
+                            <span class="qisutu-mail-account-choice-icon" aria-hidden="true">SMTP</span>
+                            <strong>[% Translate.AdminSMTPTypeStandard %]</strong>
+                            <span>[% Translate.AdminSMTPStandardChoiceDescription %]</span>
+                            <em>[% Translate.AdminMailAccountCreateAction %] →</em>
+                        </a>
+                        <a class="qisutu-mail-account-choice" href="index.pl?Page=AdminSMTPMicrosoft365">
+                            <span class="qisutu-mail-account-choice-icon" aria-hidden="true">M365</span>
+                            <strong>[% Translate.AdminSMTPTypeMicrosoft365 %]</strong>
+                            <span>[% Translate.AdminSMTPMicrosoftChoiceDescription %]</span>
+                            <em>[% Translate.AdminMailAccountCreateAction %] →</em>
+                        </a>
+                        <a class="qisutu-mail-account-choice" href="index.pl?Page=AdminSMTPGoogleMail">
+                            <span class="qisutu-mail-account-choice-icon" aria-hidden="true">G</span>
+                            <strong>[% Translate.AdminSMTPTypeGoogle %]</strong>
+                            <span>[% Translate.AdminSMTPGoogleChoiceDescription %]</span>
+                            <em>[% Translate.AdminMailAccountCreateAction %] →</em>
+                        </a>
+                    </div>
+                </section>
+
                 <section class="qisutu-panel">
                     <div class="qisutu-panel-header">
                         <div>
                             <h2>[% Translate.AdminSMTPAccountList %]</h2>
                             <span class="qisutu-panel-subtitle">[% AccountCount %] [% Translate.AdminEntries %]</span>
-                        </div>
-                        <div class="qisutu-panel-actions">
-                            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminSMTPAccount;Action=Create">[% Translate.AdminSMTPAccountCreate %]</a>
                         </div>
                     </div>
                     <div class="qisutu-admin-help">
@@ -50,220 +54,170 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     </div>
                     <div class="qisutu-table-wrap">
                         <table class="qisutu-table qisutu-table-compact">
-                            <thead>
-                                <tr>
-                                    <th>[% Translate.AdminName %]</th>
-                                    <th>[% Translate.AdminHost %]</th>
-                                    <th>[% Translate.AdminPort %]</th>
-                                    <th>[% Translate.AdminActive %]</th>
-                                    <th>[% Translate.AdminAction %]</th>
-                                </tr>
-                            </thead>
+                            <thead><tr>
+                                <th>[% Translate.AdminName %]</th>
+                                <th>[% Translate.AdminAccountType %]</th>
+                                <th>[% Translate.AdminUsername %]</th>
+                                <th>[% Translate.AdminHost %]</th>
+                                <th>[% Translate.AdminConnectionStatus %]</th>
+                                <th>[% Translate.AdminActive %]</th>
+                                <th>[% Translate.AdminAction %]</th>
+                            </tr></thead>
                             <tbody>
-                                [% FOREACH Account IN AccountList %]
+                            [% FOREACH Account IN AccountList %]
                                 <tr>
-                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminSMTPAccount;Action=Edit;AccountID=[% Account.id %]">[% Account.name %]</a></td>
-                                    <td>[% Account.smtp_host %]</td>
-                                    <td>[% Account.smtp_port %]</td>
+                                    <td><a class="qisutu-table-link" href="[% Account.edit_url %]">[% Account.name %]</a></td>
+                                    <td>[% Account.type_label %]</td>
+                                    <td>[% Account.smtp_username %]</td>
+                                    <td>[% Account.smtp_host %]:[% Account.smtp_port %]</td>
+                                    <td>[% Account.connection_label %]</td>
                                     <td>[% Account.active_label %]</td>
                                     <td>
                                         <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
                                             <input type="hidden" name="Page" value="AdminSMTPAccount">
-                                            <input type="hidden" name="Step" value="SMTPAccountDeactivate">
+                                            <input type="hidden" name="Step" value="[% Account.toggle_step %]">
                                             <input type="hidden" name="AccountID" value="[% Account.id %]">
-                                            <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminDeactivate %]</button>
+                                            <button class="qisutu-button [% Account.toggle_button_class %] qisutu-button-small" type="submit">[% Account.toggle_label %]</button>
                                         </form>
                                     </td>
                                 </tr>
-                                [% END %]
+                            [% END %]
                             </tbody>
                         </table>
                     </div>
                 </section>
                 [% END %]
 
-                [% IF ShowCreate %]
-                <section class="qisutu-panel">
-                    <div class="qisutu-panel-header">
-                        <h2>[% Translate.AdminSMTPAccountCreate %]</h2>
-                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminSMTPAccount">[% Translate.AdminBackToList %]</a>
-                    </div>
-                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
-                        <input type="hidden" name="Page" value="AdminSMTPAccount">
-                        <input type="hidden" name="Step" value="SMTPAccountCreate">
-                        <div class="qisutu-admin-form-columns">
-                            <div class="qisutu-form-field">
-                                <label>[% Translate.AdminName %]</label>
-                                <input type="text" name="Name" required>
-                            </div>
-                            <div class="qisutu-form-field">
-                                <label>[% Translate.AdminSMTPSecurity %]</label>
-                                <select name="SMTPSecurity" data-qisutu-port-target="SMTPPort">
-                                    [% RAW.CreateSMTPSecurityOptionsHTML %]
-                                </select>
-                            </div>
-                            <div class="qisutu-form-field">
-                                <label>[% Translate.AdminHost %]</label>
-                                <input type="text" name="SMTPHost" required>
-                            </div>
-                            <div class="qisutu-form-field">
-                                <label>[% Translate.AdminPort %]</label>
-                                <input type="number" name="SMTPPort" value="587" min="1">
-                            </div>
-                            <div class="qisutu-form-field">
-                                <label>[% Translate.AdminAuthType %]</label>
-                                <select name="SMTPAuthType">
-                                    [% RAW.CreateSMTPAuthOptionsHTML %]
-                                </select>
-                            </div>
-                            <div class="qisutu-form-field">
-                                <label>[% Translate.AdminUsername %]</label>
-                                <input type="text" name="SMTPUsername" required>
-                            </div>
-                            <div class="qisutu-form-field">
-                                <label>[% Translate.AdminPassword %]</label>
-                                <input type="password" name="SMTPPassword" required>
-                            </div>
-                            <div class="qisutu-form-field">
-                                <label>[% Translate.AdminSortOrder %]</label>
-                                <input type="number" name="SortOrder" value="1000" min="1">
-                            </div>
-                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
-                                <input type="checkbox" name="Active" value="1" checked>
-                                <span>[% Translate.AdminActive %]</span>
-                            </label>
-                        </div>
-                        <div class="qisutu-admin-form-block">
-                            <h3>[% Translate.AdminOAuth2 %]</h3>
-                            <div class="qisutu-admin-form-columns">
-                                <div class="qisutu-form-field">
-                                    <label>[% Translate.AdminOAuthProvider %]</label>
-                                    <input type="text" name="OAuthProvider">
-                                </div>
-                                <div class="qisutu-form-field">
-                                    <label>[% Translate.AdminOAuthTenantID %]</label>
-                                    <input type="text" name="OAuthTenantID">
-                                </div>
-                                <div class="qisutu-form-field">
-                                    <label>[% Translate.AdminOAuthClientID %]</label>
-                                    <input type="text" name="OAuthClientID">
-                                </div>
-                                <div class="qisutu-form-field">
-                                    <label>[% Translate.AdminOAuthClientSecret %]</label>
-                                    <input type="password" name="OAuthClientSecret">
-                                </div>
-                                <div class="qisutu-form-field qisutu-form-field-wide">
-                                    <label>[% Translate.AdminOAuthScope %]</label>
-                                    <input type="text" name="OAuthScope">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="qisutu-form-actions">
-                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
-                        </div>
-                    </form>
-                </section>
-                [% END %]
-
-                [% IF ShowEdit %]
+                [% IF ShowForm %]
                 <section class="qisutu-panel">
                     <div class="qisutu-panel-header">
                         <div>
-                            <h2>[% Translate.AdminSMTPAccountEdit %]</h2>
-                            <span class="qisutu-panel-subtitle">[% AccountName %]</span>
+                            <h2>[% FormTitle %]</h2>
+                            [% IF ShowEdit %]<span class="qisutu-panel-subtitle">[% AccountName %]</span>[% END %]
                         </div>
                         <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminSMTPAccount">[% Translate.AdminBackToList %]</a>
                     </div>
+
+                    [% IF IsMicrosoft %]
+                    <div class="qisutu-mail-provider-info"><strong>[% Translate.AdminSMTPTypeMicrosoft365 %]</strong><span>[% Translate.AdminSMTPMicrosoftProviderHint %]</span></div>
+                    [% END %]
+                    [% IF IsGoogle %]
+                    <div class="qisutu-mail-provider-info"><strong>[% Translate.AdminSMTPTypeGoogle %]</strong><span>[% Translate.AdminSMTPGoogleProviderHint %]</span></div>
+                    [% END %]
+
                     <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
-                        <input type="hidden" name="Page" value="AdminSMTPAccount">
-                        <input type="hidden" name="Step" value="SMTPAccountUpdate">
+                        <input type="hidden" name="Page" value="[% CurrentPage %]">
+                        <input type="hidden" name="Step" value="[% FormStep %]">
+                        <input type="hidden" name="AccountKind" value="[% AccountKind %]">
+                        [% IF ShowEdit %]
+                        <input type="hidden" name="Action" value="Edit">
                         <input type="hidden" name="AccountID" value="[% AccountID %]">
+                        [% END %]
                         <div class="qisutu-admin-form-columns">
                             <div class="qisutu-form-field">
-                                <label>[% Translate.AdminName %]</label>
-                                <input type="text" name="Name" value="[% AccountName %]" required>
+                                <label for="qisutu-smtp-name">[% Translate.AdminName %]</label>
+                                <input id="qisutu-smtp-name" type="text" name="Name" value="[% AccountName %]" required>
                             </div>
                             <div class="qisutu-form-field">
-                                <label>[% Translate.AdminSMTPSecurity %]</label>
-                                <select name="SMTPSecurity" data-qisutu-port-target="SMTPPort">
-                                    [% RAW.EditSMTPSecurityOptionsHTML %]
-                                </select>
+                                <label for="qisutu-smtp-username">[% Translate.AdminSMTPMailboxAddress %]</label>
+                                <input id="qisutu-smtp-username" type="email" name="SMTPUsername" value="[% AccountSMTPUsername %]" required autocomplete="username">
+                            </div>
+
+                            [% IF IsStandard %]
+                            <div class="qisutu-form-field">
+                                <label for="qisutu-smtp-security">[% Translate.AdminSMTPSecurity %]</label>
+                                <select id="qisutu-smtp-security" name="SMTPSecurity" data-qisutu-port-target="SMTPPort">[% RAW.SMTPSecurityOptionsHTML %]</select>
                             </div>
                             <div class="qisutu-form-field">
-                                <label>[% Translate.AdminHost %]</label>
-                                <input type="text" name="SMTPHost" value="[% AccountSMTPHost %]" required>
+                                <label for="qisutu-smtp-port">[% Translate.AdminPort %]</label>
+                                <input id="qisutu-smtp-port" type="number" name="SMTPPort" value="[% AccountSMTPPort %]" min="1" max="65535" required>
                             </div>
                             <div class="qisutu-form-field">
-                                <label>[% Translate.AdminPort %]</label>
-                                <input type="number" name="SMTPPort" value="[% AccountSMTPPort %]" min="1">
+                                <label for="qisutu-smtp-host">[% Translate.AdminHost %]</label>
+                                <input id="qisutu-smtp-host" type="text" name="SMTPHost" value="[% AccountSMTPHost %]" required>
                             </div>
                             <div class="qisutu-form-field">
-                                <label>[% Translate.AdminAuthType %]</label>
-                                <select name="SMTPAuthType">
-                                    [% RAW.EditSMTPAuthOptionsHTML %]
-                                </select>
+                                <label for="qisutu-smtp-password">[% Translate.AdminPassword %]</label>
+                                [% IF ShowEdit %]
+                                <input id="qisutu-smtp-password" type="password" name="SMTPPassword" placeholder="[% Translate.AdminPasswordKeep %]" autocomplete="new-password">
+                                [% ELSE %]
+                                <input id="qisutu-smtp-password" type="password" name="SMTPPassword" required autocomplete="new-password">
+                                [% END %]
+                            </div>
+                            [% END %]
+
+                            [% IF IsMicrosoft %]
+                            <div class="qisutu-form-field"><label>[% Translate.AdminHost %]</label><input type="text" value="[% MicrosoftSMTPHost %]:587 (STARTTLS)" readonly></div>
+                            <div class="qisutu-form-field">
+                                <label for="qisutu-oauth-tenant">[% Translate.AdminOAuthTenantID %]</label>
+                                <input id="qisutu-oauth-tenant" type="text" name="OAuthTenantID" value="[% AccountOAuthTenantID %]" required>
+                            </div>
+                            [% END %]
+                            [% IF IsGoogle %]
+                            <div class="qisutu-form-field"><label>[% Translate.AdminHost %]</label><input type="text" value="[% GoogleSMTPHost %]:587 (STARTTLS)" readonly></div>
+                            [% END %]
+
+                            [% IF IsOAuth %]
+                            <div class="qisutu-form-field">
+                                <label for="qisutu-oauth-client-id">[% Translate.AdminOAuthClientID %]</label>
+                                <input id="qisutu-oauth-client-id" type="text" name="OAuthClientID" value="[% AccountOAuthClientID %]" required autocomplete="off">
                             </div>
                             <div class="qisutu-form-field">
-                                <label>[% Translate.AdminUsername %]</label>
-                                <input type="text" name="SMTPUsername" value="[% AccountSMTPUsername %]" required>
+                                <label for="qisutu-oauth-client-secret">[% Translate.AdminOAuthClientSecret %]</label>
+                                [% IF ShowEdit %]
+                                <input id="qisutu-oauth-client-secret" type="password" name="OAuthClientSecret" placeholder="[% Translate.AdminPasswordKeep %]" autocomplete="new-password">
+                                [% ELSE %]
+                                <input id="qisutu-oauth-client-secret" type="password" name="OAuthClientSecret" required autocomplete="new-password">
+                                [% END %]
                             </div>
-                            <div class="qisutu-form-field">
-                                <label>[% Translate.AdminPassword %]</label>
-                                <input type="password" name="SMTPPassword" placeholder="[% Translate.AdminPasswordKeep %]">
+                            <div class="qisutu-form-field qisutu-form-field-wide">
+                                <label>[% Translate.AdminOAuthRedirectURI %]</label>
+                                <input type="text" value="[% OAuthRedirectURI %]" readonly>
+                                <small>[% Translate.AdminOAuthRedirectURIHelp %]</small>
                             </div>
+                            [% END %]
+
                             <div class="qisutu-form-field">
-                                <label>[% Translate.AdminSortOrder %]</label>
-                                <input type="number" name="SortOrder" value="[% AccountSortOrder %]" min="1">
+                                <label for="qisutu-smtp-sort">[% Translate.AdminSortOrder %]</label>
+                                <input id="qisutu-smtp-sort" type="number" name="SortOrder" value="[% AccountSortOrder %]" min="1" required>
                             </div>
                             <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
                                 <input type="checkbox" name="Active" value="1" [% AccountActiveChecked %]>
-                                <span>[% Translate.AdminActive %]</span>
+                                [% IF IsStandard %]<span>[% Translate.AdminActive %]</span>[% ELSE %]<span>[% Translate.AdminActiveAfterOAuthTest %]</span>[% END %]
                             </label>
                         </div>
-                        <div class="qisutu-admin-form-block">
-                            <h3>[% Translate.AdminOAuth2 %]</h3>
-                            <div class="qisutu-admin-form-columns">
-                                <div class="qisutu-form-field">
-                                    <label>[% Translate.AdminOAuthProvider %]</label>
-                                    <input type="text" name="OAuthProvider" value="[% AccountOAuthProvider %]">
-                                </div>
-                                <div class="qisutu-form-field">
-                                    <label>[% Translate.AdminOAuthTenantID %]</label>
-                                    <input type="text" name="OAuthTenantID" value="[% AccountOAuthTenantID %]">
-                                </div>
-                                <div class="qisutu-form-field">
-                                    <label>[% Translate.AdminOAuthClientID %]</label>
-                                    <input type="text" name="OAuthClientID" value="[% AccountOAuthClientID %]">
-                                </div>
-                                <div class="qisutu-form-field">
-                                    <label>[% Translate.AdminOAuthClientSecret %]</label>
-                                    <input type="password" name="OAuthClientSecret" placeholder="[% Translate.AdminPasswordKeep %]">
-                                </div>
-                                <div class="qisutu-form-field qisutu-form-field-wide">
-                                    <label>[% Translate.AdminOAuthScope %]</label>
-                                    <input type="text" name="OAuthScope" value="[% AccountOAuthScope %]">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="qisutu-form-actions">
-                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
-                        </div>
+                        <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% SubmitLabel %]</button></div>
                     </form>
                 </section>
 
-                <section class="qisutu-panel qisutu-admin-definition-panel">
-                    <div class="qisutu-panel-header">
-                        <h2>[% Translate.AdminConnectionTest %]</h2>
+                [% IF ShowEdit %]
+                <section class="qisutu-panel qisutu-mail-connection-panel">
+                    <div class="qisutu-panel-header"><h2>[% Translate.AdminConnectionStatus %]</h2></div>
+                    <dl class="qisutu-mail-connection-details">
+                        <div><dt>[% Translate.AdminConnectionStatus %]</dt><dd>[% AccountConnectionLabel %]</dd></div>
+                        <div><dt>[% Translate.AdminLastConnectionTest %]</dt><dd>[% AccountLastCheckAt %]</dd></div>
+                        <div><dt>[% Translate.AdminConnectionMessage %]</dt><dd>[% AccountLastCheckMessage %]</dd></div>
+                        [% IF IsOAuth %]<div><dt>[% Translate.AdminOAuthTokenExpires %]</dt><dd>[% AccountTokenExpires %]</dd></div>[% END %]
+                    </dl>
+                    <div class="qisutu-form-actions">
+                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                            <input type="hidden" name="Page" value="[% CurrentPage %]"><input type="hidden" name="Step" value="SMTPAccountTest"><input type="hidden" name="Action" value="Edit"><input type="hidden" name="AccountID" value="[% AccountID %]">
+                            <button class="qisutu-button qisutu-button-secondary" type="submit">[% Translate.AdminTestSMTP %]</button>
+                        </form>
+                        [% IF IsOAuth %]
+                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                            <input type="hidden" name="Page" value="[% CurrentPage %]"><input type="hidden" name="Step" value="SMTPOAuthReconnect"><input type="hidden" name="Action" value="Edit"><input type="hidden" name="AccountID" value="[% AccountID %]">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminOAuthReconnect %]</button>
+                        </form>
+                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
+                            <input type="hidden" name="Page" value="[% CurrentPage %]"><input type="hidden" name="Step" value="SMTPOAuthDisconnect"><input type="hidden" name="Action" value="Edit"><input type="hidden" name="AccountID" value="[% AccountID %]">
+                            <button class="qisutu-button qisutu-button-danger" type="submit">[% Translate.AdminOAuthDisconnect %]</button>
+                        </form>
+                        [% END %]
                     </div>
-                    <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
-                        <input type="hidden" name="Page" value="AdminSMTPAccount">
-                        <input type="hidden" name="Step" value="SMTPAccountTest">
-                        <input type="hidden" name="Action" value="Edit">
-                        <input type="hidden" name="AccountID" value="[% AccountID %]">
-                        <button class="qisutu-button qisutu-button-secondary" type="submit">[% Translate.AdminTestSMTP %]</button>
-                    </form>
                 </section>
+                [% END %]
                 [% END %]
             </section>
 
-            <script src="[% StaticBase %]/js/qisutu-mail-account.js"></script>
+            <script src="[% StaticBase %]/js/qisutu-mail-account.js?v=2026071901"></script>

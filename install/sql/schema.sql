@@ -1637,11 +1637,42 @@ CREATE TABLE `user_account` (
 -- Table structure for table `oauth2_authorization_state`
 --
 
+DROP TABLE IF EXISTS `user_two_factor_challenge`;
+DROP TABLE IF EXISTS `user_two_factor`;
+CREATE TABLE `user_two_factor` (
+  `user_account_id` bigint(20) unsigned NOT NULL,
+  `secret_encrypted` text NOT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `recovery_code_hashes` text DEFAULT NULL,
+  `last_used_counter` bigint(20) unsigned DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`user_account_id`),
+  KEY `user_two_factor_enabled` (`enabled`),
+  CONSTRAINT `user_two_factor_user_fk` FOREIGN KEY (`user_account_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `user_two_factor_challenge` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `token_hash` char(64) NOT NULL,
+  `user_account_id` bigint(20) unsigned NOT NULL,
+  `account_type` varchar(20) NOT NULL,
+  `mode` varchar(20) NOT NULL DEFAULT 'login',
+  `attempts` int(10) unsigned NOT NULL DEFAULT 0,
+  `expires_at` datetime NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_two_factor_challenge_token` (`token_hash`),
+  KEY `user_two_factor_challenge_expiry` (`expires_at`),
+  CONSTRAINT `user_two_factor_challenge_user_fk` FOREIGN KEY (`user_account_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `oauth2_authorization_state` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `state_hash` char(64) NOT NULL,
+  `account_type` varchar(20) NOT NULL DEFAULT 'imap',
   `account_id` bigint(20) unsigned NOT NULL,
   `user_account_id` bigint(20) unsigned NOT NULL,
   `provider` varchar(30) NOT NULL,
@@ -1651,9 +1682,8 @@ CREATE TABLE `oauth2_authorization_state` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `oauth2_authorization_state_hash_unique` (`state_hash`),
-  KEY `oauth2_authorization_state_account_user` (`account_id`,`user_account_id`),
+  KEY `oauth2_authorization_state_account_user` (`account_type`,`account_id`,`user_account_id`),
   KEY `oauth2_authorization_state_expires` (`expires_at`),
-  CONSTRAINT `oauth2_authorization_state_account_fk` FOREIGN KEY (`account_id`) REFERENCES `postmaster_imap_account` (`id`) ON DELETE CASCADE,
   CONSTRAINT `oauth2_authorization_state_user_fk` FOREIGN KEY (`user_account_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -3180,6 +3210,65 @@ CREATE TABLE IF NOT EXISTS `report_execution_log` (
   CONSTRAINT `report_execution_log_user_fk` FOREIGN KEY (`user_account_id`) REFERENCES `user_account` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- IMAP, SMTP and OAuth2 communication protocol
+CREATE TABLE IF NOT EXISTS `communication_log` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `trace_id` char(64) NOT NULL,
+  `parent_id` bigint(20) unsigned DEFAULT NULL,
+  `protocol` varchar(20) NOT NULL,
+  `direction` varchar(20) NOT NULL,
+  `operation` varchar(50) NOT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'running',
+  `account_type` varchar(20) DEFAULT NULL,
+  `account_id` bigint(20) unsigned DEFAULT NULL,
+  `account_name` varchar(190) DEFAULT NULL,
+  `account_email` varchar(255) DEFAULT NULL,
+  `server_host` varchar(255) DEFAULT NULL,
+  `server_port` int(10) unsigned DEFAULT NULL,
+  `connection_security` varchar(50) DEFAULT NULL,
+  `ticket_id` bigint(20) unsigned DEFAULT NULL,
+  `article_id` bigint(20) unsigned DEFAULT NULL,
+  `message_id` varchar(500) DEFAULT NULL,
+  `sender_email` varchar(500) DEFAULT NULL,
+  `recipient_email` varchar(1000) DEFAULT NULL,
+  `subject` varchar(500) DEFAULT NULL,
+  `result_summary` text DEFAULT NULL,
+  `error_message` text DEFAULT NULL,
+  `messages_found` int(10) unsigned NOT NULL DEFAULT 0,
+  `messages_processed` int(10) unsigned NOT NULL DEFAULT 0,
+  `messages_created` int(10) unsigned NOT NULL DEFAULT 0,
+  `messages_updated` int(10) unsigned NOT NULL DEFAULT 0,
+  `messages_ignored` int(10) unsigned NOT NULL DEFAULT 0,
+  `messages_failed` int(10) unsigned NOT NULL DEFAULT 0,
+  `messages_sent` int(10) unsigned NOT NULL DEFAULT 0,
+  `bytes_transferred` bigint(20) unsigned NOT NULL DEFAULT 0,
+  `duration_ms` bigint(20) unsigned DEFAULT NULL,
+  `started_at` datetime(6) NOT NULL DEFAULT current_timestamp(6),
+  `finished_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT current_timestamp(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `communication_log_trace_unique` (`trace_id`),
+  KEY `communication_log_started_status` (`started_at`,`status`,`id`),
+  KEY `communication_log_protocol_started` (`protocol`,`started_at`,`id`),
+  KEY `communication_log_account_started` (`account_type`,`account_id`,`started_at`,`id`),
+  KEY `communication_log_ticket` (`ticket_id`,`started_at`,`id`),
+  KEY `communication_log_parent` (`parent_id`,`id`),
+  CONSTRAINT `communication_log_parent_fk` FOREIGN KEY (`parent_id`) REFERENCES `communication_log` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `communication_log_step` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `communication_log_id` bigint(20) unsigned NOT NULL,
+  `level` varchar(20) NOT NULL DEFAULT 'info',
+  `stage` varchar(50) NOT NULL DEFAULT 'processing',
+  `message` varchar(2000) NOT NULL,
+  `technical_details` longtext DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT current_timestamp(6),
+  PRIMARY KEY (`id`),
+  KEY `communication_log_step_log_created` (`communication_log_id`,`created_at`,`id`),
+  CONSTRAINT `communication_log_step_log_fk` FOREIGN KEY (`communication_log_id`) REFERENCES `communication_log` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Qisutu database migration history
 CREATE TABLE IF NOT EXISTS `database_migration` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -3202,7 +3291,7 @@ CREATE TABLE IF NOT EXISTS `database_version` (
   UNIQUE KEY `database_version_version_unique` (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `database_version` (`version`) VALUES ('0.0.19');
+INSERT INTO `database_version` (`version`) VALUES ('0.0.22');
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

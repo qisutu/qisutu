@@ -40,18 +40,33 @@ mkdir -p "$ROOT_PATH/var/install"
 INSTANCE_CONFIG_FILE="$ROOT_PATH/var/install/instance.conf"
 LOCK_FILE="$ROOT_PATH/var/install/installed.lock"
 
-normalize_instance_name() {
-    local value="$1"
-
-    value="$(printf '%s' "$value" | tr '[:upper:]_' '[:lower:]-')"
-    value="$(printf '%s' "$value" | sed -E 's/[^a-z0-9-]+/-/g; s/-+/-/g; s/^-+//; s/-+$//')"
-    value="${value#qisutu-}"
-
-    printf '%s' "$value"
+instance_name_is_valid() {
+    [[ "$1" =~ ^[a-z][a-z0-9-]{0,23}$ ]]
 }
 
-instance_name_is_valid() {
-    [[ "$1" =~ ^[a-z][a-z0-9-]{0,15}$ ]]
+set_instance_values_from_directory() {
+    local directory_name="$1"
+    local database_identifier cookie_identifier
+
+    if ! instance_name_is_valid "$directory_name"; then
+        echo "Der Name des Instanzverzeichnisses ist ungültig: $directory_name" >&2
+        echo "Er muss mit einem Kleinbuchstaben beginnen und darf höchstens 24 Kleinbuchstaben, Zahlen oder Bindestriche enthalten." >&2
+        return 1
+    fi
+
+    database_identifier="${directory_name//-/_}"
+    cookie_identifier="$(printf '%s' "$directory_name" | tr '[:lower:]-' '[:upper:]_')"
+
+    INSTANCE_NAME="$directory_name"
+    INSTANCE_ID="$directory_name"
+    WEB_PATH="/$directory_name"
+    APACHE_CONF_NAME="$directory_name.conf"
+    DAEMON_SERVICE="$directory_name-daemon.service"
+    INSTALL_COMPLETE_SERVICE="$directory_name-install-complete.service"
+    INSTALL_COMPLETE_PATH="$directory_name-install-complete.path"
+    SESSION_COOKIE="${cookie_identifier}_SESSION"
+    DB_NAME="$database_identifier"
+    DB_USER="$database_identifier"
 }
 
 load_instance_config() {
@@ -198,7 +213,7 @@ ensure_systemd_target_available() {
 render_template() {
     local source_file="$1"
     local target_file="$2"
-    local escaped_root escaped_web_path escaped_instance escaped_daemon escaped_complete_service escaped_complete_path escaped_user escaped_group
+    local escaped_root escaped_web_path escaped_instance escaped_daemon escaped_complete_service escaped_complete_path escaped_user escaped_group escaped_runtime_user
 
     escaped_root="$(escape_sed_replacement "$ROOT_PATH")"
     escaped_web_path="$(escape_sed_replacement "$WEB_PATH")"
@@ -208,6 +223,7 @@ render_template() {
     escaped_complete_path="$(escape_sed_replacement "$INSTALL_COMPLETE_PATH")"
     escaped_user="$(escape_sed_replacement "${APACHE_USER:-__QISUTU_APACHE_USER__}")"
     escaped_group="$(escape_sed_replacement "${APACHE_GROUP:-__QISUTU_APACHE_GROUP__}")"
+    escaped_runtime_user="$(escape_sed_replacement "${QISUTU_RUNTIME_USER:-qisutu}")"
 
     sed \
         -e "s|__QISUTU_ROOT__|$escaped_root|g" \
@@ -218,6 +234,7 @@ render_template() {
         -e "s|__QISUTU_INSTALL_COMPLETE_PATH__|$escaped_complete_path|g" \
         -e "s|__QISUTU_APACHE_USER__|$escaped_user|g" \
         -e "s|__QISUTU_APACHE_GROUP__|$escaped_group|g" \
+        -e "s|__QISUTU_RUNTIME_USER__|$escaped_runtime_user|g" \
         "$source_file" > "$target_file"
 
     chmod 0644 "$target_file"
@@ -234,67 +251,25 @@ DB_NAME=""
 DB_USER=""
 INSTANCE_NAME=""
 INSTANCE_CONFIG_LOADED=0
+INSTANCE_CONFIG_ADJUSTED=0
+DIRECTORY_NAME="$(basename "$ROOT_PATH")"
 
 if load_instance_config; then
     INSTANCE_CONFIG_LOADED=1
-else
-    DIRECTORY_NAME="$(basename "$ROOT_PATH")"
 
-    if [[ "$DIRECTORY_NAME" == "qisutu" ]]; then
-        INSTANCE_ID="qisutu"
-        WEB_PATH="/qisutu"
-        APACHE_CONF_NAME="qisutu.conf"
-        DAEMON_SERVICE="qisutu-daemon.service"
-        INSTALL_COMPLETE_SERVICE="qisutu-install-complete.service"
-        INSTALL_COMPLETE_PATH="qisutu-install-complete.path"
-        SESSION_COOKIE="QISUTU_SESSION"
-        DB_NAME="qisutu"
-        DB_USER="qisutu"
-    else
-        DEFAULT_INSTANCE_NAME="$DIRECTORY_NAME"
-        DEFAULT_INSTANCE_NAME="${DEFAULT_INSTANCE_NAME#qisutu-}"
-        DEFAULT_INSTANCE_NAME="$(normalize_instance_name "$DEFAULT_INSTANCE_NAME")"
-        [[ -n "$DEFAULT_INSTANCE_NAME" ]] || DEFAULT_INSTANCE_NAME="test"
+    if [[ ! -f "$LOCK_FILE" ]]; then
+        PREVIOUS_INSTANCE_VALUES="${INSTANCE_ID}|${WEB_PATH}|${APACHE_CONF_NAME}|${DAEMON_SERVICE}|${INSTALL_COMPLETE_SERVICE}|${INSTALL_COMPLETE_PATH}|${SESSION_COOKIE}|${DB_NAME}|${DB_USER}"
+        set_instance_values_from_directory "$DIRECTORY_NAME"
+        CURRENT_INSTANCE_VALUES="${INSTANCE_ID}|${WEB_PATH}|${APACHE_CONF_NAME}|${DAEMON_SERVICE}|${INSTALL_COMPLETE_SERVICE}|${INSTALL_COMPLETE_PATH}|${SESSION_COOKIE}|${DB_NAME}|${DB_USER}"
 
-        INSTANCE_NAME="$(normalize_instance_name "${QISUTU_INSTANCE_NAME:-}")"
-
-        if [[ -z "$INSTANCE_NAME" ]]; then
-            if [[ -t 0 ]]; then
-                while true; do
-                    printf '\nZusätzliche Qisutu-Instanz erkannt.\n'
-                    printf 'Bitte gib nur einen kurzen Namen ein, zum Beispiel test oder entwicklung.\n'
-                    read -r -p "Name der zusätzlichen Instanz [$DEFAULT_INSTANCE_NAME]: " INSTANCE_NAME_INPUT
-                    INSTANCE_NAME="$(normalize_instance_name "${INSTANCE_NAME_INPUT:-$DEFAULT_INSTANCE_NAME}")"
-
-                    if instance_name_is_valid "$INSTANCE_NAME"; then
-                        break
-                    fi
-
-                    echo "Der Name muss mit einem Buchstaben beginnen und darf höchstens 16 Kleinbuchstaben, Zahlen oder Bindestriche enthalten."
-                done
-            else
-                INSTANCE_NAME="$DEFAULT_INSTANCE_NAME"
-            fi
+        if [[ "$PREVIOUS_INSTANCE_VALUES" != "$CURRENT_INSTANCE_VALUES" ]]; then
+            INSTANCE_CONFIG_ADJUSTED=1
+            validate_instance_values
+            write_instance_config
         fi
-
-        if ! instance_name_is_valid "$INSTANCE_NAME"; then
-            echo "Ungültiger Name für die zusätzliche Qisutu-Instanz: $INSTANCE_NAME" >&2
-            echo "Erlaubt sind höchstens 16 Kleinbuchstaben, Zahlen und Bindestriche; der erste Buchstabe muss ein Buchstabe sein." >&2
-            exit 1
-        fi
-
-        INSTANCE_ID="qisutu-$INSTANCE_NAME"
-        INSTANCE_DB_SUFFIX="${INSTANCE_NAME//-/_}"
-        INSTANCE_COOKIE_SUFFIX="$(printf '%s' "$INSTANCE_NAME" | tr '[:lower:]-' '[:upper:]_')"
-        WEB_PATH="/$INSTANCE_ID"
-        APACHE_CONF_NAME="$INSTANCE_ID.conf"
-        DAEMON_SERVICE="$INSTANCE_ID-daemon.service"
-        INSTALL_COMPLETE_SERVICE="$INSTANCE_ID-install-complete.service"
-        INSTALL_COMPLETE_PATH="$INSTANCE_ID-install-complete.path"
-        SESSION_COOKIE="QISUTU_${INSTANCE_COOKIE_SUFFIX}_SESSION"
-        DB_NAME="qisutu_${INSTANCE_DB_SUFFIX}"
-        DB_USER="qisutu_${INSTANCE_DB_SUFFIX}"
     fi
+else
+    set_instance_values_from_directory "$DIRECTORY_NAME"
 
     validate_instance_values
     write_instance_config
@@ -311,7 +286,11 @@ fi
 
 printf '\nQisutu-Systemvorbereitung\n'
 if [[ "$INSTANCE_CONFIG_LOADED" -eq 1 ]]; then
-    printf 'Die vorhandene Instanzkonfiguration wird unverändert verwendet.\n'
+    if [[ "$INSTANCE_CONFIG_ADJUSTED" -eq 1 ]]; then
+        printf 'Die noch nicht abgeschlossene Instanzkonfiguration wurde an den Verzeichnisnamen angepasst.\n'
+    else
+        printf 'Die vorhandene Instanzkonfiguration wird unverändert verwendet.\n'
+    fi
 elif [[ "$INSTANCE_ID" == "qisutu" ]]; then
     printf 'Normale Qisutu-Installation erkannt. Es sind keine weiteren Angaben erforderlich.\n'
 else
@@ -330,6 +309,7 @@ APACHE_SERVICE=""
 DB_SERVICE=""
 APACHE_CONF_TARGET=""
 APACHE_RUNTIME_CONF="$ROOT_PATH/scriptfiles/$INSTANCE_ID-apache-runtime.conf"
+QISUTU_RUNTIME_USER="qisutu"
 
 if [[ -r /etc/os-release ]]; then
     # shellcheck disable=SC1091
@@ -340,13 +320,23 @@ fi
 
 install_debian() {
     OS_FAMILY="debian"
+    local active_mpm=""
+    local cgi_module="cgid"
+
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
     apt-get install -y \
-        apache2 perl mariadb-server mariadb-client ca-certificates \
+        apache2 perl mariadb-server mariadb-client ca-certificates openssl \
         libdbi-perl libdbd-mysql-perl libio-socket-ssl-perl libauthen-sasl-perl
 
-    a2enmod alias env cgid headers >/dev/null
+    if command -v a2query >/dev/null 2>&1; then
+        active_mpm="$(a2query -M 2>/dev/null || true)"
+    fi
+    if [[ "$active_mpm" == *prefork* ]]; then
+        cgi_module="cgi"
+    fi
+
+    a2enmod alias env headers "$cgi_module" >/dev/null
     APACHE_USER="www-data"
     APACHE_GROUP="www-data"
     APACHE_SERVICE="apache2"
@@ -373,7 +363,7 @@ install_rhel() {
     command -v dnf >/dev/null 2>&1 || package_manager="yum"
 
     "$package_manager" install -y \
-        httpd perl mariadb mariadb-server ca-certificates \
+        httpd perl mariadb mariadb-server ca-certificates openssl \
         perl-DBI perl-DBD-MySQL perl-IO-Socket-SSL perl-Authen-SASL
 
     if ! "$package_manager" install -y policycoreutils-python-utils; then
@@ -395,7 +385,7 @@ install_rhel() {
 install_suse() {
     OS_FAMILY="suse"
     zypper --non-interactive install \
-        apache2 perl mariadb mariadb-client ca-certificates \
+        apache2 perl mariadb mariadb-client ca-certificates openssl \
         perl-DBI perl-DBD-mysql perl-IO-Socket-SSL perl-Authen-SASL
 
     a2enmod alias env cgi headers >/dev/null
@@ -440,10 +430,34 @@ verify_perl_modules() {
     fi
 }
 
+ensure_qisutu_runtime_user() {
+    local nologin_shell="/usr/sbin/nologin"
+
+    if [[ ! -x "$nologin_shell" ]]; then
+        nologin_shell="/sbin/nologin"
+    fi
+    if [[ ! -x "$nologin_shell" ]]; then
+        nologin_shell="/bin/false"
+    fi
+
+    if ! id "$QISUTU_RUNTIME_USER" >/dev/null 2>&1; then
+        useradd \
+            --system \
+            --no-create-home \
+            --home-dir /nonexistent \
+            --shell "$nologin_shell" \
+            --gid "$APACHE_GROUP" \
+            "$QISUTU_RUNTIME_USER"
+    fi
+
+    usermod -a -G "$APACHE_GROUP" "$QISUTU_RUNTIME_USER"
+}
+
 verify_apache_modules() {
     local apache_control=""
     local module_list=""
     local missing=0
+    local required_module=""
 
     if command -v apache2ctl >/dev/null 2>&1; then
         apache_control="apache2ctl"
@@ -458,7 +472,19 @@ verify_apache_modules() {
         exit 1
     fi
 
-    module_list="$($apache_control -M 2>&1 || true)"
+    if ! module_list="$($apache_control -M 2>&1)"; then
+        echo "Die aktive Apache-Konfiguration konnte nicht geprüft werden." >&2
+        echo "Apache meldet:" >&2
+        printf '%s\n' "$module_list" >&2
+        echo "Die Qisutu-Systemvorbereitung wurde abgebrochen, ohne fehlende Module zu unterstellen." >&2
+        exit 1
+    fi
+
+    if [[ -z "$module_list" ]]; then
+        echo "Apache hat bei der Modulprüfung keine Modulliste ausgegeben." >&2
+        echo "Die Qisutu-Systemvorbereitung wurde abgebrochen." >&2
+        exit 1
+    fi
 
     for required_module in alias_module env_module headers_module; do
         if ! grep -qE "(^|[[:space:]])${required_module}([[:space:]]|$)" <<<"$module_list"; then
@@ -529,12 +555,14 @@ esac
 
 verify_perl_modules
 verify_apache_modules
+ensure_qisutu_runtime_user
 
 mkdir -p \
     "$ROOT_PATH/var/log" \
     "$ROOT_PATH/var/cache" \
     "$ROOT_PATH/var/tmp" \
-    "$ROOT_PATH/var/install"
+    "$ROOT_PATH/var/install" \
+    "$ROOT_PATH/var/secure"
 
 find "$ROOT_PATH" -type d -exec chmod 0755 {} +
 find "$ROOT_PATH" -type f -exec chmod 0644 {} +
@@ -542,8 +570,8 @@ chmod 0755 "$ROOT_PATH/install.sh" "$ROOT_PATH/update.sh"
 find "$ROOT_PATH/bin" -maxdepth 1 -type f -name '*.pl' -exec chmod 0775 {} +
 find "$ROOT_PATH/bin/cgi-bin" -maxdepth 1 -type f -name '*.pl' -exec chmod 0755 {} +
 
-chown -R root:"$APACHE_GROUP" "$ROOT_PATH"
-chown -R "$APACHE_USER":"$APACHE_GROUP" \
+chown -R "$QISUTU_RUNTIME_USER":"$APACHE_GROUP" "$ROOT_PATH"
+chown -R "$QISUTU_RUNTIME_USER":"$APACHE_GROUP" \
     "$ROOT_PATH/var/log" \
     "$ROOT_PATH/var/cache" \
     "$ROOT_PATH/var/tmp" \
@@ -554,13 +582,39 @@ chmod 0770 \
     "$ROOT_PATH/var/tmp" \
     "$ROOT_PATH/var/install"
 
-mkdir -p /run/lock/qisutu
-chown root:"$APACHE_GROUP" /run/lock/qisutu
-chmod 0770 /run/lock/qisutu
+chown root:"$APACHE_GROUP" "$ROOT_PATH/var/secure"
+chmod 0750 "$ROOT_PATH/var/secure"
+SECURITY_KEY_FILE="$ROOT_PATH/var/secure/security.key"
+if [[ ! -f "$SECURITY_KEY_FILE" ]]; then
+    PREVIOUS_UMASK="$(umask)"
+    umask 0137
+    od -An -N32 -tx1 /dev/urandom | tr -d ' \n' > "$SECURITY_KEY_FILE"
+    printf '\n' >> "$SECURITY_KEY_FILE"
+    umask "$PREVIOUS_UMASK"
+fi
+chown root:"$APACHE_GROUP" "$SECURITY_KEY_FILE"
+chmod 0640 "$SECURITY_KEY_FILE"
+[[ "$(tr -d '[:space:]' < "$SECURITY_KEY_FILE")" =~ ^[0-9a-fA-F]{64}$ ]] || {
+    echo "Der installationsabhängige Sicherheitsschlüssel ist ungültig." >&2
+    exit 1
+}
 
-chown root:"$APACHE_GROUP" "$ROOT_PATH/core/config/QisutuConfig.pm"
+mkdir -p /run/lock/qisutu
+chown "$QISUTU_RUNTIME_USER":"$APACHE_GROUP" /run/lock/qisutu
+chmod 0770 /run/lock/qisutu
+touch "/run/lock/qisutu/$INSTANCE_ID.runtime.lock"
+chown "$QISUTU_RUNTIME_USER":"$APACHE_GROUP" "/run/lock/qisutu/$INSTANCE_ID.runtime.lock"
+chmod 0660 "/run/lock/qisutu/$INSTANCE_ID.runtime.lock"
+
+mkdir -p /etc/tmpfiles.d
+cat > /etc/tmpfiles.d/qisutu-runtime-lock.conf <<EOF_TMPFILES
+d /run/lock/qisutu 0770 $QISUTU_RUNTIME_USER $APACHE_GROUP -
+EOF_TMPFILES
+chmod 0644 /etc/tmpfiles.d/qisutu-runtime-lock.conf
+
+chown "$QISUTU_RUNTIME_USER":"$APACHE_GROUP" "$ROOT_PATH/core/config/QisutuConfig.pm"
 chmod 0660 "$ROOT_PATH/core/config/QisutuConfig.pm"
-chown root:"$APACHE_GROUP" "$INSTANCE_CONFIG_FILE"
+chown "$QISUTU_RUNTIME_USER":"$APACHE_GROUP" "$INSTANCE_CONFIG_FILE"
 chmod 0640 "$INSTANCE_CONFIG_FILE"
 
 configure_selinux

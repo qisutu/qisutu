@@ -274,6 +274,7 @@ sub _BaseData {
         UserHasPreferences => ( ( $User->{account_type} || '' ) =~ m{\A(?:agent|customer)\z} ? 1 : 0 ),
         UserPreferencesURL  => ( ( $User->{account_type} || '' ) eq 'customer' ? 'index.pl?Page=CustomerPreferences' : 'index.pl?Page=AgentPreferences' ),
         UserPreferencesTitle => ( ( $User->{account_type} || '' ) eq 'customer' ? 'Translate:CustomerPreferencesTitle' : 'Translate:AgentPreferencesTitle' ),
+        CSRFToken          => $User->{csrf_token} || '',
         NavigationHTML     => $Self->{ProgramRegistry}->NavigationHTML(
             Language    => $Language,
             ActiveName  => $ActiveName,

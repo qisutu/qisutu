@@ -29,6 +29,7 @@ use utf8;
 use QisutuHTML;
 use QisutuMail;
 use QisutuOAuth2;
+use QisutuSecurity;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -37,6 +38,7 @@ sub new {
         DB        => $Param{DB},
         Config    => $Param{Config},
         LastError => '',
+        Security  => QisutuSecurity->new( Config => $Param{Config} ),
     };
 
     bless $Self, $Class;
@@ -713,6 +715,11 @@ sub PostmasterIMAPAccountCreate {
         }
     }
 
+    my $EncryptedIMAPPassword = $Self->_SecretEncrypt( $Prepared->{IMAPPassword} );
+    return if $Self->{LastError};
+    my $EncryptedOAuthClientSecret = $Self->_SecretEncrypt( $Prepared->{OAuthClientSecret} );
+    return if $Self->{LastError};
+
     my $Result = $Self->{DB}->Do(
         'INSERT INTO postmaster_imap_account (
             name,
@@ -747,10 +754,10 @@ sub PostmasterIMAPAccountCreate {
         $Prepared->{IMAPPort},
         $Prepared->{IMAPAuthType},
         $Prepared->{IMAPUsername},
-        $Prepared->{IMAPPassword},
+        $EncryptedIMAPPassword,
         $Prepared->{OAuthProvider},
         $Prepared->{OAuthClientID},
-        $Prepared->{OAuthClientSecret},
+        $EncryptedOAuthClientSecret,
         $Prepared->{OAuthTenantID},
         $Prepared->{OAuthScope},
         $Active,
@@ -860,13 +867,17 @@ sub PostmasterIMAPAccountUpdate {
     );
 
     if ( $Prepared->{IMAPPassword} ne '' ) {
+        my $Encrypted = $Self->_SecretEncrypt( $Prepared->{IMAPPassword} );
+        return if $Self->{LastError};
         push @Set, 'imap_password = ?';
-        push @Bind, $Prepared->{IMAPPassword};
+        push @Bind, $Encrypted;
     }
 
     if ( $Prepared->{OAuthClientSecret} ne '' ) {
+        my $Encrypted = $Self->_SecretEncrypt( $Prepared->{OAuthClientSecret} );
+        return if $Self->{LastError};
         push @Set, 'oauth_client_secret = ?';
-        push @Bind, $Prepared->{OAuthClientSecret};
+        push @Bind, $Encrypted;
     }
 
     if ( !$OAuth2 ) {
@@ -1039,7 +1050,8 @@ sub PostmasterIMAPAccountDelete {
 
     my $OAuthStateDeleted = $Self->{DB}->Do(
         'DELETE FROM oauth2_authorization_state
-         WHERE account_id = ?',
+         WHERE account_type = ? AND account_id = ?',
+        'imap',
         $AccountID,
     );
     if ( !$OAuthStateDeleted ) {
@@ -1150,18 +1162,32 @@ sub SMTPAccountCreate {
     return if !$Prepared;
 
     my $UserID = $Param{ChangedByUserID} || 1;
-    my $Active = $Param{Active} ? 1 : 0;
-    my $TestAccount = $Self->_SMTPAccountFromPrepared(
-        Prepared => $Prepared,
-        Active   => $Active,
-    );
-    my $TestResult = QisutuMail->new( Config => $Self->{Config}, DB => $Self->{DB} )->SMTPTest(
-        Account => $TestAccount,
-    );
-
-    if ( !$TestResult || !$TestResult->{Success} ) {
-        $Self->{LastError} = $TestResult ? $TestResult->{Message} : 'SMTP connection test failed';
-        return;
+    my $OAuth2 = $Prepared->{SMTPAuthType} eq 'oauth2' ? 1 : 0;
+    my $Active = $OAuth2 ? 0 : ( $Param{Active} ? 1 : 0 );
+    my $TestResult;
+    if ($OAuth2) {
+        if ( !$Prepared->{OAuthClientSecret} ) {
+            $Self->{LastError} = 'Translate:AdminOAuthClientSecretRequired';
+            return;
+        }
+        $TestResult = {
+            Success => 1,
+            Status  => 'pending',
+            Message => 'Translate:AdminOAuthAuthorizationPending',
+        };
+    }
+    else {
+        my $TestAccount = $Self->_SMTPAccountFromPrepared(
+            Prepared => $Prepared,
+            Active   => $Active,
+        );
+        $TestResult = QisutuMail->new( Config => $Self->{Config}, DB => $Self->{DB} )->SMTPTest(
+            Account => $TestAccount,
+        );
+        if ( !$TestResult || !$TestResult->{Success} ) {
+            $Self->{LastError} = $TestResult ? $TestResult->{Message} : 'SMTP connection test failed';
+            return;
+        }
     }
 
     if ($Active) {
@@ -1169,6 +1195,11 @@ sub SMTPAccountCreate {
             'UPDATE smtp_account SET active = 0 WHERE active = 1'
         );
     }
+
+    my $EncryptedSMTPPassword = $Self->_SecretEncrypt( $Prepared->{SMTPPassword} );
+    return if $Self->{LastError};
+    my $EncryptedOAuthClientSecret = $Self->_SecretEncrypt( $Prepared->{OAuthClientSecret} );
+    return if $Self->{LastError};
 
     my $Result = $Self->{DB}->Do(
         'INSERT INTO smtp_account (
@@ -1200,10 +1231,10 @@ sub SMTPAccountCreate {
         $Prepared->{SMTPPort},
         $Prepared->{SMTPAuthType},
         $Prepared->{SMTPUsername},
-        $Prepared->{SMTPPassword},
+        $EncryptedSMTPPassword,
         $Prepared->{OAuthProvider},
         $Prepared->{OAuthClientID},
-        $Prepared->{OAuthClientSecret},
+        $EncryptedOAuthClientSecret,
         $Prepared->{OAuthTenantID},
         $Prepared->{OAuthScope},
         $Active,
@@ -1219,7 +1250,7 @@ sub SMTPAccountCreate {
         return;
     }
 
-    return 1;
+    return $Self->{DB}->LastInsertID('smtp_account') || 1;
 }
 
 sub SMTPAccountUpdate {
@@ -1238,21 +1269,35 @@ sub SMTPAccountUpdate {
     return if !$Prepared;
 
     my $UserID = $Param{ChangedByUserID} || 1;
-    my $Active = $Param{Active} ? 1 : 0;
+    my $OAuth2 = $Prepared->{SMTPAuthType} eq 'oauth2' ? 1 : 0;
+    my $Active = $OAuth2 ? 0 : ( $Param{Active} ? 1 : 0 );
     my $Existing = $Self->SMTPAccountGet( AccountID => $AccountID );
     return if !$Existing;
-    my $TestAccount = $Self->_SMTPAccountFromPrepared(
-        Prepared => $Prepared,
-        Existing => $Existing,
-        Active   => $Active,
-    );
-    my $TestResult = QisutuMail->new( Config => $Self->{Config}, DB => $Self->{DB} )->SMTPTest(
-        Account => $TestAccount,
-    );
-
-    if ( !$TestResult || !$TestResult->{Success} ) {
-        $Self->{LastError} = $TestResult ? $TestResult->{Message} : 'SMTP connection test failed';
-        return;
+    my $TestResult;
+    if ($OAuth2) {
+        if ( !$Prepared->{OAuthClientSecret} && !$Existing->{oauth_client_secret} ) {
+            $Self->{LastError} = 'Translate:AdminOAuthClientSecretRequired';
+            return;
+        }
+        $TestResult = {
+            Success => 1,
+            Status  => 'pending',
+            Message => 'Translate:AdminOAuthAuthorizationPending',
+        };
+    }
+    else {
+        my $TestAccount = $Self->_SMTPAccountFromPrepared(
+            Prepared => $Prepared,
+            Existing => $Existing,
+            Active   => $Active,
+        );
+        $TestResult = QisutuMail->new( Config => $Self->{Config}, DB => $Self->{DB} )->SMTPTest(
+            Account => $TestAccount,
+        );
+        if ( !$TestResult || !$TestResult->{Success} ) {
+            $Self->{LastError} = $TestResult ? $TestResult->{Message} : 'SMTP connection test failed';
+            return;
+        }
     }
 
     if ($Active) {
@@ -1300,13 +1345,28 @@ sub SMTPAccountUpdate {
     );
 
     if ( $Prepared->{SMTPPassword} ne '' ) {
+        my $Encrypted = $Self->_SecretEncrypt( $Prepared->{SMTPPassword} );
+        return if $Self->{LastError};
         push @Set, 'smtp_password = ?';
-        push @Bind, $Prepared->{SMTPPassword};
+        push @Bind, $Encrypted;
     }
 
     if ( $Prepared->{OAuthClientSecret} ne '' ) {
+        my $Encrypted = $Self->_SecretEncrypt( $Prepared->{OAuthClientSecret} );
+        return if $Self->{LastError};
         push @Set, 'oauth_client_secret = ?';
-        push @Bind, $Prepared->{OAuthClientSecret};
+        push @Bind, $Encrypted;
+    }
+
+    if ( !$OAuth2 ) {
+        push @Set,
+            'oauth_client_secret = NULL',
+            'oauth_access_token = NULL',
+            'oauth_refresh_token = NULL',
+            'oauth_token_expires_at = NULL';
+    }
+    else {
+        push @Set, 'smtp_password = NULL';
     }
 
     push @Bind, $AccountID;
@@ -1323,6 +1383,32 @@ sub SMTPAccountUpdate {
         return;
     }
 
+    return $AccountID;
+}
+
+sub SMTPAccountActiveSet {
+    my ( $Self, %Param ) = @_;
+
+    my $AccountID = $Param{AccountID} || 0;
+    my $UserID    = $Param{ChangedByUserID} || 1;
+    my $Active    = $Param{Active} ? 1 : 0;
+    if ( !$AccountID || $AccountID !~ m{\A\d+\z} ) {
+        $Self->{LastError} = 'SMTP account is required';
+        return;
+    }
+    if ($Active) {
+        $Self->{DB}->Do( 'UPDATE smtp_account SET active = 0 WHERE id <> ?', $AccountID );
+    }
+    my $Result = $Self->{DB}->Do(
+        'UPDATE smtp_account SET active = ?, changed_by_user_id = ? WHERE id = ?',
+        $Active,
+        $UserID,
+        $AccountID,
+    );
+    if ( !$Result ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'SMTP account could not be activated';
+        return;
+    }
     return 1;
 }
 
@@ -4259,6 +4345,22 @@ sub _RowsPrepare {
             $Row->{$Key} = '' if !defined $Row->{$Key};
         }
 
+        for my $SecretKey ( qw(imap_password smtp_password oauth_client_secret oauth_access_token oauth_refresh_token) ) {
+            next if !exists $Row->{$SecretKey} || ( $Row->{$SecretKey} || '' ) !~ m{\Aqse1:};
+            my $Plain = $Self->{Security}->Decrypt( Value => $Row->{$SecretKey} );
+            if ( !defined $Plain ) {
+                my $Error = $Self->{Security}->Error() || 'Stored secret could not be decrypted';
+                $Self->{LastError} = $Error;
+                $Row->{_secret_error} ||= $Error;
+                # Keep the encrypted value intact. QisutuMail can then report
+                # the actual decryption error instead of mistaking it for a
+                # missing password. The value is never rendered in a password
+                # input by the administration templates.
+                next;
+            }
+            $Row->{$SecretKey} = $Plain;
+        }
+
         if ( exists $Row->{active} ) {
             $Row->{active_label} = $Row->{active} ? 'Translate:AdminActiveYes' : 'Translate:AdminActiveNo';
         }
@@ -4281,6 +4383,17 @@ sub _RowsPrepare {
     }
 
     return $Rows;
+}
+
+sub _SecretEncrypt {
+    my ( $Self, $Value ) = @_;
+    return '' if !defined $Value || $Value eq '';
+    my $Encrypted = $Self->{Security}->Encrypt( Value => $Value );
+    if ( !defined $Encrypted ) {
+        $Self->{LastError} = $Self->{Security}->Error() || 'Secret could not be encrypted';
+        return '';
+    }
+    return $Encrypted;
 }
 
 sub _PasswordHash {
@@ -4424,6 +4537,7 @@ sub _MailIntegrationSchemaEnsure {
         'CREATE TABLE IF NOT EXISTS oauth2_authorization_state (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             state_hash CHAR(64) NOT NULL,
+            account_type VARCHAR(20) NOT NULL DEFAULT "imap",
             account_id BIGINT UNSIGNED NOT NULL,
             user_account_id BIGINT UNSIGNED NOT NULL,
             provider VARCHAR(30) NOT NULL,
@@ -4433,13 +4547,14 @@ sub _MailIntegrationSchemaEnsure {
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             UNIQUE KEY oauth2_authorization_state_hash_unique (state_hash),
-            KEY oauth2_authorization_state_account_user (account_id, user_account_id),
+            KEY oauth2_authorization_state_account_user (account_type, account_id, user_account_id),
             KEY oauth2_authorization_state_expires (expires_at),
-            CONSTRAINT oauth2_authorization_state_account_fk FOREIGN KEY (account_id)
-                REFERENCES postmaster_imap_account (id) ON DELETE CASCADE,
             CONSTRAINT oauth2_authorization_state_user_fk FOREIGN KEY (user_account_id)
                 REFERENCES user_account (id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
+        'ALTER TABLE oauth2_authorization_state
+            ADD COLUMN IF NOT EXISTS account_type VARCHAR(20) NOT NULL DEFAULT "imap" AFTER state_hash',
 
         'CREATE TABLE IF NOT EXISTS smtp_account (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -4620,19 +4735,71 @@ sub _SMTPAccountPrepare {
         return;
     }
 
+    my $OAuthProvider     = $Self->_Trim( $Param{OAuthProvider} );
+    my $OAuthClientID     = $Self->_Trim( $Param{OAuthClientID} );
+    my $OAuthClientSecret = defined $Param{OAuthClientSecret} ? $Param{OAuthClientSecret} : '';
+    my $OAuthTenantID     = $Self->_Trim( $Param{OAuthTenantID} );
+    my $OAuthScope        = $Self->_Trim( $Param{OAuthScope} );
+    my $SMTPHost          = $Self->_Trim( $Param{SMTPHost} );
+    my $SMTPPort          = $Self->_UnsignedInteger( $Param{SMTPPort} ) || $Self->_DefaultMailPort($SMTPSecurity);
+    my $SMTPUsername      = $Self->_Trim( $Param{SMTPUsername} );
+
+    if ( !$SMTPUsername ) {
+        $Self->{LastError} = 'Translate:AdminSMTPCredentialsRequired';
+        return;
+    }
+
+    if ( $SMTPAuthType eq 'oauth2' ) {
+        my $OAuthObject = QisutuOAuth2->new( Config => $Self->{Config}, DB => $Self->{DB} );
+        $OAuthProvider = $OAuthObject->ProviderNormalize($OAuthProvider);
+        my $Definition = $OAuthObject->ProviderDefinition(
+            Provider    => $OAuthProvider,
+            AccountType => 'smtp',
+            Account     => { oauth_tenant_id => $OAuthTenantID },
+        );
+        if ( !$Definition ) {
+            $Self->{LastError} = 'Translate:AdminOAuthProviderInvalid';
+            return;
+        }
+        if ( !$OAuthClientID ) {
+            $Self->{LastError} = 'Translate:AdminOAuthClientIDRequired';
+            return;
+        }
+        $OAuthTenantID = 'common' if $OAuthProvider eq 'microsoft' && !$OAuthTenantID;
+        if ( $OAuthProvider eq 'microsoft' && $OAuthTenantID !~ m{\A[A-Za-z0-9.-]+\z} ) {
+            $Self->{LastError} = 'Translate:AdminOAuthTenantInvalid';
+            return;
+        }
+        $SMTPHost     = $Definition->{SMTPHost};
+        $SMTPSecurity = $Definition->{SMTPSecurity};
+        $SMTPPort     = $Definition->{SMTPPort};
+        $OAuthScope   = $Definition->{Scope};
+    }
+    else {
+        $OAuthProvider     = '';
+        $OAuthClientID     = '';
+        $OAuthClientSecret = '';
+        $OAuthTenantID     = '';
+        $OAuthScope        = '';
+        if ( !$SMTPHost ) {
+            $Self->{LastError} = 'Translate:AdminSMTPHostRequired';
+            return;
+        }
+    }
+
     return {
         Name          => $Name,
-        SMTPHost      => $Self->_Trim( $Param{SMTPHost} ),
+        SMTPHost      => $SMTPHost,
         SMTPSecurity  => $SMTPSecurity,
-        SMTPPort      => $Self->_UnsignedInteger( $Param{SMTPPort} ) || $Self->_DefaultMailPort($SMTPSecurity),
+        SMTPPort      => $SMTPPort,
         SMTPAuthType  => $SMTPAuthType,
-        SMTPUsername  => $Self->_Trim( $Param{SMTPUsername} ),
+        SMTPUsername  => $SMTPUsername,
         SMTPPassword  => defined $Param{SMTPPassword} ? $Param{SMTPPassword} : '',
-        OAuthProvider => $Self->_Trim( $Param{OAuthProvider} ),
-        OAuthClientID => $Self->_Trim( $Param{OAuthClientID} ),
-        OAuthClientSecret => defined $Param{OAuthClientSecret} ? $Param{OAuthClientSecret} : '',
-        OAuthTenantID => $Self->_Trim( $Param{OAuthTenantID} ),
-        OAuthScope    => $Self->_Trim( $Param{OAuthScope} ),
+        OAuthProvider => $OAuthProvider,
+        OAuthClientID => $OAuthClientID,
+        OAuthClientSecret => $OAuthClientSecret,
+        OAuthTenantID => $OAuthTenantID,
+        OAuthScope    => $OAuthScope,
         SortOrder     => $SortOrder,
     };
 }

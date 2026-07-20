@@ -945,6 +945,7 @@ sub _EvaluateWithFilters {
         }
 
         my @ActionResult;
+        my @ActionDetails;
         if ($Matched) {
             $Result->{MatchedCount}++;
             push @{ $Result->{MatchedFilterIDs} }, $Filter->{id} || 0;
@@ -955,7 +956,15 @@ sub _EvaluateWithFilters {
                     Action => $Action,
                     Result => $Result,
                 );
-                push @ActionResult, $Description if $Description;
+                if ($Description) {
+                    push @ActionResult, $Description;
+                    push @ActionDetails, {
+                        action_type  => $Action->{action_type} || '',
+                        target_id    => $Self->_OptionalID( $Action->{target_id} ),
+                        action_value => defined $Action->{action_value} ? $Action->{action_value} : '',
+                        result       => $Description,
+                    };
+                }
             }
 
             if ( $Filter->{stop_after_match} ) {
@@ -970,6 +979,7 @@ sub _EvaluateWithFilters {
             matched     => $Matched ? 1 : 0,
             conditions  => \@ConditionResult,
             actions     => \@ActionResult,
+            action_details => \@ActionDetails,
             stopped     => $Matched && $Filter->{stop_after_match} ? 1 : 0,
         };
 

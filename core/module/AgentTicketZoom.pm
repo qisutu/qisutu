@@ -791,6 +791,8 @@ sub Run {
 
         if ( !$ArticleCreateError && ( $ArticleMode eq 'email' || $ArticleMode eq 'forward' ) ) {
             my $SendResult = $Self->_EmailSend(
+                TicketID     => $TicketID,
+                ArticleID    => $ArticleID,
                 FromName    => $FromName,
                 FromEmail   => $FromEmail,
                 ToName      => $ToName,
@@ -1822,6 +1824,8 @@ sub _TicketToolForward {
     }
 
     my $SendResult = $Self->_EmailSend(
+        TicketID   => $TicketID,
+        ArticleID  => $ArticleID,
         FromName  => $FromName,
         FromEmail => $FromEmail,
         ToName    => '',
@@ -3566,6 +3570,8 @@ sub _EmailSend {
 
     return QisutuMail->new( Config => $Self->{Config}, DB => $Self->{DB} )->SMTPSend(
         Account   => $SMTPAccount,
+        TicketID  => $Param{TicketID},
+        ArticleID => $Param{ArticleID},
         FromName  => $Param{FromName},
         FromEmail => $Param{FromEmail},
         ToName    => $Param{ToName},

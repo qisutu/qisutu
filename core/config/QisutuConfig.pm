@@ -65,11 +65,12 @@ sub Load {
             Cache     => "$RootPath/var/cache",
             Static    => "$RootPath/var/static",
             StaticURL => '/qisutu/static',
+            SecurityKey => "$RootPath/var/secure/security.key",
         },
 
         System => {
             Name       => 'Qisutu',
-            Version    => '0.0.46',
+            Version    => '0.0.66',
             InstanceID => 'qisutu',
             WebPath    => '/qisutu',
             BaseURL    => $ENV{QISUTU_BASE_URL} || '',

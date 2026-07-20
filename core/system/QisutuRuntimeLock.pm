@@ -93,7 +93,10 @@ sub SharedAcquire {
     $Mode |= LOCK_NB if $Param{NonBlocking};
 
     my $FH;
-    if ( !open $FH, '>>', $LockFile ) {
+    my $PreviousUmask = umask 0007;
+    my $Opened = open $FH, '>>', $LockFile;
+    umask $PreviousUmask;
+    if ( !$Opened ) {
         return {
             Success => 0,
             Busy    => 0,
@@ -108,6 +111,53 @@ sub SharedAcquire {
             Success => 0,
             Busy    => $Param{NonBlocking} ? 1 : 0,
             Error   => "Runtime lock cannot be acquired: $LockFile: $Error",
+        };
+    }
+
+    return {
+        Success => 1,
+        File    => $LockFile,
+        Handle  => $FH,
+    };
+}
+
+sub ProcessAcquire {
+    my (%Param) = @_;
+
+    my $Name = $Param{Name} || '';
+    if ( $Name !~ m{\A[a-z][a-z0-9-]{0,63}\z} ) {
+        return {
+            Success => 0,
+            Busy    => 0,
+            Error   => 'Process lock name is invalid.',
+        };
+    }
+
+    my $InstanceID = InstanceID(%Param);
+    my $LockDirectory = $ENV{QISUTU_RUNTIME_LOCK_DIR} || '/run/lock/qisutu';
+    my $LockFile = File::Spec->catfile( $LockDirectory, $InstanceID . '.' . $Name . '.lock' );
+    my $Mode = LOCK_EX;
+    $Mode |= LOCK_NB if $Param{NonBlocking};
+
+    my $FH;
+    my $PreviousUmask = umask 0007;
+    my $Opened = open $FH, '>>', $LockFile;
+    umask $PreviousUmask;
+    if ( !$Opened ) {
+        return {
+            Success => 0,
+            Busy    => 0,
+            Error   => "Process lock file cannot be opened: $LockFile: $!",
+        };
+    }
+
+    if ( !flock( $FH, $Mode ) ) {
+        my $Error = "$!";
+        close $FH;
+        return {
+            Success => 0,
+            Busy    => $Param{NonBlocking} ? 1 : 0,
+            Error   => "Process lock cannot be acquired: $LockFile: $Error",
         };
     }
 

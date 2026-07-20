@@ -38,16 +38,35 @@ use POSIX qw(strftime);
 use Symbol qw(gensym);
 
 my $RootPath = $ENV{QISUTU_HOME} || abs_path( File::Spec->catdir( $FindBin::Bin, '..', '..' ) );
+$ENV{QISUTU_HOME} ||= $RootPath;
+
+unshift @INC,
+    File::Spec->catdir( $RootPath, 'core', 'config' ),
+    File::Spec->catdir( $RootPath, 'core', 'system' ),
+    File::Spec->catdir( $RootPath, 'core', 'cpan-lib' );
+
 my $InstallPath = File::Spec->catdir( $RootPath, 'var', 'install' );
 my $LockFile = File::Spec->catfile( $InstallPath, 'installed.lock' );
 my $SchemaFile = File::Spec->catfile( $RootPath, 'install', 'sql', 'schema.sql' );
 my $InsertFile = File::Spec->catfile( $RootPath, 'install', 'sql', 'insert.sql' );
 my $ConfigFile = File::Spec->catfile( $RootPath, 'core', 'config', 'QisutuConfig.pm' );
+my $ReleaseFile = File::Spec->catfile( $RootPath, 'release.conf' );
 my $LicenseFile = File::Spec->catfile( $RootPath, 'LICENSE' );
 my $ThirdPartyFile = File::Spec->catfile( $RootPath, 'THIRD_PARTY_NOTICES.md' );
 my $LogFile = File::Spec->catfile( $RootPath, 'var', 'log', 'install.log' );
 my $BootstrapFile = File::Spec->catfile( $InstallPath, 'database-bootstrap.conf' );
 my $InstanceFile = File::Spec->catfile( $InstallPath, 'instance.conf' );
+my $ProgramVersion = '0.0.1';
+
+if ( open my $ReleaseHandle, '<:encoding(UTF-8)', $ReleaseFile ) {
+    while ( my $Line = <$ReleaseHandle> ) {
+        if ( $Line =~ m{\Aversion=([0-9]+(?:[.][0-9]+){2})\s*\z} ) {
+            $ProgramVersion = $1;
+            last;
+        }
+    }
+    close $ReleaseHandle;
+}
 
 my %InstanceConfig = (
     instance_id    => 'qisutu',
@@ -437,7 +456,7 @@ sub _MailHTML {
                 <div class="qisutu-install-grid">
                     } . _SelectField( 'Verbindungstyp', 'OutboundConnectionType', 'smtp', [ [ smtp => 'SMTP' ] ] ) .
                     _Field( 'Bezeichnung', 'SMTPName', $Request->{SMTPName} || 'Standard SMTP', 'text', 0 ) .
-                    _Field( 'Absenderadresse', 'SMTPEmail', $Request->{SMTPEmail} || $State->{admin_email} || '', 'email', 0 ) .
+                    _Field( 'Absenderadresse', 'SMTPEmail', $Request->{SMTPEmail} || '', 'email', 0 ) .
                     _Field( 'SMTP-Server', 'SMTPHost', $Request->{SMTPHost} || '', 'text', 0 ) .
                     _Field( 'Port', 'SMTPPort', $Request->{SMTPPort} || '587', 'number', 0 ) .
                     _SelectField( 'Verschlüsselung', 'SMTPSecurity', $Request->{SMTPSecurity} || 'smtp_starttls', [ [ smtp => 'Keine / SMTP' ], [ smtp_starttls => 'STARTTLS' ], [ smtps => 'SSL/TLS' ] ] ) .
@@ -795,6 +814,20 @@ sub _MailSettingsSave {
     my @TestMessages;
     my ($IMAP, $SMTP);
 
+    my $SecurityLoaded = eval {
+        require QisutuConfig;
+        require QisutuSecurity;
+        1;
+    };
+    if ( !$SecurityLoaded ) {
+        my $SecurityLoadError = $@ || 'unbekannter Modulfehler';
+        $SecurityLoadError =~ s{[\r\n]+}{ }g;
+        _Log("Sicherheitssystem für Zugangsdaten konnte nicht geladen werden: $SecurityLoadError");
+        $DBH->disconnect();
+        return { success => 0, error => 'Das Sicherheitssystem für Zugangsdaten konnte nicht geladen werden. Details stehen in var/log/install.log.' };
+    }
+    my $Security = QisutuSecurity->new( Config => QisutuConfig::Load() );
+
     if ($IMAPEnabled) {
         $IMAP = {
             name       => _Trim( $Request->{IMAPName} ) || 'Standard IMAP',
@@ -842,12 +875,16 @@ sub _MailSettingsSave {
     my $OK = eval {
         $DBH->begin_work();
         if ($IMAPEnabled) {
-            $DBH->do('INSERT INTO postmaster_imap_account (name, email, queue_id, imap_host, imap_security, imap_port, imap_auth_type, imap_username, imap_password, active, sort_order, last_check_at, last_check_status, last_check_message, created_by_user_id, changed_by_user_id) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, 1, 100, NOW(), ?, ?, 1, 1)', undef, $IMAP->{name}, $IMAP->{email}, $IMAP->{host}, $IMAP->{security}, $IMAP->{port}, 'password', $IMAP->{username}, $IMAP->{password}, 'ok', 'IMAP connection successful') or die $DBH->errstr;
+            my $EncryptedPassword = $Security->Encrypt( Value => $IMAP->{password} );
+            die( $Security->Error() || 'IMAP password encryption failed' ) if !defined $EncryptedPassword;
+            $DBH->do('INSERT INTO postmaster_imap_account (name, email, queue_id, imap_host, imap_security, imap_port, imap_auth_type, imap_username, imap_password, active, sort_order, last_check_at, last_check_status, last_check_message, created_by_user_id, changed_by_user_id) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, 1, 100, NOW(), ?, ?, 1, 1)', undef, $IMAP->{name}, $IMAP->{email}, $IMAP->{host}, $IMAP->{security}, $IMAP->{port}, 'password', $IMAP->{username}, $EncryptedPassword, 'ok', 'IMAP connection successful') or die $DBH->errstr;
         }
         if ($SMTPEnabled) {
-            $DBH->do('INSERT INTO smtp_account (name, smtp_host, smtp_security, smtp_port, smtp_auth_type, smtp_username, smtp_password, active, sort_order, last_check_at, last_check_status, last_check_message, created_by_user_id, changed_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 100, NOW(), ?, ?, 1, 1)', undef, $SMTP->{name}, $SMTP->{host}, $SMTP->{security}, $SMTP->{port}, 'password', $SMTP->{username}, $SMTP->{password}, 'ok', 'SMTP connection successful') or die $DBH->errstr;
+            my $EncryptedPassword = $Security->Encrypt( Value => $SMTP->{password} );
+            die( $Security->Error() || 'SMTP password encryption failed' ) if !defined $EncryptedPassword;
+            $DBH->do('INSERT INTO smtp_account (name, smtp_host, smtp_security, smtp_port, smtp_auth_type, smtp_username, smtp_password, active, sort_order, last_check_at, last_check_status, last_check_message, created_by_user_id, changed_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 100, NOW(), ?, ?, 1, 1)', undef, $SMTP->{name}, $SMTP->{host}, $SMTP->{security}, $SMTP->{port}, 'password', $SMTP->{username}, $EncryptedPassword, 'ok', 'SMTP connection successful') or die $DBH->errstr;
         }
-        my $SystemEmail = $SMTPEnabled ? $SMTP->{email} : $IMAP->{email};
+        my $SystemEmail = $IMAPEnabled ? $IMAP->{email} : $SMTP->{email};
         $DBH->do('INSERT INTO system_email (name, email, active, sort_order, created_by_user_id, changed_by_user_id) VALUES (?, ?, 1, 100, 1, 1)', undef, 'Qisutu System Email', $SystemEmail) or die $DBH->errstr;
         my $SystemEmailID = $DBH->{mysql_insertid};
         $DBH->do('UPDATE ticket_queue SET system_email_id = ?, changed_by_user_id = 1 WHERE id = 1', undef, $SystemEmailID) or die $DBH->errstr;
@@ -874,10 +911,6 @@ sub _MailConnectionTest {
     my $Type = $Param{Type};
     my $Data = $Param{Data};
     my $State = $Param{State};
-
-    unshift @INC,
-        File::Spec->catdir( $RootPath, 'core', 'config' ),
-        File::Spec->catdir( $RootPath, 'core', 'system' );
 
     my $Loaded = eval { require QisutuMail; 1 };
     return { success => 0, message => "QisutuMail konnte nicht geladen werden: $@" } if !$Loaded;
@@ -1056,6 +1089,7 @@ sub _ConfigText {
     my $ConfiguredCookieName = _PerlQuote($SessionCookieName);
     my $ConfiguredInstanceID = _PerlQuote($InstanceID);
     my $ConfiguredWebPath = _PerlQuote($WebPath);
+    my $ConfiguredProgramVersion = _PerlQuote($ProgramVersion);
 
     return <<"CONFIG";
 # Qisutu - Open Source Ticket System
@@ -1125,11 +1159,12 @@ sub Load {
             Cache         => "\$RootPath/var/cache",
             Static        => "\$RootPath/var/static",
             StaticURL     => '$WebPath/static',
+            SecurityKey   => "\$RootPath/var/secure/security.key",
         },
 
         System => {
             Name       => 'Qisutu',
-            Version    => '0.0.35',
+            Version    => '$ConfiguredProgramVersion',
             InstanceID => '$ConfiguredInstanceID',
             WebPath    => '$ConfiguredWebPath',
             BaseURL    => '$BaseURL',
@@ -1149,7 +1184,7 @@ sub _ConfigHash {
         Database => { Host => $State->{db_host}, Port => $State->{db_port}, Name => $State->{db_name}, User => $State->{db_user}, Password => $State->{db_password}, Charset => 'utf8mb4' },
         Session => { CookieName => $SessionCookieName, LifetimeSeconds => 28800 },
         Language => { Default => $State->{default_language} || 'de' },
-        Paths => { Var => "$RootPath/var", Log => "$RootPath/var/log", Static => "$RootPath/var/static", StaticURL => "$WebPath/static" },
+        Paths => { Var => "$RootPath/var", Log => "$RootPath/var/log", Static => "$RootPath/var/static", StaticURL => "$WebPath/static", SecurityKey => "$RootPath/var/secure/security.key" },
         System => { Name => 'Qisutu', InstanceID => $InstanceID, WebPath => $WebPath, BaseURL => $State->{base_url} || '', TicketHook => $State->{ticket_hook} || 'Qisutu' },
     };
 }

@@ -48,6 +48,23 @@ sub Run {
     my $User    = $Param{User}    || {};
     my $Prefs   = $Self->_PreferenceObject();
     my $Step    = $Request->{Step} || '';
+    my $TwoFactor = $Self->_TwoFactorObject();
+    my $RecoveryCodes = [];
+
+    if ( $TwoFactor && $Step eq 'TwoFactorStart' ) {
+        $TwoFactor->SetupStart( UserAccountID => $User->{user_account_id} );
+        return { Redirect => 'index.pl?Page=CustomerPreferences;TwoFactorSetup=1' } if !$TwoFactor->Error();
+    }
+    elsif ( $TwoFactor && $Step eq 'TwoFactorEnable' ) {
+        $RecoveryCodes = $TwoFactor->SetupConfirm( UserAccountID => $User->{user_account_id}, Code => $Request->{TwoFactorCode} );
+    }
+    elsif ( $TwoFactor && $Step eq 'TwoFactorDisable' ) {
+        $TwoFactor->Disable( UserAccountID => $User->{user_account_id}, Code => $Request->{TwoFactorCode} );
+        return { Redirect => 'index.pl?Page=CustomerPreferences;TwoFactorDisabled=1' } if !$TwoFactor->Error();
+    }
+    elsif ( $TwoFactor && $Step eq 'TwoFactorRecoveryRegenerate' ) {
+        $RecoveryCodes = $TwoFactor->RecoveryCodesRegenerate( UserAccountID => $User->{user_account_id}, Code => $Request->{TwoFactorCode} );
+    }
 
     if ( $Prefs && $Step eq 'PreferenceSave' ) {
         $Prefs->CustomerPreferenceSave(
@@ -59,8 +76,14 @@ sub Run {
     }
 
     my $Preference = $Prefs ? $Prefs->CustomerPreferenceGet( UserAccountID => $User->{user_account_id} ) : {};
-    my $ErrorMessage = $Prefs ? $Prefs->Error() : 'Preference system could not be loaded.';
+    my $ErrorMessage = $TwoFactor && $TwoFactor->Error() ? $TwoFactor->Error() : ( $Prefs ? $Prefs->Error() : 'Preference system could not be loaded.' );
     my $SuccessMessage = $Request->{Saved} ? 'Translate:PreferencesSaved' : '';
+
+    my $TwoFactorStatus = $TwoFactor ? $TwoFactor->StatusGet( UserAccountID => $User->{user_account_id} ) : {};
+    my $TwoFactorProvisioningURI = $TwoFactor ? $TwoFactor->ProvisioningURI(
+        Secret      => $TwoFactorStatus->{secret} || '',
+        AccountName => $User->{email} || $User->{login} || 'user-' . ( $User->{user_account_id} || 0 ),
+    ) : '';
 
     return {
         Template => 'CustomerPreferences.tt',
@@ -81,8 +104,22 @@ sub Run {
                 Preference => $Preference,
                 Prefs      => $Prefs,
             ),
+            TwoFactorEnabled           => $TwoFactorStatus->{enabled} ? 1 : 0,
+            TwoFactorSetup             => !$TwoFactorStatus->{enabled} && $TwoFactorStatus->{configured} ? 1 : 0,
+            TwoFactorSecret            => $TwoFactorStatus->{secret} || '',
+            TwoFactorProvisioningURI   => $TwoFactorProvisioningURI,
+            TwoFactorRecoveryRemaining => $TwoFactorStatus->{recovery_codes_remaining} || 0,
+            RecoveryCodesHTML          => join( '', map { '<li><code>' . $Self->{Output}->HTMLEscape($_) . '</code></li>' } @{ $RecoveryCodes || [] } ),
+            ShowRecoveryCodes          => @{ $RecoveryCodes || [] } ? 1 : 0,
         },
     };
+}
+
+sub _TwoFactorObject {
+    my ($Self) = @_;
+    my $Loaded = eval { require QisutuTwoFactor; 1 };
+    return if !$Loaded;
+    return QisutuTwoFactor->new( Config => $Self->{Config}, DB => $Self->{DB} );
 }
 
 sub _PreferenceObject {

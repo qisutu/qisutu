@@ -42,6 +42,7 @@ sub main {
         require QisutuConfig;
         require QisutuDB;
         require QisutuOutput;
+        require QisutuSecurity;
         require QisutuTicketForm;
         1;
     };
@@ -53,6 +54,7 @@ sub main {
     my $Config = QisutuConfig::Load();
     $Language ||= _LanguageClean( $Config->{Language}->{Default} ) || 'en';
     my $Output = QisutuOutput->new( Config => $Config );
+    my $Security = QisutuSecurity->new( Config => $Config );
     my $DB = QisutuDB->new( Config => $Config );
     my $FormObject = QisutuTicketForm->new(
         Config => $Config,
@@ -90,6 +92,19 @@ sub main {
     if ( ( $ENV{REQUEST_METHOD} || '' ) eq 'POST'
         && ( $Request->{Step} || '' ) eq 'PublicTicketFormSubmit'
     ) {
+        if ( !$Security->PublicCSRFTokenVerify(
+            Token   => $Request->{CSRFToken} || '',
+            Purpose => 'public-ticket-form:' . $Slug,
+        ) ) {
+            print _HTMLResponse(
+                Output         => $Output,
+                Status         => '403 Forbidden',
+                Body           => 'Die Anfrage konnte aus Sicherheitsgründen nicht verarbeitet werden. Bitte laden Sie das Formular neu.',
+                FrameAncestors => $FormObject->PublicFrameAncestors( AllowedOrigins => $Form->{allowed_origins} ),
+            );
+            return;
+        }
+
         my $Created = $FormObject->SubmissionCreate(
             Context   => 'public',
             FormID    => $Form->{id},
@@ -135,6 +150,9 @@ sub main {
             ConfirmationText  => $Confirmation,
             TicketNumber      => $TicketNumber,
             HasTicketNumber   => $TicketNumber ? 1 : 0,
+            CSRFToken          => $Security->PublicCSRFTokenCreate(
+                Purpose => 'public-ticket-form:' . $Slug,
+            ),
         },
     );
 
@@ -208,6 +226,7 @@ sub _HTMLResponse {
     return $Param{Output}->Response(
         Status  => $Param{Status} || '200 OK',
         Body    => defined $Param{Body} ? $Param{Body} : '',
+        AllowFrame => $FrameAncestors ne "'none'" ? 1 : 0,
         Headers => [
             'Cache-Control: no-store, no-cache, must-revalidate',
             'Pragma: no-cache',
