@@ -1,4 +1,26 @@
-[%# Qisutu CMDB - AGPL-3.0-or-later %]
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
 
 <section class="qisutu-dashboard qisutu-cmdb" aria-labelledby="qisutu-cmdb-title">
     <div class="qisutu-dashboard-header">
@@ -48,7 +70,7 @@
             [% IF AdminMode %]<section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.CMDBHistory %]</h2><span class="qisutu-panel-subtitle">[% HistoryCount %]</span></div></div>[% IF HasHistory %]<div class="qisutu-cmdb-history">[% FOREACH HistoryItem IN History %]<article><span class="qisutu-cmdb-history-marker"></span><div><header><strong>[% HistoryItem.event_label %]</strong><time>[% HistoryItem.created_at %]</time></header><p>[% HistoryItem.field_label %] [% HistoryItem.change_display %]</p><small>[% HistoryItem.actor_display %] · [% HistoryItem.source %]</small>[% RAW.HistoryItem.ticket_link_html %]</div></article>[% END %]</div>[% ELSE %]<div class="qisutu-empty"><p>[% Translate.CMDBHistoryEmpty %]</p></div>[% END %]</section>[% END %]
         </div>
         <aside>
-            <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.CMDBRelations %]</h2><span class="qisutu-panel-subtitle">[% RelationCount %]</span></div></div>[% IF HasRelations %]<div class="qisutu-cmdb-relation-list">[% FOREACH Relation IN Relations %]<article><span>[% Relation.relation_label %]</span>[% IF AdminMode %]<a href="index.pl?Page=[% ProgramPage %];Action=View;CIID=[% Relation.related_ci_id %]"><strong>[% Relation.related_ci_number %]</strong> [% Relation.related_ci_name %]</a>[% ELSE %]<strong>[% Relation.related_ci_number %] [% Relation.related_ci_name %]</strong>[% END %]<small>[% Relation.note %]</small>[% RAW.Relation.remove_html %]</article>[% END %]</div>[% END %]
+            <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.CMDBRelations %]</h2><span class="qisutu-panel-subtitle">[% RelationCount %]</span></div></div>[% IF HasRelations %]<div class="qisutu-cmdb-relation-list">[% FOREACH Relation IN Relations %]<article><span>[% Relation.relation_label %]</span>[% RAW.Relation.related_display_html %]<small>[% Relation.note %]</small>[% RAW.Relation.remove_html %]</article>[% END %]</div>[% END %]
                 [% IF CanChange %]<form class="qisutu-admin-form" method="post" action="[% FormAction %]"><input type="hidden" name="Page" value="[% ProgramPage %]"><input type="hidden" name="Step" value="RelationAdd"><input type="hidden" name="CIID" value="[% CIID %]"><div class="qisutu-form-field"><label>[% Translate.CMDBRelationType %]</label><select name="RelationTypeID">[% RAW.RelationTypeOptionsHTML %]</select></div><div class="qisutu-form-field qisutu-autocomplete"><label>[% Translate.CMDBTargetCI %]</label><input id="qisutu-cmdb-relation-target-id" type="hidden" name="TargetCIID" data-qisutu-autocomplete-target><input type="text" name="TargetCINumber" autocomplete="off" required data-qisutu-cmdb-autocomplete data-qisutu-autocomplete-url="index.pl?Page=[% ProgramPage %]&amp;Step=Search" data-qisutu-autocomplete-hidden="qisutu-cmdb-relation-target-id"><div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div></div><div class="qisutu-form-field"><label>[% Translate.CMDBRelationNote %]</label><input type="text" name="RelationNote"></div><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.CMDBRelationAdd %]</button></form>[% END %]
             </section>
         </aside>

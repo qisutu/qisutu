@@ -1,3 +1,27 @@
+<!--
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # Qisutu
 
 Qisutu ist ein neues Open-Source-Ticketsystem auf Basis von Perl/CGI,
@@ -8,9 +32,13 @@ Projektwebsite: https://qisutu.de
 
 ## Entwicklungsstatus
 
-Qisutu befindet sich in einer frühen Entwicklungsphase. Schnittstellen,
-Datenbankstrukturen und Installationsabläufe können sich noch ändern. Der
-aktuelle Stand ist noch keine fertige Produktivversion.
+Qisutu ist ein eigenständig installierbares Open-Source-Ticketsystem mit
+Agenten- und Kundenportal, E-Mail-Verarbeitung, Verzeichnisanmeldung,
+Automatisierung, Wissensdatenbank, CMDB, Berichten und REST-API. Der aktuelle
+0.x-Release-Zweig ist der erste öffentlich veröffentlichte Entwicklungsstand.
+Bis zur Version 1.0 können sich Schnittstellen und Datenbankstrukturen noch
+weiterentwickeln; notwendige Änderungen werden über den integrierten Updater
+und die dauerhaft mitgeführten Datenmigrationen bereitgestellt.
 
 ## Installation
 
@@ -145,6 +173,58 @@ Passwörter, Client-Secrets sowie Access- und Refresh-Tokens werden vor dem
 Speichern aus technischen Antworten entfernt. Die Aufbewahrungsdauer ist in
 den System-Einstellungen konfigurierbar und beträgt standardmäßig 90 Tage;
 der Wert 0 deaktiviert die automatische Bereinigung.
+
+## Automatische Antworten an Kunden
+
+Unter `Administration > Autom. Antworten` stehen getrennte HTML-Vorlagen für
+vier ausschließlich kundenbezogene Ereignisse bereit: ein durch den Kunden
+erstelltes Ticket, eine Kundenantwort, eine Kundenantwort auf ein bereits
+geschlossenes Ticket und eine durch einen Postmaster-Filter abgelehnte E-Mail.
+Jede Vorlage besitzt einen eigenen Betreff, CKEditor-Text, Aktiv-Schalter und
+Platzhalter für Ticket, Kundenbenutzer, System und eingehende E-Mail.
+
+Die Vorlagen sind nach Installation oder Update zunächst deaktiviert. Dadurch
+entscheidet der Administrator ausdrücklich, welche Bestätigungen versendet
+werden. Für eine Ablehnungsantwort muss ein Postmaster-Filter die Aktion
+`E-Mail ablehnen und automatische Antwort auslösen` verwenden; die bestehende
+Aktion zum vollständigen Ignorieren einer E-Mail bleibt ohne Antwort. Von
+Agenten erstellte Tickets und Agentenantworten lösen keine zusätzliche
+Kundenmail aus.
+
+## LDAP und Active Directory
+
+Administratoren richten unter `Administration > LDAP / Active Directory` zwei
+vollständig getrennte Profile ein: eines ausschließlich für Agenten und eines
+für Kundenbenutzer und ihre Kundenunternehmen. Beide Profile besitzen eigene
+Verbindungs-, Such-, Mapping-, Test- und Aktivierungseinstellungen. In den
+Anmeldemasken ist keine Anbieterauswahl nötig; Qisutu verwendet abhängig vom
+Portal automatisch das passende aktive Profil.
+
+Login, Vorname, Nachname und E-Mail sind in beiden Profilen verpflichtende
+Mappings. Das Agentenprofil kann zusätzliche Agentenfelder übernehmen und neu
+angelegte Agenten einer Standardgruppe zuordnen. Das Kundenprofil benötigt
+zusätzlich je ein LDAP-Attribut für die eindeutige Qisutu-Kundennummer und den
+Namen des Kundenunternehmens; weitere Kundenbenutzerfelder können ebenfalls
+gemappt werden. In Qisutu als erforderlich definierte Zusatzfelder benötigen
+ein entsprechendes LDAP-Mapping und einen Wert im Verzeichnis.
+
+Nach einer erfolgreichen Agentenanmeldung verwendet Qisutu den kanonischen
+Wert des gemappten Login-Attributs für den Kontenabgleich. Ein bestehender
+Agent mit diesem Login wird weiterverwendet, andernfalls wird ein neuer Agent
+angelegt. Beim Kundenlogin wird das Kundenunternehmen anhand der gemappten
+Kundennummer gefunden oder angelegt. Der Kundenbenutzer wird anhand seines
+kanonischen Logins gefunden oder angelegt und genau diesem Unternehmen
+zugeordnet. Eine bereits anderweitig verwendete E-Mail-Adresse führt zu einem
+Fehler und niemals zu einer automatischen Kontenzusammenführung.
+
+Die Verbindungen sind nur über LDAPS oder StartTLS möglich. Die
+Zertifikatsprüfung ist standardmäßig aktiv, und das Passwort eines technischen
+Suchkontos wird verschlüsselt gespeichert. Änderungen deaktivieren das
+betroffene Profil; vor der erneuten Aktivierung müssen Verbindung,
+Benutzersuche und alle Pflichtwerte erfolgreich getestet werden. Findet das
+jeweilige aktive Verzeichnis keinen Benutzer, bleibt die Anmeldung eines
+vorhandenen lokalen Kontos möglich. Bei einem gefundenen Verzeichniseintrag ist
+dagegen dessen Passwortprüfung maßgeblich.
 
 ## Kundenformulare und Webformulare
 

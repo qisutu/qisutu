@@ -327,7 +327,8 @@ install_debian() {
     apt-get update
     apt-get install -y \
         apache2 perl mariadb-server mariadb-client ca-certificates openssl \
-        libdbi-perl libdbd-mysql-perl libio-socket-ssl-perl libauthen-sasl-perl
+        libdbi-perl libdbd-mysql-perl libio-socket-ssl-perl libauthen-sasl-perl \
+        libnet-ldap-perl
 
     if command -v a2query >/dev/null 2>&1; then
         active_mpm="$(a2query -M 2>/dev/null || true)"
@@ -364,7 +365,7 @@ install_rhel() {
 
     "$package_manager" install -y \
         httpd perl mariadb mariadb-server ca-certificates openssl \
-        perl-DBI perl-DBD-MySQL perl-IO-Socket-SSL perl-Authen-SASL
+        perl-DBI perl-DBD-MySQL perl-IO-Socket-SSL perl-Authen-SASL perl-LDAP
 
     if ! "$package_manager" install -y policycoreutils-python-utils; then
         "$package_manager" install -y policycoreutils-python
@@ -386,7 +387,7 @@ install_suse() {
     OS_FAMILY="suse"
     zypper --non-interactive install \
         apache2 perl mariadb mariadb-client ca-certificates openssl \
-        perl-DBI perl-DBD-mysql perl-IO-Socket-SSL perl-Authen-SASL
+        perl-DBI perl-DBD-mysql perl-IO-Socket-SSL perl-Authen-SASL perl-LDAP
 
     a2enmod alias env cgi headers >/dev/null
 
@@ -413,6 +414,7 @@ verify_perl_modules() {
         MIME::Base64
         MIME::QuotedPrint
         Net::SMTP
+        Net::LDAP
         Digest::SHA
         JSON::PP
     )

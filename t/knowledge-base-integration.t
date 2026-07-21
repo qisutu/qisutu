@@ -1,3 +1,25 @@
+# Qisutu - Open Source Ticket System
+# Copyright (C) 2026 Franziska Steps
+# Qisutu - Kim-KI, https://qisutu.de
+#
+# This file is part of Qisutu.
+#
+# Qisutu is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Qisutu is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-FileCopyrightText: 2026 Franziska Steps
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 use strict;
 use warnings;
 
@@ -35,10 +57,12 @@ for my $File (
 
 my $InsertJS = content('var/static/js/qisutu-knowledge-insert.js');
 my $RichTextJS = content('var/static/js/qisutu-richtext.js');
+my $InsertRuntimeJS = $InsertJS;
+$InsertRuntimeJS =~ s{\A/\*.*?\*/\s*}{}s;
 like( $RichTextJS, qr/editor\.model\.insertContent\(modelFragment, editor\.model\.document\.selection\)/, 'CKEditor insertion uses the current cursor selection' );
 like( $InsertJS, qr/CustomerSafe/, 'insertion search sends customer-safety context' );
 like( $InsertJS, qr/data-qisutu-knowledge-insert-mode/, 'multiple insertion modes are wired' );
-unlike( $InsertJS, qr{https?://}i, 'knowledge insertion has no external runtime dependency' );
+unlike( $InsertRuntimeJS, qr{https?://}i, 'knowledge insertion has no external runtime dependency' );
 
 my $System = content('core/system/QisutuKnowledgeBase.pm');
 like( $System, qr/visibility.*customer/s, 'customer visibility is checked in the backend' );

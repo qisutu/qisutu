@@ -1,37 +1,77 @@
-[%# SPDX-License-Identifier: AGPL-3.0-or-later %]
-<main class="qisutu-login-main">
-    <section class="qisutu-login-card">
-        <div class="qisutu-login-card-header">
-            <h1>[% Translate.TwoFactorLoginTitle %]</h1>
-            <p>[% Translate.TwoFactorLoginDescription %]</p>
-        </div>
-        <div class="qisutu-login-error [% IF ErrorMessage %][% ELSE %]qisutu-hidden[% END %]">[% ErrorMessage %]</div>
-        [% IF TwoFactorSetup %]
-        <div class="qisutu-login-info">
-            <strong>[% Translate.TwoFactorSetupRequired %]</strong>
-            <div class="qisutu-two-factor-setup-grid">
-                <div>
-                    <p>[% Translate.TwoFactorSetupScanHint %]</p>
-                    <div class="qisutu-two-factor-qr" data-qisutu-two-factor-uri="[% TwoFactorProvisioningURI %]" data-qisutu-two-factor-label="[% Translate.TwoFactorQRCodeLabel %]"></div>
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+        <section class="qisutu-login" aria-labelledby="qisutu-two-factor-login-title">
+            <div class="qisutu-login-panel [% IF TwoFactorSetup %]qisutu-login-panel-two-factor-setup[% END %]">
+                <div class="qisutu-login-brand">
+                    <div class="qisutu-login-logo">
+                        <img src="[% StaticBase %]/img/logo.png" alt="Qisutu">
+                    </div>
+                    <div>
+                        <h1>[% SystemName %]</h1>
+                        <p>[% Translate.LoginIntro %]</p>
+                    </div>
                 </div>
-                <div>
-                    <p>[% Translate.TwoFactorSetupManualHint %]</p>
-                    <code class="qisutu-two-factor-secret">[% TwoFactorSecret %]</code>
+
+                <div class="qisutu-login-section-header">
+                    <h2 id="qisutu-two-factor-login-title">[% Translate.TwoFactorLoginTitle %]</h2>
+                    <p>[% Translate.TwoFactorLoginDescription %]</p>
                 </div>
+
+                <div class="qisutu-login-message" role="alert">[% ErrorMessage %]</div>
+
+                [% IF TwoFactorSetup %]
+                <div class="qisutu-login-notice qisutu-login-two-factor-info">
+                    <strong>[% Translate.TwoFactorSetupRequired %]</strong>
+                    <div class="qisutu-two-factor-setup-grid">
+                        <div>
+                            <p>[% Translate.TwoFactorSetupScanHint %]</p>
+                            <div class="qisutu-two-factor-qr" data-qisutu-two-factor-uri="[% TwoFactorProvisioningURI %]" data-qisutu-two-factor-label="[% Translate.TwoFactorQRCodeLabel %]"></div>
+                        </div>
+                        <div>
+                            <p>[% Translate.TwoFactorSetupManualHint %]</p>
+                            <code class="qisutu-two-factor-secret">[% TwoFactorSecret %]</code>
+                        </div>
+                    </div>
+                </div>
+                <script src="[% StaticBase %]/js/qrcode-generator/qrcode.js?v=2.0.4"></script>
+                <script src="[% StaticBase %]/js/qisutu-two-factor.js?v=2026072001"></script>
+                [% END %]
+
+                <form class="qisutu-login-form" method="post" action="[% FormAction %]" autocomplete="off">
+                    <input type="hidden" name="Step" value="TwoFactorVerify">
+                    <input type="hidden" name="ChallengeToken" value="[% ChallengeToken %]">
+                    <input type="hidden" name="TwoFactorMode" value="[% TwoFactorMode %]">
+                    <input type="hidden" name="TwoFactorSecret" value="[% TwoFactorSecret %]">
+                    <input type="hidden" name="TwoFactorAccountName" value="[% TwoFactorAccountName %]">
+
+                    <div class="qisutu-login-field">
+                        <label for="TwoFactorCode">[% Translate.TwoFactorCodeOrRecoveryCode %]</label>
+                        <input id="TwoFactorCode" type="text" name="TwoFactorCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" autofocus required>
+                    </div>
+
+                    <button class="qisutu-login-button" type="submit">[% Translate.TwoFactorVerify %]</button>
+                </form>
             </div>
-        </div>
-        <script src="[% StaticBase %]/js/qrcode-generator/qrcode.js?v=2.0.4"></script>
-        <script src="[% StaticBase %]/js/qisutu-two-factor.js?v=2026072001"></script>
-        [% END %]
-        <form class="qisutu-login-form" method="post" action="[% FormAction %]" autocomplete="off">
-            <input type="hidden" name="Step" value="TwoFactorVerify">
-            <input type="hidden" name="ChallengeToken" value="[% ChallengeToken %]">
-            <input type="hidden" name="TwoFactorMode" value="[% TwoFactorMode %]">
-            <input type="hidden" name="TwoFactorSecret" value="[% TwoFactorSecret %]">
-            <input type="hidden" name="TwoFactorAccountName" value="[% TwoFactorAccountName %]">
-            <label for="TwoFactorCode">[% Translate.TwoFactorCodeOrRecoveryCode %]</label>
-            <input id="TwoFactorCode" type="text" name="TwoFactorCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" autofocus required>
-            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TwoFactorVerify %]</button>
-        </form>
-    </section>
-</main>
+        </section>

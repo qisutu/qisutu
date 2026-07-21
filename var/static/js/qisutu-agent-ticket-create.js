@@ -513,9 +513,27 @@
         var queue = document.querySelector('[data-qisutu-create-queue]');
         var body = document.querySelector('[data-qisutu-create-body]');
         var dynamicFields = document.querySelector('[data-qisutu-create-dynamic-fields]');
+        var customerInput = document.querySelector('[data-qisutu-customer-user-autocomplete]');
+        var ownerInput = document.getElementById('qisutu-agent-ticket-create-owner');
+        var contextFields = [
+            document.getElementById('qisutu-agent-ticket-create-title-field'),
+            document.getElementById('qisutu-agent-ticket-create-state'),
+            document.getElementById('qisutu-agent-ticket-create-priority'),
+            document.getElementById('qisutu-agent-ticket-create-pending-until')
+        ].filter(function (field) { return !!field; });
 
         if (!queue || !body) {
             return;
+        }
+
+        var lastTemplate = body.value || '';
+        var templateRequestIndex = 0;
+
+        function editorGetData() {
+            if (body.qisutuEditor && body.qisutuEditor.getData) {
+                return body.qisutuEditor.getData() || '';
+            }
+            return body.value || '';
         }
 
         function editorSetData(value) {
@@ -539,6 +557,69 @@
         }
 
         var dynamicFieldsRequestIndex = 0;
+
+        function fieldValue(id) {
+            var field = document.getElementById(id);
+            return field ? (field.value || '') : '';
+        }
+
+        function templateURL(baseURL, queueID) {
+            var parameters = {
+                QueueID: queueID,
+                CustomerUserID: fieldValue('qisutu-agent-ticket-create-customer-user-id'),
+                OwnerUserID: fieldValue('qisutu-agent-ticket-create-owner-id'),
+                Title: fieldValue('qisutu-agent-ticket-create-title-field'),
+                StateID: fieldValue('qisutu-agent-ticket-create-state'),
+                PriorityID: fieldValue('qisutu-agent-ticket-create-priority'),
+                PendingUntil: fieldValue('qisutu-agent-ticket-create-pending-until')
+            };
+            var parts = [];
+
+            Object.keys(parameters).forEach(function (key) {
+                parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(parameters[key] || ''));
+            });
+
+            return baseURL + (baseURL.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+        }
+
+        function templateLoad(force) {
+            var url = queue.getAttribute('data-qisutu-template-url') || '';
+            var queueID = queue.value || '';
+            var previousTemplate = lastTemplate;
+
+            templateRequestIndex += 1;
+            var currentRequest = templateRequestIndex;
+
+            if (!url || !queueID) {
+                if (force) {
+                    lastTemplate = '';
+                    editorSetData('');
+                }
+                return;
+            }
+
+            fetch(templateURL(url, queueID), {
+                credentials: 'same-origin'
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error('template failed');
+                }
+                return response.json();
+            }).then(function (data) {
+                if (currentRequest !== templateRequestIndex || !data || !data.success) {
+                    return;
+                }
+
+                var newTemplate = data.body_template || '';
+                var currentBody = editorGetData();
+                if (force || !currentBody.trim() || currentBody === previousTemplate) {
+                    editorSetData(newTemplate);
+                    lastTemplate = newTemplate;
+                }
+            }).catch(function () {
+                // Die bereits vorhandene Eingabe bleibt bei einem Ladefehler erhalten.
+            });
+        }
 
         function dynamicFieldsLoad(queueID) {
             var url = queue.getAttribute('data-qisutu-dynamic-fields-url') || '';
@@ -576,29 +657,27 @@
         }
 
         queue.addEventListener('change', function () {
-            var url = queue.getAttribute('data-qisutu-template-url') || '';
             var queueID = queue.value || '';
 
             dynamicFieldsLoad(queueID);
+            templateLoad(true);
+        });
 
-            if (!url || !queueID) {
-                editorSetData('');
+        contextFields.forEach(function (field) {
+            field.addEventListener('change', function () {
+                templateLoad(false);
+            });
+        });
+
+        [customerInput, ownerInput].forEach(function (input) {
+            if (!input) {
                 return;
             }
-
-            fetch(url + (url.indexOf('?') === -1 ? '?' : '&') + 'QueueID=' + encodeURIComponent(queueID), {
-                credentials: 'same-origin'
-            }).then(function (response) {
-                if (!response.ok) {
-                    throw new Error('template failed');
-                }
-                return response.json();
-            }).then(function (data) {
-                if (data && data.success) {
-                    editorSetData(data.body_template || '');
-                }
-            }).catch(function () {
-                // Die bereits vorhandene Eingabe bleibt bei einem Ladefehler erhalten.
+            input.addEventListener('qisutu:autocomplete-selected', function () {
+                templateLoad(false);
+            });
+            input.addEventListener('qisutu:autocomplete-cleared', function () {
+                templateLoad(false);
             });
         });
     }

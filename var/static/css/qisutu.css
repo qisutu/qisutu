@@ -432,12 +432,29 @@ a:hover {
 .qisutu-sidebar-name {
     flex: 1 1 auto;
     min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
     overflow: hidden;
     font-size: 18px;
     font-weight: 700;
     line-height: 1;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.qisutu-sidebar-name > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.qisutu-sidebar-version {
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    opacity: .78;
 }
 
 .qisutu-nav {
@@ -1169,6 +1186,29 @@ a:hover {
 .qisutu-admin-form-block h3 {
     margin: 0;
     font-size: 16px;
+}
+
+.qisutu-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 999px;
+    background: #f3f6f8;
+    color: var(--qisutu-muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.qisutu-status-badge-active {
+    border-color: rgba(17, 122, 70, 0.25);
+    background: rgba(17, 122, 70, 0.08);
+    color: #117a46;
+}
+
+.qisutu-ldap-mapping-table input[type="text"] {
+    width: 100%;
+    min-width: 13rem;
 }
 
 .qisutu-mail-account-page {
@@ -8368,3 +8408,26 @@ html.qisutu-sidebar-collapsed .qisutu-communication-detail-backdrop { left: 68px
     .qisutu-communication-step-head strong { min-width: 0; }
     .qisutu-communication-detail-actions { padding: 10px 14px; }
 }
+
+/* Mail transport certificate checks and S/MIME administration. */
+.qisutu-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+}
+.qisutu-form-inline {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+}
+.qisutu-form-inline label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+}
+.qisutu-ticket-article-label.is-success { background: #e5f5e9; color: #176b36; }
+.qisutu-ticket-article-label.is-warning { background: #fff1d5; color: #855307; }
+.qisutu-ticket-article-label.is-error { background: #fdebea; color: #9d2b25; }

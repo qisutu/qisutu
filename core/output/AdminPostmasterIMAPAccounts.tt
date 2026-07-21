@@ -218,6 +218,19 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             </div>
                             [% END %]
 
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminMailCertificateVerification %]</label>
+                                <label class="qisutu-checkbox-label">
+                                    <input type="checkbox" name="IMAPVerifyCertificate" value="1" [% AccountIMAPVerifyCertificateChecked %]>
+                                    [% Translate.AdminMailVerifyServerCertificate %]
+                                </label>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label for="qisutu-imap-ca-file">[% Translate.AdminMailCAFile %]</label>
+                                <input id="qisutu-imap-ca-file" type="text" name="IMAPCAFile" value="[% AccountIMAPCAFile %]" placeholder="/etc/ssl/certs/company-ca.pem">
+                                <small>[% Translate.AdminMailCAFileHint %]</small>
+                            </div>
+
                             [% IF IsMicrosoft %]
                             <div class="qisutu-form-field">
                                 <label for="qisutu-mail-host">[% Translate.AdminHost %]</label>

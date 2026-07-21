@@ -91,6 +91,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                                 <span class="qisutu-ticket-article-badges">
                                                     <span class="qisutu-ticket-article-role">[% Article.sender_role_label %]</span>
                                                     <span class="qisutu-ticket-article-label">[% Article.visibility_label %]</span>
+                                                    <span class="qisutu-ticket-article-label [% Article.crypto_encryption_class %]">[% Article.crypto_encryption_label %]</span>
+                                                    <span class="qisutu-ticket-article-label [% Article.crypto_signature_class %]">[% Article.crypto_signature_label %]</span>
                                                 </span>
                                             </button>
 

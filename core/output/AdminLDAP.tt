@@ -1,0 +1,169 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+<section class="qisutu-dashboard" aria-labelledby="qisutu-admin-ldap-title">
+    <div class="qisutu-dashboard-header">
+        <div>
+            <h1 id="qisutu-admin-ldap-title">[% ProgramTitle %]</h1>
+            <p>[% ProgramDescription %]</p>
+        </div>
+    </div>
+
+    <div class="[% ErrorClass %]">[% ErrorMessage %]</div>
+    <div class="[% NoticeClass %]">[% NoticeMessage %]</div>
+
+    <nav class="qisutu-form-actions" aria-label="[% Translate.LDAPProfileSelection %]">
+        <a class="qisutu-button [% AgentProfileClass %]" href="index.pl?Page=AdminLDAP;ProfileType=agent">[% Translate.LDAPAgentProfileTitle %]</a>
+        <a class="qisutu-button [% CustomerProfileClass %]" href="index.pl?Page=AdminLDAP;ProfileType=customer">[% Translate.LDAPCustomerProfileTitle %]</a>
+    </nav>
+
+    [% IF LDAPModuleMissing %]
+    <div class="qisutu-form-error">[% Translate.LDAPModuleMissing %]</div>
+    [% END %]
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header">
+            <div>
+                <h2>[% ProgramTitle %]</h2>
+                <span class="qisutu-panel-subtitle">[% ProgramDescription %]</span>
+            </div>
+            [% IF LDAPActive %]<span class="qisutu-status-badge qisutu-status-badge-active">[% Translate.LDAPStatusActive %]</span>[% ELSE %]<span class="qisutu-status-badge">[% Translate.LDAPStatusInactive %]</span>[% END %]
+        </div>
+
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]" autocomplete="off">
+            <input type="hidden" name="Page" value="AdminLDAP">
+            <input type="hidden" name="ProfileType" value="[% ProfileType %]">
+            <input type="hidden" name="Step" value="LDAPConfigurationSave">
+            <input type="hidden" name="ConfigurationID" value="[% ConfigurationID %]">
+
+            <div class="qisutu-admin-form-block">
+                <h3>[% Translate.LDAPConnectionTitle %]</h3>
+                <div class="qisutu-admin-form-columns">
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPConfigurationName %]</label><input type="text" name="Name" value="[% ConfigurationName %]" maxlength="100" required></div>
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPDirectoryType %]</label><select name="DirectoryType">[% RAW.DirectoryTypeOptionsHTML %]</select></div>
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPHost %]</label><input type="text" name="Host" value="[% LDAPHost %]" maxlength="255" required></div>
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPPort %]</label><input type="number" name="Port" value="[% LDAPPort %]" min="1" max="65535" required></div>
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPConnectionSecurity %]</label><select name="ConnectionSecurity">[% RAW.SecurityOptionsHTML %]</select></div>
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPCAFile %]</label><input type="text" name="CAFile" value="[% LDAPCAFile %]" maxlength="500"><span class="qisutu-form-hint">[% Translate.LDAPCAFileHint %]</span></div>
+                    <label class="qisutu-form-checkbox"><input type="checkbox" name="VerifyCertificate" value="1" [% VerifyCertificateChecked %]><span>[% Translate.LDAPVerifyCertificate %]</span></label>
+                </div>
+            </div>
+
+            <div class="qisutu-admin-form-block">
+                <h3>[% Translate.LDAPServiceAccountTitle %]</h3>
+                <p class="qisutu-form-hint">[% Translate.LDAPServiceAccountDescription %]</p>
+                <div class="qisutu-admin-form-columns">
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPBindDN %]</label><input type="text" name="BindDN" value="[% LDAPBindDN %]" maxlength="1000"></div>
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPBindPassword %]</label><input type="password" name="BindPassword" autocomplete="new-password"><span class="qisutu-form-hint">[% IF LDAPHasBindPassword %][% Translate.LDAPBindPasswordStoredHint %][% ELSE %][% Translate.LDAPBindPasswordEmptyHint %][% END %]</span></div>
+                </div>
+            </div>
+
+            <div class="qisutu-admin-form-block">
+                <h3>[% Translate.LDAPSearchTitle %]</h3>
+                <div class="qisutu-admin-form-columns">
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPBaseDN %]</label><input type="text" name="BaseDN" value="[% LDAPBaseDN %]" maxlength="1000" required></div>
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPUserFilter %]</label><input type="text" name="UserFilter" value="[% LDAPUserFilter %]" maxlength="2000" required><span class="qisutu-form-hint">[% Translate.LDAPUserFilterHint %]</span></div>
+                </div>
+            </div>
+
+            <div class="qisutu-admin-form-block">
+                <h3>[% Translate.LDAPRequiredMappingTitle %]</h3>
+                <p class="qisutu-form-hint">[% Translate.LDAPRequiredMappingDescription %]</p>
+                <div class="qisutu-admin-form-columns">
+                    <div class="qisutu-form-field"><label>[% Translate.AdminLogin %] <span aria-hidden="true">*</span></label><input type="text" name="LoginAttribute" value="[% LDAPLoginAttribute %]" maxlength="100" required></div>
+                    <div class="qisutu-form-field"><label>[% Translate.AdminFirstname %] <span aria-hidden="true">*</span></label><input type="text" name="FirstnameAttribute" value="[% LDAPFirstnameAttribute %]" maxlength="100" required></div>
+                    <div class="qisutu-form-field"><label>[% Translate.AdminLastname %] <span aria-hidden="true">*</span></label><input type="text" name="LastnameAttribute" value="[% LDAPLastnameAttribute %]" maxlength="100" required></div>
+                    <div class="qisutu-form-field"><label>[% Translate.AdminEmail %] <span aria-hidden="true">*</span></label><input type="text" name="EmailAttribute" value="[% LDAPEmailAttribute %]" maxlength="100" required></div>
+                    [% IF IsCustomerProfile %]
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPCustomerNumber %] <span aria-hidden="true">*</span></label><input type="text" name="CustomerNumberAttribute" value="[% LDAPCustomerNumberAttribute %]" maxlength="100" required><span class="qisutu-form-hint">[% Translate.LDAPCustomerNumberHint %]</span></div>
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPCustomerName %] <span aria-hidden="true">*</span></label><input type="text" name="CustomerNameAttribute" value="[% LDAPCustomerNameAttribute %]" maxlength="100" required><span class="qisutu-form-hint">[% Translate.LDAPCustomerNameHint %]</span></div>
+                    [% END %]
+                </div>
+            </div>
+
+            <div class="qisutu-admin-form-block">
+                <h3>[% IF IsAgentProfile %][% Translate.LDAPProvisioningTitle %][% ELSE %][% Translate.LDAPCustomerProvisioningTitle %][% END %]</h3>
+                <div class="qisutu-admin-form-columns">
+                    [% IF IsAgentProfile %]
+                    <div class="qisutu-form-field"><label>[% Translate.LDAPDefaultGroup %]</label><select name="DefaultGroupID">[% RAW.DefaultGroupOptionsHTML %]</select><span class="qisutu-form-hint">[% Translate.LDAPDefaultGroupHint %]</span></div>
+                    [% ELSE %]
+                    <p class="qisutu-form-hint">[% Translate.LDAPCustomerProvisioningDescription %]</p>
+                    [% END %]
+                    <label class="qisutu-form-checkbox"><input type="checkbox" name="UpdateOnLogin" value="1" [% UpdateOnLoginChecked %]><span>[% Translate.LDAPUpdateStandardFieldsOnLogin %]</span></label>
+                </div>
+            </div>
+
+            [% IF HasAgentFieldMappings %]
+            <div class="qisutu-admin-form-block">
+                <h3>[% Translate.LDAPAgentFieldMappingTitle %]</h3>
+                <p class="qisutu-form-hint">[% Translate.LDAPAdditionalMappingDescription %]</p>
+                <div class="qisutu-table-wrap"><table class="qisutu-table qisutu-table-compact qisutu-ldap-mapping-table"><thead><tr><th>[% Translate.LDAPQisutuField %]</th><th>[% Translate.LDAPAttribute %]</th><th>[% Translate.LDAPMappingRequired %]</th><th>[% Translate.LDAPMappingUpdate %]</th><th>[% Translate.LDAPMappingClearEmpty %]</th></tr></thead><tbody>
+                    [% FOREACH Mapping IN AgentFieldMappings %]
+                    <tr><td><strong>[% Mapping.label %]</strong><br><small>[% Mapping.name %] · [% Mapping.field_type %] [% Mapping.qisutu_required %]</small></td><td><input type="text" name="[% Mapping.input_name %]" value="[% Mapping.ldap_attribute %]" maxlength="100" [% Mapping.attribute_required %]></td><td><input type="checkbox" name="[% Mapping.required_name %]" value="1" [% Mapping.required_checked %] [% Mapping.required_disabled %]></td><td><input type="checkbox" name="[% Mapping.update_name %]" value="1" [% Mapping.update_checked %]></td><td><input type="checkbox" name="[% Mapping.clear_name %]" value="1" [% Mapping.clear_checked %]></td></tr>
+                    [% END %]
+                </tbody></table></div>
+            </div>
+            [% END %]
+
+            [% IF HasCustomerFieldMappings %]
+            <div class="qisutu-admin-form-block">
+                <h3>[% Translate.LDAPCustomerUserFieldMappingTitle %]</h3>
+                <p class="qisutu-form-hint">[% Translate.LDAPCustomerMappingPreparedHint %]</p>
+                <div class="qisutu-table-wrap"><table class="qisutu-table qisutu-table-compact qisutu-ldap-mapping-table"><thead><tr><th>[% Translate.LDAPQisutuField %]</th><th>[% Translate.LDAPAttribute %]</th><th>[% Translate.LDAPMappingRequired %]</th><th>[% Translate.LDAPMappingUpdate %]</th><th>[% Translate.LDAPMappingClearEmpty %]</th></tr></thead><tbody>
+                    [% FOREACH Mapping IN CustomerFieldMappings %]
+                    <tr><td><strong>[% Mapping.label %]</strong><br><small>[% Mapping.name %] · [% Mapping.field_type %] [% Mapping.qisutu_required %]</small></td><td><input type="text" name="[% Mapping.input_name %]" value="[% Mapping.ldap_attribute %]" maxlength="100"></td><td><input type="checkbox" name="[% Mapping.required_name %]" value="1" [% Mapping.required_checked %]></td><td><input type="checkbox" name="[% Mapping.update_name %]" value="1" [% Mapping.update_checked %]></td><td><input type="checkbox" name="[% Mapping.clear_name %]" value="1" [% Mapping.clear_checked %]></td></tr>
+                    [% END %]
+                </tbody></table></div>
+            </div>
+            [% END %]
+
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button></div>
+        </form>
+    </section>
+
+    [% IF HasConfiguration %]
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.LDAPTestTitle %]</h2><span class="qisutu-panel-subtitle">[% Translate.LDAPTestDescription %]</span></div></div>
+        <form class="qisutu-admin-form" method="post" action="[% FormAction %]" autocomplete="off">
+            <input type="hidden" name="Page" value="AdminLDAP"><input type="hidden" name="ProfileType" value="[% ProfileType %]"><input type="hidden" name="Step" value="LDAPConfigurationTest"><input type="hidden" name="ConfigurationID" value="[% ConfigurationID %]">
+            <div class="qisutu-admin-form-columns"><div class="qisutu-form-field"><label>[% Translate.LDAPTestLogin %]</label><input type="text" name="TestLogin" required></div><div class="qisutu-form-field"><label>[% Translate.LDAPTestPassword %]</label><input type="password" name="TestPassword" autocomplete="new-password"><span class="qisutu-form-hint">[% Translate.LDAPTestPasswordHint %]</span></div></div>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-secondary" type="submit">[% Translate.LDAPTestSubmit %]</button></div>
+        </form>
+        [% IF LDAPLastTestAt %]<p class="qisutu-form-hint">[% Translate.LDAPLastTest %]: [% LDAPLastTestAt %] – [% LDAPLastTestMessage %]</p>[% END %]
+    </section>
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.LDAPActivationTitle %]</h2><span class="qisutu-panel-subtitle">[% Translate.LDAPActivationDescription %]</span></div></div>
+        [% IF LDAPActive %]
+        <form method="post" action="[% FormAction %]"><input type="hidden" name="Page" value="AdminLDAP"><input type="hidden" name="ProfileType" value="[% ProfileType %]"><input type="hidden" name="Step" value="LDAPConfigurationDeactivate"><input type="hidden" name="ConfigurationID" value="[% ConfigurationID %]"><button class="qisutu-button qisutu-button-danger" type="submit">[% Translate.LDAPDeactivate %]</button></form>
+        [% ELSE %]
+        [% IF LDAPTested %]
+        <form method="post" action="[% FormAction %]"><input type="hidden" name="Page" value="AdminLDAP"><input type="hidden" name="ProfileType" value="[% ProfileType %]"><input type="hidden" name="Step" value="LDAPConfigurationActivate"><input type="hidden" name="ConfigurationID" value="[% ConfigurationID %]"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.LDAPActivate %]</button></form>
+        [% ELSE %]
+        <button class="qisutu-button qisutu-button-primary" type="button" disabled title="[% Translate.LDAPSuccessfulTestRequired %]">[% Translate.LDAPActivate %]</button>
+        [% END %]
+        [% END %]
+    </section>
+    [% END %]
+</section>

@@ -31,6 +31,7 @@ use Time::Local qw(timelocal);
 
 use QisutuCalendar;
 use QisutuChecklist;
+use QisutuCustomerAutoResponse;
 use QisutuDynamicField;
 use QisutuHTML;
 use QisutuNotification;
@@ -49,6 +50,8 @@ sub new {
         LastError                  => '',
         LastAgentNotificationSent  => 0,
         LastAgentNotificationError => '',
+        LastCustomerAutoResponseSent  => 0,
+        LastCustomerAutoResponseError => '',
         LastEmailImportAction      => '',
         LastEmailImportTicketID    => 0,
         LastEmailImportArticleID   => 0,
@@ -1261,6 +1264,20 @@ sub TicketCreateFromEmail {
         ChangedByUserID  => $ChangedByUserID,
     );
 
+    if ( $SenderType eq 'customer' ) {
+        $Self->_CustomerAutoResponseSend(
+            ResponseType     => 'customer_ticket_created',
+            TicketID         => $TicketID,
+            ArticleID        => $ArticleID,
+            RecipientName    => $FromName,
+            RecipientEmail   => $FromEmail,
+            IncomingSubject  => $OriginalTitle,
+            IncomingFromName => $FromName,
+            IncomingFromEmail => $FromEmail,
+            IncomingToEmail  => $ToEmail,
+        );
+    }
+
     $Self->{LastEmailImportAction}   = 'created';
     $Self->{LastEmailImportTicketID} = $TicketID;
     $Self->{LastEmailImportArticleID} = $ArticleID;
@@ -1419,6 +1436,20 @@ sub _TicketReplyCreateFromEmail {
             NotificationType => 'customer_reply_in_my_queues',
             TicketID         => $TicketID,
             ChangedByUserID  => $ChangedByUserID,
+        );
+
+        $Self->_CustomerAutoResponseSend(
+            ResponseType => ( $Ticket->{current_state_type} || '' ) eq 'closed'
+                ? 'closed_ticket_follow_up'
+                : 'customer_ticket_reply',
+            TicketID          => $TicketID,
+            ArticleID         => $ArticleID,
+            RecipientName     => $FromName,
+            RecipientEmail    => $FromEmail,
+            IncomingSubject   => $OriginalSubject,
+            IncomingFromName  => $FromName,
+            IncomingFromEmail => $FromEmail,
+            IncomingToEmail   => $ToEmail,
         );
     }
 
@@ -2038,6 +2069,14 @@ sub TicketCreateFromCustomer {
         ChangedByUserID  => $UserID,
     );
 
+    $Self->_CustomerAutoResponseSend(
+        ResponseType   => 'customer_ticket_created',
+        TicketID       => $TicketID,
+        ArticleID      => $ArticleID,
+        RecipientName  => $FromName,
+        RecipientEmail => $FromEmail,
+    );
+
     return $TicketID;
 }
 
@@ -2360,6 +2399,16 @@ sub TicketCreateFromAgent {
         }
     }
 
+    my $ContentRenderer;
+    my $ContentSystemPlaceholder;
+    if ( $ContentType eq 'text/html' && $Body =~ m{\{\{\s*[A-Za-z0-9_.]+\s*\}\}} ) {
+        $ContentRenderer = QisutuNotification->new(
+            Config => $Self->{Config},
+            DB     => $Self->{DB},
+        );
+        $ContentSystemPlaceholder = $ContentRenderer->SystemPlaceholderHash();
+    }
+
     my $TicketNumber = $Self->_TicketNumberCreate();
     if ( !$TicketNumber ) {
         $Self->{LastError} ||= 'Ticket number could not be created';
@@ -2447,6 +2496,17 @@ sub TicketCreateFromAgent {
         $Self->{LastError} = 'Ticket ID could not be loaded';
         $Self->{DB}->Rollback();
         return;
+    }
+
+    if ($ContentRenderer) {
+        $Body = $ContentRenderer->ContentTemplateRenderHTML(
+            HTML        => $Body,
+            TicketID    => $TicketID,
+            AgentUserID => $UserID,
+            ChangedByID => $UserID,
+            AssignedID  => $OwnerUserID,
+            SystemPlaceholder => $ContentSystemPlaceholder,
+        );
     }
 
     if ( !$DynamicFieldObject->TicketValueSave(
@@ -2840,6 +2900,10 @@ sub ArticleList {
             a.internal,
             a.created_at,
             a.changed_at,
+            COALESCE(ac.encrypted, 0) AS crypto_encrypted,
+            COALESCE(ac.decrypted, 0) AS crypto_decrypted,
+            COALESCE(ac.signed, 0) AS crypto_signed,
+            COALESCE(ac.signature_status, "none") AS crypto_signature_status,
             created_account.login AS created_by_login,
             created_account.firstname AS created_by_firstname,
             created_account.lastname AS created_by_lastname,
@@ -2847,6 +2911,7 @@ sub ArticleList {
             changed_account.firstname AS changed_by_firstname,
             changed_account.lastname AS changed_by_lastname
          FROM ticket_article a
+         LEFT JOIN ticket_article_crypto ac ON ac.article_id = a.id
          LEFT JOIN user_account created_account ON created_account.id = a.created_by_user_id
          LEFT JOIN user_account changed_account ON changed_account.id = a.changed_by_user_id
          WHERE a.ticket_id = ?
@@ -2918,6 +2983,34 @@ sub ArticleList {
             CreatedByName => $Article->{created_by_name},
         );
         $Article->{recipient} = $Article->{to_name} || $Article->{to_email} || '-';
+
+        $Article->{crypto_encryption_label} = '';
+        if ( $Article->{crypto_decrypted} ) {
+            $Article->{crypto_encryption_label} = 'Translate:MailCryptoDecrypted';
+        }
+        elsif ( $Article->{crypto_encrypted} ) {
+            $Article->{crypto_encryption_label} = 'Translate:MailCryptoEncrypted';
+        }
+        $Article->{crypto_encryption_class} = $Article->{crypto_encryption_label}
+            ? 'is-success'
+            : 'qisutu-hidden';
+
+        my %SignatureLabel = (
+            valid_trusted   => 'Translate:MailCryptoSignedValid',
+            valid_untrusted => 'Translate:MailCryptoSignedUntrusted',
+            invalid         => 'Translate:MailCryptoSignedInvalid',
+            unchecked       => 'Translate:MailCryptoSignedUnchecked',
+            created         => 'Translate:MailCryptoSignedValid',
+        );
+        $Article->{crypto_signature_label} = $SignatureLabel{ $Article->{crypto_signature_status} || '' } || '';
+        $Article->{crypto_signature_class} = !$Article->{crypto_signature_label}
+            ? 'qisutu-hidden'
+            : ( $Article->{crypto_signature_status} || '' ) eq 'invalid'
+                ? 'is-error'
+                : ( $Article->{crypto_signature_status} || '' ) eq 'valid_untrusted'
+                    || ( $Article->{crypto_signature_status} || '' ) eq 'unchecked'
+                    ? 'is-warning'
+                    : 'is-success';
 
         $Article->{visibility_label} = 'Translate:TicketArticleVisibilityBoth';
         if ( $Article->{visibility} eq 'agent' ) {
@@ -5992,6 +6085,49 @@ sub _AgentNotificationSend {
     $Self->{LastAgentNotificationError} = $Error;
 
     return $Sent;
+}
+
+sub _CustomerAutoResponseSend {
+    my ( $Self, %Param ) = @_;
+
+    $Self->{LastCustomerAutoResponseSent}  = 0;
+    $Self->{LastCustomerAutoResponseError} = '';
+
+    if ( !$Param{ResponseType} ) {
+        $Self->{LastCustomerAutoResponseError} = 'Missing customer auto-response type';
+        return 0;
+    }
+
+    my $Sent  = 0;
+    my $Error = '';
+    my $OK = eval {
+        my $Response = QisutuCustomerAutoResponse->new(
+            Config => $Self->{Config},
+            DB     => $Self->{DB},
+        );
+        $Sent  = $Response->Send(%Param) || 0;
+        $Error = $Response->Error() || '';
+        1;
+    };
+
+    if ( !$OK ) {
+        $Error = $@ || 'Customer auto-response could not be sent';
+        $Error =~ s{\s+\z}{};
+    }
+
+    $Self->{LastCustomerAutoResponseSent}  = $Sent;
+    $Self->{LastCustomerAutoResponseError} = $Error;
+    return $Sent;
+}
+
+sub LastCustomerAutoResponseSent {
+    my ($Self) = @_;
+    return $Self->{LastCustomerAutoResponseSent} || 0;
+}
+
+sub LastCustomerAutoResponseError {
+    my ($Self) = @_;
+    return $Self->{LastCustomerAutoResponseError} || '';
 }
 
 sub LastAgentNotificationSent {

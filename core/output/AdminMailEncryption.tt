@@ -1,0 +1,118 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+<section class="qisutu-dashboard" aria-labelledby="qisutu-mail-encryption-title">
+    <div class="qisutu-dashboard-header">
+        <div>
+            <h1 id="qisutu-mail-encryption-title">[% ProgramTitle %]</h1>
+            <p>[% ProgramDescription %]</p>
+        </div>
+    </div>
+
+    <div class="[% ErrorClass %]">[% ErrorMessage %]</div>
+    <div class="[% NoticeClass %]">[% NoticeMessage %]</div>
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header">
+            <div><h2>[% Translate.AdminMailEncryptionPolicies %]</h2><span class="qisutu-panel-subtitle">[% Translate.AdminMailEncryptionPoliciesHint %]</span></div>
+        </div>
+        [% IF HasPolicies %]
+        <div class="qisutu-table-scroll">
+            <table class="qisutu-table">
+                <thead><tr><th>[% Translate.AdminSystemEmail %]</th><th>[% Translate.AdminMailEncryptionPolicies %]</th></tr></thead>
+                <tbody>
+                [% FOREACH Policy IN Policies %]
+                    <tr>
+                        <td><strong>[% Policy.name %]</strong><br><small>[% Policy.email %]</small></td>
+                        <td>
+                            <form class="qisutu-form-inline" method="post" action="[% FormAction %]">
+                                <input type="hidden" name="Page" value="AdminMailEncryption">
+                                <input type="hidden" name="Step" value="PolicySave">
+                                <input type="hidden" name="SystemEmailID" value="[% Policy.system_email_id %]">
+                                <label><input type="checkbox" name="SignOutgoing" value="1" [% Policy.sign_checked %]> [% Translate.AdminMailEncryptionSign %]</label>
+                                <select name="EncryptOutgoing">
+                                    <option value="disabled" [% Policy.encrypt_disabled_selected %]>[% Translate.AdminMailEncryptionDisabled %]</option>
+                                    <option value="available" [% Policy.encrypt_available_selected %]>[% Translate.AdminMailEncryptionWhenAvailable %]</option>
+                                    <option value="required" [% Policy.encrypt_required_selected %]>[% Translate.AdminMailEncryptionRequired %]</option>
+                                </select>
+                                <label><input type="checkbox" name="DecryptIncoming" value="1" [% Policy.decrypt_checked %]> [% Translate.AdminMailEncryptionDecrypt %]</label>
+                                <label><input type="checkbox" name="VerifyIncoming" value="1" [% Policy.verify_checked %]> [% Translate.AdminMailEncryptionVerify %]</label>
+                                <label><input type="checkbox" name="Active" value="1" [% Policy.active_checked %]> [% Translate.AdminActive %]</label>
+                                <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                            </form>
+                        </td>
+                    </tr>
+                [% END %]
+                </tbody>
+            </table>
+        </div>
+        [% END %]
+    </section>
+
+    <div class="qisutu-admin-form-columns">
+        <section class="qisutu-panel">
+            <div class="qisutu-panel-header"><div><h2>[% Translate.AdminMailEncryptionIdentityImport %]</h2><span class="qisutu-panel-subtitle">[% Translate.AdminMailEncryptionIdentityHint %]</span></div></div>
+            <form class="qisutu-admin-form" method="post" action="[% FormAction %]" enctype="multipart/form-data">
+                <input type="hidden" name="Page" value="AdminMailEncryption"><input type="hidden" name="Step" value="IdentityImport">
+                <div class="qisutu-form-field"><label>[% Translate.AdminSystemEmail %]</label><select name="SystemEmailID" required>[% RAW.SystemEmailOptionsHTML %]</select></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminName %]</label><input type="text" name="DisplayName"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminMailEncryptionPKCS12 %]</label><input type="file" name="IdentityPKCS12" accept=".p12,.pfx,application/x-pkcs12"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminMailEncryptionPassphrase %]</label><input type="password" name="Passphrase" autocomplete="new-password"></div>
+                <p>[% Translate.AdminMailEncryptionOrPEM %]</p>
+                <div class="qisutu-form-field"><label>[% Translate.AdminMailEncryptionCertificate %]</label><input type="file" name="IdentityCertificate" accept=".pem,.crt,.cer"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminMailEncryptionPrivateKey %]</label><input type="file" name="IdentityPrivateKey" accept=".pem,.key"></div>
+                <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminMailEncryptionImport %]</button>
+            </form>
+        </section>
+
+        <section class="qisutu-panel">
+            <div class="qisutu-panel-header"><div><h2>[% Translate.AdminMailEncryptionRecipientImport %]</h2><span class="qisutu-panel-subtitle">[% Translate.AdminMailEncryptionRecipientHint %]</span></div></div>
+            <form class="qisutu-admin-form" method="post" action="[% FormAction %]" enctype="multipart/form-data">
+                <input type="hidden" name="Page" value="AdminMailEncryption"><input type="hidden" name="Step" value="RecipientImport">
+                <div class="qisutu-form-field"><label>[% Translate.AdminEmail %]</label><input type="email" name="Email" required></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminName %]</label><input type="text" name="DisplayName"></div>
+                <div class="qisutu-form-field"><label>[% Translate.AdminMailEncryptionCertificate %]</label><input type="file" name="RecipientCertificate" accept=".pem,.crt,.cer" required></div>
+                <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminMailEncryptionImport %]</button>
+            </form>
+        </section>
+    </div>
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header"><div><h2>[% Translate.AdminMailEncryptionCertificates %]</h2><span class="qisutu-panel-subtitle">[% Translate.AdminMailEncryptionCertificatesHint %]</span></div></div>
+        [% IF HasKeys %]
+        <div class="qisutu-table-scroll"><table class="qisutu-table">
+            <thead><tr><th>[% Translate.AdminType %]</th><th>[% Translate.AdminEmail %]</th><th>[% Translate.AdminMailEncryptionFingerprint %]</th><th>[% Translate.AdminMailEncryptionValidity %]</th><th>[% Translate.AdminStatus %]</th><th>[% Translate.AdminActions %]</th></tr></thead>
+            <tbody>
+            [% FOREACH Key IN Keys %]
+                <tr>
+                    <td>[% Key.role_label %]</td><td><strong>[% Key.email_address %]</strong><br><small>[% Key.display_name %]</small></td>
+                    <td><code>[% Key.fingerprint_sha256 %]</code></td><td>[% Key.valid_from %]<br>[% Key.valid_until %]</td><td><span class="qisutu-status-badge [% Key.status_class %]">[% Key.status_label %]</span></td>
+                    <td><form class="qisutu-form-inline" method="post" action="[% FormAction %]"><input type="hidden" name="Page" value="AdminMailEncryption"><input type="hidden" name="Step" value="[% Key.toggle_step %]"><input type="hidden" name="KeyID" value="[% Key.id %]"><button class="qisutu-button qisutu-button-secondary" type="submit">[% Key.toggle_label %]</button></form> <form class="qisutu-form-inline" method="post" action="[% FormAction %]"><input type="hidden" name="Page" value="AdminMailEncryption"><input type="hidden" name="Step" value="KeyDelete"><input type="hidden" name="KeyID" value="[% Key.id %]"><button class="qisutu-button qisutu-button-danger" type="submit">[% Translate.AdminDelete %]</button></form></td>
+                </tr>
+            [% END %]
+            </tbody>
+        </table></div>
+        [% ELSE %]<p>[% Translate.AdminMailEncryptionNoCertificates %]</p>[% END %]
+    </section>
+</section>

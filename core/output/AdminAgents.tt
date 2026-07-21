@@ -53,6 +53,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <th>[% Translate.AdminLogin %]</th>
                                     <th>[% Translate.AdminName %]</th>
                                     <th>[% Translate.AdminEmail %]</th>
+                                    <th>[% Translate.AdminAuthentication %]</th>
                                     <th>[% Translate.AdminGroups %]</th>
                                     <th>[% Translate.AdminActive %]</th>
                                     <th>[% Translate.AdminAction %]</th>
@@ -64,6 +65,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <td><a class="qisutu-table-link" href="index.pl?Page=AdminAgents;Action=Edit;UserAccountID=[% Agent.id %]">[% Agent.login %]</a></td>
                                     <td><a class="qisutu-table-link" href="index.pl?Page=AdminAgents;Action=Edit;UserAccountID=[% Agent.id %]">[% Agent.firstname %] [% Agent.lastname %]</a></td>
                                     <td>[% Agent.email %]</td>
+                                    <td>[% Agent.authentication_label %]</td>
                                     <td>[% Agent.group_names %]</td>
                                     <td>[% Agent.active_label %]</td>
                                     <td>
@@ -185,6 +187,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <div class="qisutu-form-field">
                                 <label>[% Translate.AdminPasswordNew %]</label>
                                 <input type="password" name="Password">
+                                [% IF AgentLDAPAuthentication %]<span class="qisutu-form-hint">[% Translate.AdminLDAPPasswordConversionHint %]</span>[% END %]
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminAuthentication %]</label>
+                                <input type="text" value="[% AgentAuthenticationLabel %]" readonly>
                             </div>
                             <div class="qisutu-form-field">
                                 <label>[% Translate.AdminFirstname %]</label>

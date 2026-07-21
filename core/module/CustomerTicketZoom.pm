@@ -87,6 +87,8 @@ sub Run {
         my ( $ToName, $ToEmail ) = $Self->_QueueAddress( TicketID => $TicketID );
         my $FromName = $Self->_UserName( User => $User );
         my $FromEmail = $User->{email} || '';
+        my $ArticleID;
+        my $WasClosed = $TicketForSubmit && ( $TicketForSubmit->{state_type} || '' ) eq 'closed' ? 1 : 0;
 
         if ( !$ArticleCreateError ) {
             $Self->{DB}->BeginWork() || do {
@@ -95,7 +97,7 @@ sub Run {
         }
 
         if ( !$ArticleCreateError ) {
-            my $ArticleID = $TicketObject->ArticleCreate(
+            $ArticleID = $TicketObject->ArticleCreate(
                 TicketID        => $TicketID,
                 User            => $User,
                 Subject         => $Subject,
@@ -121,6 +123,15 @@ sub Run {
 
         if ( !$ArticleCreateError ) {
             if ( $Self->{DB}->Commit() ) {
+                $TicketObject->_CustomerAutoResponseSend(
+                    ResponseType => $WasClosed
+                        ? 'closed_ticket_follow_up'
+                        : 'customer_ticket_reply',
+                    TicketID       => $TicketID,
+                    ArticleID      => $ArticleID,
+                    RecipientName  => $FromName,
+                    RecipientEmail => $FromEmail,
+                );
                 return {
                     Redirect => 'index.pl?Page=CustomerTicketZoom&TicketID=' . $TicketID,
                 };

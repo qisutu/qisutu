@@ -269,6 +269,7 @@ sub _BaseData {
         PageCSS            => 'qisutu.css',
         BodyClass          => 'qisutu-app-page',
         SystemName         => $Self->{Config}->{System}->{Name} || 'Qisutu',
+        SystemVersion      => $Self->{Config}->{System}->{Version} || '',
         UserDisplayName    => $Name,
         UserInitials       => $Self->_Initials( Name => $Name ),
         UserHasPreferences => ( ( $User->{account_type} || '' ) =~ m{\A(?:agent|customer)\z} ? 1 : 0 ),

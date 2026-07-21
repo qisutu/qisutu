@@ -173,6 +173,21 @@ sub Run {
     my $FieldTranslation = {};
     my $FieldValue = {};
 
+    my $AuthenticationLocalLabel = $Self->{Output}->Translate(
+        Key      => 'AdminAuthenticationLocal',
+        Language => $Language,
+    );
+    my $AuthenticationLDAPLabel = $Self->{Output}->Translate(
+        Key      => 'AdminAuthenticationLDAP',
+        Language => $Language,
+    );
+    for my $AgentEntry ( @{$AgentList} ) {
+        $AgentEntry->{authentication_label}
+            = ( $AgentEntry->{authentication_type} || 'local' ) eq 'ldap'
+            ? $AuthenticationLDAPLabel
+            : $AuthenticationLocalLabel;
+    }
+
     if ( $Admin && $Action eq 'Edit' ) {
         $Agent = $Admin->AgentGet( UserAccountID => $Request->{UserAccountID} );
         if ($Agent) {
@@ -257,6 +272,10 @@ sub Run {
             AgentFirstname     => $Agent ? $Agent->{firstname} : '',
             AgentLastname      => $Agent ? $Agent->{lastname} : '',
             AgentGroups        => $Agent ? $Agent->{group_names} : '',
+            AgentAuthenticationLabel => $Agent && ( $Agent->{authentication_type} || 'local' ) eq 'ldap'
+                ? $AuthenticationLDAPLabel
+                : $AuthenticationLocalLabel,
+            AgentLDAPAuthentication => $Agent && ( $Agent->{authentication_type} || 'local' ) eq 'ldap' ? 1 : 0,
             AgentActiveChecked => $Agent && $Agent->{is_active} ? 'checked' : '',
             TwoFactorResetSuccess => $Request->{TwoFactorReset} ? 1 : 0,
             FieldID            => $Field ? $Field->{id} : '',

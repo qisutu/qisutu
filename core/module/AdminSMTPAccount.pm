@@ -78,7 +78,12 @@ sub Run {
             $ErrorMessage = 'Translate:AdminOAuthProviderInvalid';
         }
         else {
-            my %Save = ( %{$Request}, $Self->_KindParameters($AccountKind), ChangedByUserID => $UserID );
+            my %Save = (
+                %{$Request},
+                $Self->_KindParameters($AccountKind),
+                SMTPVerifyCertificate => $Request->{SMTPVerifyCertificate} ? 1 : 0,
+                ChangedByUserID => $UserID,
+            );
             my $SavedID = $Step eq 'SMTPAccountCreate'
                 ? $Admin->SMTPAccountCreate(%Save)
                 : $Admin->SMTPAccountUpdate(%Save);
@@ -190,6 +195,9 @@ sub Run {
     my $Info = $Self->_PageInfo($AccountKind);
     my $Security = $Self->_SourceValue( $Source, 'SMTPSecurity', 'smtp_security', 'smtp_starttls' );
     my $Active = $Submitted ? ( $Request->{Active} ? 1 : 0 ) : ( !$Account || $Account->{active} ? 1 : 0 );
+    my $VerifyCertificate = $Submitted
+        ? ( $Request->{SMTPVerifyCertificate} ? 1 : 0 )
+        : ( !$Account || !exists $Account->{smtp_verify_certificate} || $Account->{smtp_verify_certificate} ? 1 : 0 );
     $ErrorMessage ||= $Admin->Error() || '';
 
     return {
@@ -223,6 +231,8 @@ sub Run {
             AccountName        => $Self->_SourceValue( $Source, 'Name', 'name', '' ),
             AccountSMTPHost    => $Self->_SourceValue( $Source, 'SMTPHost', 'smtp_host', '' ),
             AccountSMTPPort    => $Self->_SourceValue( $Source, 'SMTPPort', 'smtp_port', 587 ),
+            AccountSMTPVerifyCertificateChecked => $VerifyCertificate ? 'checked' : '',
+            AccountSMTPCAFile  => $Self->_SourceValue( $Source, 'SMTPCAFile', 'smtp_ca_file', '' ),
             AccountSMTPUsername => $Self->_SourceValue( $Source, 'SMTPUsername', 'smtp_username', '' ),
             AccountOAuthClientID => $Self->_SourceValue( $Source, 'OAuthClientID', 'oauth_client_id', '' ),
             AccountOAuthTenantID => $Self->_SourceValue( $Source, 'OAuthTenantID', 'oauth_tenant_id', 'common' ),

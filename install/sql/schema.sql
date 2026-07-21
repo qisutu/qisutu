@@ -84,6 +84,53 @@ CREATE TABLE `agent_notification_template` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `customer_auto_response_event_log`
+--
+
+DROP TABLE IF EXISTS `customer_auto_response_event_log`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `customer_auto_response_event_log` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `response_type` varchar(100) NOT NULL,
+  `ticket_id` bigint(20) unsigned NOT NULL DEFAULT 0,
+  `article_id` bigint(20) unsigned NOT NULL DEFAULT 0,
+  `recipient_email` varchar(255) NOT NULL,
+  `event_key` varchar(255) NOT NULL,
+  `sent_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `customer_auto_response_event_unique` (`response_type`,`event_key`),
+  KEY `customer_auto_response_event_ticket` (`ticket_id`),
+  KEY `customer_auto_response_event_article` (`article_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `customer_auto_response_template`
+--
+
+DROP TABLE IF EXISTS `customer_auto_response_template`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `customer_auto_response_template` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `response_type` varchar(100) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `subject` varchar(500) NOT NULL DEFAULT '',
+  `body_html` longtext NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 0,
+  `sort_order` int(10) unsigned NOT NULL DEFAULT 1000,
+  `created_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `customer_auto_response_template_type_unique` (`response_type`),
+  KEY `customer_auto_response_template_active_sort` (`active`,`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `automation_deleted_ticket`
 --
 
@@ -497,6 +544,8 @@ CREATE TABLE `postmaster_imap_account` (
   `imap_host` varchar(255) NOT NULL DEFAULT '',
   `imap_security` varchar(30) NOT NULL DEFAULT 'imap_starttls',
   `imap_port` int(10) unsigned NOT NULL DEFAULT 143,
+  `imap_verify_certificate` tinyint(1) NOT NULL DEFAULT 1,
+  `imap_ca_file` varchar(500) NOT NULL DEFAULT '',
   `imap_auth_type` varchar(30) NOT NULL DEFAULT 'password',
   `imap_username` varchar(255) NOT NULL DEFAULT '',
   `imap_password` text DEFAULT NULL,
@@ -817,6 +866,8 @@ CREATE TABLE `smtp_account` (
   `smtp_host` varchar(255) NOT NULL DEFAULT '',
   `smtp_security` varchar(30) NOT NULL DEFAULT 'smtp_starttls',
   `smtp_port` int(10) unsigned NOT NULL DEFAULT 587,
+  `smtp_verify_certificate` tinyint(1) NOT NULL DEFAULT 1,
+  `smtp_ca_file` varchar(500) NOT NULL DEFAULT '',
   `smtp_auth_type` varchar(30) NOT NULL DEFAULT 'password',
   `smtp_username` varchar(255) NOT NULL DEFAULT '',
   `smtp_password` text DEFAULT NULL,
@@ -1613,6 +1664,7 @@ CREATE TABLE `user_account` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `login` varchar(100) NOT NULL,
   `account_type` varchar(20) NOT NULL DEFAULT 'agent',
+  `authentication_type` varchar(20) NOT NULL DEFAULT 'local',
   `email` varchar(255) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `firstname` varchar(100) NOT NULL DEFAULT '',
@@ -1897,6 +1949,70 @@ CREATE TABLE `user_group_permission` (
   KEY `user_group_permission_permission_key_idx` (`permission_key`),
   KEY `user_group_permission_active_idx` (`active`),
   CONSTRAINT `fk_user_group_permission_user_group_id` FOREIGN KEY (`user_group_id`) REFERENCES `user_group` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `ldap_configuration`
+--
+
+DROP TABLE IF EXISTS `ldap_field_mapping`;
+DROP TABLE IF EXISTS `ldap_configuration`;
+CREATE TABLE `ldap_configuration` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `profile_type` varchar(20) NOT NULL DEFAULT 'agent',
+  `name` varchar(100) NOT NULL DEFAULT 'LDAP / Active Directory',
+  `directory_type` varchar(20) NOT NULL DEFAULT 'active_directory',
+  `host` varchar(255) NOT NULL,
+  `port` int(10) unsigned NOT NULL DEFAULT 636,
+  `connection_security` varchar(20) NOT NULL DEFAULT 'ldaps',
+  `verify_certificate` tinyint(1) NOT NULL DEFAULT 1,
+  `ca_file` varchar(500) NOT NULL DEFAULT '',
+  `bind_dn` varchar(1000) NOT NULL DEFAULT '',
+  `bind_password_encrypted` text DEFAULT NULL,
+  `base_dn` varchar(1000) NOT NULL,
+  `user_filter` varchar(2000) NOT NULL DEFAULT '(objectClass=person)',
+  `login_attribute` varchar(100) NOT NULL,
+  `firstname_attribute` varchar(100) NOT NULL,
+  `lastname_attribute` varchar(100) NOT NULL,
+  `email_attribute` varchar(100) NOT NULL,
+  `customer_number_attribute` varchar(100) NOT NULL DEFAULT '',
+  `customer_name_attribute` varchar(100) NOT NULL DEFAULT '',
+  `default_group_id` bigint(20) unsigned DEFAULT NULL,
+  `update_on_login` tinyint(1) NOT NULL DEFAULT 1,
+  `active` tinyint(1) NOT NULL DEFAULT 0,
+  `last_test_at` datetime DEFAULT NULL,
+  `last_test_status` varchar(20) NOT NULL DEFAULT '',
+  `last_test_message` text DEFAULT NULL,
+  `created_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `ldap_configuration_active` (`active`),
+  KEY `ldap_configuration_profile_active` (`profile_type`,`active`,`id`),
+  KEY `ldap_configuration_default_group` (`default_group_id`),
+  CONSTRAINT `ldap_configuration_default_group_fk` FOREIGN KEY (`default_group_id`) REFERENCES `user_group` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `ldap_field_mapping` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `ldap_configuration_id` bigint(20) unsigned NOT NULL,
+  `object_type` varchar(50) NOT NULL,
+  `field_id` bigint(20) unsigned NOT NULL,
+  `ldap_attribute` varchar(100) NOT NULL,
+  `is_required` tinyint(1) NOT NULL DEFAULT 0,
+  `update_on_login` tinyint(1) NOT NULL DEFAULT 1,
+  `clear_empty` tinyint(1) NOT NULL DEFAULT 0,
+  `created_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ldap_field_mapping_unique` (`ldap_configuration_id`,`object_type`,`field_id`),
+  KEY `ldap_field_mapping_field` (`field_id`),
+  CONSTRAINT `ldap_field_mapping_configuration_fk` FOREIGN KEY (`ldap_configuration_id`) REFERENCES `ldap_configuration` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `ldap_field_mapping_field_fk` FOREIGN KEY (`field_id`) REFERENCES `user_dynamic_field` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -3269,6 +3385,79 @@ CREATE TABLE IF NOT EXISTS `communication_log_step` (
   CONSTRAINT `communication_log_step_log_fk` FOREIGN KEY (`communication_log_id`) REFERENCES `communication_log` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- S/MIME identities, recipient certificates, policies and article status
+CREATE TABLE IF NOT EXISTS `mail_crypto_key` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `crypto_type` varchar(20) NOT NULL DEFAULT 'smime',
+  `key_role` varchar(20) NOT NULL,
+  `system_email_id` bigint(20) unsigned DEFAULT NULL,
+  `email_address` varchar(255) NOT NULL,
+  `display_name` varchar(255) NOT NULL DEFAULT '',
+  `certificate_pem` longtext NOT NULL,
+  `certificate_chain_pem` longtext DEFAULT NULL,
+  `private_key_encrypted` longtext DEFAULT NULL,
+  `fingerprint_sha256` char(64) NOT NULL,
+  `serial_number` varchar(190) NOT NULL DEFAULT '',
+  `subject_name` text DEFAULT NULL,
+  `issuer_name` text DEFAULT NULL,
+  `valid_from` datetime DEFAULT NULL,
+  `valid_until` datetime DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_by_user_id` bigint(20) unsigned NOT NULL,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mail_crypto_key_role_email_fingerprint` (`crypto_type`,`key_role`,`email_address`,`fingerprint_sha256`),
+  KEY `mail_crypto_key_system_email` (`system_email_id`,`active`,`valid_until`,`id`),
+  KEY `mail_crypto_key_recipient` (`key_role`,`email_address`,`active`,`valid_until`,`id`),
+  CONSTRAINT `mail_crypto_key_system_email_fk` FOREIGN KEY (`system_email_id`) REFERENCES `system_email` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `mail_crypto_key_created_by_fk` FOREIGN KEY (`created_by_user_id`) REFERENCES `user_account` (`id`),
+  CONSTRAINT `mail_crypto_key_changed_by_fk` FOREIGN KEY (`changed_by_user_id`) REFERENCES `user_account` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `mail_crypto_policy` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `system_email_id` bigint(20) unsigned NOT NULL,
+  `sign_outgoing` tinyint(1) NOT NULL DEFAULT 0,
+  `encrypt_outgoing` varchar(20) NOT NULL DEFAULT 'disabled',
+  `decrypt_incoming` tinyint(1) NOT NULL DEFAULT 1,
+  `verify_incoming` tinyint(1) NOT NULL DEFAULT 1,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_by_user_id` bigint(20) unsigned NOT NULL,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mail_crypto_policy_system_email_unique` (`system_email_id`),
+  CONSTRAINT `mail_crypto_policy_system_email_fk` FOREIGN KEY (`system_email_id`) REFERENCES `system_email` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mail_crypto_policy_created_by_fk` FOREIGN KEY (`created_by_user_id`) REFERENCES `user_account` (`id`),
+  CONSTRAINT `mail_crypto_policy_changed_by_fk` FOREIGN KEY (`changed_by_user_id`) REFERENCES `user_account` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ticket_article_crypto` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `ticket_id` bigint(20) unsigned NOT NULL,
+  `article_id` bigint(20) unsigned NOT NULL,
+  `direction` varchar(20) NOT NULL,
+  `crypto_type` varchar(20) NOT NULL DEFAULT 'smime',
+  `encrypted` tinyint(1) NOT NULL DEFAULT 0,
+  `decrypted` tinyint(1) NOT NULL DEFAULT 0,
+  `signed` tinyint(1) NOT NULL DEFAULT 0,
+  `signature_status` varchar(30) NOT NULL DEFAULT 'none',
+  `signer_email` varchar(255) NOT NULL DEFAULT '',
+  `signer_fingerprint` char(64) NOT NULL DEFAULT '',
+  `recipient_fingerprints` text DEFAULT NULL,
+  `error_message` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ticket_article_crypto_article_unique` (`article_id`),
+  KEY `ticket_article_crypto_ticket` (`ticket_id`,`article_id`),
+  CONSTRAINT `ticket_article_crypto_ticket_fk` FOREIGN KEY (`ticket_id`) REFERENCES `ticket` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `ticket_article_crypto_article_fk` FOREIGN KEY (`article_id`) REFERENCES `ticket_article` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Qisutu database migration history
 CREATE TABLE IF NOT EXISTS `database_migration` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -3291,7 +3480,7 @@ CREATE TABLE IF NOT EXISTS `database_version` (
   UNIQUE KEY `database_version_version_unique` (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `database_version` (`version`) VALUES ('0.0.22');
+INSERT INTO `database_version` (`version`) VALUES ('0.0.26');
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

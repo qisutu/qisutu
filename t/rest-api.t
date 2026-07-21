@@ -1,5 +1,25 @@
 #!/usr/bin/env perl
+
 # Qisutu - Open Source Ticket System
+# Copyright (C) 2026 Franziska Steps
+# Qisutu - Kim-KI, https://qisutu.de
+#
+# This file is part of Qisutu.
+#
+# Qisutu is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Qisutu is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-FileCopyrightText: 2026 Franziska Steps
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 use strict;
@@ -29,7 +49,7 @@ use QisutuRESTAPI;
 }
 
 my $DB = Local::RESTDB->new();
-my $Config = { System=>{Version=>'0.0.46',WebPath=>'/qisutu',BaseURL=>''},Language=>{Default=>'de'} };
+my $Config = { System=>{Version=>'0.0.51',WebPath=>'/qisutu',BaseURL=>''},Language=>{Default=>'de'} };
 my $Auth = QisutuAPIAuth->new( Config=>$Config, DB=>$DB );
 
 my $Definitions = $Auth->ScopeDefinitions();
@@ -53,7 +73,7 @@ ok( !$Invalid, 'invalid allowed IP input is rejected' );
 my $API = QisutuRESTAPI->new( Config=>$Config, DB=>$DB );
 my $Ping = $API->Handle(Method=>'GET',Path=>'/v1/ping',Query=>{},Body=>{},Headers=>{},RemoteIP=>'127.0.0.1',RequestID=>'test-request');
 is( $Ping->{Status}, 200, 'public health endpoint works' );
-is( $Ping->{Body}->{data}->{version}, '0.0.46', 'health endpoint reports program version' );
+is( $Ping->{Body}->{data}->{version}, '0.0.51', 'health endpoint reports program version' );
 
 my $OpenAPI = $API->OpenAPIDocument();
 is( $OpenAPI->{openapi}, '3.0.3', 'local OpenAPI document is available' );

@@ -46,6 +46,10 @@
     box-shadow: var(--qisutu-shadow);
 }
 
+.qisutu-login-panel-two-factor-setup {
+    max-width: 720px;
+}
+
 .qisutu-login-brand {
     display: flex;
     align-items: center;
@@ -74,6 +78,21 @@
     margin: 0;
     font-size: 26px;
     line-height: 1.2;
+}
+
+.qisutu-login-section-header {
+    margin-bottom: 20px;
+}
+
+.qisutu-login-section-header h2 {
+    margin: 0;
+    color: var(--qisutu-text);
+    font-size: 22px;
+    line-height: 1.25;
+}
+
+.qisutu-login-section-header p {
+    margin-top: 7px;
 }
 
 .qisutu-login p {
@@ -262,4 +281,35 @@
 
 .qisutu-login-registration-summary {
     margin-bottom: 14px;
+}
+
+.qisutu-login-two-factor-info {
+    margin-bottom: 20px;
+}
+
+.qisutu-login-two-factor-info > strong {
+    display: block;
+    margin-bottom: 12px;
+}
+
+.qisutu-login-two-factor-info .qisutu-two-factor-setup-grid {
+    margin-bottom: 0;
+}
+
+.qisutu-login-recovery-code-list {
+    margin: 0 0 18px;
+}
+
+.qisutu-login-two-factor-continue {
+    margin-top: 18px;
+}
+
+@media (max-width: 720px) {
+    .qisutu-login-panel-two-factor-setup {
+        max-width: 420px;
+    }
+
+    .qisutu-login-panel-two-factor-setup .qisutu-two-factor-setup-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }

@@ -88,6 +88,7 @@ sub Run {
             my %SaveParam = (
                 %{$Request},
                 $Self->_KindParameters($AccountKind),
+                IMAPVerifyCertificate => $Request->{IMAPVerifyCertificate} ? 1 : 0,
                 ChangedByUserID => $UserID,
             );
 
@@ -240,6 +241,9 @@ sub Run {
     my $QueueID   = $Self->_SourceValue( $Source, 'QueueID', 'queue_id', '' );
     my $Security  = $Self->_SourceValue( $Source, 'IMAPSecurity', 'imap_security', 'imap_starttls' );
     my $Active    = $Submitted ? ( $Request->{Active} ? 1 : 0 ) : ( !$Account || $Account->{active} ? 1 : 0 );
+    my $VerifyCertificate = $Submitted
+        ? ( $Request->{IMAPVerifyCertificate} ? 1 : 0 )
+        : ( !$Account || !exists $Account->{imap_verify_certificate} || $Account->{imap_verify_certificate} ? 1 : 0 );
 
     return {
         Template => 'AdminPostmasterIMAPAccounts.tt',
@@ -273,6 +277,8 @@ sub Run {
             AccountQueueID     => $QueueID,
             AccountIMAPHost    => $Self->_SourceValue( $Source, 'IMAPHost', 'imap_host', '' ),
             AccountIMAPPort    => $Self->_SourceValue( $Source, 'IMAPPort', 'imap_port', 143 ),
+            AccountIMAPVerifyCertificateChecked => $VerifyCertificate ? 'checked' : '',
+            AccountIMAPCAFile  => $Self->_SourceValue( $Source, 'IMAPCAFile', 'imap_ca_file', '' ),
             AccountIMAPUsername => $Self->_SourceValue( $Source, 'IMAPUsername', 'imap_username', '' ),
             AccountOAuthClientID => $Self->_SourceValue( $Source, 'OAuthClientID', 'oauth_client_id', '' ),
             AccountOAuthTenantID => $Self->_SourceValue( $Source, 'OAuthTenantID', 'oauth_tenant_id', 'common' ),

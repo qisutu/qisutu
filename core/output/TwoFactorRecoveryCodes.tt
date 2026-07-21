@@ -1,12 +1,50 @@
-[%# SPDX-License-Identifier: AGPL-3.0-or-later %]
-<main class="qisutu-login-main">
-    <section class="qisutu-login-card">
-        <div class="qisutu-login-card-header">
-            <h1>[% Translate.TwoFactorRecoveryCodesTitle %]</h1>
-            <p>[% Translate.TwoFactorRecoveryCodesDescription %]</p>
-        </div>
-        <ul class="qisutu-recovery-code-list">[% RAW.RecoveryCodesHTML %]</ul>
-        <p>[% Translate.TwoFactorRecoveryCodesOnce %]</p>
-        <a class="qisutu-button qisutu-button-primary" href="[% FormAction %]">[% Translate.TwoFactorContinue %]</a>
-    </section>
-</main>
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+        <section class="qisutu-login" aria-labelledby="qisutu-two-factor-recovery-title">
+            <div class="qisutu-login-panel">
+                <div class="qisutu-login-brand">
+                    <div class="qisutu-login-logo">
+                        <img src="[% StaticBase %]/img/logo.png" alt="Qisutu">
+                    </div>
+                    <div>
+                        <h1>[% SystemName %]</h1>
+                        <p>[% Translate.LoginIntro %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-login-section-header">
+                    <h2 id="qisutu-two-factor-recovery-title">[% Translate.TwoFactorRecoveryCodesTitle %]</h2>
+                    <p>[% Translate.TwoFactorRecoveryCodesDescription %]</p>
+                </div>
+
+                <ul class="qisutu-recovery-code-list qisutu-login-recovery-code-list">[% RAW.RecoveryCodesHTML %]</ul>
+
+                <div class="qisutu-login-notice">
+                    <p>[% Translate.TwoFactorRecoveryCodesOnce %]</p>
+                </div>
+
+                <a class="qisutu-login-button qisutu-login-button-link qisutu-login-two-factor-continue" href="[% FormAction %]">[% Translate.TwoFactorContinue %]</a>
+            </div>
+        </section>

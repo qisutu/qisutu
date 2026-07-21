@@ -121,6 +121,7 @@ sub ActionDefinitions {
         { key => 'pending_minutes',      label => 'Translate:PostmasterActionPendingMinutes',    target => 'number',              group => 'ticket',     value_label  => 'Translate:PostmasterActionFieldMinutes' },
         { key => 'article_visibility',   label => 'Translate:PostmasterActionArticleVisibility', target => 'visibility',          group => 'article',    value_label  => 'Translate:PostmasterActionFieldVisibility' },
         { key => 'sender_type',          label => 'Translate:PostmasterActionSenderType',        target => 'sender_type',         group => 'article',    value_label  => 'Translate:PostmasterActionFieldSenderType' },
+        { key => 'reject',               label => 'Translate:PostmasterActionReject',            target => 'none',                group => 'processing' },
         { key => 'ignore',               label => 'Translate:PostmasterActionIgnore',            target => 'none',                group => 'processing' },
     ];
 }
@@ -885,6 +886,7 @@ sub _EvaluateWithFilters {
         ArticleVisibility => 'both',
         SenderType        => 'customer',
         PendingMinutes    => undef,
+        Reject            => 0,
         Ignore            => 0,
         Stop              => 0,
         FilterCount       => scalar @{$Filters},
@@ -1150,6 +1152,7 @@ sub _ActionApply {
     if ( $Type eq 'article_visibility' )  { $Result->{ArticleVisibility} = $Value; return 'visibility=' . $Value; }
     if ( $Type eq 'sender_type' )         { $Result->{SenderType} = $Value; return 'sender_type=' . $Value; }
     if ( $Type eq 'pending_minutes' )     { $Result->{PendingMinutes} = 0 + $Value; return 'pending_minutes=' . $Value; }
+    if ( $Type eq 'reject' )              { $Result->{Reject} = 1; return 'reject=1'; }
     if ( $Type eq 'ignore' )              { $Result->{Ignore} = 1; return 'ignore=1'; }
 
     return '';

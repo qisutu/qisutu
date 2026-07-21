@@ -26,12 +26,15 @@ use strict;
 use warnings;
 use utf8;
 
+use QisutuLDAP;
+
 sub new {
     my ( $Class, %Param ) = @_;
 
     my $Self = {
         DB        => $Param{DB},
         Config    => $Param{Config},
+        LDAP      => $Param{LDAP},
         LastError => '',
     };
 
@@ -60,8 +63,27 @@ sub LoginCheck {
         return;
     }
 
+    if ( $AccountType eq 'agent' || $AccountType eq 'customer' ) {
+        my $LDAP = $Self->{LDAP} || QisutuLDAP->new(
+            Config => $Self->{Config},
+            DB     => $Self->{DB},
+        );
+        my $Method = $AccountType eq 'agent' ? 'AuthenticateAgent' : 'AuthenticateCustomer';
+        my $LDAPResult = $LDAP->$Method(
+            Login    => $Login,
+            Password => $Password,
+        );
+        if ( $LDAPResult && $LDAPResult->{Handled} ) {
+            if ( $LDAPResult->{User} ) {
+                return $LDAPResult->{User};
+            }
+            $Self->{LastError} = $LDAP->Error() || 'Invalid login or password';
+            return;
+        }
+    }
+
     my $User = $Self->{DB}->SelectRow(
-        'SELECT id, login, account_type, email, password_hash, firstname, lastname, is_active, failed_login_count, locked_until
+        'SELECT id, login, account_type, authentication_type, email, password_hash, firstname, lastname, is_active, failed_login_count, locked_until
          FROM user_account
          WHERE login = ?
             AND account_type = ?
@@ -77,6 +99,11 @@ sub LoginCheck {
 
     if ( !$User->{is_active} ) {
         $Self->{LastError} = 'User account is inactive';
+        return;
+    }
+
+    if ( ( $User->{authentication_type} || 'local' ) ne 'local' ) {
+        $Self->{LastError} = 'Invalid login or password';
         return;
     }
 

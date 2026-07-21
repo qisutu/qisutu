@@ -45,10 +45,12 @@ sub main {
     require QisutuDB;
     require QisutuAdmin;
     require QisutuMail;
+    require QisutuMailCrypto;
     require QisutuCommunicationLog;
     require QisutuRuntimeLock;
     require QisutuTicket;
     require QisutuPostmasterFilter;
+    require QisutuCustomerAutoResponse;
 
     if ( QisutuRuntimeLock::MaintenanceActive( RootPath => $QisutuHome ) ) {
         _Log('Qisutu update is active. Mail fetch skipped.');
@@ -108,6 +110,11 @@ sub main {
         DB     => $DB,
     );
 
+    my $MailCrypto = QisutuMailCrypto->new(
+        Config => $Config,
+        DB     => $DB,
+    );
+
     my $CommunicationLog = QisutuCommunicationLog->new(
         Config => $Config,
         DB     => $DB,
@@ -122,6 +129,10 @@ sub main {
     );
 
     my $PostmasterFilter = QisutuPostmasterFilter->new(
+        Config => $Config,
+        DB     => $DB,
+    );
+    my $CustomerAutoResponse = QisutuCustomerAutoResponse->new(
         Config => $Config,
         DB     => $DB,
     );
@@ -258,6 +269,77 @@ sub main {
                 MessageUID       => $Message->{uid},
             ) if $CommunicationID;
 
+            if ( $FilterResult->{Reject} ) {
+                my $ResponseSent = $CustomerAutoResponse->Send(
+                    ResponseType      => 'incoming_email_rejected',
+                    RecipientName     => $Message->{from_name},
+                    RecipientEmail    => $Message->{from_email},
+                    IncomingSubject   => $Message->{subject},
+                    IncomingFromName  => $Message->{from_name},
+                    IncomingFromEmail => $Message->{from_email},
+                    IncomingToEmail   => $Message->{to_email} || $Mailbox->{email},
+                    ReplyToName       => $Mailbox->{name},
+                    ReplyToEmail      => $Mailbox->{email},
+                    Headers           => $Message->{headers},
+                    EventKey          => join( ':', 'incoming_email_rejected', $Mailbox->{id} || 0, $Message->{uid} || 0, $Message->{message_id} || '' ),
+                );
+                if ($ResponseSent) {
+                    push @NotificationMessages, 'rejection response sent to ' . ( $Message->{from_email} || '' );
+                }
+                elsif ( ( $CustomerAutoResponse->Error() || '' ) !~ m{(?:inactive|suppressed)}i ) {
+                    push @NotificationMessages, 'rejection response not sent: ' . ( $CustomerAutoResponse->Error() || 'unknown error' );
+                }
+
+                my $DeleteResult = $Mail->IMAPDeleteMessage(
+                    Account => $Mailbox,
+                    UID     => $Message->{uid},
+                    ParentCommunicationLogID => $CommunicationID,
+                );
+                if ( !$DeleteResult->{Success} ) {
+                    $Failed++;
+                    my $Error = $DeleteResult->{Message} || 'Rejected IMAP message could not be deleted';
+                    push @ErrorMessages, $Error;
+                    $PostmasterFilter->RunLogSave(
+                        IMAPAccountID => $Mailbox->{id},
+                        MessageUID    => $Message->{uid},
+                        MessageScope  => $MessageScope,
+                        MessageSubject => $Message->{subject},
+                        FromEmail     => $Message->{from_email},
+                        TicketID      => $ExistingTicketID,
+                        Result        => 'error',
+                        FilterCount   => $FilterResult->{FilterCount},
+                        MatchedCount  => $FilterResult->{MatchedCount},
+                        Details       => $FilterResult,
+                        ErrorMessage  => $Error,
+                    );
+                    next;
+                }
+
+                $Ignored++;
+                $CommunicationLog->StepAdd(
+                    CommunicationID => $CommunicationID,
+                    Level   => 'warning',
+                    Stage   => 'rejected',
+                    Message => 'IMAP message UID ' . ( $Message->{uid} || '' ) . ' rejected by postmaster filter',
+                    Details => $ResponseSent
+                        ? 'Automatic rejection response sent to ' . ( $Message->{from_email} || '')
+                        : 'Automatic rejection response not sent: ' . ( $CustomerAutoResponse->Error() || 'inactive'),
+                ) if $CommunicationID;
+                $PostmasterFilter->RunLogSave(
+                    IMAPAccountID => $Mailbox->{id},
+                    MessageUID    => $Message->{uid},
+                    MessageScope  => $MessageScope,
+                    MessageSubject => $Message->{subject},
+                    FromEmail     => $Message->{from_email},
+                    TicketID      => $ExistingTicketID,
+                    Result        => 'rejected',
+                    FilterCount   => $FilterResult->{FilterCount},
+                    MatchedCount  => $FilterResult->{MatchedCount},
+                    Details       => $FilterResult,
+                );
+                next;
+            }
+
             if ( $FilterResult->{Ignore} ) {
                 my $DeleteResult = $Mail->IMAPDeleteMessage(
                     Account => $Mailbox,
@@ -355,6 +437,11 @@ sub main {
 
                 my $ImportAction = $TicketObject->LastEmailImportAction();
                 my $ArticleID    = $TicketObject->LastEmailImportArticleID();
+                $MailCrypto->ArticleCryptoRecord(
+                    TicketID  => $TicketID,
+                    ArticleID => $ArticleID,
+                    Crypto    => $Message->{crypto},
+                );
                 my $TicketReference = _TicketReference( DB => $DB, TicketID => $TicketID );
                 if ( $ImportAction && $ImportAction eq 'updated' ) {
                     $Updated++;
@@ -634,7 +721,7 @@ sub _PostmasterActionText {
         queue=>'Queue', state=>'Status', priority=>'Priority', owner=>'Owner', responsible=>'Responsible',
         service=>'Service', sla=>'SLA', customer=>'Customer', customer_user=>'Customer user',
         dynamic_field=>'Dynamic field', dynamic_field_clear=>'Dynamic field', pending_minutes=>'Pending time',
-        article_visibility=>'Article visibility', sender_type=>'Sender type', ignore=>'Ignore message',
+        article_visibility=>'Article visibility', sender_type=>'Sender type', reject=>'Reject message with response', ignore=>'Ignore message',
         title_set=>'Set title', title_prepend=>'Prepend title', title_append=>'Append title',
         owner_clear=>'Clear owner', responsible_clear=>'Clear responsible', service_clear=>'Clear service/SLA',
         customer_clear=>'Clear customer',

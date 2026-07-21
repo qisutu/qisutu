@@ -119,6 +119,16 @@ sub Run {
     }
 
     my $ErrorMessage = $Admin ? $Admin->Error() : '';
+    my $PlaceholderList = [];
+
+    if ( $Definition->{ContentPlaceholders} ) {
+        my $Loaded = eval {
+            require QisutuNotification;
+            1;
+        };
+
+        $PlaceholderList = QisutuNotification->ContentPlaceholderList() if $Loaded;
+    }
 
     return {
         Template => $Definition->{Template},
@@ -142,6 +152,8 @@ sub Run {
             ItemValue          => $Item ? $Item->{value} : '',
             ItemSortOrder      => $Item ? $Item->{sort_order} : 1000,
             ItemActiveChecked  => $Item && $Item->{active} ? 'checked' : '',
+            PlaceholderList    => $PlaceholderList,
+            PlaceholderCount   => scalar @{$PlaceholderList},
             CreateValueFieldHTML => $Self->_ValueFieldHTML(
                 LabelKey => $Definition->{ValueLabel},
                 Textarea => $Definition->{ValueIsTextarea},

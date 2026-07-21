@@ -602,7 +602,7 @@ sub _TemplateData {
         Robots          => 'noindex, nofollow',
         PageTitle       => $Param{PageTitle} || 'Translate:PageLoginTitle',
         StaticBase      => $Self->{Config}->{Paths}->{StaticURL} || '/static',
-        PageCSS         => 'qisutu-login.css?v=2026071602',
+        PageCSS         => 'qisutu-login.css?v=2026072102',
         BodyClass       => 'qisutu-login-page',
         SystemName      => $Self->{Config}->{System}->{Name} || 'Qisutu',
         ErrorMessage    => $Param{ErrorMessage} || '',

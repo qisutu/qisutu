@@ -54,6 +54,7 @@ sub AgentList {
             ua.id,
             ua.login,
             ua.account_type,
+            ua.authentication_type,
             ua.email,
             ua.firstname,
             ua.lastname,
@@ -72,7 +73,7 @@ sub AgentList {
          WHERE ua.is_system_user = 0
             AND ua.account_type = "agent"
             AND cu.id IS NULL
-         GROUP BY ua.id, ua.login, ua.account_type, ua.email, ua.firstname, ua.lastname, ua.is_active, ua.created_at
+         GROUP BY ua.id, ua.login, ua.account_type, ua.authentication_type, ua.email, ua.firstname, ua.lastname, ua.is_active, ua.created_at
          ORDER BY ua.login ASC'
     );
 
@@ -91,6 +92,7 @@ sub AgentGet {
             ua.id,
             ua.login,
             ua.account_type,
+            ua.authentication_type,
             ua.email,
             ua.firstname,
             ua.lastname,
@@ -110,7 +112,7 @@ sub AgentGet {
             AND ua.is_system_user = 0
             AND ua.account_type = "agent"
             AND cu.id IS NULL
-         GROUP BY ua.id, ua.login, ua.account_type, ua.email, ua.firstname, ua.lastname, ua.is_active, ua.created_at
+         GROUP BY ua.id, ua.login, ua.account_type, ua.authentication_type, ua.email, ua.firstname, ua.lastname, ua.is_active, ua.created_at
          LIMIT 1',
         $UserAccountID,
     );
@@ -728,6 +730,8 @@ sub PostmasterIMAPAccountCreate {
             imap_host,
             imap_security,
             imap_port,
+            imap_verify_certificate,
+            imap_ca_file,
             imap_auth_type,
             imap_username,
             imap_password,
@@ -744,7 +748,7 @@ sub PostmasterIMAPAccountCreate {
             created_by_user_id,
             changed_by_user_id
          ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?
          )',
         $Prepared->{Name},
         $Prepared->{Email},
@@ -752,6 +756,8 @@ sub PostmasterIMAPAccountCreate {
         $Prepared->{IMAPHost},
         $Prepared->{IMAPSecurity},
         $Prepared->{IMAPPort},
+        $Prepared->{IMAPVerifyCertificate},
+        $Prepared->{IMAPCAFile},
         $Prepared->{IMAPAuthType},
         $Prepared->{IMAPUsername},
         $EncryptedIMAPPassword,
@@ -832,6 +838,8 @@ sub PostmasterIMAPAccountUpdate {
         'imap_host = ?',
         'imap_security = ?',
         'imap_port = ?',
+        'imap_verify_certificate = ?',
+        'imap_ca_file = ?',
         'imap_auth_type = ?',
         'imap_username = ?',
         'oauth_provider = ?',
@@ -853,6 +861,8 @@ sub PostmasterIMAPAccountUpdate {
         $Prepared->{IMAPHost},
         $Prepared->{IMAPSecurity},
         $Prepared->{IMAPPort},
+        $Prepared->{IMAPVerifyCertificate},
+        $Prepared->{IMAPCAFile},
         $Prepared->{IMAPAuthType},
         $Prepared->{IMAPUsername},
         $Prepared->{OAuthProvider},
@@ -1207,6 +1217,8 @@ sub SMTPAccountCreate {
             smtp_host,
             smtp_security,
             smtp_port,
+            smtp_verify_certificate,
+            smtp_ca_file,
             smtp_auth_type,
             smtp_username,
             smtp_password,
@@ -1223,12 +1235,14 @@ sub SMTPAccountCreate {
             created_by_user_id,
             changed_by_user_id
          ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?
          )',
         $Prepared->{Name},
         $Prepared->{SMTPHost},
         $Prepared->{SMTPSecurity},
         $Prepared->{SMTPPort},
+        $Prepared->{SMTPVerifyCertificate},
+        $Prepared->{SMTPCAFile},
         $Prepared->{SMTPAuthType},
         $Prepared->{SMTPUsername},
         $EncryptedSMTPPassword,
@@ -1312,6 +1326,8 @@ sub SMTPAccountUpdate {
         'smtp_host = ?',
         'smtp_security = ?',
         'smtp_port = ?',
+        'smtp_verify_certificate = ?',
+        'smtp_ca_file = ?',
         'smtp_auth_type = ?',
         'smtp_username = ?',
         'oauth_provider = ?',
@@ -1331,6 +1347,8 @@ sub SMTPAccountUpdate {
         $Prepared->{SMTPHost},
         $Prepared->{SMTPSecurity},
         $Prepared->{SMTPPort},
+        $Prepared->{SMTPVerifyCertificate},
+        $Prepared->{SMTPCAFile},
         $Prepared->{SMTPAuthType},
         $Prepared->{SMTPUsername},
         $Prepared->{OAuthProvider},
@@ -1634,6 +1652,7 @@ sub AgentUpdate {
                  email = ?,
                  firstname = ?,
                  lastname = ?,
+                 authentication_type = "local",
                  password_hash = ?,
                  password_changed_at = NOW(),
                  is_active = ?
@@ -4483,6 +4502,8 @@ sub _MailIntegrationSchemaEnsure {
             imap_host VARCHAR(255) NOT NULL DEFAULT "",
             imap_security VARCHAR(30) NOT NULL DEFAULT "imap_starttls",
             imap_port INT UNSIGNED NOT NULL DEFAULT 143,
+            imap_verify_certificate TINYINT(1) NOT NULL DEFAULT 1,
+            imap_ca_file VARCHAR(500) NOT NULL DEFAULT "",
             imap_auth_type VARCHAR(30) NOT NULL DEFAULT "password",
             imap_username VARCHAR(255) NOT NULL DEFAULT "",
             imap_password TEXT NULL,
@@ -4514,6 +4535,8 @@ sub _MailIntegrationSchemaEnsure {
             ADD COLUMN IF NOT EXISTS imap_host VARCHAR(255) NOT NULL DEFAULT "",
             ADD COLUMN IF NOT EXISTS imap_security VARCHAR(30) NOT NULL DEFAULT "imap_starttls",
             ADD COLUMN IF NOT EXISTS imap_port INT UNSIGNED NOT NULL DEFAULT 143,
+            ADD COLUMN IF NOT EXISTS imap_verify_certificate TINYINT(1) NOT NULL DEFAULT 1,
+            ADD COLUMN IF NOT EXISTS imap_ca_file VARCHAR(500) NOT NULL DEFAULT "",
             ADD COLUMN IF NOT EXISTS imap_auth_type VARCHAR(30) NOT NULL DEFAULT "password",
             ADD COLUMN IF NOT EXISTS imap_username VARCHAR(255) NOT NULL DEFAULT "",
             ADD COLUMN IF NOT EXISTS imap_password TEXT NULL,
@@ -4562,6 +4585,8 @@ sub _MailIntegrationSchemaEnsure {
             smtp_host VARCHAR(255) NOT NULL DEFAULT "",
             smtp_security VARCHAR(30) NOT NULL DEFAULT "smtp_starttls",
             smtp_port INT UNSIGNED NOT NULL DEFAULT 587,
+            smtp_verify_certificate TINYINT(1) NOT NULL DEFAULT 1,
+            smtp_ca_file VARCHAR(500) NOT NULL DEFAULT "",
             smtp_auth_type VARCHAR(30) NOT NULL DEFAULT "password",
             smtp_username VARCHAR(255) NOT NULL DEFAULT "",
             smtp_password TEXT NULL,
@@ -4591,6 +4616,8 @@ sub _MailIntegrationSchemaEnsure {
             ADD COLUMN IF NOT EXISTS smtp_host VARCHAR(255) NOT NULL DEFAULT "",
             ADD COLUMN IF NOT EXISTS smtp_security VARCHAR(30) NOT NULL DEFAULT "smtp_starttls",
             ADD COLUMN IF NOT EXISTS smtp_port INT UNSIGNED NOT NULL DEFAULT 587,
+            ADD COLUMN IF NOT EXISTS smtp_verify_certificate TINYINT(1) NOT NULL DEFAULT 1,
+            ADD COLUMN IF NOT EXISTS smtp_ca_file VARCHAR(500) NOT NULL DEFAULT "",
             ADD COLUMN IF NOT EXISTS smtp_auth_type VARCHAR(30) NOT NULL DEFAULT "password",
             ADD COLUMN IF NOT EXISTS smtp_username VARCHAR(255) NOT NULL DEFAULT "",
             ADD COLUMN IF NOT EXISTS smtp_password TEXT NULL,
@@ -4665,6 +4692,15 @@ sub _IMAPAccountPrepare {
     my $IMAPHost          = $Self->_Trim( $Param{IMAPHost} );
     my $IMAPPort          = $Self->_UnsignedInteger( $Param{IMAPPort} ) || $Self->_DefaultMailPort($IMAPSecurity);
     my $IMAPUsername      = $Self->_Trim( $Param{IMAPUsername} );
+    my $IMAPVerifyCertificate = exists $Param{IMAPVerifyCertificate}
+        ? ( $Param{IMAPVerifyCertificate} ? 1 : 0 )
+        : 1;
+    my $IMAPCAFile = $Self->_Trim( $Param{IMAPCAFile} );
+
+    if ( $IMAPCAFile && ( $IMAPCAFile !~ m{\A/} || !-f $IMAPCAFile || !-r $IMAPCAFile ) ) {
+        $Self->{LastError} = 'Translate:AdminMailCAFileInvalid';
+        return;
+    }
 
     if ( $IMAPAuthType eq 'oauth2' ) {
         my $OAuthObject = QisutuOAuth2->new( Config => $Self->{Config}, DB => $Self->{DB} );
@@ -4710,6 +4746,8 @@ sub _IMAPAccountPrepare {
         IMAPHost      => $IMAPHost,
         IMAPSecurity  => $IMAPSecurity,
         IMAPPort      => $IMAPPort,
+        IMAPVerifyCertificate => $IMAPVerifyCertificate,
+        IMAPCAFile    => $IMAPCAFile,
         IMAPAuthType  => $IMAPAuthType,
         IMAPUsername  => $IMAPUsername,
         IMAPPassword  => defined $Param{IMAPPassword} ? $Param{IMAPPassword} : '',
@@ -4743,6 +4781,15 @@ sub _SMTPAccountPrepare {
     my $SMTPHost          = $Self->_Trim( $Param{SMTPHost} );
     my $SMTPPort          = $Self->_UnsignedInteger( $Param{SMTPPort} ) || $Self->_DefaultMailPort($SMTPSecurity);
     my $SMTPUsername      = $Self->_Trim( $Param{SMTPUsername} );
+    my $SMTPVerifyCertificate = exists $Param{SMTPVerifyCertificate}
+        ? ( $Param{SMTPVerifyCertificate} ? 1 : 0 )
+        : 1;
+    my $SMTPCAFile = $Self->_Trim( $Param{SMTPCAFile} );
+
+    if ( $SMTPCAFile && ( $SMTPCAFile !~ m{\A/} || !-f $SMTPCAFile || !-r $SMTPCAFile ) ) {
+        $Self->{LastError} = 'Translate:AdminMailCAFileInvalid';
+        return;
+    }
 
     if ( !$SMTPUsername ) {
         $Self->{LastError} = 'Translate:AdminSMTPCredentialsRequired';
@@ -4792,6 +4839,8 @@ sub _SMTPAccountPrepare {
         SMTPHost      => $SMTPHost,
         SMTPSecurity  => $SMTPSecurity,
         SMTPPort      => $SMTPPort,
+        SMTPVerifyCertificate => $SMTPVerifyCertificate,
+        SMTPCAFile    => $SMTPCAFile,
         SMTPAuthType  => $SMTPAuthType,
         SMTPUsername  => $SMTPUsername,
         SMTPPassword  => defined $Param{SMTPPassword} ? $Param{SMTPPassword} : '',
@@ -4815,6 +4864,8 @@ sub _IMAPAccountFromPrepared {
         imap_host           => $Prepared->{IMAPHost},
         imap_security       => $Prepared->{IMAPSecurity},
         imap_port           => $Prepared->{IMAPPort},
+        imap_verify_certificate => $Prepared->{IMAPVerifyCertificate},
+        imap_ca_file        => $Prepared->{IMAPCAFile},
         imap_auth_type      => $Prepared->{IMAPAuthType},
         imap_username       => $Prepared->{IMAPUsername},
         imap_password       => $Prepared->{IMAPPassword} ne '' ? $Prepared->{IMAPPassword} : ( $Existing->{imap_password} || '' ),
@@ -4837,6 +4888,8 @@ sub _SMTPAccountFromPrepared {
         smtp_host           => $Prepared->{SMTPHost},
         smtp_security       => $Prepared->{SMTPSecurity},
         smtp_port           => $Prepared->{SMTPPort},
+        smtp_verify_certificate => $Prepared->{SMTPVerifyCertificate},
+        smtp_ca_file        => $Prepared->{SMTPCAFile},
         smtp_auth_type      => $Prepared->{SMTPAuthType},
         smtp_username       => $Prepared->{SMTPUsername},
         smtp_password       => $Prepared->{SMTPPassword} ne '' ? $Prepared->{SMTPPassword} : ( $Existing->{smtp_password} || '' ),

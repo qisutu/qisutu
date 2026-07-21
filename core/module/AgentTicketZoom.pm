@@ -36,6 +36,7 @@ use QisutuTicketLink;
 use QisutuTicketHistory;
 use QisutuCMDB;
 use QisutuKnowledgeBase;
+use QisutuNotification;
 use QisutuTicketPDF;
 
 sub new {
@@ -944,7 +945,10 @@ sub Run {
     my $FallbackSenderEmail = '';
     my $ArticleIndex        = 0;
     my $ArticleCount        = scalar @{$Articles};
-    my $ReplyEmailTemplate  = $Self->_QueueReplyTemplate( TicketID => $Ticket->{id} );
+    my $ReplyEmailTemplate  = $Self->_QueueReplyTemplate(
+        TicketID => $Ticket->{id},
+        User     => $Param{User} || {},
+    );
     my $ResponseTemplateObject = $Self->_ResponseTemplateObject();
     my $ResponseTemplateList = $ResponseTemplateObject ? $ResponseTemplateObject->TemplateListForQueue(
         QueueID => $Ticket->{queue_id},
@@ -3724,6 +3728,19 @@ sub _QueueReplyTemplate {
 
     my $Salutation = QisutuHTML->Sanitize( $Row->{salutation_content} || '' );
     my $Signature  = QisutuHTML->Sanitize( $Row->{signature_content}  || '' );
+    my $User = $Param{User} || {};
+    my $Renderer = QisutuNotification->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
+    my %RenderParam = (
+        TicketID    => $TicketID,
+        AgentUserID => $User->{user_account_id},
+        ChangedByID => $User->{user_account_id},
+        SystemPlaceholder => $Renderer->SystemPlaceholderHash(),
+    );
+    $Salutation = $Renderer->ContentTemplateRenderHTML( %RenderParam, HTML => $Salutation ) if $Salutation;
+    $Signature  = $Renderer->ContentTemplateRenderHTML( %RenderParam, HTML => $Signature ) if $Signature;
     my @Parts;
 
     push @Parts, $Salutation if $Salutation;

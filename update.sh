@@ -115,6 +115,47 @@ command_required() {
     command -v "$1" >/dev/null 2>&1 || fail "Benötigtes Programm wurde nicht gefunden: $1"
 }
 
+ensure_net_ldap_module() {
+    local os_id=""
+    local os_like=""
+    local package_manager=""
+
+    perl -MNet::LDAP -e 1 >/dev/null 2>&1 && return
+
+    if [[ -r /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+        os_id="${ID:-}"
+        os_like="${ID_LIKE:-}"
+    fi
+
+    echo "Das benötigte Perl-Modul Net::LDAP wird installiert."
+    case " $os_id $os_like " in
+        *" debian "*|*" ubuntu "*)
+            command_required apt-get
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y libnet-ldap-perl
+            ;;
+        *" rhel "*|*" fedora "*|*" centos "*|*" rocky "*|*" almalinux "*)
+            package_manager="dnf"
+            command -v dnf >/dev/null 2>&1 || package_manager="yum"
+            command_required "$package_manager"
+            "$package_manager" install -y perl-LDAP
+            ;;
+        *" suse "*|*" opensuse "*|*" sles "*)
+            command_required zypper
+            zypper --non-interactive install perl-LDAP
+            ;;
+        *)
+            fail "Net::LDAP fehlt. Installiere das Paket für Net::LDAP mit der Paketverwaltung und starte das Update erneut."
+            ;;
+    esac
+
+    perl -MNet::LDAP -e 1 >/dev/null 2>&1 \
+        || fail "Das Perl-Modul Net::LDAP ist nach der Paketinstallation weiterhin nicht verfügbar."
+}
+
 ensure_qisutu_runtime_user() {
     local nologin_shell="/usr/sbin/nologin"
 
@@ -382,7 +423,6 @@ path_is_protected() {
         var/cache|var/cache/*) return 0 ;;
         var/tmp|var/tmp/*) return 0 ;;
         var/secure|var/secure/*) return 0 ;;
-        log|log/*) return 0 ;;
         scriptfiles/"$INSTANCE_ID"-apache-runtime.conf) return 0 ;;
     esac
 
@@ -717,7 +757,7 @@ installation_permissions_apply() {
         find "$TARGET_ROOT/bin/cgi-bin" -maxdepth 1 -type f -name '*.pl' -exec chmod 0755 {} +
     fi
 
-    for target_directory in var/install var/log var/cache var/tmp log; do
+    for target_directory in var/install var/log var/cache var/tmp; do
         mkdir -p "$TARGET_ROOT/$target_directory"
         chown "$TARGET_OWNER:$TARGET_GROUP" "$TARGET_ROOT/$target_directory"
         chmod 0770 "$TARGET_ROOT/$target_directory"
@@ -1155,6 +1195,7 @@ command_required usermod
 package_manifest_source_validate
 package_obsolete_source_files_remove
 database_migration_package_validate
+ensure_net_ldap_module
 
 if command -v mariadb >/dev/null 2>&1; then
     DB_CLIENT="mariadb"

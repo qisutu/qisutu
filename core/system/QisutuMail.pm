@@ -34,6 +34,7 @@ use Net::SMTP;
 use POSIX qw(strftime);
 use QisutuCommunicationLog;
 use QisutuHTML;
+use QisutuMailCrypto;
 use QisutuOAuth2;
 use QisutuSecurity;
 use QisutuSystemSetting;
@@ -46,6 +47,7 @@ sub new {
         DB        => $Param{DB},
         LastError => '',
         Security  => QisutuSecurity->new( Config => $Param{Config} ),
+        MailCrypto => QisutuMailCrypto->new( Config => $Param{Config}, DB => $Param{DB} ),
         CommunicationLog => QisutuCommunicationLog->new(
             Config      => $Param{Config},
             DB          => $Param{DB},
@@ -97,6 +99,7 @@ sub SMTPTest {
 
     if ( $Security eq 'smtps' ) {
         $SMTPParam{SSL} = 1;
+        %SMTPParam = ( %SMTPParam, $Self->_TLSParameters( Account => $Account, Prefix => 'smtp', Host => $Host ) );
     }
 
     $Self->_CommunicationStep(
@@ -117,7 +120,8 @@ sub SMTPTest {
     $Self->_CommunicationStep( Level => 'success', Stage => 'connect', Message => 'SMTP connection established' );
 
     if ( $Security eq 'smtp_starttls' ) {
-        if ( !$SMTP->can('starttls') || !$SMTP->starttls() ) {
+        my %TLSParam = $Self->_TLSParameters( Account => $Account, Prefix => 'smtp', Host => $Host );
+        if ( !$SMTP->can('starttls') || !$SMTP->starttls(%TLSParam) ) {
             my $Message = $SMTP->message() || 'Translate:AdminSMTPSTARTTLSFailed';
             $SMTP->quit();
             return $Self->_Result( Success => 0, Message => $Message, Stage => 'tls', Details => $Message );
@@ -228,6 +232,7 @@ sub SMTPSend {
 
     if ( $Security eq 'smtps' ) {
         $SMTPParam{SSL} = 1;
+        %SMTPParam = ( %SMTPParam, $Self->_TLSParameters( Account => $Account, Prefix => 'smtp', Host => $Host ) );
     }
 
     $Self->_CommunicationStep(
@@ -248,7 +253,8 @@ sub SMTPSend {
     $Self->_CommunicationStep( Level => 'success', Stage => 'connect', Message => 'SMTP connection established' );
 
     if ( $Security eq 'smtp_starttls' ) {
-        if ( !$SMTP->can('starttls') || !$SMTP->starttls() ) {
+        my %TLSParam = $Self->_TLSParameters( Account => $Account, Prefix => 'smtp', Host => $Host );
+        if ( !$SMTP->can('starttls') || !$SMTP->starttls(%TLSParam) ) {
             my $Message = $SMTP->message() || 'Translate:AdminSMTPSTARTTLSFailed';
             $SMTP->quit();
             return $Self->_Result( Success => 0, Message => $Message, Stage => 'tls', Details => $Message );
@@ -299,6 +305,45 @@ sub SMTPSend {
     );
 
     my @EnvelopeRecipients = ( @ToEmails, @CcEmails );
+    my $CryptoResult = $Self->{MailCrypto}->OutgoingProcess(
+        Message    => $Message,
+        FromEmail  => $FromEmail,
+        Recipients => \@EnvelopeRecipients,
+    );
+    if ( !$CryptoResult->{Success} ) {
+        my $CryptoError = $CryptoResult->{Error} || 'S/MIME processing failed';
+        $Self->_CommunicationStep(
+            Level   => 'error',
+            Stage   => 'mail_crypto',
+            Message => 'Outgoing S/MIME processing failed',
+            Details => $CryptoError,
+        );
+        $SMTP->quit();
+        return $Self->_Result(
+            Success => 0,
+            Message => $CryptoError,
+            Stage   => 'mail_crypto',
+            Details => $CryptoError,
+        );
+    }
+    $Message = $CryptoResult->{Message};
+    if ( $CryptoResult->{Crypto}->{was_signed} || $CryptoResult->{Crypto}->{was_encrypted} ) {
+        $Self->_CommunicationStep(
+            Level   => 'success',
+            Stage   => 'mail_crypto',
+            Message => 'Outgoing S/MIME processing completed',
+            Details => 'Signed: ' . ( $CryptoResult->{Crypto}->{was_signed} ? 'yes' : 'no' )
+                . "\nEncrypted: " . ( $CryptoResult->{Crypto}->{was_encrypted} ? 'yes' : 'no' ),
+        );
+    }
+    if ( $CryptoResult->{Crypto}->{warning_message} ) {
+        $Self->_CommunicationStep(
+            Level   => 'warning',
+            Stage   => 'mail_crypto',
+            Message => 'Outgoing S/MIME encryption was skipped',
+            Details => $CryptoResult->{Crypto}->{warning_message},
+        );
+    }
 
     if (
         !$SMTP->mail($EnvelopeFrom)
@@ -336,6 +381,12 @@ sub SMTPSend {
     $SMTP->quit();
 
     $Self->_CommunicationStep( Level => 'success', Stage => 'logout', Message => 'SMTP connection closed' );
+
+    $Self->{MailCrypto}->ArticleCryptoRecord(
+        TicketID  => $Param{TicketID},
+        ArticleID => $Param{ArticleID},
+        Crypto    => $CryptoResult->{Crypto},
+    );
 
     return $Self->_Result(
         Success          => 1,
@@ -544,7 +595,25 @@ sub IMAPFetchNewMessages {
             next;
         }
 
-        my $Message = $Self->_MessageParse($RawMessage);
+        my $CryptoResult = $Self->{MailCrypto}->IncomingProcess(
+            Message        => $RawMessage,
+            RecipientEmail => $Self->_AccountValue( Account => $Account, Prefix => 'imap', Key => 'email' )
+                || $Account->{email}
+                || '',
+        );
+        if ( !$CryptoResult->{Success} ) {
+            $FetchFailures++;
+            $Self->_CommunicationStep(
+                Level   => 'error',
+                Stage   => 'mail_crypto',
+                Message => 'IMAP message UID ' . $UID . ' could not be decrypted',
+                Details => $CryptoResult->{Error} || 'S/MIME processing failed',
+            );
+            next;
+        }
+
+        my $Message = $Self->_MessageParse( $CryptoResult->{Message} );
+        $Message->{crypto} = $CryptoResult->{Crypto};
         $Message->{uid} = $UID;
         push @Messages, $Message;
         $Self->_CommunicationStep(
@@ -683,6 +752,7 @@ sub _IMAPLoginSession {
         Host     => $Host,
         Port     => $Port,
         Security => $Security,
+        Account  => $Account,
     );
 
     return $Socket if ref $Socket eq 'HASH';
@@ -709,10 +779,8 @@ sub _IMAPLoginSession {
             return $Self->_Result( Success => 0, Message => 'Translate:AdminIMAPSTARTTLSFailed' );
         }
 
-        my $SSLStarted = IO::Socket::SSL->start_SSL(
-            $Socket,
-            SSL_hostname => $Host,
-        );
+        my %TLSParam = $Self->_TLSParameters( Account => $Account, Prefix => 'imap', Host => $Host );
+        my $SSLStarted = IO::Socket::SSL->start_SSL( $Socket, %TLSParam );
 
         if ( !$SSLStarted ) {
             $Self->_CommunicationStep(
@@ -847,13 +915,15 @@ sub _IMAPSocket {
     my $Host     = $Param{Host};
     my $Port     = $Param{Port};
     my $Security = $Param{Security};
+    my $Account  = $Param{Account} || {};
 
     if ( $Security eq 'imaps' ) {
+        my %TLSParam = $Self->_TLSParameters( Account => $Account, Prefix => 'imap', Host => $Host );
         my $Socket = IO::Socket::SSL->new(
             PeerHost     => $Host,
             PeerPort     => $Port,
             Timeout      => 15,
-            SSL_hostname => $Host,
+            %TLSParam,
         );
 
         return $Socket if $Socket;
@@ -2429,6 +2499,33 @@ sub _AccountValue {
     }
 
     return $Value;
+}
+
+sub _TLSParameters {
+    my ( $Self, %Param ) = @_;
+
+    my $Verify = $Self->_AccountValue(
+        Account => $Param{Account} || {},
+        Prefix  => $Param{Prefix} || '',
+        Key     => 'verify_certificate',
+    );
+    $Verify = 1 if !defined $Verify || $Verify eq '';
+
+    my %TLSParam = (
+        SSL_hostname    => $Param{Host} || '',
+        SSL_verify_mode => $Verify
+            ? IO::Socket::SSL::SSL_VERIFY_PEER()
+            : IO::Socket::SSL::SSL_VERIFY_NONE(),
+    );
+
+    my $CAFile = $Self->_AccountValue(
+        Account => $Param{Account} || {},
+        Prefix  => $Param{Prefix} || '',
+        Key     => 'ca_file',
+    ) || '';
+    $TLSParam{SSL_ca_file} = $CAFile if $CAFile;
+
+    return %TLSParam;
 }
 
 sub _Result {

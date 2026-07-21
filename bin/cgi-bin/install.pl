@@ -1199,6 +1199,7 @@ sub _SystemChecks {
     push @Checks, _ModuleCheck( 'MIME::Base64', 1 );
     push @Checks, _ModuleCheck( 'MIME::QuotedPrint', 1 );
     push @Checks, _ModuleCheck( 'Net::SMTP', 1 );
+    push @Checks, _ModuleCheck( 'Net::LDAP', 1 );
     my $DatabaseCLI = _DatabaseCLI();
     push @Checks, { name => 'MariaDB/MySQL Client', ok => $DatabaseCLI ? 1 : 0, critical => 1, detail => $DatabaseCLI ? $DatabaseCLI : 'nicht gefunden' };
     push @Checks, { name => 'Apache CGI', ok => $ENV{GATEWAY_INTERFACE} ? 1 : 0, critical => 1, detail => $ENV{GATEWAY_INTERFACE} || 'nicht über CGI aufgerufen' };
@@ -1331,7 +1332,7 @@ sub _Page {
     }
 
     return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>'
-        . _Escape( $Param{Title} ) . ' - Qisutu Installation</title><link rel="stylesheet" href="' . $WebPath . '/static/css/qisutu-install.css?v=20260714"></head><body>'
+        . _Escape( $Param{Title} ) . ' - Qisutu Installation</title><link rel="icon" type="image/x-icon" sizes="32x32" href="' . $WebPath . '/static/img/favicon.ico?v=2026072101"><link rel="apple-touch-icon" sizes="120x120" href="' . $WebPath . '/static/img/apple-touch-icon.png?v=2026072101"><link rel="stylesheet" href="' . $WebPath . '/static/css/qisutu-install.css?v=20260714"></head><body>'
         . '<div class="qisutu-install-shell"><header><div class="brand"><img src="' . $WebPath . '/static/img/logo.png" alt="Qisutu"><strong>Qisutu Installation</strong></div><div class="step-text">Schritt ' . $Step . ' von 6</div></header>'
         . '<nav class="qisutu-install-progress" aria-label="Installationsfortschritt">' . $Progress . '</nav>'
         . '<main><h1>' . _Escape( $Param{Title} ) . '</h1>' . $Param{Content} . '</main>'

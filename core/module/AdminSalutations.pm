@@ -41,6 +41,7 @@ sub _Definition {
         ValueParam     => 'Content',
         ValueIsTextarea => 1,
         RichText       => 1,
+        ContentPlaceholders => 1,
         IDParam        => 'SalutationID',
         ListMethod     => 'SalutationList',
         GetMethod      => 'SalutationGet',

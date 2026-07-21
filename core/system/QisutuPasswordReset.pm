@@ -325,6 +325,7 @@ sub PasswordSet {
                AND ua.is_active = 1
                AND ua.is_system_user = 0
                AND ua.account_type IN ("agent", "customer")
+               AND ua.authentication_type = "local"
              LIMIT 1
              FOR UPDATE',
             $TokenHash,
@@ -414,6 +415,7 @@ sub _UserFind {
          FROM user_account
          WHERE login = ?
            AND account_type = ?
+           AND authentication_type = "local"
            AND is_active = 1
            AND is_system_user = 0
            AND email <> ""
@@ -429,6 +431,7 @@ sub _UserFind {
          FROM user_account
          WHERE LOWER(email) = LOWER(?)
            AND account_type = ?
+           AND authentication_type = "local"
            AND is_active = 1
            AND is_system_user = 0
            AND email <> ""

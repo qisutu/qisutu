@@ -1,3 +1,25 @@
+# Qisutu - Open Source Ticket System
+# Copyright (C) 2026 Franziska Steps
+# Qisutu - Kim-KI, https://qisutu.de
+#
+# This file is part of Qisutu.
+#
+# Qisutu is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Qisutu is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-FileCopyrightText: 2026 Franziska Steps
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 use strict;
 use warnings;
 use utf8;
@@ -26,6 +48,8 @@ is( $Action{state}->{target_label}, 'Translate:PostmasterActionFieldState', 'sta
 ok( !$Action{state}->{value_label}, 'state action has no redundant free value' );
 is( $Action{dynamic_field}->{target}, 'dynamic_field_value', 'dynamic-field action requires target and value' );
 is( $Action{pending_minutes}->{value_label}, 'Translate:PostmasterActionFieldMinutes', 'pending time is labelled as minutes' );
+is( $Action{reject}->{target}, 'none', 'reject action needs no redundant target or value' );
+is( $Action{reject}->{group}, 'processing', 'reject action is a processing action' );
 
 my $Module = AdminPostmasterFilters->new(
     Config => { Language => { Default => 'de' } },

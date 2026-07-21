@@ -1,3 +1,27 @@
+<!--
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # Qisutu installieren
 
 ## Voraussetzungen
@@ -78,8 +102,9 @@ Installation werden veraltete, vom früheren Installer erzeugte Präfixe sicher
 an den tatsächlichen Verzeichnisnamen angepasst.
 
 Das Skript installiert Apache, MariaDB beziehungsweise MySQL-Clientwerkzeuge,
-Perl und die benötigten Perl-Module einschließlich `Authen::SASL`. Nach der
-Paketinstallation prüft es alle benötigten Mail- und Datenbankmodule.
+Perl und die benötigten Perl-Module einschließlich `Authen::SASL` und
+`Net::LDAP`. Nach der Paketinstallation prüft es alle benötigten Mail-,
+Verzeichnis- und Datenbankmodule.
 
 Die Apache-Konfiguration wird distributionsabhängig eingebunden:
 
@@ -147,6 +172,63 @@ Beispielzugänge:
 
     http://SERVER/qisutu/index.pl
     http://qisututest.qisutu.de/qisututest/index.pl
+
+## LDAP / Active Directory für Agenten und Kundenbenutzer
+
+Die Verzeichnisanmeldung wird nach der Installation ausschließlich durch einen
+Administrator unter `Administration > LDAP / Active Directory` konfiguriert.
+Dort stehen zwei vollständig getrennte Profile bereit:
+
+- `Agenten-LDAP` ausschließlich für Anmeldungen im Agentenportal
+- `Kunden-LDAP` für Kundenbenutzer und ihre Kundenunternehmen
+
+Jedes Profil besitzt eine eigene Verbindung, Suche, Feldzuordnung, Prüfung und
+Aktivierung. In den Anmeldemasken gibt es keine Auswahl zwischen lokaler
+Anmeldung und Active Directory; Qisutu verwendet anhand des Portals automatisch
+das passende aktive Profil.
+
+Für beide Profile sind anzugeben:
+
+- Verzeichnistyp, Server, Port und LDAPS oder StartTLS
+- optional ein technisches Suchkonto sowie eine eigene CA-Datei
+- Benutzer-Base-DN und zusätzlicher Benutzerfilter
+- die verpflichtenden LDAP-Attribute für Login, Vorname, Nachname und E-Mail
+
+Das Agentenprofil kann zusätzlich eine Standardgruppe für automatisch neu
+angelegte Agenten und Mappings für weitere Agentenfelder enthalten. Das
+Kundenprofil benötigt zusätzlich je ein LDAP-Attribut für die eindeutige
+Qisutu-Kundennummer und den Namen des Kundenunternehmens. Weitere
+Kundenbenutzerfelder können ebenfalls mit LDAP-Attributen verbunden werden.
+Zusatzfelder, die in Qisutu als erforderlich definiert sind, benötigen im
+jeweiligen Profil zwingend ein Mapping und einen Wert im Verzeichnis.
+
+Das Serverzertifikat wird standardmäßig gegen den Zertifikatsspeicher des
+Betriebssystems geprüft. Das Bind-Passwort wird verschlüsselt abgelegt. Ein
+gespeichertes oder geändertes Profil bleibt zunächst inaktiv. Mit einem
+Test-Login werden Suche und alle Pflicht-Mappings geprüft; mit einem optionalen
+Test-Passwort zusätzlich die echte Benutzeranmeldung. Erst ein erfolgreicher
+Test erlaubt die Aktivierung des betreffenden Profils.
+
+Beim Agentenlogin sucht Qisutu mit dem eingegebenen Wert, übernimmt danach aber
+den kanonischen Wert aus dem konfigurierten Login-Attribut. Ein vorhandener
+Qisutu-Agent mit diesem Login wird weiterverwendet und auf LDAP-Anmeldung
+umgestellt; andernfalls wird ein neuer Agent angelegt. Ein E-Mail-Treffer wird
+nicht zum Zusammenführen verwendet.
+
+Beim Kundenlogin wird das Kundenunternehmen über die gemappte Kundennummer
+gefunden oder neu angelegt. Der Kundenbenutzer wird anhand des kanonischen
+Logins gefunden oder angelegt und diesem Unternehmen zugeordnet. Ändert sich
+die gemappte Kundennummer, wird eine frühere aktive Unternehmenszuordnung des
+Kundenbenutzers deaktiviert. E-Mail-Konflikte mit einem anderen Kundenkonto
+brechen die automatische Anlage oder Aktualisierung ab.
+
+Findet das jeweils aktive Verzeichnis keinen Benutzer, kann ein bestehendes
+lokales Konto weiterhin lokal angemeldet werden. Sobald ein eindeutiger
+Verzeichniseintrag gefunden wurde, ist dessen Passwortprüfung maßgeblich und es
+gibt keinen Rückfall auf ein lokales Passwort. LDAP-Konten sind von der lokalen
+Passwort-vergessen-Funktion ausgeschlossen. Wird für ein Konto ausdrücklich ein
+neues lokales Passwort vergeben, wird es wieder auf lokale Authentifizierung
+umgestellt.
 
 ## Mehrere Instanzen auf demselben Server
 

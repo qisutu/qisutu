@@ -1,4 +1,26 @@
-[%# Qisutu - Open Source Ticket System; SPDX-License-Identifier: AGPL-3.0-or-later %]
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
 
             <section class="qisutu-dashboard qisutu-mail-account-page" aria-labelledby="qisutu-admin-smtp-title">
                 <div class="qisutu-dashboard-header">
@@ -145,6 +167,19 @@
                                 [% END %]
                             </div>
                             [% END %]
+
+                            <div class="qisutu-form-field">
+                                <label>[% Translate.AdminMailCertificateVerification %]</label>
+                                <label class="qisutu-checkbox-label">
+                                    <input type="checkbox" name="SMTPVerifyCertificate" value="1" [% AccountSMTPVerifyCertificateChecked %]>
+                                    [% Translate.AdminMailVerifyServerCertificate %]
+                                </label>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label for="qisutu-smtp-ca-file">[% Translate.AdminMailCAFile %]</label>
+                                <input id="qisutu-smtp-ca-file" type="text" name="SMTPCAFile" value="[% AccountSMTPCAFile %]" placeholder="/etc/ssl/certs/company-ca.pem">
+                                <small>[% Translate.AdminMailCAFileHint %]</small>
+                            </div>
 
                             [% IF IsMicrosoft %]
                             <div class="qisutu-form-field"><label>[% Translate.AdminHost %]</label><input type="text" value="[% MicrosoftSMTPHost %]:587 (STARTTLS)" readonly></div>

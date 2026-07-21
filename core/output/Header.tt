@@ -28,7 +28,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <span class="qisutu-sidebar-logo">
                 <img src="[% StaticBase %]/img/logo.png" alt="Qisutu">
             </span>
-            <span class="qisutu-sidebar-name">[% SystemName %]</span>
+            <span class="qisutu-sidebar-name">
+                <span>[% SystemName %]</span>
+                [% IF SystemVersion %]<span class="qisutu-sidebar-version">[% SystemVersion %]</span>[% END %]
+            </span>
         </div>
 
         <button

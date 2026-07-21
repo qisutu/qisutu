@@ -223,4 +223,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js?v=2026071802"></script>
             <script src="[% StaticBase %]/js/qisutu-knowledge-insert.js?v=2026071901"></script>
-            <script src="[% StaticBase %]/js/qisutu-agent-ticket-create.js?v=2026071201"></script>
+            <script src="[% StaticBase %]/js/qisutu-agent-ticket-create.js?v=2026072001"></script>

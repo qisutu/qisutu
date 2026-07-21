@@ -1,5 +1,23 @@
 # Qisutu - Open Source Ticket System
 # Copyright (C) 2026 Franziska Steps
+# Qisutu - Kim-KI, https://qisutu.de
+#
+# This file is part of Qisutu.
+#
+# Qisutu is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Qisutu is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-FileCopyrightText: 2026 Franziska Steps
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 package CMDBItems;
@@ -76,7 +94,14 @@ sub Run {
     for my$Item(@{$List->{Items}}){$Item->{status_label}=$Item->{status_label}||$Item->{status}||'-';$Item->{active_label}=$Self->_T($Item->{active}?'AdminActiveYes':'AdminActiveNo',$Language);$Item->{customer_display}=$Item->{customer_name}||'-';}
     my$FieldsHTML=$Type?$Object->CIFieldsFormHTML(TypeID=>$TypeID,CI=>$CI||{},Language=>$Language,ReadOnly=>$Action eq'View'?1:0):'';
     my$Relations=$CI?$Object->RelationList(CIID=>$CIID):[];my$Tickets=$CI&&$AdminMode?$Self->_TicketRows($CIID):[];my$History=$CI&&$AdminMode?$Object->HistoryList(CIID=>$CIID):[];
-    for my$Relation(@{$Relations}){$Relation->{remove_html}='';if($Permission->{Change}){$Relation->{remove_html}='<form method="post" action="index.pl"><input type="hidden" name="Page" value="'.$Self->_E($ProgramPage).'"><input type="hidden" name="Step" value="RelationRemove"><input type="hidden" name="CIID" value="'.int($CIID).'"><input type="hidden" name="RelationID" value="'.int($Relation->{id}||0).'"><button class="qisutu-button-link qisutu-button-danger-text" type="submit">'.$Self->_E($Self->_T('AdminRemove',$Language)).'</button></form>';}}
+    for my$Relation(@{$Relations}){
+        my$RelatedDisplay='<strong>'.$Self->_E($Relation->{related_ci_number}||'').'</strong> '.$Self->_E($Relation->{related_ci_name}||'');
+        $Relation->{related_display_html}=$AdminMode
+            ? '<a href="index.pl?Page='.$Self->_E($ProgramPage).';Action=View;CIID='.int($Relation->{related_ci_id}||0).'">'.$RelatedDisplay.'</a>'
+            : $RelatedDisplay;
+        $Relation->{remove_html}='';
+        if($Permission->{Change}){$Relation->{remove_html}='<form method="post" action="index.pl"><input type="hidden" name="Page" value="'.$Self->_E($ProgramPage).'"><input type="hidden" name="Step" value="RelationRemove"><input type="hidden" name="CIID" value="'.int($CIID).'"><input type="hidden" name="RelationID" value="'.int($Relation->{id}||0).'"><button class="qisutu-button-link qisutu-button-danger-text" type="submit">'.$Self->_E($Self->_T('AdminRemove',$Language)).'</button></form>';}
+    }
     for my$H(@{$History}){$H->{event_label}=$Self->_T('CMDBHistory_'.$H->{event_type},$Language);$H->{actor_display}=$H->{actor_name}||$Self->_T('TicketHistorySystem',$Language);$H->{change_display}=$Self->_HistoryChange($H);$H->{ticket_url}=$H->{related_ticket_id}?'index.pl?Page=AgentTicketZoom;TicketID='.$H->{related_ticket_id}:'';$H->{ticket_link_html}=$H->{ticket_url}?'<a href="'.$Self->_E($H->{ticket_url}).'">'.$Self->_E($Self->_T('CMDBOpenTicket',$Language)).'</a>':'';}
     my$Notice=$Self->_Notice($R,$Language);
     my$CustomerUsers=$CI&&$CI->{customer_id}?$Object->CustomerUserItems(CustomerID=>$CI->{customer_id}):[];

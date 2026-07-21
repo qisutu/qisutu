@@ -463,6 +463,9 @@ sub SchemaEnsure {
 sub PlaceholderList {
     return [
         { placeholder => '{{Agent.FullName}}',        description => 'Name des Empfänger-Agenten' },
+        { placeholder => '{{Agent.Firstname}}',       description => 'Vorname des Empfänger-Agenten' },
+        { placeholder => '{{Agent.Lastname}}',        description => 'Nachname des Empfänger-Agenten' },
+        { placeholder => '{{Agent.Login}}',           description => 'Login des Empfänger-Agenten' },
         { placeholder => '{{Agent.Email}}',           description => 'E-Mail-Adresse des Empfänger-Agenten' },
         { placeholder => '{{Ticket.Number}}',         description => 'Ticketnummer' },
         { placeholder => '{{Ticket.Title}}',          description => 'Tickettitel' },
@@ -481,16 +484,119 @@ sub PlaceholderList {
         { placeholder => '{{Customer.Name}}',         description => 'Kundenname' },
         { placeholder => '{{Customer.Number}}',       description => 'Kundennummer' },
         { placeholder => '{{CustomerUser.FullName}}', description => 'Name des Kundenbenutzers' },
+        { placeholder => '{{CustomerUser.Firstname}}', description => 'Vorname des Kundenbenutzers' },
+        { placeholder => '{{CustomerUser.Lastname}}', description => 'Nachname des Kundenbenutzers' },
+        { placeholder => '{{CustomerUser.Login}}',    description => 'Login des Kundenbenutzers' },
         { placeholder => '{{CustomerUser.Email}}',    description => 'E-Mail-Adresse des Kundenbenutzers' },
         { placeholder => '{{ChangedBy.FullName}}',    description => 'Name des ändernden Benutzers' },
+        { placeholder => '{{ChangedBy.Firstname}}',   description => 'Vorname des ändernden Benutzers' },
+        { placeholder => '{{ChangedBy.Lastname}}',    description => 'Nachname des ändernden Benutzers' },
+        { placeholder => '{{ChangedBy.Login}}',       description => 'Login des ändernden Benutzers' },
         { placeholder => '{{ChangedBy.Email}}',       description => 'E-Mail-Adresse des ändernden Benutzers' },
         { placeholder => '{{AssignedAgent.FullName}}', description => 'Name des zugewiesenen Agenten' },
+        { placeholder => '{{AssignedAgent.Firstname}}', description => 'Vorname des zugewiesenen Agenten' },
+        { placeholder => '{{AssignedAgent.Lastname}}', description => 'Nachname des zugewiesenen Agenten' },
+        { placeholder => '{{AssignedAgent.Login}}',    description => 'Login des zugewiesenen Agenten' },
         { placeholder => '{{AssignedAgent.Email}}',    description => 'E-Mail-Adresse des zugewiesenen Agenten' },
         { placeholder => '{{PendingUntil}}',          description => 'Warten-bis-Zeitpunkt' },
         { placeholder => '{{PendingReachedSince}}',   description => 'Dauer seit erreichtem Warten-Status' },
         { placeholder => '{{Escalation.Type}}',       description => 'Eskalationsart' },
         { placeholder => '{{Escalation.DueTime}}',    description => 'nächster oder erreichter Eskalationszeitpunkt' },
     ];
+}
+
+sub ContentPlaceholderList {
+    my @Placeholder = map { { %{$_} } } @{ PlaceholderList() };
+
+    my %Description = (
+        '{{Agent.FullName}}'  => 'Name des angemeldeten Agenten',
+        '{{Agent.Firstname}}' => 'Vorname des angemeldeten Agenten',
+        '{{Agent.Lastname}}'  => 'Nachname des angemeldeten Agenten',
+        '{{Agent.Login}}'     => 'Login des angemeldeten Agenten',
+        '{{Agent.Email}}'     => 'E-Mail-Adresse des angemeldeten Agenten',
+    );
+
+    for my $Item (@Placeholder) {
+        next if !$Description{ $Item->{placeholder} || '' };
+        $Item->{description} = $Description{ $Item->{placeholder} };
+    }
+
+    return \@Placeholder;
+}
+
+sub SystemPlaceholderHash {
+    my ($Self) = @_;
+
+    return { %{ $Self->_SystemPlaceholderHash() || {} } };
+}
+
+sub ContentTemplateRenderHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $HTML = $Param{HTML} || '';
+    return '' if !$HTML;
+
+    my $Ticket = ref $Param{Ticket} eq 'HASH' ? { %{ $Param{Ticket} } } : undef;
+    if ( !$Ticket && ( $Param{TicketID} || 0 ) ) {
+        $Ticket = $Self->_TicketDataGet( TicketID => $Param{TicketID} );
+    }
+    $Ticket ||= {};
+
+    if ( !$Ticket->{customer_user_name} ) {
+        $Ticket->{customer_user_name} = $Self->_UserName(
+            Firstname => $Ticket->{customer_user_firstname},
+            Lastname  => $Ticket->{customer_user_lastname},
+            Login     => $Ticket->{customer_user_login},
+        );
+    }
+
+    my $Agent = ref $Param{Agent} eq 'HASH' ? { %{ $Param{Agent} } } : undef;
+    if ( !$Agent && ( $Param{AgentUserID} || 0 ) ) {
+        $Agent = $Self->_UserDataGet( UserID => $Param{AgentUserID} );
+    }
+    $Agent ||= {};
+    if ( !$Agent->{full_name} ) {
+        $Agent->{full_name} = $Self->_UserName(
+            Firstname => $Agent->{firstname},
+            Lastname  => $Agent->{lastname},
+            Login     => $Agent->{login},
+        );
+    }
+
+    my $ChangedBy = ref $Param{ChangedBy} eq 'HASH' ? { %{ $Param{ChangedBy} } } : undef;
+    if ( $ChangedBy && !$ChangedBy->{full_name} ) {
+        $ChangedBy->{full_name} = $Self->_UserName(
+            Firstname => $ChangedBy->{firstname},
+            Lastname  => $ChangedBy->{lastname},
+            Login     => $ChangedBy->{login},
+        );
+    }
+
+    my $Assigned = ref $Param{Assigned} eq 'HASH' ? { %{ $Param{Assigned} } } : undef;
+    if ( $Assigned && !$Assigned->{full_name} ) {
+        $Assigned->{full_name} = $Self->_UserName(
+            Firstname => $Assigned->{firstname},
+            Lastname  => $Assigned->{lastname},
+            Login     => $Assigned->{login},
+        );
+    }
+
+    my $Placeholder = $Self->_PlaceholderBuild(
+        Ticket      => $Ticket,
+        Agent       => $Agent,
+        ChangedBy   => $ChangedBy,
+        ChangedByID => $Param{ChangedByID},
+        Assigned    => $Assigned,
+        AssignedID  => $Param{AssignedID},
+        TicketLinkPage => $Param{TicketLinkPage},
+        SystemPlaceholder => $Param{SystemPlaceholder},
+    );
+
+    return $Self->_PlaceholderReplaceHTML(
+        HTML              => $HTML,
+        Placeholder       => $Placeholder,
+        PreserveEmptyKeys => $Param{PreserveEmptyKeys},
+    );
 }
 
 sub _DefaultTemplatesEnsure {
@@ -825,14 +931,28 @@ sub _PlaceholderBuild {
 
     my $Ticket = $Param{Ticket} || {};
     my $Agent  = $Param{Agent}  || {};
-    my $ChangedBy = $Self->_UserDataGet( UserID => $Param{ChangedByID} );
-    my $Assigned  = $Self->_UserDataGet( UserID => $Param{AssignedID} || $Ticket->{owner_user_id} );
-    my $SystemPlaceholder = $Self->_SystemPlaceholderHash();
-    my $TicketLink = $Self->_TicketLink( TicketID => $Ticket->{id} );
-    my $TicketLinkHTML = '<a href="' . $Self->_Escape($TicketLink) . '">Ticket ' . $Self->_Escape( $Ticket->{ticket_number} || $Ticket->{id} ) . ' öffnen</a>';
+    my $ChangedBy = ref $Param{ChangedBy} eq 'HASH'
+        ? $Param{ChangedBy}
+        : $Self->_UserDataGet( UserID => $Param{ChangedByID} );
+    my $Assigned  = ref $Param{Assigned} eq 'HASH'
+        ? $Param{Assigned}
+        : $Self->_UserDataGet( UserID => $Param{AssignedID} || $Ticket->{owner_user_id} );
+    my $SystemPlaceholder = ref $Param{SystemPlaceholder} eq 'HASH'
+        ? $Param{SystemPlaceholder}
+        : $Self->_SystemPlaceholderHash();
+    my $TicketLink = $Ticket->{id} ? $Self->_TicketLink(
+        TicketID => $Ticket->{id},
+        Page     => $Param{TicketLinkPage},
+    ) : '';
+    my $TicketLinkHTML = $TicketLink
+        ? '<a href="' . $TicketLink . '">Ticket ' . $Self->_Escape( $Ticket->{ticket_number} || $Ticket->{id} ) . ' öffnen</a>'
+        : '';
 
     return {
         'Agent.FullName'         => $Agent->{full_name} || '',
+        'Agent.Firstname'        => $Agent->{firstname} || '',
+        'Agent.Lastname'         => $Agent->{lastname} || '',
+        'Agent.Login'            => $Agent->{login} || '',
         'Agent.Email'            => $Agent->{email} || '',
         'Ticket.Number'          => $Ticket->{ticket_number} || '',
         'Ticket.Title'           => $Ticket->{title} || '',
@@ -851,10 +971,19 @@ sub _PlaceholderBuild {
         'Customer.Name'          => $Ticket->{customer_name} || '',
         'Customer.Number'        => $Ticket->{customer_number} || '',
         'CustomerUser.FullName'  => $Ticket->{customer_user_name} || '',
+        'CustomerUser.Firstname' => $Ticket->{customer_user_firstname} || '',
+        'CustomerUser.Lastname'  => $Ticket->{customer_user_lastname} || '',
+        'CustomerUser.Login'     => $Ticket->{customer_user_login} || '',
         'CustomerUser.Email'     => $Ticket->{customer_user_email} || '',
         'ChangedBy.FullName'     => $ChangedBy->{full_name} || '',
+        'ChangedBy.Firstname'    => $ChangedBy->{firstname} || '',
+        'ChangedBy.Lastname'     => $ChangedBy->{lastname} || '',
+        'ChangedBy.Login'        => $ChangedBy->{login} || '',
         'ChangedBy.Email'        => $ChangedBy->{email} || '',
         'AssignedAgent.FullName' => $Assigned->{full_name} || '',
+        'AssignedAgent.Firstname' => $Assigned->{firstname} || '',
+        'AssignedAgent.Lastname'  => $Assigned->{lastname} || '',
+        'AssignedAgent.Login'     => $Assigned->{login} || '',
         'AssignedAgent.Email'    => $Assigned->{email} || '',
         'PendingUntil'           => $Self->_DateTimeDisplay( $Ticket->{pending_until} || '' ),
         'PendingReachedSince'    => $Ticket->{pending_reached_since} || '',
@@ -868,10 +997,14 @@ sub _PlaceholderReplaceHTML {
 
     my $HTML        = $Param{HTML} || '';
     my $Placeholder = $Param{Placeholder} || {};
+    my %PreserveEmpty = map { $_ => 1 } @{ ref $Param{PreserveEmptyKeys} eq 'ARRAY' ? $Param{PreserveEmptyKeys} : [] };
 
     $HTML =~ s{\{\{\s*([A-Za-z0-9_.]+)\s*\}\}}{
         my $Key = $1;
-        if ( $Key eq 'Ticket.LinkHTML' ) {
+        if ( $PreserveEmpty{$Key} && ( !exists $Placeholder->{$Key} || !defined $Placeholder->{$Key} || $Placeholder->{$Key} eq '' ) ) {
+            '{{' . $Key . '}}';
+        }
+        elsif ( $Key eq 'Ticket.LinkHTML' ) {
             exists $Placeholder->{$Key} ? $Placeholder->{$Key} : '';
         }
         else {
@@ -1125,10 +1258,13 @@ sub _TicketLink {
 
     my $TicketID = $Param{TicketID} || 0;
     my $BaseURL  = $Self->_SystemBaseURL();
+    my $Page     = ( $Param{Page} || '' ) eq 'CustomerTicketZoom'
+        ? 'CustomerTicketZoom'
+        : 'AgentTicketZoom';
 
     $BaseURL =~ s{/+\z}{};
 
-    my $Path = 'index.pl?Page=AgentTicketZoom&TicketID=' . $TicketID;
+    my $Path = 'index.pl?Page=' . $Page . '&TicketID=' . $TicketID;
 
     return $BaseURL ? $BaseURL . '/' . $Path : $Path;
 }

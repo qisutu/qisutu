@@ -101,6 +101,19 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             </div>
                         </div>
 
+                        <section class="qisutu-notification-placeholder-box">
+                            <h3>[% Translate.AdminContentTemplatePlaceholders %]</h3>
+                            <p>[% Translate.AdminContentTemplatePlaceholdersHint %]</p>
+                            <div class="qisutu-notification-placeholder-grid">
+                                [% FOREACH Placeholder IN PlaceholderList %]
+                                <div class="qisutu-notification-placeholder-item">
+                                    <code>[% Placeholder.placeholder %]</code>
+                                    <span>[% Placeholder.description %]</span>
+                                </div>
+                                [% END %]
+                            </div>
+                        </section>
+
                         <div class="qisutu-form-actions">
                             <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminCreate %]</button>
                         </div>
@@ -138,6 +151,19 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 <span>[% Translate.AdminActive %]</span>
                             </label>
                         </div>
+
+                        <section class="qisutu-notification-placeholder-box">
+                            <h3>[% Translate.AdminContentTemplatePlaceholders %]</h3>
+                            <p>[% Translate.AdminContentTemplatePlaceholdersHint %]</p>
+                            <div class="qisutu-notification-placeholder-grid">
+                                [% FOREACH Placeholder IN PlaceholderList %]
+                                <div class="qisutu-notification-placeholder-item">
+                                    <code>[% Placeholder.placeholder %]</code>
+                                    <span>[% Placeholder.description %]</span>
+                                </div>
+                                [% END %]
+                            </div>
+                        </section>
 
                         <div class="qisutu-form-actions">
                             <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>

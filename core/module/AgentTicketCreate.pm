@@ -31,6 +31,7 @@ use QisutuService;
 use QisutuTimeAccounting;
 use QisutuCMDB;
 use QisutuKnowledgeBase;
+use QisutuNotification;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -108,8 +109,14 @@ sub Run {
     if ( $Step eq 'QueueTemplate' ) {
         return $Self->_JSONResponse(
             Data => $Self->_QueueTemplateData(
-                QueueID => $Request->{QueueID},
-                User    => $User,
+                QueueID           => $Request->{QueueID},
+                User              => $User,
+                CustomerUserID    => $Request->{CustomerUserID},
+                OwnerUserID       => $Request->{OwnerUserID},
+                Title             => $Request->{Title},
+                StateID           => $Request->{StateID},
+                PriorityID        => $Request->{PriorityID},
+                PendingUntil      => $Request->{PendingUntil},
             ),
         );
     }
@@ -168,7 +175,16 @@ sub Run {
 
     my $Body = $Request->{Body} || '';
     if ( !$IsSubmit && $QueueID ) {
-        $Body = $Self->_QueueTemplateHTML( QueueID => $QueueID );
+        $Body = $Self->_QueueTemplateHTML(
+            QueueID        => $QueueID,
+            User           => $User,
+            CustomerUserID => $Request->{CustomerUserID},
+            OwnerUserID    => $Request->{OwnerUserID},
+            Title          => $Request->{Title},
+            StateID        => $StateID,
+            PriorityID     => $PriorityID,
+            PendingUntil   => $PendingUntil,
+        );
     }
 
     if ( $IsSubmit && $TicketObject ) {
@@ -968,7 +984,16 @@ sub _QueueTemplateData {
 
     return {
         success       => 1,
-        body_template => $Self->_QueueTemplateHTML( QueueID => $QueueID ),
+        body_template => $Self->_QueueTemplateHTML(
+            QueueID        => $QueueID,
+            User           => $User,
+            CustomerUserID => $Param{CustomerUserID},
+            OwnerUserID    => $Param{OwnerUserID},
+            Title          => $Param{Title},
+            StateID        => $Param{StateID},
+            PriorityID     => $Param{PriorityID},
+            PendingUntil   => $Param{PendingUntil},
+        ),
     };
 }
 
@@ -986,6 +1011,8 @@ sub _QueueTemplateHTML {
 
     my $Row = $Self->{DB}->SelectRow(
         'SELECT
+            q.name AS queue_name,
+            q.full_name AS queue_full_name,
             sal.content AS salutation_content,
             sig.content AS signature_content
          FROM ticket_queue q
@@ -1003,8 +1030,78 @@ sub _QueueTemplateHTML {
 
     return '' if !$Row;
 
+    my $Ticket = {
+        title           => $Param{Title} || '',
+        queue_name      => $Row->{queue_name} || '',
+        queue_full_name => $Row->{queue_full_name} || '',
+        pending_until   => $Param{PendingUntil} || '',
+    };
+
+    my $CustomerUserID = $Param{CustomerUserID} || 0;
+    if ( $CustomerUserID =~ m{\A\d+\z} && $CustomerUserID ) {
+        my $Customer = $Self->{DB}->SelectRow(
+            'SELECT
+                c.name AS customer_name,
+                c.customer_number,
+                ua.login AS customer_user_login,
+                ua.email AS customer_user_email,
+                ua.firstname AS customer_user_firstname,
+                ua.lastname AS customer_user_lastname
+             FROM customer_user cu
+             INNER JOIN customer c ON c.id = cu.customer_id
+             INNER JOIN user_account ua ON ua.id = cu.user_account_id
+             WHERE cu.id = ?
+               AND cu.active = 1
+               AND c.active = 1
+               AND ua.is_active = 1
+             LIMIT 1',
+            $CustomerUserID,
+        );
+        %{$Ticket} = ( %{$Ticket}, %{$Customer} ) if $Customer;
+    }
+
+    my $StateID = $Param{StateID} || 0;
+    if ( $StateID =~ m{\A\d+\z} && $StateID ) {
+        my $State = $Self->{DB}->SelectRow(
+            'SELECT name AS state_name FROM ticket_state WHERE id = ? AND active = 1 LIMIT 1',
+            $StateID,
+        );
+        $Ticket->{state_name} = $State->{state_name} if $State;
+    }
+
+    my $PriorityID = $Param{PriorityID} || 0;
+    if ( $PriorityID =~ m{\A\d+\z} && $PriorityID ) {
+        my $Priority = $Self->{DB}->SelectRow(
+            'SELECT name AS priority_name FROM ticket_priority WHERE id = ? AND active = 1 LIMIT 1',
+            $PriorityID,
+        );
+        $Ticket->{priority_name} = $Priority->{priority_name} if $Priority;
+    }
+
+    my $User = $Param{User} || {};
+    my $Agent = {
+        firstname => $User->{firstname} || '',
+        lastname  => $User->{lastname} || '',
+        login     => $User->{login} || '',
+        email     => $User->{email} || '',
+    };
+    my $Renderer = QisutuNotification->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
+
     my $Salutation = QisutuHTML->Sanitize( $Row->{salutation_content} || '' );
     my $Signature  = QisutuHTML->Sanitize( $Row->{signature_content} || '' );
+    my %RenderParam = (
+        Ticket            => $Ticket,
+        Agent             => $Agent,
+        ChangedBy         => $Agent,
+        AssignedID        => $Param{OwnerUserID} || $User->{user_account_id},
+        SystemPlaceholder => $Renderer->SystemPlaceholderHash(),
+        PreserveEmptyKeys => [ qw(Ticket.Number Ticket.Link Ticket.LinkHTML) ],
+    );
+    $Salutation = $Renderer->ContentTemplateRenderHTML( %RenderParam, HTML => $Salutation ) if $Salutation;
+    $Signature  = $Renderer->ContentTemplateRenderHTML( %RenderParam, HTML => $Signature ) if $Signature;
     my @Parts;
 
     if ($Salutation) {
