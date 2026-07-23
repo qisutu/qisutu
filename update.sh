@@ -27,6 +27,7 @@ set -Eeuo pipefail
 usage() {
     cat <<'EOF_USAGE'
 Verwendung:
+  sudo ./update.sh
   sudo ./update.sh /opt/qisutu
   sudo ./update.sh /opt/qisutu-test
 
@@ -35,7 +36,8 @@ Optionen:
   --help      Diese Hilfe anzeigen
 
 Das Updatepaket ist das Verzeichnis, in dem dieses update.sh liegt.
-Der angegebene Pfad muss auf eine bereits installierte Qisutu-Instanz zeigen.
+Ohne Pfadangabe wird die Installation unter /opt/qisutu aktualisiert.
+Ein angegebener Pfad muss auf eine bereits installierte Qisutu-Instanz zeigen.
 Die Programmdateien werden direkt in dieser Installation aktualisiert.
 EOF_USAGE
 }
@@ -1125,7 +1127,9 @@ while (( $# > 0 )); do
     esac
 done
 
-[[ -n "$TARGET_ARGUMENT" ]] || { usage; exit 1; }
+if [[ -z "$TARGET_ARGUMENT" ]]; then
+    TARGET_ARGUMENT="/opt/qisutu"
+fi
 
 SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 [[ -d "$TARGET_ARGUMENT" ]] || fail "Die angegebene Qisutu-Installation existiert nicht: $TARGET_ARGUMENT"

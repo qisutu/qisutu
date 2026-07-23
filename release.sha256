@@ -4,7 +4,7 @@
 f054f3b0e43eb521759630c8d22627ef807c5b5c236d78b3d18931807bf6be7c  ./INSTALL.md
 0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0  ./LICENSE
 9fdb27ee542c79c4bb5994075f286bf0566f37cb0a1bf163025929629984d41b  ./MODULES.md
-1e49997da977a5b8062bfb7c12b2697cf3b5dc785288bc89ec0bf648c2a5b176  ./README.md
+170c89fcd19ed67129339b9932181d35a3588ca64d82fbad6b8a4ce8814b3d0a  ./README.md
 81eacce9917f2389baf52764f6b7b9b2892f066eac580f7eb740fba8c4e0b6b4  ./THIRD_PARTY_NOTICES.md
 aa652ac9cd1c0b4349e16b0e236d40b28ae8729de9dc3da90e9136afad5ff4c9  ./bin/cgi-bin/api.pl
 d9fe00726f120c82c388400cd4d4d0b27ac58fa72d07ae2818451f39cfdd9ebf  ./bin/cgi-bin/form.pl
@@ -327,7 +327,7 @@ bd6d36a33ab31e93bd2f9622fa09c37c49631513aa193787745b776f4cdbef4f  ./t/system-ema
 9927179900ece96e3737641cb377a1e9f93782c7d4640e6bf74bfb7a1fbb8d78  ./t/ticket-tool-close-note.t
 44309c442b5ea713b8c0b6e89eeda9d0f3b2f956de1e9cca3482347f8b5d8fa0  ./t/two-factor-qr.t
 7a34ae6c37572e8c4690485b9b33102bc6a8ce638e1b1cf63860b0a8fc0e3b0c  ./t/ui-version-display.t
-4189f3be6db57dcd44c68d82e8a63a1d2bc2e48225a16b854d94da61e25a16e6  ./update.sh
+44aa309a936d66711c5bb35ff4b42383d0a2e34eed4982a8079ec3ba2496d35a  ./update.sh
 99f84e428739d2801f83480eb6ad34e99e8f9cd99bcc9e0ac4363e3051fdcfb3  ./var/static/css/ckeditor5/LICENSE.md
 2cb70c0ac9d96496aabf4d215fe2012689e04eae67cd1c248e1bde2b0eb3beca  ./var/static/css/ckeditor5/ckeditor5-content.css
 fda30bc3dcfa3f947d62b3deba8ba9df21c1236deda279220816cad04a324fb5  ./var/static/css/ckeditor5/ckeditor5-editor.css

@@ -30,34 +30,44 @@ Benutzeroberfläche.
 
 Projektwebsite: https://qisutu.de
 
-## Entwicklungsstatus
+## Release-Status
 
 Qisutu ist ein eigenständig installierbares Open-Source-Ticketsystem mit
 Agenten- und Kundenportal, E-Mail-Verarbeitung, Verzeichnisanmeldung,
-Automatisierung, Wissensdatenbank, CMDB, Berichten und REST-API. Der aktuelle
-0.x-Release-Zweig ist der erste öffentlich veröffentlichte Entwicklungsstand.
-Bis zur Version 1.0 können sich Schnittstellen und Datenbankstrukturen noch
-weiterentwickeln; notwendige Änderungen werden über den integrierten Updater
-und die dauerhaft mitgeführten Datenmigrationen bereitgestellt.
+Automatisierung, Wissensdatenbank, CMDB, Berichten und REST-API. Qisutu 1.0.1
+ist eine stabile, für den produktiven Einsatz freigegebene Version. Qisutu
+befindet sich damit nicht mehr in der Entwicklungsphase. Schnittstellen und
+Datenbankstrukturen werden im Rahmen der regulären Releasepflege
+weiterentwickelt; notwendige Änderungen werden über
+den integrierten Updater und die dauerhaft mitgeführten Datenmigrationen
+bereitgestellt.
 
 ## Installation
 
-1. Das Qisutu-Archiv in ein eigenes Instanzverzeichnis entpacken, zum Beispiel
-   `/opt/qisutu` oder `/opt/qisututest`.
-2. Im entpackten Verzeichnis als root ausführen:
+Die folgenden Befehle als root im Verzeichnis `/opt` ausführen:
 
-       sudo ./install.sh
+    wget https://o-fork.de/inst-kim/qisutu-1.0.1.tar.gz
+    tar xzf qisutu-1.0.1.tar.gz
+    mv qisutu-1.0.1 qisutu
 
-3. Der Name des Instanzverzeichnisses bestimmt die technischen Instanzwerte
-   unmittelbar. Aus `/opt/qisutu` entsteht die Instanz `qisutu`, aus
-   `/opt/qisututest` die Instanz `qisututest`. Es wird kein zusätzliches
-   `qisutu-`-Präfix ergänzt.
-4. Anschließend die vom Skript ausgegebene Adresse öffnen, beispielsweise:
+    useradd -d /opt/qisutu -c 'Qisutu user' qisutu
+    usermod -G www-data qisutu
 
-       http://SERVER/qisutu/install.pl
-       http://qisututest.example.org/qisututest/install.pl
+    chown qisutu:www-data -R qisutu
 
-5. Den sechs Schritten des Webinstallers folgen.
+    cd /opt/qisutu
+    chmod +x install.sh
+    ./install.sh
+
+Der Name des Instanzverzeichnisses bestimmt die technischen Instanzwerte
+unmittelbar. Aus `/opt/qisutu` entsteht die Instanz `qisutu`. Es wird kein
+zusätzliches `qisutu-`-Präfix ergänzt.
+
+Anschließend die vom Skript ausgegebene Adresse öffnen, beispielsweise:
+
+    http://SERVER/qisutu/install.pl
+
+Danach den sechs Schritten des Webinstallers folgen.
 
 `install.sh` erkennt das Betriebssystem, installiert die benötigten Pakete und
 Perl-Module und richtet für jede Qisutu-Instanz eine eigene Apache-Einbindung,
@@ -76,11 +86,20 @@ Instanzen stehen in `INSTALL.md`.
 
 ## Update
 
-Ein neues Release wird separat entpackt und mit dem Pfad der gewünschten
-Installation gestartet:
+Die folgenden Befehle als root im Verzeichnis `/opt` ausführen:
 
-    sudo ./update.sh /opt/qisutu
-    sudo ./update.sh /opt/qisututest
+    wget https://o-fork.de/inst-kim/qisutu-1.0.1.tar.gz
+    tar xzf qisutu-1.0.1.tar.gz
+
+    chown qisutu:www-data -R /opt/qisutu-1.0.1
+
+    cd /opt/qisutu-1.0.1
+    chmod +x update.sh
+    ./update.sh
+
+    cd /opt
+    rm -R qisutu-1.0.1
+    rm qisutu-1.0.1.tar.gz
 
 Der Updater erkennt die Instanz über `var/install/instance.conf`, stoppt nur
 deren Daemon und sperrt deren Mailabruf. Er kopiert alle verwalteten
