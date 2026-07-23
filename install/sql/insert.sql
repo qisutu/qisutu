@@ -57,16 +57,10 @@ INSERT INTO `user_group` (
     `sort_order`,
     `created_by_user_id`,
     `changed_by_user_id`
-) VALUES (
-    1,
-    'admin',
-    'Administrators',
-    'agent',
-    1,
-    100,
-    1,
-    1
-);
+) VALUES
+    (1, 'admin',   'Administrators', 'agent', 1, 100, 1, 1),
+    (2, 'agent',   'Agents',         'agent', 1, 200, 1, 1),
+    (3, 'reports', 'Reports',        'agent', 1, 300, 1, 1);
 
 INSERT INTO `user_group_member` (
     `user_group_id`,
@@ -80,19 +74,10 @@ INSERT INTO `user_group_member` (
     `permission_change`,
     `permission_overview`,
     `permission_full`
-) VALUES (
-    1,
-    1,
-    'admin',
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1
-);
+) VALUES
+    (1, 1, 'admin', 1, 1, 1, 1, 1, 1, 1, 1),
+    (2, 1, 'admin', 1, 1, 1, 1, 1, 1, 1, 1),
+    (3, 1, 'admin', 1, 1, 1, 1, 1, 1, 1, 1);
 
 INSERT INTO `user_group_permission` (
     `user_group_id`,
@@ -102,6 +87,7 @@ INSERT INTO `user_group_permission` (
     `changed_by_user_id`
 ) VALUES
     (1, 'admin.view', 1, 1, 1),
+    (1, 'admin.addon.manage', 1, 1, 1),
     (1, 'time_accounting.correct', 1, 1, 1);
 
 INSERT INTO `system_setting` (
@@ -120,14 +106,14 @@ INSERT INTO `ticket_queue` (
     `name`,
     `full_name`,
     `follow_up_allowed`,
+    `follow_up_option`,
     `active`,
     `sort_order`,
     `created_by_user_id`,
     `changed_by_user_id`
 ) VALUES
-    (1, 'Posteingang', 'Posteingang', 1, 1, 100, 1, 1),
-    (2, 'Junk',        'Junk',        1, 1, 200, 1, 1),
-    (3, 'Spam',        'Spam',        1, 1, 300, 1, 1);
+    (1, 'Posteingang', 'Posteingang', 1, 'reopen', 1, 100, 1, 1),
+    (2, 'Spam',        'Spam',        1, 'reopen', 1, 200, 1, 1);
 
 INSERT INTO `ticket_queue_group` (
     `queue_id`,
@@ -137,9 +123,8 @@ INSERT INTO `ticket_queue_group` (
     `created_by_user_id`,
     `changed_by_user_id`
 ) VALUES
-    (1, 1, 'ticket.full', 1, 1, 1),
-    (2, 1, 'ticket.full', 1, 1, 1),
-    (3, 1, 'ticket.full', 1, 1, 1);
+    (1, 2, 'ticket.full', 1, 1, 1),
+    (2, 2, 'ticket.full', 1, 1, 1);
 
 INSERT INTO `ticket_state` (
     `id`,

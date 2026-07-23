@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminChecklists',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 914,
+    Order           => 21,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

@@ -54,7 +54,7 @@ sub Run {
             Name                           => $Request->{Name},
             ParentQueueID                  => $Request->{ParentQueueID},
             GroupID                        => $Request->{GroupID},
-            FollowUpAllowed                => $Request->{FollowUpAllowed},
+            FollowUpOption                 => $Request->{FollowUpOption},
             SystemEmailID                  => $Request->{SystemEmailID},
             SalutationID                   => $Request->{SalutationID},
             SignatureID                    => $Request->{SignatureID},
@@ -73,7 +73,7 @@ sub Run {
             QueueID                        => $Request->{QueueID},
             Name                           => $Request->{Name},
             ParentQueueID                  => $Request->{ParentQueueID},
-            FollowUpAllowed                => $Request->{FollowUpAllowed},
+            FollowUpOption                 => $Request->{FollowUpOption},
             GroupID                        => $Request->{GroupID},
             SystemEmailID                  => $Request->{SystemEmailID},
             SalutationID                   => $Request->{SalutationID},
@@ -117,6 +117,11 @@ sub Run {
         }
     }
 
+    my $QueueFollowUpOption = $Queue ? ( $Queue->{follow_up_option} || '' ) : 'reopen';
+    if ( $QueueFollowUpOption !~ m{\A(?:reopen|new_ticket|reject)\z} ) {
+        $QueueFollowUpOption = !$Queue || $Queue->{follow_up_allowed} ? 'reopen' : 'reject';
+    }
+
     my $ErrorMessage = $Admin ? $Admin->Error() : '';
 
     return {
@@ -139,7 +144,9 @@ sub Run {
             QueueFullName      => $Queue ? $Queue->{full_name} : '',
             QueueSortOrder     => $Queue ? $Queue->{sort_order} : 1000,
             QueueActiveChecked => $Queue && $Queue->{active} ? 'checked' : '',
-            QueueFollowUpChecked => !$Queue || $Queue->{follow_up_allowed} ? 'checked' : '',
+            QueueFollowUpReopenChecked    => $QueueFollowUpOption eq 'reopen' ? 'checked' : '',
+            QueueFollowUpNewTicketChecked => $QueueFollowUpOption eq 'new_ticket' ? 'checked' : '',
+            QueueFollowUpRejectChecked    => $QueueFollowUpOption eq 'reject' ? 'checked' : '',
             QueueEscalationFirstResponseMinutes => $Queue ? $Queue->{escalation_first_response_minutes} : 0,
             QueueEscalationUpdateMinutes        => $Queue ? $Queue->{escalation_update_minutes} : 0,
             QueueEscalationSolutionMinutes      => $Queue ? $Queue->{escalation_solution_minutes} : 0,

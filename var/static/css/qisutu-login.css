@@ -184,6 +184,32 @@
     background: var(--qisutu-primary-hover);
 }
 
+.qisutu-login-external {
+    display: grid;
+    gap: 10px;
+}
+
+.qisutu-login-external-separator {
+    color: var(--qisutu-muted);
+    text-align: center;
+    font-size: 13px;
+}
+
+.qisutu-login-button-external {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border: 1px solid var(--qisutu-primary);
+    background: #ffffff;
+    color: var(--qisutu-primary);
+    text-decoration: none;
+}
+
+.qisutu-login-button-external:hover {
+    background: rgba(0, 84, 104, 0.08);
+}
+
 @media (max-width: 520px) {
     .qisutu-header {
         padding: 0 16px;

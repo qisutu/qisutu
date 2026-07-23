@@ -182,7 +182,7 @@ for my $Path (qw(
     core/module/AdminCommunicationLog.pm
     core/output/AdminCommunicationLog.tt
     core/config/programs/AdminCommunicationLog.pm
-    install/update/database/0.0.21/001-create-communication-log.sql
+    install/sql/schema.sql
 )) {
     open my $FH, '<:raw', "$FindBin::Bin/../$Path" or die $!;
     local $/;

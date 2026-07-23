@@ -43,10 +43,12 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                     <fieldset class="qisutu-login-type">
                         <legend>[% Translate.LoginAccountType %]</legend>
+                        [% IF ShowLocalAgentLogin %]
                         <label>
                             <input type="radio" name="AccountType" value="agent" [% AgentChecked %]>
                             <span>[% Translate.LoginAsAgent %]</span>
                         </label>
+                        [% END %]
                         <label>
                             <input type="radio" name="AccountType" value="customer" [% CustomerChecked %]>
                             <span>[% Translate.LoginAsCustomer %]</span>
@@ -78,6 +80,15 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     <button class="qisutu-login-button" type="submit">
                         [% Translate.LoginSubmit %]
                     </button>
+
+                    [% IF HasExternalAuth %]
+                    <div class="qisutu-login-external" aria-label="[% Translate.ExternalAuthOptions %]">
+                        <span class="qisutu-login-external-separator">[% Translate.ExternalAuthOr %]</span>
+                        [% FOREACH Provider IN ExternalAuthProviders %]
+                        <a class="qisutu-login-button qisutu-login-button-external" href="[% Provider.begin_url %]">[% Provider.label %]</a>
+                        [% END %]
+                    </div>
+                    [% END %]
 
                     <div class="qisutu-login-links qisutu-login-links-stack">
                         <a class="qisutu-login-link" href="index.pl?Step=PasswordForgot">[% Translate.PasswordForgotLink %]</a>

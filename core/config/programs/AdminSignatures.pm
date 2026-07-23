@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminSignatures',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 907,
+    Order           => 7,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

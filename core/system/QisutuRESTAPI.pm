@@ -36,18 +36,21 @@ use QisutuAPIAuth;
 use QisutuDynamicField;
 use QisutuPermission;
 use QisutuTicket;
+use QisutuAddonREST;
 
 sub new {
     my ( $Class, %Param ) = @_;
     my $Permission = QisutuPermission->new( Config => $Param{Config}, DB => $Param{DB} );
+    my $Auth = QisutuAPIAuth->new( Config => $Param{Config}, DB => $Param{DB} );
     my $Self = {
         Config     => $Param{Config},
         DB         => $Param{DB},
         Permission => $Permission,
-        Auth       => QisutuAPIAuth->new( Config => $Param{Config}, DB => $Param{DB} ),
+        Auth       => $Auth,
         Ticket     => QisutuTicket->new( Config => $Param{Config}, DB => $Param{DB}, Permission => $Permission ),
         Admin      => QisutuAdmin->new( Config => $Param{Config}, DB => $Param{DB} ),
         Dynamic    => QisutuDynamicField->new( Config => $Param{Config}, DB => $Param{DB} ),
+        AddonREST  => QisutuAddonREST->new( Config => $Param{Config}, DB => $Param{DB}, Auth => $Auth ),
     };
     bless $Self, $Class;
     return $Self;
@@ -200,6 +203,11 @@ sub _Route {
         return $Self->_NeedScope( $Token, 'customers.write', $RID ) || $Self->_CustomerUserUpdate( CustomerUserID => $1, Body => $Body, Token => $Token, RequestID => $RID );
     }
 
+    my $AddonResult = $Self->{AddonREST}->Dispatch(
+        Method => $Method, Path => $Path, Query => $Query, Body => $Body,
+        Token => $Token, RequestID => $RID,
+    );
+    return $AddonResult if $AddonResult;
     return $Self->_Error( 404, 'not_found', 'The requested API endpoint does not exist.', $RID );
 }
 
@@ -515,7 +523,7 @@ sub _Finalize {
 sub OpenAPIDocument {
     my ($Self)=@_;
     my $Base=($Self->{Config}->{System}->{WebPath}||'/qisutu').'/api.pl/v1';
-    return {openapi=>'3.0.3',info=>{title=>'Qisutu REST API',version=>'1.0.0',description=>'Local, versioned REST API. Bearer tokens are created by a Qisutu administrator.'},servers=>[{url=>$Base}],security=>[{bearerAuth=>[]}],paths=>{
+    return {openapi=>'3.0.3',info=>{title=>'Qisutu REST API',version=>'1.0.0',description=>'Local, versioned REST API. Bearer tokens are created by a Qisutu administrator.'},servers=>[{url=>$Base}],security=>[{bearerAuth=>[]}], 'x-qisutu-addon-routes'=>$Self->{AddonREST}->RouteDocumentList(), paths=>{
         '/ping'=>{get=>{security=>[],summary=>'Health check'}},'/me'=>{get=>{summary=>'Current API identity'}},
         '/tickets'=>{get=>{summary=>'List accessible tickets'},post=>{summary=>'Create a ticket'}},
         '/tickets/{ticket_id}'=>{get=>{summary=>'Read a ticket'},patch=>{summary=>'Change status, queue, priority, service or assignment'}},

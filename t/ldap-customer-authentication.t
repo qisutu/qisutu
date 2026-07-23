@@ -355,10 +355,10 @@ like( $Template, qr{ProfileType=customer}, 'LDAP administration exposes a custom
 like( $Template, qr{name="CustomerNumberAttribute"[^>]*required}, 'customer number mapping is mandatory in administration' );
 like( $Template, qr{name="CustomerNameAttribute"[^>]*required}, 'customer name mapping is mandatory in administration' );
 
-open my $MigrationFH, '<:encoding(UTF-8)', "$Root/install/update/database/0.0.25/001-split-agent-customer-ldap.sql" or die $!;
-my $Migration = do { local $/; <$MigrationFH> };
-close $MigrationFH;
-like( $Migration, qr{profile_type}, 'the database update assigns the existing configuration to the agent profile' );
-like( $Migration, qr{customer_number_attribute}, 'the database update adds customer-company mapping attributes' );
+open my $SchemaFH, '<:encoding(UTF-8)', "$Root/install/sql/schema.sql" or die $!;
+my $Schema = do { local $/; <$SchemaFH> };
+close $SchemaFH;
+like( $Schema, qr{`profile_type` varchar\(20\) NOT NULL DEFAULT 'agent'}, 'fresh installations include separate LDAP profile types' );
+like( $Schema, qr{`customer_number_attribute` varchar\(100\)}, 'fresh installations include customer-company mapping attributes' );
 
 done_testing();

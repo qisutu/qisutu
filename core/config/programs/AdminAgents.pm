@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminAgents',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 901,
+    Order           => 1,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

@@ -56,7 +56,22 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             </table>
                         </div>
 
-                        <div class="qisutu-table-wrap">
+                        <div class="qisutu-group-customer-list">
+                            <form class="qisutu-group-customer-filter" method="get" action="[% FormAction %]">
+                                <input type="hidden" name="Page" value="AdminGroups">
+                                <label class="qisutu-visually-hidden" for="qisutu-group-overview-customer-search">[% Translate.AdminCustomerUserFilter %]</label>
+                                <input id="qisutu-group-overview-customer-search" type="search" name="CustomerSearch" value="[% CustomerSearch %]" placeholder="[% Translate.AdminCustomerUserFilterPlaceholder %]">
+                                <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminFilterApply %]</button>
+                                [% IF CustomerSearch %]
+                                <a class="qisutu-button qisutu-button-secondary" href="[% CustomerFilterResetURL %]">[% Translate.AdminFilterReset %]</a>
+                                [% END %]
+                            </form>
+
+                            <div class="qisutu-group-customer-result-summary">
+                                [% Translate.AdminCustomerUserResults %]: [% CustomerResultFrom %]–[% CustomerResultTo %] / [% CustomerUserCount %]
+                            </div>
+
+                            <div class="qisutu-table-wrap">
                             <table class="qisutu-table qisutu-table-compact">
                                 <thead>
                                     <tr>
@@ -71,6 +86,22 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     [% END %]
                                 </tbody>
                             </table>
+                            </div>
+
+                            [% IF CustomerHasPagination %]
+                            <nav class="qisutu-ticket-list-pagination qisutu-group-customer-pagination" aria-label="[% Translate.AdminCustomerUserPaginationLabel %]">
+                                <span class="qisutu-ticket-list-pagination-label">[% Translate.TicketListPage %]</span>
+                                [% IF CustomerPreviousURL %]
+                                <a class="qisutu-ticket-list-page-link qisutu-ticket-list-page-direction" href="[% CustomerPreviousURL %]" aria-label="[% Translate.TicketListPreviousPage %]">‹</a>
+                                [% END %]
+                                [% FOREACH Item IN CustomerPaginationItems %]
+                                [% RAW.Item.HTML %]
+                                [% END %]
+                                [% IF CustomerNextURL %]
+                                <a class="qisutu-ticket-list-page-link qisutu-ticket-list-page-direction" href="[% CustomerNextURL %]" aria-label="[% Translate.TicketListNextPage %]">›</a>
+                                [% END %]
+                            </nav>
+                            [% END %]
                         </div>
 
                         <div class="qisutu-table-wrap">
@@ -78,12 +109,16 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 <thead>
                                     <tr>
                                         <th>[% Translate.AdminGroups %]</th>
+                                        <th>[% Translate.AdminValidity %]</th>
+                                        <th>[% Translate.AdminAction %]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     [% FOREACH Group IN GroupList %]
                                     <tr>
-                                        <td><a class="qisutu-table-link" href="index.pl?Page=AdminGroups;Action=Group;GroupID=[% Group.id %]">[% Group.name %] [% Group.title %]</a></td>
+                                        <td><a class="qisutu-table-link" href="index.pl?Page=AdminGroups;Action=Edit;GroupID=[% Group.id %]">[% Group.name %] [% Group.title %]</a></td>
+                                        <td><span class="qisutu-status-badge [% Group.validity_class %]">[% Group.validity_label %]</span></td>
+                                        <td><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminGroups;Action=Group;GroupID=[% Group.id %]">[% Translate.AdminGroupAssignments %]</a></td>
                                     </tr>
                                     [% END %]
                                 </tbody>
@@ -129,6 +164,61 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 </section>
                 [% END %]
 
+                [% IF ShowGroupEdit %]
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AdminGroupEdit %]</h2>
+                            <span class="qisutu-panel-subtitle">[% GroupName %]</span>
+                        </div>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminGroups">[% Translate.AdminBackToList %]</a>
+                    </div>
+
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminGroups">
+                        <input type="hidden" name="Action" value="Edit">
+                        <input type="hidden" name="Step" value="GroupUpdate">
+                        <input type="hidden" name="GroupID" value="[% GroupID %]">
+
+                        <div class="qisutu-admin-form-columns">
+                            <div class="qisutu-form-field">
+                                <label for="qisutu-group-edit-name">[% Translate.AdminName %]</label>
+                                <input id="qisutu-group-edit-name" type="text" value="[% GroupName %]" readonly>
+                                <small>[% Translate.AdminDatabaseFieldReadonlyHint %]</small>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label for="qisutu-group-edit-title">[% Translate.AdminDisplayName %]</label>
+                                <input id="qisutu-group-edit-title" type="text" name="Title" value="[% GroupTitle %]">
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label for="qisutu-group-edit-type">[% Translate.AdminGroupType %]</label>
+                                <select id="qisutu-group-edit-type" disabled>
+                                    <option value="agent" [% GroupTypeAgentSelected %]>[% Translate.AdminGroupTypeAgent %]</option>
+                                    <option value="customer" [% GroupTypeCustomerSelected %]>[% Translate.AdminGroupTypeCustomer %]</option>
+                                    <option value="admin" [% GroupTypeAdminSelected %]>[% Translate.AdminGroupTypeAdmin %]</option>
+                                </select>
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label for="qisutu-group-edit-sort-order">[% Translate.AdminSortOrder %]</label>
+                                <input id="qisutu-group-edit-sort-order" type="number" name="SortOrder" value="[% GroupSortOrder %]" min="1">
+                            </div>
+                            <div class="qisutu-form-field">
+                                <label for="qisutu-group-edit-validity">[% Translate.AdminValidity %]</label>
+                                <select id="qisutu-group-edit-validity" name="Active">
+                                    <option value="1" [% GroupValidSelected %]>[% Translate.AdminValid %]</option>
+                                    <option value="0" [% GroupInvalidSelected %]>[% Translate.AdminInvalid %]</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminGroups">[% Translate.AdminCancel %]</a>
+                        </div>
+                    </form>
+                </section>
+                [% END %]
+
                 [% IF ShowAgent %]
                 <section class="qisutu-panel">
                     <div class="qisutu-panel-header">
@@ -144,18 +234,24 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <input type="hidden" name="UserAccountID" value="[% UserAccountID %]">
 
                         <div class="qisutu-table-wrap">
-                            <table class="qisutu-table qisutu-table-compact">
+                            <table class="qisutu-table qisutu-table-compact qisutu-group-assignment-table">
                                 <thead>
                                     <tr>
                                         <th>[% Translate.AdminGroup %]</th>
-                                        <th>[% Translate.AdminAccessLevel %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionNone %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionRead %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionWork %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionFull %]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     [% FOREACH Row IN AgentGroupMatrix %]
                                     <tr>
                                         <td>[% Row.group_name %] [% Row.group_title %]</td>
-                                        <td>[% RAW.Row.permission_level_options %]</td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="none" [% Row.permission_none_checked %] required><span class="qisutu-visually-hidden">[% Translate.AdminPermissionNone %]</span></label></td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="read" [% Row.permission_read_checked %]><span class="qisutu-visually-hidden">[% Translate.AdminPermissionRead %]</span></label></td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="work" [% Row.permission_work_checked %]><span class="qisutu-visually-hidden">[% Translate.AdminPermissionWork %]</span></label></td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="full" [% Row.permission_full_checked %]><span class="qisutu-visually-hidden">[% Translate.AdminPermissionFull %]</span></label></td>
                                     </tr>
                                     [% END %]
                                 </tbody>
@@ -185,18 +281,22 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <input type="hidden" name="UserAccountID" value="[% UserAccountID %]">
 
                         <div class="qisutu-table-wrap">
-                            <table class="qisutu-table qisutu-table-compact">
+                            <table class="qisutu-table qisutu-table-compact qisutu-group-assignment-table">
                                 <thead>
                                     <tr>
                                         <th>[% Translate.AdminGroup %]</th>
-                                        <th>[% Translate.AdminCustomerAccessLevel %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionNone %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionOwnTickets %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionOrganizationTickets %]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     [% FOREACH Row IN CustomerUserGroupMatrix %]
                                     <tr>
                                         <td>[% Row.group_name %] [% Row.group_title %]</td>
-                                        <td>[% RAW.Row.permission_level_options %]</td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="none" [% Row.permission_none_checked %] required><span class="qisutu-visually-hidden">[% Translate.AdminPermissionNone %]</span></label></td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="own" [% Row.permission_own_checked %]><span class="qisutu-visually-hidden">[% Translate.AdminPermissionOwnTickets %]</span></label></td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="organization" [% Row.permission_organization_checked %]><span class="qisutu-visually-hidden">[% Translate.AdminPermissionOrganizationTickets %]</span></label></td>
                                     </tr>
                                     [% END %]
                                 </tbody>
@@ -227,18 +327,24 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <input type="hidden" name="GroupID" value="[% GroupID %]">
 
                         <div class="qisutu-table-wrap">
-                            <table class="qisutu-table qisutu-table-compact">
+                            <table class="qisutu-table qisutu-table-compact qisutu-group-assignment-table">
                                 <thead>
                                     <tr>
                                         <th>[% Translate.AdminAgent %]</th>
-                                        <th>[% Translate.AdminAccessLevel %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionNone %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionRead %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionWork %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionFull %]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     [% FOREACH Row IN GroupAgentMatrix %]
                                     <tr>
                                         <td>[% Row.user_label %]</td>
-                                        <td>[% RAW.Row.permission_level_options %]</td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="none" [% Row.permission_none_checked %] required><span class="qisutu-visually-hidden">[% Translate.AdminPermissionNone %]</span></label></td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="read" [% Row.permission_read_checked %]><span class="qisutu-visually-hidden">[% Translate.AdminPermissionRead %]</span></label></td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="work" [% Row.permission_work_checked %]><span class="qisutu-visually-hidden">[% Translate.AdminPermissionWork %]</span></label></td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="full" [% Row.permission_full_checked %]><span class="qisutu-visually-hidden">[% Translate.AdminPermissionFull %]</span></label></td>
                                     </tr>
                                     [% END %]
                                 </tbody>
@@ -259,35 +365,78 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         </div>
                     </div>
 
+                    <form class="qisutu-group-customer-filter" method="get" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminGroups">
+                        <input type="hidden" name="Action" value="Group">
+                        <input type="hidden" name="GroupID" value="[% GroupID %]">
+                        <label class="qisutu-visually-hidden" for="qisutu-group-customer-search">[% Translate.AdminCustomerUserFilter %]</label>
+                        <input id="qisutu-group-customer-search" type="search" name="CustomerSearch" value="[% CustomerSearch %]" placeholder="[% Translate.AdminCustomerUserFilterPlaceholder %]">
+                        <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminFilterApply %]</button>
+                        [% IF CustomerSearch %]
+                        <a class="qisutu-button qisutu-button-secondary" href="[% CustomerFilterResetURL %]">[% Translate.AdminFilterReset %]</a>
+                        [% END %]
+                    </form>
+
+                    <div class="qisutu-group-customer-result-summary">
+                        [% Translate.AdminCustomerUserResults %]: [% CustomerResultFrom %]–[% CustomerResultTo %] / [% CustomerUserCount %]
+                    </div>
+
                     <form method="post" action="[% FormAction %]">
                         <input type="hidden" name="Page" value="AdminGroups">
                         <input type="hidden" name="Step" value="GroupCustomerUserMatrixUpdate">
                         <input type="hidden" name="GroupID" value="[% GroupID %]">
+                        <input type="hidden" name="CustomerSearch" value="[% CustomerSearch %]">
+                        <input type="hidden" name="CustomerPage" value="[% CustomerPage %]">
+                        <input type="hidden" name="MatrixUserAccountIDs" value="[% GroupCustomerUserIDs %]">
 
                         <div class="qisutu-table-wrap">
-                            <table class="qisutu-table qisutu-table-compact">
+                            <table class="qisutu-table qisutu-table-compact qisutu-group-assignment-table">
                                 <thead>
                                     <tr>
                                         <th>[% Translate.AdminCustomerUser %]</th>
-                                        <th>[% Translate.AdminCustomerAccessLevel %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionNone %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionOwnTickets %]</th>
+                                        <th class="qisutu-group-permission-column">[% Translate.AdminPermissionOrganizationTickets %]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     [% FOREACH Row IN GroupCustomerUserMatrix %]
                                     <tr>
                                         <td>[% Row.user_label %]</td>
-                                        <td>[% RAW.Row.permission_level_options %]</td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="none" [% Row.permission_none_checked %] required><span class="qisutu-visually-hidden">[% Translate.AdminPermissionNone %]</span></label></td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="own" [% Row.permission_own_checked %]><span class="qisutu-visually-hidden">[% Translate.AdminPermissionOwnTickets %]</span></label></td>
+                                        <td class="qisutu-group-permission-choice"><label><input type="radio" name="[% Row.permission_name %]" value="organization" [% Row.permission_organization_checked %]><span class="qisutu-visually-hidden">[% Translate.AdminPermissionOrganizationTickets %]</span></label></td>
                                     </tr>
+                                    [% END %]
+                                    [% IF CustomerNoResults %]
+                                    <tr><td colspan="4" class="qisutu-group-empty-result">[% Translate.AdminNoCustomerUsersFound %]</td></tr>
                                     [% END %]
                                 </tbody>
                             </table>
                         </div>
 
                         <div class="qisutu-form-actions">
+                            [% IF CustomerUserCount %]
                             <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
+                            [% END %]
                             <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminGroups">[% Translate.AdminCancel %]</a>
                         </div>
                     </form>
+
+                    [% IF CustomerHasPagination %]
+                    <nav class="qisutu-ticket-list-pagination qisutu-group-customer-pagination" aria-label="[% Translate.AdminCustomerUserPaginationLabel %]">
+                        <span class="qisutu-ticket-list-pagination-label">[% Translate.TicketListPage %]</span>
+                        [% IF CustomerPreviousURL %]
+                        <a class="qisutu-ticket-list-page-link qisutu-ticket-list-page-direction" href="[% CustomerPreviousURL %]" aria-label="[% Translate.TicketListPreviousPage %]">‹</a>
+                        [% END %]
+                        [% FOREACH Item IN CustomerPaginationItems %]
+                        [% RAW.Item.HTML %]
+                        [% END %]
+                        [% IF CustomerNextURL %]
+                        <a class="qisutu-ticket-list-page-link qisutu-ticket-list-page-direction" href="[% CustomerNextURL %]" aria-label="[% Translate.TicketListNextPage %]">›</a>
+                        [% END %]
+                    </nav>
+                    [% END %]
                 </section>
                 [% END %]
             </section>

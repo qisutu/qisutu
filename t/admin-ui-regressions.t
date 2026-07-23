@@ -1,0 +1,74 @@
+#!/usr/bin/env perl
+
+# Qisutu - Open Source Ticket System
+# Copyright (C) 2026 Franziska Steps
+# Qisutu - Kim-KI, https://qisutu.de
+#
+# This file is part of Qisutu.
+#
+# Qisutu is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Qisutu is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-FileCopyrightText: 2026 Franziska Steps
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+use strict;
+use warnings;
+use utf8;
+
+use File::Spec;
+use FindBin;
+use Test::More;
+
+my $Root = File::Spec->catdir( $FindBin::Bin, '..' );
+
+sub content {
+    my (@Parts) = @_;
+    my $Path = File::Spec->catfile( $Root, @Parts );
+
+    open my $FH, '<:encoding(UTF-8)', $Path or die "Cannot read $Path: $!";
+    local $/;
+    my $Content = <$FH>;
+    close $FH;
+
+    return $Content;
+}
+
+my $German = content( 'core', 'language', 'de.pm' );
+unlike( $German, qr{Kundenbenutz}, 'the German UI no longer uses the old customer-user term' );
+like( $German, qr{AdminCustomerUsersTitle\s*=>\s*'Ansprechpartner'}, 'the administration navigation says Ansprechpartner' );
+like( $German, qr{AdminCustomerUserFieldCreate\s*=>\s*'Ansprechpartnerfeld anlegen'}, 'related field labels use Ansprechpartner consistently' );
+
+my $Notification = content( 'core', 'system', 'QisutuNotification.pm' );
+my $AutoResponse = content( 'core', 'system', 'QisutuCustomerAutoResponse.pm' );
+unlike( $Notification . $AutoResponse, qr{Kundenbenutz}, 'visible placeholder descriptions also use Ansprechpartner' );
+
+my $Head = content( 'core', 'output', 'Head.tt' );
+my $Footer = content( 'core', 'output', 'Footer.tt' );
+like( $Head, qr{css/qisutu[.]css[?]v=\[% SystemVersion %\]}, 'the main stylesheet cache follows the installed Qisutu version' );
+like( $Footer, qr{js/qisutu-sidebar[.]js[?]v=\[% SystemVersion %\]}, 'the sidebar script cache follows the installed Qisutu version' );
+
+my $Sidebar = content( 'var', 'static', 'js', 'qisutu-sidebar.js' );
+like( $Sidebar, qr{qisutu[.]sidebar[.]scrollTop}, 'the navigation scroll position has its own session key' );
+like( $Sidebar, qr{sessionStorage[.]setItem\(ScrollStorageKey}, 'the navigation scroll position is stored' );
+like( $Sidebar, qr{Navigation[.]scrollTop = StoredPosition}, 'the navigation scroll position is restored after a page change' );
+like( $Sidebar, qr{qisutu-subnav-item-active}, 'the active administration item is brought into view without stored state' );
+
+my $QueueTemplate = content( 'core', 'output', 'AdminQueues.tt' );
+my $QueueCSS = content( 'var', 'static', 'css', 'qisutu.css' );
+my $FieldsetCount = () = $QueueTemplate =~ /<fieldset class="qisutu-admin-radio-group">/g;
+is( $FieldsetCount, 2, 'queue creation and editing use the radio-card fieldset' );
+like( $QueueCSS, qr![.]qisutu-admin-radio-group\s*\{[^}]*display:\s*grid!s, 'queue follow-up choices are stacked in a grid' );
+like( $QueueCSS, qr![.]qisutu-admin-radio-group label\s*\{[^}]*display:\s*flex!s, 'each queue follow-up choice has a separate card layout' );
+
+done_testing();

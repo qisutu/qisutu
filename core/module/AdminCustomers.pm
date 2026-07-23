@@ -208,9 +208,12 @@ sub Run {
             CreateTranslationRowCount      => $CreateTranslationRows->{Count},
             EditTranslationRowsHTML        => $EditTranslationRows->{HTML},
             EditTranslationRowCount        => $EditTranslationRows->{Count},
-            FieldCreateTypeOptionsHTML => $Self->_FieldTypeOptions(),
+            FieldCreateTypeOptionsHTML => $Self->_FieldTypeOptions(
+                Language => $Language,
+            ),
             FieldEditTypeOptionsHTML   => $Self->_FieldTypeOptions(
                 Selected => $Field ? $Field->{field_type} : '',
+                Language => $Language,
             ),
         },
     };
@@ -250,14 +253,21 @@ sub _FieldTypeOptions {
     my ( $Self, %Param ) = @_;
 
     my $Selected = $Param{Selected} || 'text';
+    my $Language = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
     my @Types    = qw(text textarea email phone date number);
     my $HTML     = '';
 
     for my $Type (@Types) {
         my $SelectedAttribute = $Type eq $Selected ? ' selected' : '';
         my $EscapedType       = $Self->_Escape($Type);
+        my $Label             = $Self->{Output}
+            ? $Self->{Output}->Translate(
+                Key      => 'AdminFieldType_' . $Type,
+                Language => $Language,
+            )
+            : $Type;
 
-        $HTML .= '<option value="' . $EscapedType . '"' . $SelectedAttribute . '>' . $EscapedType . '</option>';
+        $HTML .= '<option value="' . $EscapedType . '"' . $SelectedAttribute . '>' . $Self->_Escape($Label) . '</option>';
     }
 
     return $HTML;

@@ -417,6 +417,7 @@ verify_perl_modules() {
         Net::LDAP
         Digest::SHA
         JSON::PP
+        IO::Uncompress::Unzip
     )
 
     for module in "${modules[@]}"; do
@@ -560,11 +561,13 @@ verify_apache_modules
 ensure_qisutu_runtime_user
 
 mkdir -p \
+    "$ROOT_PATH/addons" \
     "$ROOT_PATH/var/log" \
     "$ROOT_PATH/var/cache" \
     "$ROOT_PATH/var/tmp" \
     "$ROOT_PATH/var/install" \
-    "$ROOT_PATH/var/secure"
+    "$ROOT_PATH/var/secure" \
+    "$ROOT_PATH/var/static/addons"
 
 find "$ROOT_PATH" -type d -exec chmod 0755 {} +
 find "$ROOT_PATH" -type f -exec chmod 0644 {} +
@@ -583,6 +586,7 @@ chmod 0770 \
     "$ROOT_PATH/var/cache" \
     "$ROOT_PATH/var/tmp" \
     "$ROOT_PATH/var/install"
+chmod 0755 "$ROOT_PATH/addons" "$ROOT_PATH/var/static/addons"
 
 chown root:"$APACHE_GROUP" "$ROOT_PATH/var/secure"
 chmod 0750 "$ROOT_PATH/var/secure"

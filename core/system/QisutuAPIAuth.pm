@@ -41,7 +41,8 @@ sub new {
 }
 
 sub ScopeDefinitions {
-    return [
+    my ($Self) = @_;
+    my @Definition = (
         { Key => 'tickets.read',          Label => 'APIScopeTicketsRead',          Group => 'tickets' },
         { Key => 'tickets.create',        Label => 'APIScopeTicketsCreate',        Group => 'tickets' },
         { Key => 'tickets.status',        Label => 'APIScopeTicketsStatus',        Group => 'tickets' },
@@ -52,7 +53,20 @@ sub ScopeDefinitions {
         { Key => 'master_data.read',      Label => 'APIScopeMasterDataRead',       Group => 'data' },
         { Key => 'customers.read',        Label => 'APIScopeCustomersRead',        Group => 'customers' },
         { Key => 'customers.write',       Label => 'APIScopeCustomersWrite',       Group => 'customers', AdminOnly => 1 },
-    ];
+    );
+    my %Known = map { $_->{Key} => 1 } @Definition;
+    for my $Route ( @{ ( $Self->{Config}->{AddonRuntime} || {} )->{RESTRoutes} || [] } ) {
+        next if ref $Route ne 'HASH';
+        for my $Scope ( @{ ref $Route->{scopes} eq 'ARRAY' ? $Route->{scopes} : [] } ) {
+            next if !$Scope || $Known{$Scope}++;
+            push @Definition, {
+                Key   => $Scope,
+                Label => $Scope,
+                Group => 'addons',
+            };
+        }
+    }
+    return \@Definition;
 }
 
 sub ScopeAllowed {

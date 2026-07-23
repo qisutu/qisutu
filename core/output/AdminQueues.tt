@@ -51,7 +51,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <th>[% Translate.AdminQueue %]</th>
                                     <th>[% Translate.AdminGroups %]</th>
                                     <th>[% Translate.AdminSystemEmail %]</th>
-                                    <th>[% Translate.AdminFollowUpAllowed %]</th>
+                                    <th>[% Translate.AdminFollowUpOption %]</th>
                                     <th>[% Translate.AdminActive %]</th>
                                     <th>[% Translate.AdminAction %]</th>
                                 </tr>
@@ -62,7 +62,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <td><a class="qisutu-table-link" href="index.pl?Page=AdminQueues;Action=Edit;QueueID=[% Queue.id %]">[% Queue.full_name %]</a></td>
                                     <td>[% Queue.group_names %]</td>
                                     <td>[% Queue.system_email %]</td>
-                                    <td>[% Queue.follow_up_allowed_label %]</td>
+                                    <td>[% Queue.follow_up_option_label %]</td>
                                     <td>[% Queue.active_label %]</td>
                                     <td>
                                         <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
@@ -142,10 +142,21 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 <label>[% Translate.AdminSortOrder %]</label>
                                 <input type="number" name="SortOrder" value="1000" min="1">
                             </div>
-                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
-                                <input type="checkbox" name="FollowUpAllowed" value="1" checked>
-                                <span>[% Translate.AdminFollowUpAllowed %]</span>
-                            </label>
+                            <fieldset class="qisutu-admin-radio-group">
+                                <legend>[% Translate.AdminFollowUpOption %]</legend>
+                                <label>
+                                    <input type="radio" name="FollowUpOption" value="reopen" checked required>
+                                    <span><strong>[% Translate.AdminFollowUpReopen %]</strong><small>[% Translate.AdminFollowUpReopenHelp %]</small></span>
+                                </label>
+                                <label>
+                                    <input type="radio" name="FollowUpOption" value="new_ticket" required>
+                                    <span><strong>[% Translate.AdminFollowUpNewTicket %]</strong><small>[% Translate.AdminFollowUpNewTicketHelp %]</small></span>
+                                </label>
+                                <label>
+                                    <input type="radio" name="FollowUpOption" value="reject" required>
+                                    <span><strong>[% Translate.AdminFollowUpReject %]</strong><small>[% Translate.AdminFollowUpRejectHelp %]</small></span>
+                                </label>
+                            </fieldset>
                         </div>
 
                         <div class="qisutu-admin-form-block">
@@ -239,10 +250,21 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 <label>[% Translate.AdminSortOrder %]</label>
                                 <input type="number" name="SortOrder" value="[% QueueSortOrder %]" min="1">
                             </div>
-                            <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
-                                <input type="checkbox" name="FollowUpAllowed" value="1" [% QueueFollowUpChecked %]>
-                                <span>[% Translate.AdminFollowUpAllowed %]</span>
-                            </label>
+                            <fieldset class="qisutu-admin-radio-group">
+                                <legend>[% Translate.AdminFollowUpOption %]</legend>
+                                <label>
+                                    <input type="radio" name="FollowUpOption" value="reopen" [% QueueFollowUpReopenChecked %] required>
+                                    <span><strong>[% Translate.AdminFollowUpReopen %]</strong><small>[% Translate.AdminFollowUpReopenHelp %]</small></span>
+                                </label>
+                                <label>
+                                    <input type="radio" name="FollowUpOption" value="new_ticket" [% QueueFollowUpNewTicketChecked %] required>
+                                    <span><strong>[% Translate.AdminFollowUpNewTicket %]</strong><small>[% Translate.AdminFollowUpNewTicketHelp %]</small></span>
+                                </label>
+                                <label>
+                                    <input type="radio" name="FollowUpOption" value="reject" [% QueueFollowUpRejectChecked %] required>
+                                    <span><strong>[% Translate.AdminFollowUpReject %]</strong><small>[% Translate.AdminFollowUpRejectHelp %]</small></span>
+                                </label>
+                            </fieldset>
                             <label class="qisutu-form-checkbox qisutu-admin-active-checkbox">
                                 <input type="checkbox" name="Active" value="1" [% QueueActiveChecked %]>
                                 <span>[% Translate.AdminActive %]</span>

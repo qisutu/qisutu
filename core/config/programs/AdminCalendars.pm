@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminCalendars',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 908,
+    Order           => 30,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

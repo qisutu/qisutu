@@ -54,7 +54,7 @@ my $Config = {
     Language => { Default => 'de' },
     System   => {
         Name    => 'Qisutu',
-        Version => '0.0.74',
+        Version => '0.0.79',
     },
 };
 
@@ -66,7 +66,7 @@ my $Dispatcher = QisutuDispatcher->new(
 );
 
 my $Data = $Dispatcher->_BaseData( User => {} );
-is( $Data->{SystemVersion}, '0.0.74', 'dispatcher exposes the installed program version to authenticated templates' );
+is( $Data->{SystemVersion}, '0.0.79', 'dispatcher exposes the installed program version to authenticated templates' );
 
 my $Header = $Output->RenderSingle(
     Template => 'Header.tt',
@@ -75,7 +75,7 @@ my $Header = $Output->RenderSingle(
 
 like(
     $Header || '',
-    qr{<span class="qisutu-sidebar-version">0[.]0[.]74</span>},
+    qr{<span class="qisutu-sidebar-version">0[.]0[.]79</span>},
     'sidebar displays the installed version directly beside the product name',
 );
 

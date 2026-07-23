@@ -137,6 +137,7 @@ sub Run {
         Template   => $Result->{Template},
         Data       => $Result->{Data} || {},
         ActiveName => $Self->_ActiveName( Program => $Program ),
+        Request    => $Request,
     );
 }
 
@@ -196,6 +197,27 @@ sub _RenderProgram {
 
     if ( !$RenderData{PageTitle} ) {
         $RenderData{PageTitle} = $Program->{Title} ? 'Translate:' . $Program->{Title} : $Program->{Name};
+    }
+
+    my $UILoaded = eval { require QisutuAddonUI; 1; };
+    if ($UILoaded) {
+        my $UI = QisutuAddonUI->new(
+            Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output},
+        );
+        my @Prefix = ('page');
+        push @Prefix, 'dashboard' if ( $Program->{Name} || '' ) eq 'Dashboard';
+        push @Prefix, 'ticket.zoom' if ( $Program->{Name} || '' ) =~ m{\A(?:Agent|Customer)TicketZoom\z};
+        push @Prefix, 'admin' if ( $Program->{Name} || '' ) =~ m{\AAdmin};
+        for my $Position (qw(before after)) {
+            my $HTML = '';
+            for my $Prefix (@Prefix) {
+                $HTML .= $UI->Render(
+                    Slot => $Prefix . '.' . $Position, Program => $Program,
+                    User => $User, Data => \%RenderData,
+                );
+            }
+            $RenderData{ $Position eq 'before' ? 'AddonSlotBeforeHTML' : 'AddonSlotAfterHTML' } = $HTML;
+        }
     }
 
     my $Body = $Self->{Output}->Render(
@@ -260,6 +282,17 @@ sub _BaseData {
     }
 
     my $Name       = $Self->_UserDisplayName( User => $User );
+    my $PageClass  = lc($CurrentName);
+    $PageClass =~ s{[^a-z0-9_-]}{-}g;
+    $PageClass ||= 'page';
+    my $ThemeData = $Self->_ThemeData(
+        User        => $User,
+        Preference  => $Preference,
+        ActiveName  => $ActiveName,
+        CurrentName => $CurrentName,
+    );
+    my $BodyClass = 'qisutu-app-page qisutu-page-' . $PageClass;
+    $BodyClass .= ' ' . $ThemeData->{BodyClass} if $ThemeData->{BodyClass};
 
     return {
         Language           => $Language,
@@ -267,7 +300,10 @@ sub _BaseData {
         Robots             => 'noindex, nofollow',
         StaticBase         => $Self->{Config}->{Paths}->{StaticURL} || '/static',
         PageCSS            => 'qisutu.css',
-        BodyClass          => 'qisutu-app-page',
+        BodyClass          => $BodyClass,
+        ThemeCSS           => $ThemeData->{Stylesheet} || '',
+        ThemeCSSVersion    => $ThemeData->{Version} || '1',
+        ActiveTheme        => $ThemeData->{Key} || 'default',
         SystemName         => $Self->{Config}->{System}->{Name} || 'Qisutu',
         SystemVersion      => $Self->{Config}->{System}->{Version} || '',
         UserDisplayName    => $Name,
@@ -283,6 +319,24 @@ sub _BaseData {
             User        => $User,
         ),
     };
+}
+
+sub _ThemeData {
+    my ( $Self, %Param ) = @_;
+
+    my $Loaded = eval {
+        require QisutuTheme;
+        1;
+    };
+    return {} if !$Loaded;
+
+    my $ThemeObject = QisutuTheme->new( Config => $Self->{Config} );
+    return $ThemeObject->Resolve(
+        Key         => ( $Param{Preference} || {} )->{theme},
+        User        => $Param{User},
+        ActiveName  => $Param{ActiveName},
+        CurrentName => $Param{CurrentName},
+    ) || {};
 }
 
 

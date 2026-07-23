@@ -28,7 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         [% IF ShowList %]<div class="qisutu-form-actions"><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase;Action=Categories">[% Translate.KnowledgeCategoriesManage %]</a><a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AgentKnowledgeBase;Action=Create">[% Translate.KnowledgeArticleCreate %]</a></div>[% END %]
         [% IF ShowCategories %]<div class="qisutu-form-actions"><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase">[% Translate.KnowledgeBackToArticles %]</a><a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AgentKnowledgeBase;Action=CategoryCreate">[% Translate.KnowledgeCategoryCreate %]</a></div>[% END %]
     </div>
-    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+    [% IF ErrorMessage %]<div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>[% END %]
 
     [% IF ShowList %]
     <section class="qisutu-panel">

@@ -83,7 +83,7 @@ sub Run {
         push @{$Group{$Def->{Group}}},\%Copy;
     }
     my @ScopeGroups;
-    for my $GroupKey (qw(tickets communication data customers)) {
+    for my $GroupKey (qw(tickets communication data customers addons)) {
         push @ScopeGroups,{Key=>$GroupKey,Label=>$Self->_T('APIScopeGroup'.ucfirst($GroupKey),$Language),Items=>$Group{$GroupKey}||[]};
     }
 

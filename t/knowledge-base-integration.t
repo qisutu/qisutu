@@ -48,8 +48,7 @@ for my $File (
         core/output/CustomerKnowledgeBase.tt
         core/system/QisutuKnowledgeBase.pm
         var/static/js/qisutu-knowledge-insert.js
-        install/update/database/0.0.16/001-create-knowledge-base.sql
-        install/update/database/0.0.17/001-simplify-knowledge-base.sql
+        install/sql/schema.sql
     )
 ) {
     ok( -f File::Spec->catfile( $Root, split m{/}, $File ), "$File is part of the release" );
@@ -73,22 +72,26 @@ my $AgentModule = content('core/module/AgentKnowledgeBase.pm');
 like( $AgentModule, qr/Action=CategoryEdit/, 'agents manage FAQ categories' );
 my $AgentTemplate = content('core/output/AgentKnowledgeBase.tt');
 unlike( $AgentTemplate, qr/name="(?:Status|CustomerScope|QueueID)"/, 'article form only uses visibility for access' );
+like(
+    $AgentTemplate,
+    qr{\[% IF ErrorMessage %\]<div class="qisutu-form-error \[% ErrorClass %\]">\[% ErrorMessage %\]</div>\[% END %\]},
+    'the agent FAQ error bar is rendered only when an error message exists',
+);
 
 my $RemovalList = content('release.remove');
-like( $RemovalList, qr{\./core/config/programs/AdminKnowledgeBase\.pm}, 'obsolete admin navigation is removed on update' );
-like( $RemovalList, qr{\./core/module/AdminKnowledgeBase\.pm}, 'obsolete admin module is removed on update' );
+unlike( $RemovalList, qr{^\s*[.]/}m, 'the first official release needs no update removal entries' );
+ok( !-e File::Spec->catfile( $Root, 'core', 'config', 'programs', 'AdminKnowledgeBase.pm' ), 'obsolete admin navigation is absent from the clean release' );
+ok( !-e File::Spec->catfile( $Root, 'core', 'module', 'AdminKnowledgeBase.pm' ), 'obsolete admin module is absent from the clean release' );
 
-my $Migration = content('install/update/database/0.0.16/001-create-knowledge-base.sql');
+my $Schema = content('install/sql/schema.sql');
 for my $Table (qw(
     knowledge_category knowledge_category_translation knowledge_article knowledge_article_revision
     knowledge_article_customer knowledge_article_queue knowledge_article_usage
 )) {
-    like( $Migration, qr/CREATE TABLE IF NOT EXISTS `\Q$Table\E`/, "$Table is created by the update migration" );
+    like( $Schema, qr/CREATE TABLE IF NOT EXISTS `\Q$Table\E`/, "$Table is part of the 1.0.1 fresh-install schema" );
 }
 
-my $Simplification = content('install/update/database/0.0.17/001-simplify-knowledge-base.sql');
-like( $Simplification, qr/DELETE FROM `user_group_permission`/, 'update migration removes obsolete FAQ permissions' );
-like( $Simplification, qr/SET `status` = 'published', `customer_scope` = 'all'/, 'existing FAQ articles are normalized' );
+unlike( $Schema, qr/CREATE TABLE IF NOT EXISTS `knowledge_(?:article|category)_group`/, 'the clean schema contains no obsolete FAQ group tables' );
 
 for my $Language (qw(de en fr it)) {
     my $Translations = content("core/language/$Language.pm");

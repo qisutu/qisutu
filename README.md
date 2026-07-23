@@ -99,6 +99,31 @@ ergänzt. Details stehen in `INSTALL.md`.
 - `scriptfiles/` – Apache- und systemd-Vorlagen
 - `var/static/` – Frontend-Assets und eingebundene Drittanbieter-Assets
 
+## Zusatzmodule
+
+Qisutu besitzt ab Version 0.0.78 einen eigenen Modulmanager für gewöhnliche
+Modul-ZIP-Dateien mit lesbarer `qisutu-module.json`.
+Administratoren können Zusatzmodule im Adminbereich installieren,
+aktualisieren und deinstallieren. Die eigentlichen Dateioperationen führt der
+Qisutu-Daemon getrennt vom Webprozess aus. Eigene Admin-Links und
+Konfigurationsmasken werden vom jeweiligen Zusatzmodul bereitgestellt;
+Geheimnisse können verschlüsselt gespeichert werden.
+
+Mit Qisutu 1.0.1 stellt der Kern zusätzlich die versionierte interne
+Zusatzmodul-API 1.0 bereit. Sie umfasst wiederverwendbare Moduldienste,
+dauerhaft über den Daemon zugestellte Kernereignisse, isolierte REST-Routen
+mit eigenen API-Berechtigungen und kontrollierte UI-Einfügepunkte. Bestehende
+Module ohne API-Angabe bleiben kompatibel. Ein Modul kann seine benötigte
+API-Version und einzelne Fähigkeiten deklarieren; bei Bedarf fordert Qisutu
+vor der Installation ein reguläres Kernupdate an, ohne kundenspezifische
+Kernvarianten zu erzeugen.
+
+Der Qisutu-Kern enthält bewusst keine konkreten Zusatzmodule. Zusatzmodule
+werden als eigenständige Projekte entwickelt, als normale ZIP-Dateien mit
+vollständigem lesbaren Quellcode veröffentlicht und ausschließlich über den
+Adminbereich installiert. Installationsablauf und Sicherheitsprüfung beschreibt
+`MODULES.md`.
+
 ## Zeiterfassung
 
 Agenten können bei der Ticketerstellung, bei Artikeln und bei Ticketänderungen
@@ -311,6 +336,19 @@ aktuellen Cursorposition einfügen. Bei E-Mails und kundensichtbaren Notizen
 blockiert Qisutu ausschließlich Artikel mit der Sichtbarkeit „Nur Agenten“.
 Die Verwendung einer Revision wird am Artikel und –
 soweit bereits vorhanden – am Ticket protokolliert.
+
+## Agenten-Themes
+
+Agenten wählen ihr Oberflächentheme unter `Persönliche Einstellungen` aus.
+Die Auswahl wird als normale Benutzerpräferenz gespeichert. Das mitgelieferte
+Theme `Weihnachten` ergänzt normale Agentenseiten um dezente, statische
+Dekorationen; Administrationsseiten und das Kundenportal bleiben unverändert.
+
+Weitere Themes werden als Konfiguration unter `core/config/themes`, als
+eigenes Stylesheet unter `var/static/css/themes` und bei Bedarf mit eigenen
+Grafiken unter `var/static/img/themes` ergänzt. Die zentrale Theme-Registry
+prüft Schlüssel, Stylesheetpfade, Sichtbarkeit und den Ausschluss von
+Administrationsseiten, bevor ein Theme geladen wird.
 
 ## Sicherheitsfunktionen
 

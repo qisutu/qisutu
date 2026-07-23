@@ -21,9 +21,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Veraltete, von Qisutu verwaltete Programmdateien.
-# Ein Pfad pro Zeile; die Pfade bleiben kumulativ in dieser Liste.
-./core/config/programs/CMDB.pm
-./core/config/programs/AdminKnowledgeBase.pm
-./core/module/AdminKnowledgeBase.pm
-./core/output/AdminKnowledgeBase.tt
-./var/static/js/qisutu-knowledge-admin.js
+# Das erste offizielle Release 1.0.1 besitzt keine Entfernungseinträge.
+# Ab 1.0.2 bleibt jeder veröffentlichte Eintrag kumulativ in dieser Liste.

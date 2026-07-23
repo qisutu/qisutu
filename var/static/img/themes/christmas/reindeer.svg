@@ -1,0 +1,19 @@
+<!--
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 104" role="img" aria-label="">
+  <path d="M42 35C29 24 30 12 35 5m8 30C38 21 46 13 53 8M86 35c13-11 12-23 7-30m-8 30c5-14-3-22-10-27" fill="none" stroke="#72513c" stroke-width="5" stroke-linecap="round"/>
+  <path d="M33 7 24 10m11-1 7-7m51 5 9 3m-11-1-7-7" fill="none" stroke="#72513c" stroke-width="4" stroke-linecap="round"/>
+  <path d="M31 40 11 31c-3-1-6 2-4 5l14 17m76-13 20-9c3-1 6 2 4 5l-14 17" fill="#a87955" stroke="#72513c" stroke-width="3" stroke-linejoin="round"/>
+  <ellipse cx="64" cy="60" rx="42" ry="35" fill="#a87955" stroke="#72513c" stroke-width="3"/>
+  <path d="M45 65c9 16 30 16 39 0 0 22-8 34-20 34S44 87 45 65Z" fill="#d8b58f"/>
+  <circle cx="48" cy="57" r="4" fill="#24323a"/>
+  <circle cx="80" cy="57" r="4" fill="#24323a"/>
+  <ellipse cx="64" cy="75" rx="9" ry="7" fill="#b93434" stroke="#8f2525" stroke-width="2"/>
+  <path d="M52 86c8 5 16 5 24 0" fill="none" stroke="#72513c" stroke-width="2" stroke-linecap="round"/>
+</svg>

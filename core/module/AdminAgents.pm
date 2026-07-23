@@ -181,11 +181,15 @@ sub Run {
         Key      => 'AdminAuthenticationLDAP',
         Language => $Language,
     );
+    my $AuthenticationExternalLabel = $Self->{Output}->Translate(
+        Key      => 'AdminAuthenticationExternal',
+        Language => $Language,
+    );
     for my $AgentEntry ( @{$AgentList} ) {
-        $AgentEntry->{authentication_label}
-            = ( $AgentEntry->{authentication_type} || 'local' ) eq 'ldap'
+        my $AuthenticationType = $AgentEntry->{authentication_type} || 'local';
+        $AgentEntry->{authentication_label} = $AuthenticationType eq 'ldap'
             ? $AuthenticationLDAPLabel
-            : $AuthenticationLocalLabel;
+            : ( $AuthenticationType eq 'external' ? $AuthenticationExternalLabel : $AuthenticationLocalLabel );
     }
 
     if ( $Admin && $Action eq 'Edit' ) {
@@ -274,7 +278,8 @@ sub Run {
             AgentGroups        => $Agent ? $Agent->{group_names} : '',
             AgentAuthenticationLabel => $Agent && ( $Agent->{authentication_type} || 'local' ) eq 'ldap'
                 ? $AuthenticationLDAPLabel
-                : $AuthenticationLocalLabel,
+                : ( $Agent && ( $Agent->{authentication_type} || 'local' ) eq 'external'
+                    ? $AuthenticationExternalLabel : $AuthenticationLocalLabel ),
             AgentLDAPAuthentication => $Agent && ( $Agent->{authentication_type} || 'local' ) eq 'ldap' ? 1 : 0,
             AgentActiveChecked => $Agent && $Agent->{is_active} ? 'checked' : '',
             TwoFactorResetSuccess => $Request->{TwoFactorReset} ? 1 : 0,

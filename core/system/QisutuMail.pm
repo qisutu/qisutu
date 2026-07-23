@@ -388,6 +388,22 @@ sub SMTPSend {
         Crypto    => $CryptoResult->{Crypto},
     );
 
+    if ( @{ ( $Self->{Config}->{AddonRuntime} || {} )->{EventSubscribers} || [] } ) {
+        eval {
+            require QisutuAddonEvent;
+            QisutuAddonEvent->new( Config => $Self->{Config}, DB => $Self->{DB} )->Emit(
+                Event => 'mail.sent', Source => 'qisutu.core',
+                Payload => {
+                    ticket_id => 0 + ( $Param{TicketID} || 0 ),
+                    article_id => 0 + ( $Param{ArticleID} || 0 ),
+                    recipient_count => scalar @EnvelopeRecipients,
+                    signed => $CryptoResult->{Crypto}->{was_signed} ? 1 : 0,
+                    encrypted => $CryptoResult->{Crypto}->{was_encrypted} ? 1 : 0,
+                },
+            );
+        };
+    }
+
     return $Self->_Result(
         Success          => 1,
         Message          => 'SMTP message sent',

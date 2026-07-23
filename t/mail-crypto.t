@@ -122,7 +122,6 @@ like( $Required->{Error} || '', qr{missing\@example[.]test}, 'the missing recipi
 
 for my $File (
     'install/sql/schema.sql',
-    'install/update/database/0.0.24/001-create-mail-crypto.sql',
     'core/system/QisutuMail.pm',
     'core/system/QisutuAdmin.pm',
 ) {

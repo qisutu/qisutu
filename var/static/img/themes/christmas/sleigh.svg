@@ -1,0 +1,20 @@
+<!--
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 174 92" role="img" aria-label="">
+  <path d="M31 28h89c4 0 7 3 6 7l-6 30H55C39 65 31 52 31 28Z" fill="#b93434" stroke="#8f2525" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M31 28H17c0 12 5 20 17 23" fill="none" stroke="#8f2525" stroke-width="6" stroke-linecap="round"/>
+  <path d="M55 65v11m57-11v11" stroke="#b38a45" stroke-width="4"/>
+  <path d="M20 77h118c14 0 24-5 30-15-1 17-11 25-30 25H20c-7 0-11-3-14-8" fill="none" stroke="#b38a45" stroke-width="5" stroke-linecap="round"/>
+  <rect x="50" y="16" width="24" height="25" rx="3" fill="#d3a72f" stroke="#9d7422" stroke-width="2"/>
+  <path d="M62 16v25M50 26h24" stroke="#fff4c2" stroke-width="3"/>
+  <rect x="78" y="8" width="29" height="33" rx="3" fill="#3f7458" stroke="#28503b" stroke-width="2"/>
+  <path d="M92 8v33M78 23h29" stroke="#fff4c2" stroke-width="3"/>
+  <circle cx="139" cy="34" r="3" fill="#d3a72f"/>
+  <circle cx="150" cy="27" r="2" fill="#d3a72f"/>
+</svg>

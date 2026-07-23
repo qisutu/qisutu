@@ -247,12 +247,12 @@ like( $AdminTemplate, qr{qisutu-richtext}, 'each automatic-response edit view us
 like( $AdminTemplate, qr{PlaceholderList}, 'the edit view presents its placeholder list' );
 
 my $Release = _Read( File::Spec->catfile( $Root, 'release.conf' ) );
-like( $Release, qr{^version=0[.]0[.]74$}m, 'automatic responses are included in the current program release' );
-like( $Release, qr{^database_version=0[.]0[.]26$}m, 'automatic responses have their own database migration' );
+like( $Release, qr{^version=1[.]0[.]1$}m, 'automatic responses are included in official release 1.0.1' );
+like( $Release, qr{^database_version=1[.]0[.]1$}m, 'automatic responses are included in the official database baseline' );
 
-my $Migration = _Read( File::Spec->catfile( $Root, 'install', 'update', 'database', '0.0.26', '001-create-customer-auto-responses.sql' ) );
-like( $Migration, qr{customer_auto_response_template}, 'upgrade migration creates automatic-response templates' );
-like( $Migration, qr{customer_auto_response_event_log}, 'upgrade migration creates duplicate-prevention log' );
+my $Schema = _Read( File::Spec->catfile( $Root, 'install', 'sql', 'schema.sql' ) );
+like( $Schema, qr{CREATE TABLE `customer_auto_response_template`}, 'fresh installations create automatic-response templates' );
+like( $Schema, qr{CREATE TABLE `customer_auto_response_event_log`}, 'fresh installations create the duplicate-prevention log' );
 
 sub _Read {
     my ($File) = @_;

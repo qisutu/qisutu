@@ -21,12 +21,12 @@ along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
 SPDX-FileCopyrightText: 2026 Franziska Steps
 SPDX-License-Identifier: AGPL-3.0-or-later
 %]
-
+            [% RAW.AddonSlotAfterHTML %]
         </main>
     </section>
 </div>
 <script src="[% StaticBase %]/js/qisutu-service-tree.js?v=2026071201"></script>
 <script src="[% StaticBase %]/js/qisutu-checklists-admin.js?v=2026071206"></script>
-<script src="[% StaticBase %]/js/qisutu-sidebar.js?v=2026071101"></script>
+<script src="[% StaticBase %]/js/qisutu-sidebar.js?v=[% SystemVersion %]"></script>
 </body>
 </html>

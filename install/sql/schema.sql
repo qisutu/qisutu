@@ -1575,6 +1575,7 @@ CREATE TABLE `ticket_queue` (
   `name` varchar(200) NOT NULL,
   `full_name` varchar(500) NOT NULL,
   `follow_up_allowed` tinyint(1) NOT NULL DEFAULT 1,
+  `follow_up_option` varchar(20) NOT NULL DEFAULT 'reopen',
   `system_email_id` bigint(20) unsigned DEFAULT NULL,
   `salutation_id` bigint(20) unsigned DEFAULT NULL,
   `signature_id` bigint(20) unsigned DEFAULT NULL,
@@ -3458,6 +3459,149 @@ CREATE TABLE IF NOT EXISTS `ticket_article_crypto` (
   CONSTRAINT `ticket_article_crypto_article_fk` FOREIGN KEY (`article_id`) REFERENCES `ticket_article` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Qisutu add-on packages, operations, settings and extension points
+CREATE TABLE IF NOT EXISTS `addon_package` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `package_identifier` varchar(190) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `vendor` varchar(255) NOT NULL DEFAULT '',
+  `version` varchar(50) NOT NULL,
+  `description` text DEFAULT NULL,
+  `installed_path` varchar(500) NOT NULL,
+  `manifest_json` longtext NOT NULL,
+  `package_checksum_sha256` char(64) NOT NULL,
+  `signature_status` varchar(30) NOT NULL DEFAULT 'unsigned',
+  `active` tinyint(1) NOT NULL DEFAULT 0,
+  `status` varchar(30) NOT NULL DEFAULT 'installed',
+  `last_error` text DEFAULT NULL,
+  `installed_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `installed_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `addon_package_identifier_unique` (`package_identifier`),
+  KEY `addon_package_active_status` (`active`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `addon_operation` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `package_identifier` varchar(190) NOT NULL DEFAULT '',
+  `operation_type` varchar(30) NOT NULL,
+  `package_filename` varchar(255) NOT NULL DEFAULT '',
+  `package_data` longblob DEFAULT NULL,
+  `package_checksum_sha256` char(64) NOT NULL DEFAULT '',
+  `status` varchar(30) NOT NULL DEFAULT 'pending',
+  `requested_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `locked_by` varchar(255) DEFAULT NULL,
+  `locked_at` datetime DEFAULT NULL,
+  `finished_at` datetime DEFAULT NULL,
+  `result_message` text DEFAULT NULL,
+  `error_message` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `addon_operation_claim` (`status`,`id`),
+  KEY `addon_operation_package` (`package_identifier`,`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `addon_setting` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `package_identifier` varchar(190) NOT NULL,
+  `setting_key` varchar(190) NOT NULL,
+  `setting_value` longtext DEFAULT NULL,
+  `is_secret` tinyint(1) NOT NULL DEFAULT 0,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `addon_setting_package_key_unique` (`package_identifier`,`setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `addon_migration` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `package_identifier` varchar(190) NOT NULL,
+  `migration_key` varchar(255) NOT NULL,
+  `package_version` varchar(50) NOT NULL,
+  `checksum_sha256` char(64) NOT NULL,
+  `applied_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `addon_migration_package_key_unique` (`package_identifier`,`migration_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `addon_auth_state` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `state_hash` char(64) NOT NULL,
+  `provider_key` varchar(190) NOT NULL,
+  `nonce_encrypted` text NOT NULL,
+  `verifier_encrypted` text NOT NULL,
+  `return_location` varchar(500) NOT NULL DEFAULT 'index.pl',
+  `expires_at` datetime NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `addon_auth_state_hash_unique` (`state_hash`),
+  KEY `addon_auth_state_expiry` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `addon_external_identity` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `provider_key` varchar(190) NOT NULL,
+  `external_subject` varchar(255) NOT NULL,
+  `user_account_id` bigint(20) unsigned NOT NULL,
+  `external_login` varchar(255) NOT NULL DEFAULT '',
+  `last_login_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `addon_external_identity_subject_unique` (`provider_key`,`external_subject`),
+  KEY `addon_external_identity_user` (`user_account_id`),
+  CONSTRAINT `addon_external_identity_user_fk` FOREIGN KEY (`user_account_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `addon_task` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `package_identifier` varchar(190) NOT NULL,
+  `task_key` varchar(190) NOT NULL,
+  `handler_class` varchar(255) NOT NULL,
+  `interval_seconds` int(10) unsigned NOT NULL DEFAULT 3600,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `next_run_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `last_started_at` datetime DEFAULT NULL,
+  `last_finished_at` datetime DEFAULT NULL,
+  `last_status` varchar(30) NOT NULL DEFAULT 'never',
+  `last_message` text DEFAULT NULL,
+  `locked_by` varchar(255) DEFAULT NULL,
+  `locked_until` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `addon_task_package_key_unique` (`package_identifier`,`task_key`),
+  KEY `addon_task_due` (`active`,`next_run_at`,`locked_until`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `addon_event_queue` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `package_identifier` varchar(190) NOT NULL,
+  `event_name` varchar(190) NOT NULL,
+  `event_source` varchar(190) NOT NULL DEFAULT 'qisutu.core',
+  `handler_class` varchar(255) NOT NULL,
+  `handler_method` varchar(100) NOT NULL DEFAULT 'Handle',
+  `payload_json` longtext NOT NULL,
+  `result_json` longtext DEFAULT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'pending',
+  `attempts` int(10) unsigned NOT NULL DEFAULT 0,
+  `available_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `locked_by` varchar(255) DEFAULT NULL,
+  `locked_at` datetime DEFAULT NULL,
+  `last_error` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `finished_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `addon_event_queue_claim` (`status`,`available_at`,`id`),
+  KEY `addon_event_queue_package` (`package_identifier`,`id`),
+  KEY `addon_event_queue_event` (`event_name`,`created_at`),
+  CONSTRAINT `addon_event_queue_package_fk` FOREIGN KEY (`package_identifier`) REFERENCES `addon_package` (`package_identifier`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Qisutu database migration history
 CREATE TABLE IF NOT EXISTS `database_migration` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -3480,7 +3624,7 @@ CREATE TABLE IF NOT EXISTS `database_version` (
   UNIQUE KEY `database_version_version_unique` (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `database_version` (`version`) VALUES ('0.0.26');
+INSERT INTO `database_version` (`version`) VALUES ('1.0.1');
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

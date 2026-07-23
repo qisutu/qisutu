@@ -1,0 +1,128 @@
+/*
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+*/
+
+body.qisutu-theme-christmas {
+    --qisutu-christmas-red: #b93434;
+    --qisutu-christmas-green: #3f7458;
+    --qisutu-christmas-gold: #c59a38;
+}
+
+body.qisutu-theme-christmas .qisutu-workspace {
+    background-color: #f4f7f8;
+    background-image:
+        radial-gradient(circle at 13% 11%, rgba(255, 255, 255, 0.92) 0 2px, transparent 2.5px),
+        radial-gradient(circle at 72% 23%, rgba(255, 255, 255, 0.82) 0 1.5px, transparent 2px),
+        radial-gradient(circle at 42% 72%, rgba(216, 229, 225, 0.58) 0 1.5px, transparent 2px);
+    background-size: 150px 150px, 210px 210px, 180px 180px;
+}
+
+body.qisutu-theme-christmas .qisutu-sidebar-brand {
+    position: relative;
+}
+
+body.qisutu-theme-christmas .qisutu-sidebar-brand::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 25px;
+    width: 30px;
+    height: 27px;
+    z-index: 2;
+    background: url("../../img/themes/christmas/santa-hat.svg") center / contain no-repeat;
+    opacity: 0.88;
+    pointer-events: none;
+    transform: rotate(-8deg);
+}
+
+body.qisutu-theme-christmas .qisutu-nav-item-active,
+body.qisutu-theme-christmas .qisutu-subnav-item-active {
+    box-shadow: inset 3px 0 0 rgba(197, 154, 56, 0.78);
+}
+
+body.qisutu-theme-christmas .qisutu-panel {
+    border-color: rgba(63, 116, 88, 0.22);
+}
+
+body.qisutu-theme-christmas .qisutu-dashboard-header h1::after {
+    content: "";
+    display: inline-block;
+    margin-left: 12px;
+    vertical-align: middle;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    opacity: 0.76;
+    pointer-events: none;
+}
+
+body.qisutu-theme-christmas.qisutu-page-dashboard .qisutu-dashboard-header h1::after {
+    width: 43px;
+    height: 47px;
+    background-image: url("../../img/themes/christmas/santa.svg");
+}
+
+body.qisutu-theme-christmas.qisutu-page-agentticketlist .qisutu-dashboard-header h1::after {
+    width: 50px;
+    height: 40px;
+    background-image: url("../../img/themes/christmas/reindeer.svg");
+}
+
+body.qisutu-theme-christmas.qisutu-page-agentticketzoom .qisutu-dashboard-header h1::after {
+    width: 68px;
+    height: 36px;
+    background-image: url("../../img/themes/christmas/sleigh.svg");
+}
+
+body.qisutu-theme-christmas.qisutu-page-agentknowledgebase .qisutu-dashboard-header h1::after,
+body.qisutu-theme-christmas.qisutu-page-knowledgebase .qisutu-dashboard-header h1::after {
+    width: 34px;
+    height: 34px;
+    background-image: url("../../img/themes/christmas/gift.svg");
+}
+
+body.qisutu-theme-christmas .qisutu-button-primary {
+    box-shadow: 0 1px 0 rgba(185, 52, 52, 0.12);
+}
+
+@media (max-width: 720px) {
+    body.qisutu-theme-christmas .qisutu-dashboard-header h1::after {
+        width: 31px !important;
+        height: 31px !important;
+        margin-left: 8px;
+    }
+
+    body.qisutu-theme-christmas .qisutu-sidebar-brand::after {
+        left: 24px;
+        width: 27px;
+        height: 24px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.qisutu-theme-christmas *,
+    body.qisutu-theme-christmas *::before,
+    body.qisutu-theme-christmas *::after {
+        scroll-behavior: auto !important;
+    }
+}

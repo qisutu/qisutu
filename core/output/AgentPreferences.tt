@@ -58,6 +58,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 </div>
 
                 <div class="qisutu-form-field">
+                    <label>[% Translate.PreferencesTheme %]</label>
+                    <select name="Theme">
+                        [% RAW.ThemeOptions %]
+                    </select>
+                    <span class="qisutu-form-hint">[% Translate.PreferencesThemeHint %]</span>
+                </div>
+
+                <div class="qisutu-form-field">
                     <label>[% Translate.PreferencesStartPage %]</label>
                     <select name="StartPage">
                         <option value="Dashboard" [% StartPageDashboardSelected %]>[% Translate.NavigationDashboard %]</option>

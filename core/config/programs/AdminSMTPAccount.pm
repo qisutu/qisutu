@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminSMTPAccount',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 907,
+    Order           => 910,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminSystemSettings',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 900,
+    Order           => 35,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

@@ -2507,15 +2507,6 @@ sub _TicketToolUpdate {
             };
         }
 
-        $Summary = $Self->_ToolSummary(
-            Language => $Language,
-            Action   => $Action,
-            OldValue => $TicketBefore->{state_name_display}
-                || $Self->_TicketStateText( State => $TicketBefore->{state_name}, Language => $Language )
-                || '-',
-            NewValue => $Self->_TicketStateText( State => $ClosedState->{name}, Language => $Language ) || $ClosedState->{name} || '-',
-        );
-
         $Self->{DB}->BeginWork() || return {
             Success    => 0,
             ActiveTool => $Action,
@@ -2568,7 +2559,11 @@ sub _TicketToolUpdate {
         TicketID        => $TicketID,
         User            => $User,
         Subject         => $Self->_ToolArticleSubject( Language => $Language, Action => $Action ),
-        Body            => $Self->_ToolArticleBody( Summary => $Summary, Body => $Body ),
+        Body            => $Self->_ToolArticleBody(
+            Summary        => $Summary,
+            Body           => $Body,
+            IncludeSummary => ( $Action eq 'close' ? 0 : 1 ),
+        ),
         Channel         => 'note',
         SenderType      => 'agent',
         FromName        => $Self->_UserName( User => $User ),
@@ -3012,6 +3007,14 @@ sub _ToolArticleSubject {
     my $Language = $Param{Language} || 'en';
     my $Action   = $Param{Action} || '';
 
+    if ( $Action eq 'close' && $Self->{Output} ) {
+        my $Subject = $Self->{Output}->Translate(
+            Key      => 'TicketToolNote',
+            Language => $Language,
+        );
+        return $Subject if $Subject && $Subject ne 'TicketToolNote';
+    }
+
     my %DE = (
         priority => 'Ticket-Aktion: Priorität geändert',
         owner       => 'Ticket-Aktion: Besitzer geändert',
@@ -3019,7 +3022,7 @@ sub _ToolArticleSubject {
         customer    => 'Ticket-Aktion: Kunde / Ansprechpartner geändert',
         service     => 'Ticket-Aktion: Service / SLA geändert',
         queue       => 'Ticket-Aktion: Queue geändert',
-        close       => 'Ticket-Aktion: Ticket geschlossen',
+        close       => 'Notiz',
     );
 
     my %EN = (
@@ -3029,7 +3032,7 @@ sub _ToolArticleSubject {
         customer    => 'Ticket action: customer / contact changed',
         service     => 'Ticket action: service / SLA changed',
         queue       => 'Ticket action: queue changed',
-        close       => 'Ticket action: ticket closed',
+        close       => 'Note',
     );
 
     return $Language eq 'de' ? ( $DE{$Action} || 'Ticket-Aktion' ) : ( $EN{$Action} || 'Ticket action' );
@@ -3040,6 +3043,9 @@ sub _ToolArticleBody {
 
     my $Summary = $Param{Summary} || '';
     my $Body    = $Param{Body} || '';
+
+    return $Body if exists $Param{IncludeSummary} && !$Param{IncludeSummary};
+    return $Body if !$Summary;
 
     return '<p><strong>' . $Self->_Escape($Summary) . '</strong></p>' . $Body;
 }

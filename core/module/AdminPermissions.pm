@@ -143,6 +143,7 @@ sub _ProgramList {
 
     for my $Program ( @{$Programs} ) {
         next if $Program->{Hidden};
+        next if $Program->{ManagedByAddon};
 
         $Program->{VisibleFor} = join ',', @{ $Self->_VisibleFor( Program => $Program ) };
         push @VisiblePrograms, $Program;

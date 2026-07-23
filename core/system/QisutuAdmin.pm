@@ -176,7 +176,30 @@ sub CustomerGet {
 }
 
 sub CustomerUserList {
-    my ($Self) = @_;
+    my ( $Self, %Param ) = @_;
+
+    my $Search = $Self->_Trim( $Param{Search} );
+    my $Limit  = $Param{Limit};
+    my $Offset = $Param{Offset} || 0;
+    my $Where  = '';
+    my @Bind;
+
+    if ($Search) {
+        my $Like = '%' . $Search . '%';
+        $Where = 'WHERE (
+            ua.login LIKE ? OR ua.email LIKE ? OR ua.firstname LIKE ? OR ua.lastname LIKE ?
+            OR c.name LIKE ? OR c.customer_number LIKE ?
+        )';
+        @Bind = ($Like) x 6;
+    }
+
+    my $LimitSQL = '';
+    if ( defined $Limit ) {
+        $Limit  = 25 if $Limit !~ m{\A\d+\z} || $Limit < 1;
+        $Limit  = 200 if $Limit > 200;
+        $Offset = 0 if $Offset !~ m{\A\d+\z};
+        $LimitSQL = ' LIMIT ' . $Limit . ' OFFSET ' . $Offset;
+    }
 
     my $Rows = $Self->{DB}->SelectAll(
         'SELECT
@@ -196,7 +219,73 @@ sub CustomerUserList {
             ON c.id = cu.customer_id
          INNER JOIN user_account ua
             ON ua.id = cu.user_account_id
-         ORDER BY c.name ASC, ua.login ASC'
+         ' . $Where . '
+         ORDER BY c.name ASC, ua.login ASC' . $LimitSQL,
+        @Bind,
+    );
+
+    return $Self->_RowsPrepare( Rows => $Rows );
+}
+
+sub CustomerUserCount {
+    my ( $Self, %Param ) = @_;
+
+    my $Search = $Self->_Trim( $Param{Search} );
+    my $Where  = '';
+    my @Bind;
+
+    if ($Search) {
+        my $Like = '%' . $Search . '%';
+        $Where = 'WHERE (
+            ua.login LIKE ? OR ua.email LIKE ? OR ua.firstname LIKE ? OR ua.lastname LIKE ?
+            OR c.name LIKE ? OR c.customer_number LIKE ?
+        )';
+        @Bind = ($Like) x 6;
+    }
+
+    my $Row = $Self->{DB}->SelectRow(
+        'SELECT COUNT(*) AS customer_user_count
+         FROM customer_user cu
+         INNER JOIN customer c ON c.id = cu.customer_id
+         INNER JOIN user_account ua ON ua.id = cu.user_account_id
+         ' . $Where,
+        @Bind,
+    );
+
+    return $Row ? 0 + ( $Row->{customer_user_count} || 0 ) : 0;
+}
+
+sub CustomerUserListByUserAccountIDs {
+    my ( $Self, %Param ) = @_;
+
+    my @UserAccountIDs = grep { defined $_ && $_ =~ m{\A\d+\z} && $_ > 0 }
+        @{ $Param{UserAccountIDs} || [] };
+    return [] if !@UserAccountIDs;
+
+    my %Seen;
+    @UserAccountIDs = grep { !$Seen{$_}++ } @UserAccountIDs;
+    splice @UserAccountIDs, 200 if @UserAccountIDs > 200;
+
+    my $Placeholders = join ', ', ('?') x @UserAccountIDs;
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT
+            cu.id,
+            cu.customer_id,
+            cu.user_account_id,
+            cu.active,
+            c.customer_number,
+            c.name AS customer_name,
+            ua.login,
+            ua.email,
+            ua.firstname,
+            ua.lastname,
+            ua.is_active
+         FROM customer_user cu
+         INNER JOIN customer c ON c.id = cu.customer_id
+         INNER JOIN user_account ua ON ua.id = cu.user_account_id
+         WHERE cu.user_account_id IN (' . $Placeholders . ')
+         ORDER BY c.name ASC, ua.login ASC',
+        @UserAccountIDs,
     );
 
     return $Self->_RowsPrepare( Rows => $Rows );
@@ -251,6 +340,7 @@ sub QueueList {
             tq.name,
             tq.full_name,
             tq.follow_up_allowed,
+            tq.follow_up_option,
             tq.system_email_id,
             tq.salutation_id,
             tq.signature_id,
@@ -285,7 +375,7 @@ sub QueueList {
             AND ug.active = 1
          GROUP BY
             tq.id, tq.parent_id, parent.full_name, tq.name, tq.full_name,
-            tq.follow_up_allowed, tq.system_email_id, tq.salutation_id,
+            tq.follow_up_allowed, tq.follow_up_option, tq.system_email_id, tq.salutation_id,
             tq.signature_id, tq.calendar_id,
             tq.escalation_first_response_minutes, tq.escalation_update_minutes,
             tq.escalation_solution_minutes, se.email, sal.name, sig.name,
@@ -311,6 +401,7 @@ sub QueueGet {
             tq.name,
             tq.full_name,
             tq.follow_up_allowed,
+            tq.follow_up_option,
             tq.system_email_id,
             tq.salutation_id,
             tq.signature_id,
@@ -1856,6 +1947,43 @@ sub GroupAgentList {
     return $Self->_RowsPrepare( Rows => $Rows );
 }
 
+sub GroupMemberList {
+    my ( $Self, %Param ) = @_;
+
+    my $GroupID = $Param{GroupID} || 0;
+    return [] if $GroupID !~ m{\A\d+\z} || !$GroupID;
+
+    my $UserFilter = '';
+    my @Bind = ($GroupID);
+    if ( exists $Param{UserAccountIDs} ) {
+        my @UserAccountIDs = grep { defined $_ && $_ =~ m{\A\d+\z} && $_ > 0 }
+            @{ $Param{UserAccountIDs} || [] };
+        return [] if !@UserAccountIDs;
+
+        my %Seen;
+        @UserAccountIDs = grep { !$Seen{$_}++ } @UserAccountIDs;
+        $UserFilter = ' AND user_account_id IN (' . join( ', ', ('?') x @UserAccountIDs ) . ')';
+        push @Bind, @UserAccountIDs;
+    }
+
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT
+            user_group_id,
+            user_account_id,
+            permission_read,
+            permission_create,
+            permission_change,
+            permission_overview,
+            permission_full
+         FROM user_group_member
+         WHERE user_group_id = ?
+           AND active = 1' . $UserFilter,
+        @Bind,
+    );
+
+    return $Self->_RowsPrepare( Rows => $Rows );
+}
+
 sub UserGroupPermissionUpdate {
     my ( $Self, %Param ) = @_;
 
@@ -3041,7 +3169,12 @@ sub QueueCreate {
     my $ParentQueueID  = $Param{ParentQueueID} || 0;
     my $GroupID        = $Param{GroupID} || 0;
     my $SortOrder      = $Param{SortOrder} || 1000;
-    my $FollowUpAllowed = $Param{FollowUpAllowed} ? 1 : 0;
+    my $FollowUpOption = $Self->_QueueFollowUpOption(
+        Value           => $Param{FollowUpOption},
+        FollowUpAllowed => $Param{FollowUpAllowed},
+        HasLegacyValue  => exists $Param{FollowUpAllowed},
+    );
+    my $FollowUpAllowed = $FollowUpOption && $FollowUpOption eq 'reject' ? 0 : 1;
     my $SystemEmailID  = $Self->_OptionalID( $Param{SystemEmailID} );
     my $SalutationID   = $Self->_OptionalID( $Param{SalutationID} );
     my $SignatureID    = $Self->_OptionalID( $Param{SignatureID} );
@@ -3053,6 +3186,11 @@ sub QueueCreate {
 
     if ( !$Name || !$GroupID || !$SystemEmailID ) {
         $Self->{LastError} = 'Translate:AdminQueueNameGroupSystemEmailRequired';
+        return;
+    }
+
+    if (!$FollowUpOption) {
+        $Self->{LastError} = 'Translate:AdminQueueFollowUpOptionInvalid';
         return;
     }
 
@@ -3093,6 +3231,7 @@ sub QueueCreate {
             name,
             full_name,
             follow_up_allowed,
+            follow_up_option,
             system_email_id,
             salutation_id,
             signature_id,
@@ -3105,12 +3244,13 @@ sub QueueCreate {
             created_by_user_id,
             changed_by_user_id
          ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?
          )',
         $ParentID,
         $Name,
         $FullName,
         $FollowUpAllowed,
+        $FollowUpOption,
         $SystemEmailID,
         $SalutationID,
         $SignatureID,
@@ -3150,7 +3290,12 @@ sub QueueUpdate {
     my $GroupID        = $Param{GroupID} || 0;
     my $SortOrder      = $Param{SortOrder} || 1000;
     my $Active         = $Param{Active} ? 1 : 0;
-    my $FollowUpAllowed = $Param{FollowUpAllowed} ? 1 : 0;
+    my $FollowUpOption = $Self->_QueueFollowUpOption(
+        Value           => $Param{FollowUpOption},
+        FollowUpAllowed => $Param{FollowUpAllowed},
+        HasLegacyValue  => exists $Param{FollowUpAllowed},
+    );
+    my $FollowUpAllowed = $FollowUpOption && $FollowUpOption eq 'reject' ? 0 : 1;
     my $SystemEmailID  = $Self->_OptionalID( $Param{SystemEmailID} );
     my $SalutationID   = $Self->_OptionalID( $Param{SalutationID} );
     my $SignatureID    = $Self->_OptionalID( $Param{SignatureID} );
@@ -3162,6 +3307,11 @@ sub QueueUpdate {
 
     if ( $QueueID !~ m{\A\d+\z} || !$QueueID || !$Name || !$GroupID || !$SystemEmailID ) {
         $Self->{LastError} = 'Translate:AdminQueueNameGroupSystemEmailRequired';
+        return;
+    }
+
+    if (!$FollowUpOption) {
+        $Self->{LastError} = 'Translate:AdminQueueFollowUpOptionInvalid';
         return;
     }
 
@@ -3207,6 +3357,7 @@ sub QueueUpdate {
              name = ?,
              full_name = ?,
              follow_up_allowed = ?,
+             follow_up_option = ?,
              system_email_id = ?,
              salutation_id = ?,
              signature_id = ?,
@@ -3222,6 +3373,7 @@ sub QueueUpdate {
         $Name,
         $FullName,
         $FollowUpAllowed,
+        $FollowUpOption,
         $SystemEmailID,
         $SalutationID,
         $SignatureID,
@@ -3414,6 +3566,46 @@ sub GroupCreate {
 
     if ( !$Result ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Group could not be created';
+        return;
+    }
+
+    return 1;
+}
+
+sub GroupUpdate {
+    my ( $Self, %Param ) = @_;
+
+    my $GroupID   = $Param{GroupID} || 0;
+    my $Title     = $Self->_Trim( $Param{Title} );
+    my $SortOrder = $Param{SortOrder} || 1000;
+    my $Active    = $Param{Active} ? 1 : 0;
+    my $UserID    = $Param{ChangedByUserID} || 1;
+
+    if ( $GroupID !~ m{\A\d+\z} || !$GroupID ) {
+        $Self->{LastError} = 'Group ID is required';
+        return;
+    }
+
+    if ( $SortOrder !~ m{\A\d+\z} || $SortOrder < 1 ) {
+        $SortOrder = 1000;
+    }
+
+    my $Result = $Self->{DB}->Do(
+        'UPDATE user_group
+         SET title = ?,
+             active = ?,
+             sort_order = ?,
+             changed_by_user_id = ?
+         WHERE id = ?',
+        $Title,
+        $Active,
+        $SortOrder,
+        $UserID,
+        $GroupID,
+    );
+
+    if ( !$Result ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Group could not be updated';
         return;
     }
 
@@ -4388,8 +4580,19 @@ sub _RowsPrepare {
             $Row->{active_label} = $Row->{is_active} ? 'Translate:AdminActiveYes' : 'Translate:AdminActiveNo';
         }
 
-        if ( exists $Row->{follow_up_allowed} ) {
-            $Row->{follow_up_allowed_label} = $Row->{follow_up_allowed} ? 'Translate:AdminActiveYes' : 'Translate:AdminActiveNo';
+        if ( exists $Row->{follow_up_option} || exists $Row->{follow_up_allowed} ) {
+            my $Option = $Row->{follow_up_option} || '';
+            if ( $Option !~ m{\A(?:reopen|new_ticket|reject)\z} ) {
+                $Option = $Row->{follow_up_allowed} ? 'reopen' : 'reject';
+            }
+            my %Label = (
+                reopen     => 'Translate:AdminFollowUpReopen',
+                new_ticket => 'Translate:AdminFollowUpNewTicket',
+                reject     => 'Translate:AdminFollowUpReject',
+            );
+            $Row->{follow_up_option}       = $Option;
+            $Row->{follow_up_option_label} = $Label{$Option};
+            $Row->{follow_up_allowed_label} = $Label{$Option};
         }
 
         if ( exists $Row->{inbound_enabled} ) {
@@ -4437,6 +4640,21 @@ sub _Trim {
     $Value =~ s{\s+\z}{};
 
     return $Value;
+}
+
+sub _QueueFollowUpOption {
+    my ( $Self, %Param ) = @_;
+
+    my $Option = lc $Self->_Trim( $Param{Value} );
+
+    if ( !$Option && $Param{HasLegacyValue} ) {
+        return $Param{FollowUpAllowed} ? 'reopen' : 'reject';
+    }
+
+    $Option ||= 'reopen';
+    return if $Option !~ m{\A(?:reopen|new_ticket|reject)\z};
+
+    return $Option;
 }
 
 sub _LanguageClean {

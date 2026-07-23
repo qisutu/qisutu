@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminResponseTemplates',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 913,
+    Order           => 23,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

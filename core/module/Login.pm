@@ -29,6 +29,7 @@ use utf8;
 use QisutuPasswordReset;
 use QisutuCustomerRegistration;
 use QisutuTwoFactor;
+use QisutuAuthProvider;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -43,6 +44,7 @@ sub new {
         PasswordReset        => $Param{PasswordReset},
         CustomerRegistration  => $Param{CustomerRegistration},
         TwoFactor             => $Param{TwoFactor},
+        ExternalAuth          => $Param{ExternalAuth},
         LastError             => '',
     };
 
@@ -64,6 +66,15 @@ sub new {
         $Self->{TwoFactor} = QisutuTwoFactor->new(
             Config => $Self->{Config},
             DB     => $Self->{DB},
+        );
+    }
+
+
+    if ( !$Self->{ExternalAuth} ) {
+        $Self->{ExternalAuth} = QisutuAuthProvider->new(
+            Config   => $Self->{Config},
+            DB       => $Self->{DB},
+            Security => $Self->{Security},
         );
     }
 
@@ -117,22 +128,80 @@ sub Run {
         return $Self->_TwoFactorVerify(%Param);
     }
 
+    if ( $Step eq 'ExternalAuthBegin' ) {
+        return $Self->_ExternalAuthBegin(%Param);
+    }
+
+    if ( $Step eq 'ExternalAuthCallback' ) {
+        return $Self->_ExternalAuthCallback(%Param);
+    }
+
     return $Self->_LoginShow(%Param);
 }
 
 sub _LoginShow {
     my ( $Self, %Param ) = @_;
 
+    my $AccountType = $Param{AccountType} || 'agent';
+    my $Providers = $Self->{ExternalAuth}
+        ? $Self->{ExternalAuth}->ProviderList( AccountType => 'agent' )
+        : [];
+    my @AutoRedirect = grep { $_->{auto_redirect} } @{$Providers};
+    if ( !$Param{ErrorMessage}
+        && ( $Param{Step} || '' ) ne 'LocalLogin'
+        && $AccountType eq 'agent'
+        && @AutoRedirect == 1 ) {
+        return $Self->{Output}->Redirect( Location => $AutoRedirect[0]->{begin_url} );
+    }
+    my $ShowLocalAgentLogin = !grep { !$_->{allow_local_login} } @{$Providers};
+    $AccountType = 'customer' if !$ShowLocalAgentLogin && $AccountType eq 'agent';
     return $Self->_RenderPublicPage(
         Template => 'Login.tt',
         Data     => $Self->_TemplateData(
             PageTitle    => 'Translate:PageLoginTitle',
             ErrorMessage => $Param{ErrorMessage} || '',
             LoginValue   => $Param{LoginValue}   || '',
-            AccountType  => $Param{AccountType}  || 'agent',
+            AccountType  => $AccountType,
             FormAction   => $Param{FormAction}   || 'index.pl',
+            ExternalAuthProviders => $Providers,
+            HasExternalAuth       => @{$Providers} ? 1 : 0,
+            ShowLocalAgentLogin   => $ShowLocalAgentLogin,
         ),
     );
+}
+
+sub _ExternalAuthBegin {
+    my ( $Self, %Param ) = @_;
+    my $URL = $Self->{ExternalAuth}->AuthorizationBegin(
+        Provider => $Param{Provider} || '',
+    );
+    if (!$URL) {
+        return $Self->_LoginShow(
+            ErrorMessage => $Self->{ExternalAuth}->Error() || 'Translate:ExternalAuthStartFailed',
+            FormAction   => $Param{FormAction} || 'index.pl',
+        );
+    }
+    return $Self->{Output}->Redirect( Location => $URL );
+}
+
+sub _ExternalAuthCallback {
+    my ( $Self, %Param ) = @_;
+    my $User = $Self->{ExternalAuth}->AuthorizationComplete( Request => \%Param );
+    if (!$User) {
+        return $Self->_LoginShow(
+            ErrorMessage => $Self->{ExternalAuth}->Error() || 'Translate:ExternalAuthLoginFailed',
+            FormAction   => $Param{FormAction} || 'index.pl',
+        );
+    }
+    if ( $Self->{TwoFactor}->Required( User => $User ) ) {
+        my $Challenge = $Self->{TwoFactor}->ChallengeCreate( User => $User );
+        return $Self->_LoginShow(
+            ErrorMessage => $Self->{TwoFactor}->Error() || 'Translate:LoginCouldNotBeFinished',
+            FormAction   => $Param{FormAction} || 'index.pl',
+        ) if !$Challenge;
+        return $Self->_TwoFactorShow( %Param, Challenge => $Challenge );
+    }
+    return $Self->_LoginFinish( User => $User, %Param );
 }
 
 sub _LoginSubmit {
@@ -144,6 +213,18 @@ sub _LoginSubmit {
 
     if ( $AccountType ne 'agent' && $AccountType ne 'customer' ) {
         $AccountType = 'agent';
+    }
+
+    if ( $AccountType eq 'agent' && $Self->{ExternalAuth} ) {
+        my $Providers = $Self->{ExternalAuth}->ProviderList( AccountType => 'agent' );
+        if ( grep { !$_->{allow_local_login} } @{$Providers} ) {
+            return $Self->_LoginShow(
+                Step         => 'LocalLogin',
+                ErrorMessage => 'Translate:ExternalAuthLocalLoginDisabled',
+                AccountType  => 'customer',
+                FormAction   => $Param{FormAction} || 'index.pl',
+            );
+        }
     }
 
     my $User = $Self->{Auth}->LoginCheck(
@@ -602,7 +683,7 @@ sub _TemplateData {
         Robots          => 'noindex, nofollow',
         PageTitle       => $Param{PageTitle} || 'Translate:PageLoginTitle',
         StaticBase      => $Self->{Config}->{Paths}->{StaticURL} || '/static',
-        PageCSS         => 'qisutu-login.css?v=2026072102',
+        PageCSS         => 'qisutu-login.css?v=2026072103',
         BodyClass       => 'qisutu-login-page',
         SystemName      => $Self->{Config}->{System}->{Name} || 'Qisutu',
         ErrorMessage    => $Param{ErrorMessage} || '',
@@ -627,6 +708,11 @@ sub _TemplateData {
         TwoFactorAccountName     => $Param{TwoFactorAccountName} || '',
         TwoFactorProvisioningURI => $Param{TwoFactorProvisioningURI} || '',
         RecoveryCodesHTML => $Param{RecoveryCodesHTML} || '',
+        ExternalAuthProviders => $Param{ExternalAuthProviders} || [],
+        HasExternalAuth       => $Param{HasExternalAuth} ? 1 : 0,
+        ShowLocalAgentLogin   => exists $Param{ShowLocalAgentLogin}
+            ? ( $Param{ShowLocalAgentLogin} ? 1 : 0 )
+            : 1,
     };
 }
 

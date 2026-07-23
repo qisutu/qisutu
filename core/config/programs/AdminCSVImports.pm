@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminCSVImports',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 904,
+    Order           => 33,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

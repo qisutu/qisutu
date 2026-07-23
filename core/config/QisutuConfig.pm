@@ -56,6 +56,7 @@ sub Load {
             Config    => "$RootPath/core/config",
             ProgramConfig => "$RootPath/core/config/programs",
             SettingConfig => "$RootPath/core/config/settings",
+            ThemeConfig   => "$RootPath/core/config/themes",
             Module    => "$RootPath/core/module",
             Output    => "$RootPath/core/output",
             System    => "$RootPath/core/system",
@@ -65,12 +66,13 @@ sub Load {
             Cache     => "$RootPath/var/cache",
             Static    => "$RootPath/var/static",
             StaticURL => '/qisutu/static',
+            Addons    => "$RootPath/addons",
             SecurityKey => "$RootPath/var/secure/security.key",
         },
 
         System => {
             Name       => 'Qisutu',
-            Version    => '0.0.74',
+            Version    => '1.0.1',
             InstanceID => 'qisutu',
             WebPath    => '/qisutu',
             BaseURL    => $ENV{QISUTU_BASE_URL} || '',

@@ -1,36 +1,39 @@
-Qisutu-Datenbankupdates
+Qisutu-Datenbankupdates ab dem ersten offiziellen Release 1.0.1
 
-Der Qisutu-Updater verwendet dauerhaft zwei getrennte Verfahren. Beide müssen
-in jedem späteren Updatepaket vollständig enthalten bleiben.
+Qisutu 1.0.1 ist die erste öffentlich unterstützte Version und wird nur neu
+installiert. Ihre vollständige Datenbankbasis steht in:
+
+install/sql/schema.sql
+install/sql/insert.sql
+
+Die während der Entwicklung verwendeten Migrationen der Versionen 0.0.x sind
+nicht Bestandteil des offiziellen Pakets. Es gibt keine unterstützte
+Vorabinstallation, die auf 1.0.1 aktualisiert werden muss.
+
+Für spätere offizielle Updates bleiben zwei Verfahren erhalten:
 
 1. Aktuelle Datenbankstruktur
 
-Die vollständige Sollstruktur steht ausschließlich in:
+install/update/QisutuSchemaSync.pl vergleicht die Sollstruktur aus
+install/sql/schema.sql mit der vorhandenen MariaDB-Datenbank. Ohne vorhandene
+Daten zu löschen, ergänzt der Updater fehlende Tabellen, Spalten,
+Primärschlüssel, Indizes und Fremdschlüssel. Nach den Datenmigrationen wird
+dieser Abgleich erneut ausgeführt, damit der endgültige Strukturstand geprüft
+ist.
 
-install/sql/schema.sql
+2. Kumulative Datenmigrationen ab 1.0.2
 
-install/update/QisutuSchemaSync.pl vergleicht diese Sollstruktur mit der
-vorhandenen MariaDB-Datenbank. Ohne vorhandene Daten zu löschen, ergänzt der
-Updater fehlende Tabellen, Spalten, Primärschlüssel, Indizes und
-Fremdschlüssel. Nach den Datenmigrationen wird dieser Abgleich erneut
-ausgeführt, damit der endgültige Strukturstand geprüft ist.
-
-2. Kumulative Datenmigrationen
-
-Notwendige INSERT-, UPDATE- und Datenumwandlungsschritte liegen dauerhaft unter:
+Notwendige INSERT-, UPDATE- und Datenumwandlungsschritte liegen künftig unter:
 
 install/update/database/DATENBANKVERSION/
 
-Beispiele:
+Beispiel:
 
-install/update/database/0.0.2/001-create-password-reset-token.sql
-install/update/database/0.0.3/001-create-customer-registration-request.sql
-install/update/database/0.0.5/001-create-postmaster-filter.sql
-install/update/database/0.0.6/001-create-time-accounting.sql
+install/update/database/1.0.2/001-beispiel.sql
 
-Alle früheren Migrationsdateien bleiben unverändert in jedem späteren
-Updatepaket erhalten. Dadurch kann eine Installation direkt von einem sehr
-alten Stand auf den aktuellen Stand aktualisiert werden.
+Jede ab 1.0.2 veröffentlichte Migration bleibt unverändert in allen späteren
+Updatepaketen enthalten. Dadurch kann eine offizielle Installation direkt von
+einem älteren veröffentlichten Stand aktualisiert werden.
 
 Die Tabelle database_migration protokolliert jede einzelne Migrationsdatei mit:
 
@@ -47,7 +50,7 @@ protokollierte Migrationen werden anhand ihres eindeutigen Migrationsschlüssels
 nicht erneut ausgeführt. Die zusätzlich gespeicherte Prüfsumme dokumentiert den
 bei der Ausführung vorhandenen Dateistand.
 
-Eine veröffentlichte Migration behält dauerhaft denselben Verzeichnis- und
+Eine ab 1.0.2 veröffentlichte Migration behält dauerhaft denselben Verzeichnis- und
 Dateinamen und darf nicht aus späteren Updatepaketen entfernt werden. Jede
 Migration muss den bestehenden Datenzustand selbst prüfen und wiederholbar
 sicher sein, beispielsweise durch CREATE TABLE IF NOT EXISTS, INSERT ... ON

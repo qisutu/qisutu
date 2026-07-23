@@ -26,6 +26,7 @@
     'use strict';
 
     var StorageKey = 'qisutu.sidebar.collapsed';
+    var ScrollStorageKey = 'qisutu.sidebar.scrollTop';
     var DesktopMediaQuery = window.matchMedia('(min-width: 901px)');
 
     function IsCollapsed() {
@@ -41,6 +42,34 @@
         }
     }
 
+    function StoredScrollPosition() {
+        try {
+            var Value = window.sessionStorage.getItem(ScrollStorageKey);
+
+            if (Value === null || !/^\d+$/.test(Value)) {
+                return null;
+            }
+
+            return parseInt(Value, 10);
+        }
+        catch (Error) {
+            return null;
+        }
+    }
+
+    function StoreScrollPosition(Navigation) {
+        if (!Navigation) {
+            return;
+        }
+
+        try {
+            window.sessionStorage.setItem(ScrollStorageKey, String(Math.max(0, Navigation.scrollTop || 0)));
+        }
+        catch (Error) {
+            // The active item is still brought into view without browser storage.
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         var Sidebar = document.getElementById('QisutuSidebar');
         var Toggle = document.getElementById('QisutuSidebarToggle');
@@ -51,6 +80,7 @@
 
         var ToggleIcon = Toggle.querySelector('.qisutu-sidebar-toggle-icon');
         var ToggleLabel = Toggle.querySelector('.qisutu-sidebar-toggle-label');
+        var Navigation = Sidebar.querySelector('.qisutu-nav');
         var CollapseLabel = Toggle.getAttribute('data-collapse-label') || 'Collapse navigation';
         var ExpandLabel = Toggle.getAttribute('data-expand-label') || 'Expand navigation';
         var NavigationGroups = Array.prototype.slice.call(
@@ -58,6 +88,46 @@
         );
         var UserArea = Sidebar.querySelector('.qisutu-sidebar-user');
         var UserButton = Sidebar.querySelector('.qisutu-sidebar-user-avatar');
+
+        if (Navigation) {
+            window.requestAnimationFrame(function () {
+                var StoredPosition = StoredScrollPosition();
+
+                if (StoredPosition !== null) {
+                    Navigation.scrollTop = StoredPosition;
+                    return;
+                }
+
+                var ActiveItem = Navigation.querySelector('.qisutu-subnav-item-active, .qisutu-nav-item-active');
+                if (!ActiveItem) {
+                    return;
+                }
+
+                var NavigationRect = Navigation.getBoundingClientRect();
+                var ActiveRect = ActiveItem.getBoundingClientRect();
+
+                if (ActiveRect.top < NavigationRect.top) {
+                    Navigation.scrollTop -= NavigationRect.top - ActiveRect.top + 12;
+                }
+                else if (ActiveRect.bottom > NavigationRect.bottom) {
+                    Navigation.scrollTop += ActiveRect.bottom - NavigationRect.bottom + 12;
+                }
+            });
+
+            Navigation.addEventListener('scroll', function () {
+                StoreScrollPosition(Navigation);
+            }, { passive: true });
+
+            Navigation.addEventListener('click', function (Event) {
+                if (Event.target.closest('a')) {
+                    StoreScrollPosition(Navigation);
+                }
+            });
+
+            window.addEventListener('pagehide', function () {
+                StoreScrollPosition(Navigation);
+            });
+        }
 
         function CloseNavigationFlyouts(ExceptGroup) {
             NavigationGroups.forEach(function (Group) {

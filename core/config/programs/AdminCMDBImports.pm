@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminCMDBImports',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 919,
+    Order           => 26,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

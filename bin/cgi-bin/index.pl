@@ -111,6 +111,18 @@ sub main {
         return;
     }
 
+    my $AddonRuntimeLoaded = eval {
+        require QisutuAddonRuntime;
+        QisutuAddonRuntime->Apply(
+            Config => $Config,
+            DB     => $DB,
+        );
+        1;
+    };
+    if ( !$AddonRuntimeLoaded ) {
+        $Config->{AddonRuntime} = {};
+    }
+
     my $ProgramRegistry = _ObjectCreate(
         Module => 'QisutuProgramRegistry',
         Param  => {
@@ -240,6 +252,8 @@ sub main {
         CustomerRegistrationPassword
         CustomerRegistrationPasswordSubmit
         TwoFactorVerify
+        ExternalAuthBegin
+        ExternalAuthCallback
     );
 
     if ( $CurrentUser && !$PublicLoginStep{ $Param->{Step} || '' } ) {

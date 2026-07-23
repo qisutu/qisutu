@@ -265,9 +265,12 @@ sub Run {
             CreateTranslationRowCount      => $CreateTranslationRows->{Count},
             EditTranslationRowsHTML        => $EditTranslationRows->{HTML},
             EditTranslationRowCount        => $EditTranslationRows->{Count},
-            FieldCreateTypeOptionsHTML => $Self->_FieldTypeOptions(),
+            FieldCreateTypeOptionsHTML => $Self->_FieldTypeOptions(
+                Language => $Language,
+            ),
             FieldEditTypeOptionsHTML   => $Self->_FieldTypeOptions(
                 Selected => $Field ? $Field->{field_type} : '',
+                Language => $Language,
             ),
         },
     };

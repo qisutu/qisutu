@@ -208,7 +208,16 @@ sub main {
             my $ExistingTicketID = $TicketObject->TicketIDFromSubject(
                 Subject => $Message->{subject},
             );
-            my $MessageScope = $ExistingTicketID ? 'follow_up' : 'new';
+            my $ClosedFollowUp = $ExistingTicketID
+                ? $TicketObject->ClosedTicketFollowUpGet( TicketID => $ExistingTicketID )
+                : undef;
+            my $ClosedFollowUpMode = $ClosedFollowUp && $ClosedFollowUp->{IsClosed}
+                ? ( $ClosedFollowUp->{Mode} || 'reopen' )
+                : '';
+            my $MessageScope = $ExistingTicketID && $ClosedFollowUpMode ne 'new_ticket'
+                ? 'follow_up'
+                : 'new';
+            my $FilterExistingTicketID = $ClosedFollowUpMode eq 'new_ticket' ? 0 : $ExistingTicketID;
 
             if ($CommunicationID) {
                 my $Reference = $ExistingTicketID
@@ -222,7 +231,8 @@ sub main {
                         ? 'Existing ticket recognized: ' . ( $Reference || '#' . $ExistingTicketID )
                         : 'No existing ticket recognized; a new ticket will be created',
                     Details => 'IMAP UID: ' . ( $Message->{uid} || '' )
-                        . "\nMessage scope: " . $MessageScope,
+                        . "\nMessage scope: " . $MessageScope
+                        . ( $ClosedFollowUpMode ? "\nClosed-ticket follow-up option: " . $ClosedFollowUpMode : '' ),
                 );
             }
 
@@ -231,7 +241,7 @@ sub main {
                 Context => {
                     IMAPAccount     => $Mailbox,
                     MessageUID      => $Message->{uid},
-                    ExistingTicketID => $ExistingTicketID,
+                    ExistingTicketID => $FilterExistingTicketID,
                     MessageScope    => $MessageScope,
                 },
             );
@@ -258,6 +268,11 @@ sub main {
                     ErrorMessage  => $Error,
                 );
                 next;
+            }
+
+            if ( $ClosedFollowUpMode eq 'reject' ) {
+                $FilterResult->{Reject} = 1;
+                $FilterResult->{QueueClosedTicketFollowUpRejected} = 1;
             }
 
             $Filtered++ if $FilterResult->{MatchedCount};
@@ -320,7 +335,10 @@ sub main {
                     CommunicationID => $CommunicationID,
                     Level   => 'warning',
                     Stage   => 'rejected',
-                    Message => 'IMAP message UID ' . ( $Message->{uid} || '' ) . ' rejected by postmaster filter',
+                    Message => 'IMAP message UID ' . ( $Message->{uid} || '' )
+                        . ( $FilterResult->{QueueClosedTicketFollowUpRejected}
+                            ? ' rejected by closed-ticket queue configuration'
+                            : ' rejected by postmaster filter' ),
                     Details => $ResponseSent
                         ? 'Automatic rejection response sent to ' . ( $Message->{from_email} || '')
                         : 'Automatic rejection response not sent: ' . ( $CustomerAutoResponse->Error() || 'inactive'),

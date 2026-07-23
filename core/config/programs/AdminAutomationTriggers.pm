@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminAutomationTriggers',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 920,
+    Order           => 27,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

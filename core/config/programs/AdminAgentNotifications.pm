@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminAgentNotifications',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 908,
+    Order           => 13,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

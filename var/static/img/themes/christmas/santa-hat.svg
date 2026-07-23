@@ -1,0 +1,13 @@
+<!--
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 64" role="img" aria-label="">
+  <path d="M17 42C22 21 37 10 57 8c-7 8-8 19-4 31Z" fill="#b93434" stroke="#8f2525" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M13 40c12-4 29-5 44-1 3 1 4 5 2 8-1 2-3 3-6 2-12-3-25-2-36 1-3 1-6-1-7-4-1-2 1-5 3-6Z" fill="#fffaf2" stroke="#d6ddd8" stroke-width="2"/>
+  <circle cx="58" cy="10" r="7" fill="#fffaf2" stroke="#d6ddd8" stroke-width="2"/>
+</svg>

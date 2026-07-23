@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminMailEncryption',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 670,
+    Order           => 11,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

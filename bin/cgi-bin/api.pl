@@ -57,6 +57,11 @@ sub main {
     if ( !$DB || !$DB->Connect() ) {
         return _PrintJSON( Status => 503, RequestID => $RequestID, Body => _Error('database_unavailable','Qisutu database is unavailable.',$RequestID) );
     }
+    eval {
+        require QisutuAddonRuntime;
+        QisutuAddonRuntime->Apply( Config => $Config, DB => $DB );
+    };
+    $Config->{AddonRuntime} ||= {};
 
     my $Method = uc( $ENV{REQUEST_METHOD} || 'GET' );
     my $Path = $ENV{PATH_INFO} || '';

@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminTicketForms',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 915,
+    Order           => 22,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

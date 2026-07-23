@@ -67,6 +67,7 @@ sub AgentPreferenceGet {
 
     $Preference->{language} = $Self->_LanguageClean( $Preference->{language} );
     $Preference->{timezone} = $Self->_TimezoneClean( $Preference->{timezone} );
+    $Preference->{theme} = $Self->_ThemeClean( $Preference->{theme} );
     $Preference->{start_page} = $Self->_StartPageClean( $Preference->{start_page} );
     $Preference->{ticket_after_reply_action} = $Self->_AfterReplyActionClean( $Preference->{ticket_after_reply_action} );
     $Preference->{ticket_list_limit} = $Self->_TicketListLimitClean( $Preference->{ticket_list_limit} );
@@ -184,6 +185,7 @@ sub AgentPreferenceSave {
     my %Preference = (
         language                      => $Language,
         timezone                      => $Timezone,
+        theme                         => $Self->_ThemeClean( $Request->{Theme} ),
         start_page                    => $Self->_StartPageClean( $Request->{StartPage} ),
         ticket_list_limit             => $Self->_TicketListLimitClean( $Request->{TicketListLimit} ),
         ticket_after_reply_action     => $Self->_AfterReplyActionClean( $Request->{TicketAfterReplyAction} ),
@@ -460,6 +462,7 @@ sub _DefaultAgentPreferences {
     return {
         language                      => $Self->_LanguageClean( $Self->{Config}->{Language}->{Default} || 'en' ),
         timezone                      => 'Europe/Berlin',
+        theme                         => 'default',
         start_page                    => 'Dashboard',
         ticket_list_limit             => 20,
         ticket_after_reply_action     => 'stay',
@@ -494,6 +497,19 @@ sub _TimezoneClean {
     $Timezone =~ s{[^A-Za-z0-9_+\-/]}{}g;
 
     return $Timezone || 'Europe/Berlin';
+}
+
+sub _ThemeClean {
+    my ( $Self, $ThemeKey ) = @_;
+
+    my $Loaded = eval {
+        require QisutuTheme;
+        1;
+    };
+    return 'default' if !$Loaded;
+
+    my $ThemeObject = QisutuTheme->new( Config => $Self->{Config} );
+    return $ThemeObject->KeyClean( Key => $ThemeKey );
 }
 
 sub _StartPageClean {

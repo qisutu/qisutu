@@ -48,6 +48,9 @@ sub main {
     require QisutuAutomation;
     require QisutuRuntimeLock;
     require QisutuTicket;
+    require QisutuAddonRuntime;
+    require QisutuAddonManager;
+    require QisutuAddonEvent;
 
     my $Once = 0;
     my $SleepSeconds = 3;
@@ -101,8 +104,12 @@ sub main {
     my $Worker = join '-', 'qisutu', hostname(), $$;
     my $Automation = QisutuAutomation->new( Config => $Config, DB => $DB );
     my $TicketObject = QisutuTicket->new( Config => $Config, DB => $DB );
+    QisutuAddonRuntime->Apply( Config => $Config, DB => $DB );
+    my $AddonManager = QisutuAddonManager->new( Config => $Config, DB => $DB );
+    my $AddonEvent = QisutuAddonEvent->new( Config => $Config, DB => $DB );
     my $LastEscalationCheck = 0;
     my $LastMailFetch = 0;
+    my $LastAddonEventCleanup = 0;
 
     _Log("Automation and mail daemon started as $Worker");
 
@@ -115,6 +122,26 @@ sub main {
         if ( time - $LastMailFetch >= $MailFetchInterval ) {
             $LastMailFetch = time;
             _MailFetchRun( QisutuHome => $QisutuHome );
+        }
+
+        my $AddonOperation = $AddonManager->OperationProcessNext( Worker => $Worker );
+        if ( !$AddonOperation && $AddonManager->Error() ) {
+            _Log( 'ERROR: add-on operation: ' . $AddonManager->Error() );
+        }
+        QisutuAddonRuntime->Apply( Config => $Config, DB => $DB );
+        my $AddonTask = $AddonManager->TaskRunDue( Worker => $Worker );
+        my $AddonEventCount = 0;
+        while ( $AddonEventCount < $MaxJobs && !$Stop ) {
+            my $AddonEventProcessed = $AddonEvent->ProcessNext( Worker => $Worker );
+            if ( !$AddonEventProcessed ) {
+                _Log( 'ERROR: add-on event: ' . $AddonEvent->Error() ) if $AddonEvent->Error();
+                last;
+            }
+            $AddonEventCount++;
+        }
+        if ( time - $LastAddonEventCleanup >= 3600 ) {
+            $AddonEvent->Cleanup();
+            $LastAddonEventCleanup = time;
         }
 
         my $Recovered = $Automation->JobRecoverStale();

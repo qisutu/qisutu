@@ -108,14 +108,14 @@ my $Source = do {
 };
 unlike( $Source, qr{AdminOAuth2FlowMissing}, 'SMTP OAuth is no longer blocked as an unfinished flow' );
 
-my $Migration = do {
-    open my $FH, '<', "$FindBin::Bin/../install/update/database/0.0.22/001-enable-smtp-oauth2.sql" or die $!;
+my $Schema = do {
+    open my $FH, '<', "$FindBin::Bin/../install/sql/schema.sql" or die $!;
     local $/;
     <$FH>;
 };
-like( $Migration, qr{information_schema[.]COLUMNS}i, 'SMTP OAuth migration checks whether account_type already exists' );
-like( $Migration, qr{information_schema[.]TABLE_CONSTRAINTS}i, 'SMTP OAuth migration conditionally removes the old IMAP foreign key' );
-like( $Migration, qr{GROUP_CONCAT[(]COLUMN_NAME}, 'SMTP OAuth migration repairs the account index only when needed' );
+like( $Schema, qr{CREATE TABLE `smtp_account`.*?`smtp_auth_type` varchar\(30\).*?`oauth_refresh_token`}s, 'fresh installations include SMTP OAuth account fields' );
+like( $Schema, qr{CREATE TABLE `postmaster_imap_account`.*?`imap_auth_type` varchar\(30\).*?`oauth_refresh_token`}s, 'fresh installations include IMAP OAuth account fields' );
+unlike( $Schema, qr{CONSTRAINT `[^`]*postmaster_imap_account[^`]*queue[^`]*`}, 'fresh installations contain no obsolete IMAP queue foreign key' );
 
 my $TemplateSource = do {
     open my $FH, '<', "$FindBin::Bin/../core/output/AdminSMTPAccount.tt" or die $!;

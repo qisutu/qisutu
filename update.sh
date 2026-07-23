@@ -417,11 +417,13 @@ path_is_protected() {
     local relative_path="$1"
 
     case "$relative_path" in
+        addons|addons/*) return 0 ;;
         core/config/QisutuConfig.pm) return 0 ;;
         var/install|var/install/*) return 0 ;;
         var/log|var/log/*) return 0 ;;
         var/cache|var/cache/*) return 0 ;;
         var/tmp|var/tmp/*) return 0 ;;
+        var/static/addons|var/static/addons/*) return 0 ;;
         var/secure|var/secure/*) return 0 ;;
         scriptfiles/"$INSTANCE_ID"-apache-runtime.conf) return 0 ;;
     esac
@@ -762,6 +764,10 @@ installation_permissions_apply() {
         chown "$TARGET_OWNER:$TARGET_GROUP" "$TARGET_ROOT/$target_directory"
         chmod 0770 "$TARGET_ROOT/$target_directory"
     done
+
+    mkdir -p "$TARGET_ROOT/addons" "$TARGET_ROOT/var/static/addons"
+    chown "$TARGET_OWNER:$TARGET_GROUP" "$TARGET_ROOT/addons" "$TARGET_ROOT/var/static/addons"
+    chmod 0755 "$TARGET_ROOT/addons" "$TARGET_ROOT/var/static/addons"
 
     mkdir -p "$TARGET_ROOT/var/secure"
     chown root:"$APACHE_GROUP" "$TARGET_ROOT/var/secure"

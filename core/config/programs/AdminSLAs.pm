@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminSLAs',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 907,
+    Order           => 17,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

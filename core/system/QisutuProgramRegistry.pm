@@ -27,6 +27,7 @@ use warnings;
 use utf8;
 
 use File::Spec;
+use JSON::PP;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -92,6 +93,36 @@ sub Programs {
         $Program->{URL}   ||= 'index.pl';
 
         push @Programs, $Program;
+    }
+
+    my %ProgramName = map { ( $_->{Name} || '' ) => 1 } @Programs;
+    my $Runtime = $Self->{Config}->{AddonRuntime} || {};
+    for my $AddonPath ( @{ $Runtime->{ProgramPaths} || [] } ) {
+        next if !$AddonPath || !-d $AddonPath || -l $AddonPath;
+        opendir my $AddonDirectoryHandle, $AddonPath or next;
+        my @AddonFiles = sort grep { m{\.json\z} } readdir $AddonDirectoryHandle;
+        closedir $AddonDirectoryHandle;
+
+        for my $File (@AddonFiles) {
+            my $FullPath = File::Spec->catfile( $AddonPath, $File );
+            next if !-f $FullPath || -l $FullPath;
+            open my $Handle, '<:raw', $FullPath or next;
+            local $/;
+            my $Content = <$Handle>;
+            close $Handle;
+            my $Program = eval { JSON::PP->new->utf8(1)->decode($Content) };
+            next if !$Program || ref $Program ne 'HASH';
+            next if ( $Program->{Name} || '' ) !~ m{\A[A-Za-z][A-Za-z0-9_]{1,99}\z};
+            next if ( $Program->{Module} || '' ) !~ m{\AQisutu::Addon::[A-Za-z0-9_:]+\z};
+            next if $ProgramName{ $Program->{Name} }++;
+            next if ( $Program->{URL} || '' ) !~ m{\Aindex\.pl\?Page=[A-Za-z][A-Za-z0-9_]*(?:[;&][A-Za-z0-9_.%-]+=[A-Za-z0-9_.%-]*)*\z};
+            $Program->{ManagedByAddon} = 1;
+            $Program->{Active} = 1 if !exists $Program->{Active};
+            $Program->{Type} ||= 'ProgramOnly';
+            $Program->{Order} ||= 0;
+            $Program->{Icon}  ||= '';
+            push @Programs, $Program;
+        }
     }
 
     @Programs = sort {

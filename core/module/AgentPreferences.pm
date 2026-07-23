@@ -105,6 +105,9 @@ sub Run {
                 Preference => $Preference,
                 Prefs      => $Prefs,
             ),
+            ThemeOptions                     => $Self->_ThemeOptions(
+                Preference => $Preference,
+            ),
             StartPageDashboardSelected       => ( ( $Preference->{start_page} || '' ) eq 'Dashboard' ? 'selected' : '' ),
             StartPageTicketListSelected      => ( ( $Preference->{start_page} || '' ) eq 'AgentTicketList' ? 'selected' : '' ),
             TicketListLimit                  => $Preference->{ticket_list_limit} || 20,
@@ -195,6 +198,39 @@ sub _TimezoneOptions {
         my $IsSelected = $Timezone eq $Selected ? ' selected' : '';
         $HTML .= '<option value="' . $Self->{Output}->HTMLEscape($Timezone) . '"' . $IsSelected . '>';
         $HTML .= $Self->{Output}->HTMLEscape($Timezone);
+        $HTML .= '</option>' . "\n";
+    }
+
+    return $HTML;
+}
+
+sub _ThemeOptions {
+    my ( $Self, %Param ) = @_;
+
+    my $Preference = $Param{Preference} || {};
+    my $Selected   = $Preference->{theme} || 'default';
+    my $Language   = $Preference->{language} || $Self->{Config}->{Language}->{Default} || 'en';
+    my $Loaded = eval {
+        require QisutuTheme;
+        1;
+    };
+
+    my $Themes = $Loaded
+        ? QisutuTheme->new( Config => $Self->{Config} )->List()
+        : [ { Key => 'default', Title => 'ThemeDefault' } ];
+    my $HTML = '';
+
+    for my $Theme ( @{$Themes} ) {
+        next if ref $Theme ne 'HASH';
+        my $Key = $Theme->{Key} || '';
+        next if !$Key;
+        my $Title = $Self->{Output}->Translate(
+            Key      => $Theme->{Title} || 'ThemeDefault',
+            Language => $Language,
+        );
+        my $IsSelected = $Key eq $Selected ? ' selected' : '';
+        $HTML .= '<option value="' . $Self->{Output}->HTMLEscape($Key) . '"' . $IsSelected . '>';
+        $HTML .= $Self->{Output}->HTMLEscape($Title);
         $HTML .= '</option>' . "\n";
     }
 

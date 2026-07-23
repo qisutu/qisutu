@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminCustomerAutoResponses',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 908.1,
+    Order           => 14,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

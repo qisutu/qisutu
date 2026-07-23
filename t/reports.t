@@ -123,7 +123,7 @@ cmp_ok( length($PDF), '>', 1000, 'PDF contains chart and detail content' );
 
 for my $Path (qw(
     core/output/Reports.tt var/static/js/qisutu-reports.js
-    install/update/database/0.0.19/001-create-reports.sql
+    install/sql/schema.sql
 )) {
     open my $FH, '<:raw', "$FindBin::Bin/../$Path" or die $!;
     local $/; my $Content = <$FH>; close $FH;

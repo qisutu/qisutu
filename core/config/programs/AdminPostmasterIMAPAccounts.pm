@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminPostmasterIMAPAccounts',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 905.1,
+    Order           => 9,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

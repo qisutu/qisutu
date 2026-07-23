@@ -294,6 +294,16 @@ sub _TemplateLoad {
     my $File       = File::Spec->catfile( $OutputPath, $Template );
 
     if ( !-f $File ) {
+        for my $AddonPath ( @{ ( $Self->{Config}->{AddonRuntime} || {} )->{TemplatePaths} || [] } ) {
+            next if !$AddonPath || !-d $AddonPath || -l $AddonPath;
+            my $Candidate = File::Spec->catfile( $AddonPath, $Template );
+            next if !-f $Candidate || -l $Candidate;
+            $File = $Candidate;
+            last;
+        }
+    }
+
+    if ( !-f $File ) {
         $Self->{LastError} = "Template not found: $Template";
         return;
     }
@@ -566,17 +576,29 @@ sub _LanguageData {
 
     my $LanguagePath = $Self->{Config}->{Paths}->{Language};
     my $File         = File::Spec->catfile( $LanguagePath, "$Language.pm" );
+    my $Data = {};
 
-    if ( !-f $File ) {
-        $Self->{LanguageCache}->{$Language} = {};
-        return $Self->{LanguageCache}->{$Language};
+    if ( -f $File && !-l $File ) {
+        my $CoreData = do $File;
+        $Data = { %{$CoreData} } if $CoreData && ref $CoreData eq 'HASH';
     }
 
-    my $Data = do $File;
-
-    if ( !$Data || ref $Data ne 'HASH' ) {
-        $Self->{LanguageCache}->{$Language} = {};
-        return $Self->{LanguageCache}->{$Language};
+    my $JSONLoaded = eval { require JSON::PP; 1 };
+    if ($JSONLoaded) {
+        for my $AddonPath ( @{ ( $Self->{Config}->{AddonRuntime} || {} )->{LanguagePaths} || [] } ) {
+            next if !$AddonPath || !-d $AddonPath || -l $AddonPath;
+            my $AddonFile = File::Spec->catfile( $AddonPath, "$Language.json" );
+            next if !-f $AddonFile || -l $AddonFile;
+            my $Content = $Self->_FileRead( File => $AddonFile );
+            next if !defined $Content;
+            my $AddonData = eval { JSON::PP->new->utf8(0)->decode($Content) };
+            next if !$AddonData || ref $AddonData ne 'HASH';
+            for my $Key ( keys %{$AddonData} ) {
+                next if $Key !~ m{\A[A-Za-z][A-Za-z0-9_]{1,189}\z};
+                next if exists $Data->{$Key};
+                $Data->{$Key} = $AddonData->{$Key};
+            }
+        }
     }
 
     $Self->{LanguageCache}->{$Language} = $Data;

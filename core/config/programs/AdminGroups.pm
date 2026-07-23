@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminGroups',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 909,
+    Order           => 4,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

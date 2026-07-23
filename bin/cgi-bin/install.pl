@@ -1150,6 +1150,7 @@ sub Load {
             Config        => "\$RootPath/core/config",
             ProgramConfig => "\$RootPath/core/config/programs",
             SettingConfig => "\$RootPath/core/config/settings",
+            ThemeConfig   => "\$RootPath/core/config/themes",
             Module        => "\$RootPath/core/module",
             Output        => "\$RootPath/core/output",
             System        => "\$RootPath/core/system",

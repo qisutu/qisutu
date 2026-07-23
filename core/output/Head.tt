@@ -33,9 +33,12 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
     <link rel="icon" type="image/x-icon" sizes="32x32" href="[% StaticBase %]/img/favicon.ico?v=2026072101">
     <link rel="apple-touch-icon" sizes="120x120" href="[% StaticBase %]/img/apple-touch-icon.png?v=2026072101">
-    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu.css?v=2026072101">
+    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu.css?v=[% SystemVersion %]">
     <link rel="stylesheet" href="[% StaticBase %]/css/ckeditor5/ckeditor5.css">
     <link rel="stylesheet" href="[% StaticBase %]/css/[% PageCSS %]">
+    [% IF ThemeCSS %]
+    <link rel="stylesheet" href="[% StaticBase %]/css/[% ThemeCSS %]?v=[% ThemeCSSVersion %]">
+    [% END %]
 
     <script>
         (function () {

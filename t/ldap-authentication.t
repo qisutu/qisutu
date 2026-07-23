@@ -270,7 +270,11 @@ ok( !$AuthoritativeUser, 'wrong directory credentials do not fall back to a loca
 open my $LoginFH, '<:encoding(UTF-8)', "$Root/core/output/Login.tt" or die $!;
 my $LoginTemplate = do { local $/; <$LoginFH> };
 close $LoginFH;
-unlike( $LoginTemplate, qr{(?:LDAP|Active Directory|AuthProvider|AuthenticationProvider)}, 'the login form contains no directory-provider selection' );
+unlike(
+    $LoginTemplate,
+    qr{name="(?:LDAP|AuthenticationProvider)"|Active Directory},
+    'the login form contains no selectable LDAP backend; optional external add-ons are rendered separately',
+);
 
 open my $LDAPTemplateFH, '<:encoding(UTF-8)', "$Root/core/output/AdminLDAP.tt" or die $!;
 my $LDAPTemplate = do { local $/; <$LDAPTemplateFH> };
@@ -302,7 +306,7 @@ unlike( $Rendered || '', qr{\[\%}, 'LDAP administration rendering leaves no temp
 like( $Rendered || '', qr{Mapping_agent_1_Attribute}, 'the rendered page includes agent dynamic-field mapping controls' );
 like( $Rendered || '', qr{Mapping_customer_user_2_Attribute}, 'the rendered page includes active customer-user mapping controls' );
 
-for my $File ( qw(install.sh update.sh bin/cgi-bin/install.pl install/sql/schema.sql install/update/database/0.0.23/001-create-ldap-authentication.sql) ) {
+for my $File ( qw(install.sh update.sh bin/cgi-bin/install.pl install/sql/schema.sql) ) {
     open my $FH, '<:encoding(UTF-8)', "$Root/$File" or die $!;
     my $Content = do { local $/; <$FH> };
     close $FH;
@@ -312,7 +316,7 @@ for my $File ( qw(install.sh update.sh bin/cgi-bin/install.pl install/sql/schema
 open my $ReleaseFH, '<:encoding(UTF-8)', "$Root/release.conf" or die $!;
 my $Release = do { local $/; <$ReleaseFH> };
 close $ReleaseFH;
-like( $Release, qr{^version=0[.]0[.]74$}m, 'the current feature release has its own program version' );
-like( $Release, qr{^database_version=0[.]0[.]26$}m, 'the release includes all migrations through customer auto-responses' );
+like( $Release, qr{^version=1[.]0[.]1$}m, 'the first official release uses program version 1.0.1' );
+like( $Release, qr{^database_version=1[.]0[.]1$}m, 'the first official release uses database version 1.0.1' );
 
 done_testing();

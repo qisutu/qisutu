@@ -1,0 +1,97 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+            <section class="qisutu-dashboard" aria-labelledby="qisutu-addons-title">
+                <div class="qisutu-dashboard-header">
+                    <div>
+                        <h1 id="qisutu-addons-title">[% ProgramTitle %]</h1>
+                        <p>[% ProgramDescription %]</p>
+                    </div>
+                </div>
+
+                <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+                <div class="qisutu-form-success [% NoticeClass %]">[% NoticeMessage %]</div>
+
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div>
+                            <h2>[% Translate.AddonInstallTitle %]</h2>
+                            <span class="qisutu-panel-subtitle">[% Translate.AddonInstallHint %]</span>
+                        </div>
+                    </div>
+                    <form class="qisutu-admin-form" method="post" enctype="multipart/form-data" action="[% FormAction %]">
+                        <input type="hidden" name="Page" value="AdminAddons">
+                        <input type="hidden" name="Step" value="PackageUpload">
+                        <div class="qisutu-form-field">
+                            <label for="qisutu-addon-package">[% Translate.AddonPackageFile %]</label>
+                            <input id="qisutu-addon-package" type="file" name="AddonPackage" accept=".zip,application/zip" required>
+                            <small>[% Translate.AddonPackageFileHint %]</small>
+                        </div>
+                        <div class="qisutu-form-actions">
+                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AddonInstallOrUpdate %]</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header">
+                        <div><h2>[% Translate.AddonInstalledTitle %]</h2><span class="qisutu-panel-subtitle">[% PackageCount %] [% Translate.AdminEntries %]</span></div>
+                    </div>
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead><tr><th>[% Translate.AdminName %]</th><th>[% Translate.AddonIdentifier %]</th><th>[% Translate.AddonVersion %]</th><th>[% Translate.AddonStatus %]</th><th>[% Translate.AdminAction %]</th></tr></thead>
+                            <tbody>
+                                [% FOREACH Package IN PackageList %]
+                                <tr>
+                                    <td><strong>[% Package.name %]</strong><br><small>[% Package.vendor %]</small></td>
+                                    <td><code>[% Package.package_identifier %]</code></td>
+                                    <td>[% Package.version %]</td>
+                                    <td>[% Package.status_label %]</td>
+                                    <td>
+                                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]" onsubmit="return confirm('[% Translate.AddonUninstallConfirm %]');">
+                                            <input type="hidden" name="Page" value="AdminAddons"><input type="hidden" name="Step" value="PackageUninstall"><input type="hidden" name="Identifier" value="[% Package.package_identifier %]">
+                                            <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AddonUninstall %]</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="qisutu-panel">
+                    <div class="qisutu-panel-header"><div><h2>[% Translate.AddonOperationsTitle %]</h2><span class="qisutu-panel-subtitle">[% OperationCount %] [% Translate.AdminEntries %]</span></div></div>
+                    <div class="qisutu-table-wrap">
+                        <table class="qisutu-table qisutu-table-compact">
+                            <thead><tr><th>ID</th><th>[% Translate.AddonIdentifier %]</th><th>[% Translate.AddonOperation %]</th><th>[% Translate.AddonStatus %]</th><th>[% Translate.AddonMessage %]</th><th>[% Translate.AddonCreatedAt %]</th></tr></thead>
+                            <tbody>
+                                [% FOREACH Operation IN OperationList %]
+                                <tr><td>[% Operation.id %]</td><td><code>[% Operation.package_identifier %]</code></td><td>[% Operation.operation_label %]</td><td>[% Operation.status_label %]</td><td>[% Operation.message %]</td><td>[% Operation.created_at %]</td></tr>
+                                [% END %]
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>

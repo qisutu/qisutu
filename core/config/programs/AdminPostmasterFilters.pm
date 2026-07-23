@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminPostmasterFilters',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 907,
+    Order           => 15,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

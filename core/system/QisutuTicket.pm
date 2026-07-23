@@ -1080,6 +1080,48 @@ sub TicketGet {
     return $Ticket;
 }
 
+sub ClosedTicketFollowUpGet {
+    my ( $Self, %Param ) = @_;
+
+    my $TicketID = $Param{TicketID} || 0;
+    if ( $TicketID !~ m{\A\d+\z} || !$TicketID ) {
+        $Self->{LastError} = 'Valid TicketID is required';
+        return;
+    }
+
+    my $Row = $Self->{DB}->SelectRow(
+        'SELECT
+            t.id,
+            t.queue_id,
+            state.state_type,
+            q.follow_up_allowed,
+            q.follow_up_option
+         FROM ticket t
+         INNER JOIN ticket_state state ON state.id = t.state_id
+         INNER JOIN ticket_queue q ON q.id = t.queue_id
+         WHERE t.id = ?
+         LIMIT 1',
+        $TicketID,
+    );
+
+    if (!$Row) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Referenced ticket was not found';
+        return;
+    }
+
+    my $Mode = $Row->{follow_up_option} || '';
+    if ( $Mode !~ m{\A(?:reopen|new_ticket|reject)\z} ) {
+        $Mode = $Row->{follow_up_allowed} ? 'reopen' : 'reject';
+    }
+
+    return {
+        TicketID => 0 + ( $Row->{id} || $TicketID ),
+        QueueID  => 0 + ( $Row->{queue_id} || 0 ),
+        IsClosed => ( $Row->{state_type} || '' ) eq 'closed' ? 1 : 0,
+        Mode     => $Mode,
+    };
+}
+
 sub TicketCreateFromEmail {
     my ( $Self, %Param ) = @_;
 
@@ -1104,6 +1146,41 @@ sub TicketCreateFromEmail {
     $Self->{LastEmailImportAction}   = '';
     $Self->{LastEmailImportTicketID} = 0;
     $Self->{LastEmailImportArticleID} = 0;
+
+    if ($ExistingTicketID) {
+        my $FollowUp = $Self->ClosedTicketFollowUpGet( TicketID => $ExistingTicketID );
+        return if !$FollowUp;
+
+        if ( $FollowUp->{IsClosed} ) {
+            if ( $FollowUp->{Mode} eq 'reject' ) {
+                $Self->{LastEmailImportAction}   = 'rejected';
+                $Self->{LastEmailImportTicketID} = $ExistingTicketID;
+                $Self->{LastError} = 'Reply to closed ticket was rejected by queue configuration';
+                return;
+            }
+
+            if ( $FollowUp->{Mode} eq 'new_ticket' ) {
+                $ExistingTicketID = 0;
+                $QueueID = $FollowUp->{QueueID};
+                $PostmasterResult = {
+                    %{$PostmasterResult},
+                    QueueID => $QueueID,
+                };
+                $Title = $Self->_TicketSubjectReferenceRemove( Subject => $Title );
+            }
+            else {
+                my $OpenStateID = $Self->_OpenStateID();
+                if (!$OpenStateID) {
+                    $Self->{LastError} ||= 'Ticket state open was not found';
+                    return;
+                }
+                $PostmasterResult = {
+                    %{$PostmasterResult},
+                    StateID => $OpenStateID,
+                };
+            }
+        }
+    }
 
     if ($ExistingTicketID) {
         return $Self->_TicketReplyCreateFromEmail(
@@ -1281,6 +1358,15 @@ sub TicketCreateFromEmail {
     $Self->{LastEmailImportAction}   = 'created';
     $Self->{LastEmailImportTicketID} = $TicketID;
     $Self->{LastEmailImportArticleID} = $ArticleID;
+
+    $Self->_AddonEventEmit(
+        Event => 'ticket.created',
+        Payload => { ticket_id => 0 + $TicketID, article_id => 0 + $ArticleID, source => 'email' },
+    );
+    $Self->_AddonEventEmit(
+        Event => 'mail.received',
+        Payload => { ticket_id => 0 + $TicketID, article_id => 0 + $ArticleID, action => 'created' },
+    );
 
     return $TicketID;
 }
@@ -1475,6 +1561,11 @@ sub _TicketReplyCreateFromEmail {
     $Self->{LastEmailImportAction}   = 'updated';
     $Self->{LastEmailImportTicketID} = $TicketID;
     $Self->{LastEmailImportArticleID} = $ArticleID;
+
+    $Self->_AddonEventEmit(
+        Event => 'mail.received',
+        Payload => { ticket_id => 0 + $TicketID, article_id => 0 + $ArticleID, action => 'updated' },
+    );
 
     return $TicketID;
 }
@@ -2077,6 +2168,11 @@ sub TicketCreateFromCustomer {
         RecipientEmail => $FromEmail,
     );
 
+    $Self->_AddonEventEmit(
+        Event => 'ticket.created',
+        Payload => { ticket_id => 0 + $TicketID, article_id => 0 + $ArticleID, source => 'customer' },
+    );
+
     return $TicketID;
 }
 
@@ -2620,6 +2716,11 @@ sub TicketCreateFromAgent {
         NotificationType => 'ticket_new_in_my_queues',
         TicketID         => $TicketID,
         ChangedByUserID  => $UserID,
+    );
+
+    $Self->_AddonEventEmit(
+        Event => 'ticket.created',
+        Payload => { ticket_id => 0 + $TicketID, article_id => 0 + $ArticleID, source => 'agent' },
     );
 
     return $TicketID;
@@ -3917,6 +4018,16 @@ sub ArticleCreate {
         );
     }
 
+    $Self->_AddonEventEmit(
+        Event => 'article.created',
+        Payload => {
+            ticket_id => 0 + $TicketID, article_id => 0 + $ArticleID,
+            channel => $Channel || '', sender_type => $SenderType || '',
+            visibility => $Visibility || '', internal => $Internal ? 1 : 0,
+            attachment_count => scalar @{$Attachments}, changed_by_user_id => 0 + $ChangedByUserID,
+        },
+    );
+
     return $ArticleID;
 }
 
@@ -4147,6 +4258,13 @@ sub TicketStatusUpdate {
         );
     }
 
+    if ( $Recalculated && ( $Ticket->{state_id} || 0 ) != $StatusID ) {
+        $Self->_AddonEventEmit(
+            Event => 'ticket.state_changed',
+            Payload => { ticket_id => 0 + $TicketID, old_state_id => 0 + ( $Ticket->{state_id} || 0 ), new_state_id => 0 + $StatusID, changed_by_user_id => 0 + $ChangedByUserID },
+        );
+    }
+
     return $Recalculated;
 }
 
@@ -4216,10 +4334,17 @@ sub TicketPriorityUpdate {
         return;
     }
 
-    return $Self->RecalculateTicketEscalationTimes(
+    my $Recalculated = $Self->RecalculateTicketEscalationTimes(
         TicketID        => $TicketID,
         ChangedByUserID => $ChangedByUserID,
     );
+    if ( $Recalculated && ( $Ticket->{priority_id} || 0 ) != $PriorityID ) {
+        $Self->_AddonEventEmit(
+            Event => 'ticket.priority_changed',
+            Payload => { ticket_id => 0 + $TicketID, old_priority_id => 0 + ( $Ticket->{priority_id} || 0 ), new_priority_id => 0 + $PriorityID, changed_by_user_id => 0 + $ChangedByUserID },
+        );
+    }
+    return $Recalculated;
 }
 
 sub TicketQueueUpdate {
@@ -4329,10 +4454,17 @@ sub TicketQueueUpdate {
         return;
     }
 
-    return $Self->RecalculateTicketEscalationTimes(
+    my $Recalculated = $Self->RecalculateTicketEscalationTimes(
         TicketID        => $TicketID,
         ChangedByUserID => $ChangedByUserID,
     );
+    if ( $Recalculated && ( $Ticket->{queue_id} || 0 ) != $QueueID ) {
+        $Self->_AddonEventEmit(
+            Event => 'ticket.queue_changed',
+            Payload => { ticket_id => 0 + $TicketID, old_queue_id => 0 + ( $Ticket->{queue_id} || 0 ), new_queue_id => 0 + $QueueID, changed_by_user_id => 0 + $ChangedByUserID },
+        );
+    }
+    return $Recalculated;
 }
 
 
@@ -4479,10 +4611,17 @@ sub TicketServiceUpdate {
         return;
     }
 
-    return $Self->RecalculateTicketEscalationTimes(
+    my $Recalculated = $Self->RecalculateTicketEscalationTimes(
         TicketID        => $TicketID,
         ChangedByUserID => $ChangedByUserID,
     );
+    if ( $Recalculated && ( $Ticket->{service_id} || 0 ) != $ServiceID ) {
+        $Self->_AddonEventEmit(
+            Event => 'ticket.service_changed',
+            Payload => { ticket_id => 0 + $TicketID, old_service_id => 0 + ( $Ticket->{service_id} || 0 ), new_service_id => 0 + $ServiceID, changed_by_user_id => 0 + $ChangedByUserID },
+        );
+    }
+    return $Recalculated;
 }
 
 sub TicketCustomerUserUpdate {
@@ -4672,10 +4811,17 @@ sub TicketCustomerUserUpdate {
         return;
     }
 
-    return $Self->RecalculateTicketEscalationTimes(
+    my $Recalculated = $Self->RecalculateTicketEscalationTimes(
         TicketID        => $TicketID,
         ChangedByUserID => $ChangedByUserID,
     );
+    if ( $Recalculated && ( $Ticket->{customer_user_id} || 0 ) != $CustomerUserID ) {
+        $Self->_AddonEventEmit(
+            Event => 'ticket.customer_changed',
+            Payload => { ticket_id => 0 + $TicketID, old_customer_user_id => 0 + ( $Ticket->{customer_user_id} || 0 ), new_customer_user_id => 0 + $CustomerUserID, new_customer_id => 0 + ( $CustomerUser->{customer_id} || 0 ), changed_by_user_id => 0 + $ChangedByUserID },
+        );
+    }
+    return $Recalculated;
 }
 
 sub TicketOwnerUpdate {
@@ -4760,6 +4906,13 @@ sub TicketOwnerUpdate {
         );
     }
 
+    if ( ( $Ticket->{owner_user_id} || 0 ) != $OwnerUserID ) {
+        $Self->_AddonEventEmit(
+            Event => 'ticket.owner_changed',
+            Payload => { ticket_id => 0 + $TicketID, old_owner_user_id => 0 + ( $Ticket->{owner_user_id} || 0 ), new_owner_user_id => 0 + $OwnerUserID, changed_by_user_id => 0 + $ChangedByUserID },
+        );
+    }
+
     return 1;
 }
 
@@ -4833,6 +4986,13 @@ sub TicketResponsibleUpdate {
     if ( !$Result ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Ticket responsible could not be updated';
         return;
+    }
+
+    if ( ( $Ticket->{responsible_user_id} || 0 ) != $ResponsibleUserID ) {
+        $Self->_AddonEventEmit(
+            Event => 'ticket.responsible_changed',
+            Payload => { ticket_id => 0 + $TicketID, old_responsible_user_id => 0 + ( $Ticket->{responsible_user_id} || 0 ), new_responsible_user_id => 0 + $ResponsibleUserID, changed_by_user_id => 0 + $ChangedByUserID },
+        );
     }
 
     return 1;
@@ -6158,6 +6318,20 @@ sub LastAgentNotificationSummary {
 sub LastChecklistOpenItems {
     my ($Self) = @_;
     return $Self->{LastChecklistOpenItems} || [];
+}
+
+sub _AddonEventEmit {
+    my ( $Self, %Param ) = @_;
+    return 1 if !@{ ( $Self->{Config}->{AddonRuntime} || {} )->{EventSubscribers} || [] };
+    my $OK = eval {
+        require QisutuAddonEvent;
+        QisutuAddonEvent->new( Config => $Self->{Config}, DB => $Self->{DB} )->Emit(
+            Event   => $Param{Event},
+            Payload => ref $Param{Payload} eq 'HASH' ? $Param{Payload} : {},
+            Source  => 'qisutu.core',
+        );
+    };
+    return $OK ? 1 : 0;
 }
 
 sub Error {

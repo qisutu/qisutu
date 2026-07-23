@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminAutomationSchedules',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 921,
+    Order           => 28,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],
