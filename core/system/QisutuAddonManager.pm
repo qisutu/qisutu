@@ -82,6 +82,38 @@ sub PackageList {
     ) || [];
 }
 
+sub InstalledPathPermissionsRepair {
+    my ($Self) = @_;
+    $Self->{LastError} = '';
+    return 1 if !$Self->{DB};
+
+    my $Root = $Self->_AddonRoot();
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT package_identifier, installed_path
+         FROM addon_package
+         WHERE active = 1 AND status = "installed"
+         ORDER BY package_identifier'
+    );
+    return $Self->_Error( $Self->{DB}->Error() || 'installed add-on paths could not be loaded' )
+        if !$Rows;
+
+    for my $Row ( @{$Rows} ) {
+        my $Path = $Row->{installed_path} || '';
+        next if !$Path;
+        return $Self->_Error('unsafe installed add-on path')
+            if index( $Path, $Root . '/' ) != 0
+            || $Path =~ m{(?:\A|/)\.\.(?:/|\z)}
+            || !-d $Path
+            || -l $Path;
+
+        if ( !chmod 0750, $Path ) {
+            return $Self->_Error("installed add-on directory permission could not be repaired: $!");
+        }
+    }
+
+    return 1;
+}
+
 sub PackageGet {
     my ( $Self, %Param ) = @_;
     my $Identifier = $Self->_IdentifierClean( $Param{Identifier} );
@@ -690,6 +722,11 @@ sub _PackageInstallOrUpdate {
     if ( !$Self->_MigrationsApply( Manifest => $Manifest, Files => $Inspection->{Files} ) ) {
         remove_tree($Stage) if -d $Stage;
         return;
+    }
+    if ( !chmod 0750, $Stage ) {
+        my $Error = $!;
+        remove_tree($Stage) if -d $Stage;
+        return $Self->_Error("add-on installation directory permission could not be set: $Error");
     }
     if ( -e $Backup ) {
         remove_tree($Backup);

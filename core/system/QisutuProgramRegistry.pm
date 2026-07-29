@@ -96,8 +96,7 @@ sub Programs {
     }
 
     my %ProgramName = map { ( $_->{Name} || '' ) => 1 } @Programs;
-    my $Runtime = $Self->{Config}->{AddonRuntime} || {};
-    for my $AddonPath ( @{ $Runtime->{ProgramPaths} || [] } ) {
+    for my $AddonPath ( @{ $Self->_AddonProgramPaths() } ) {
         next if !$AddonPath || !-d $AddonPath || -l $AddonPath;
         opendir my $AddonDirectoryHandle, $AddonPath or next;
         my @AddonFiles = sort grep { m{\.json\z} } readdir $AddonDirectoryHandle;
@@ -133,6 +132,43 @@ sub Programs {
     $Self->{Programs} = \@Programs;
 
     return $Self->{Programs};
+}
+
+sub _AddonProgramPaths {
+    my ($Self) = @_;
+
+    my @Paths = @{ ( $Self->{Config}->{AddonRuntime} || {} )->{ProgramPaths} || [] };
+
+    if ( $Self->{DB} ) {
+        my $Rows = eval {
+            $Self->{DB}->SelectAll(
+                'SELECT installed_path
+                 FROM addon_package
+                 WHERE active = 1 AND status = "installed"
+                 ORDER BY package_identifier'
+            );
+        } || [];
+
+        my $AddonRoot = $Self->{Config}->{Paths}->{Addons}
+            || File::Spec->catdir( $Self->{Config}->{RootPath} || '/opt/qisutu', 'addons' );
+
+        for my $Row ( @{$Rows} ) {
+            my $InstalledPath = $Row->{installed_path} || '';
+
+            next if !$InstalledPath;
+            next if index( $InstalledPath, $AddonRoot . '/' ) != 0;
+            next if $InstalledPath =~ m{(?:\A|/)\.\.(?:/|\z)};
+            next if !-d $InstalledPath || -l $InstalledPath;
+
+            my $ProgramPath = File::Spec->catdir( $InstalledPath, 'programs' );
+
+            push @Paths, $ProgramPath if -d $ProgramPath && !-l $ProgramPath;
+        }
+    }
+
+    my %Seen;
+
+    return [ grep { $_ && !$Seen{$_}++ } @Paths ];
 }
 
 sub MainNavigation {

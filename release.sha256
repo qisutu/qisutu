@@ -11,7 +11,7 @@ d9fe00726f120c82c388400cd4d4d0b27ac58fa72d07ae2818451f39cfdd9ebf  ./bin/cgi-bin/
 2c0be28b570e2aa99040b723348556e3a37d9e640b6c253b76992a3f9295ac63  ./bin/cgi-bin/index.pl
 cb8cb2775d1811454e8015a48ffef136e31f6acc07283eb9c6feea8c63ff892a  ./bin/cgi-bin/install.pl
 6578f9c873b6a22ee6140e2481cf3bdc94bed4167bcc673bc5d1bd484b6b7dbb  ./bin/qisutu-cmdb-import.pl
-77d0d4e26c8c81c09766739d73e87060b50a84068de24966833b56e35afe9940  ./bin/qisutu-daemon.pl
+501832913e5fea1c07a1ad01a6bafb53f9a09fcb5de3a7b8def7cd4855e1e2f6  ./bin/qisutu-daemon.pl
 24ed25bb5117a5ce0554242ff7a033e597cb7035e8f3926d7e1e6b5abd550ebe  ./bin/qisutu-mail-fetch.pl
 de27a81eea66927cd8faf5c730f75d9e0d9b35f6b9ae9e3cffb3e99273ceeaeb  ./bin/qisutu-search-index-rebuild.pl
 c184d1aa8d14693beb3bbdde526a5a179d40f1658f09eaaf4154a37bac34b053  ./bin/qisutu-ticket-escalation-check.pl
@@ -227,7 +227,7 @@ f617e1d35a751dbbda02a835a9674eb992cdd3dca946925583d571dbd43732ae  ./core/output/
 1b6a0dc2a5015239cd94c69df2a590fc7a8e062478439f7118eadbcf40646954  ./core/system/QisutuAPIAuth.pm
 8e2fd5f4a0886b68c3a0fe122304e992af386bb5bf141cf9d13b8ff96735d595  ./core/system/QisutuAddonAPI.pm
 d23c768575f1740de0970da526563418f54e007655a3531b599e1fa7d2710b91  ./core/system/QisutuAddonEvent.pm
-034f096415608eed7d34d5c2b714936019fe497fbfba46a480a8d413832d44b1  ./core/system/QisutuAddonManager.pm
+3a478264e2e2d4f5225024dd6b87a34692eee7537a321ec5cfd40d27994e9bb9  ./core/system/QisutuAddonManager.pm
 1252968677ad6977837052ec495b6d737a1d768165cf5b168b86bdba4655c7bf  ./core/system/QisutuAddonREST.pm
 5c92e6dadb7eedc7274b2eaac805bec10b3f2e13b439bcaa4045252a21c722bc  ./core/system/QisutuAddonRuntime.pm
 453b37a4805aa1eca27e3bb54d83fa1fcfd8f7d503ad1ea27794782bab967e58  ./core/system/QisutuAddonUI.pm
@@ -258,7 +258,7 @@ d81b41429cbabceddf0e9ca0b11d2c82c4d2892985019c7e214cbd3efcdd90e8  ./core/system/
 d8603b5dd2bb82af2cb4b42ce9f961eb4072c4c4402282b83c69f056f3aca025  ./core/system/QisutuPasswordReset.pm
 0b1a16e24e4040e99630179c932b301903f5eded3b5d09b4d24a277037cd1ab4  ./core/system/QisutuPermission.pm
 e0934d952d4f0c6bf8e4be90f0dc18d0ce456a738fdfbd6f291280d06e680f6e  ./core/system/QisutuPostmasterFilter.pm
-c2c1d2164b0be5295c32aa78f9e5575a65a79f667275172c1056e71ce5cc7e3e  ./core/system/QisutuProgramRegistry.pm
+33f155fa7d0b5e90336ad967defcfe868d541eb2892d370e5ef0a345560771a7  ./core/system/QisutuProgramRegistry.pm
 d022889374dfe3592112ea97e6eccc410d88c7ec3058dacbe6018de73dcbedb9  ./core/system/QisutuRESTAPI.pm
 73fd72bea883d1e2a440c1cd27dced0bc91604ce2c034aeb8cae9de7ce35d470  ./core/system/QisutuReportBuilder.pm
 2e53a04f54ff88e8479ff3cf6de5c4e191b681c2e324ada0f0d72c41c12b104a  ./core/system/QisutuReportPDF.pm

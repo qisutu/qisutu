@@ -106,6 +106,10 @@ sub main {
     my $TicketObject = QisutuTicket->new( Config => $Config, DB => $DB );
     QisutuAddonRuntime->Apply( Config => $Config, DB => $DB );
     my $AddonManager = QisutuAddonManager->new( Config => $Config, DB => $DB );
+    if ( !$AddonManager->InstalledPathPermissionsRepair() ) {
+        die 'Installed add-on directory permissions could not be repaired: '
+            . ( $AddonManager->Error() || 'unknown error' ) . "\n";
+    }
     my $AddonEvent = QisutuAddonEvent->new( Config => $Config, DB => $DB );
     my $LastEscalationCheck = 0;
     my $LastMailFetch = 0;
@@ -127,6 +131,10 @@ sub main {
         my $AddonOperation = $AddonManager->OperationProcessNext( Worker => $Worker );
         if ( !$AddonOperation && $AddonManager->Error() ) {
             _Log( 'ERROR: add-on operation: ' . $AddonManager->Error() );
+        }
+        if ($AddonOperation) {
+            _Log('Add-on operation completed. The daemon is restarting to activate the changed add-on runtime.');
+            last;
         }
         QisutuAddonRuntime->Apply( Config => $Config, DB => $DB );
         my $AddonTask = $AddonManager->TaskRunDue( Worker => $Worker );
