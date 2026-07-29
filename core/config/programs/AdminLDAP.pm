@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminLDAP',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 900.5,
+    Order           => 903,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminTimeAccountingActivityTypes',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 31,
+    Order           => 800,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

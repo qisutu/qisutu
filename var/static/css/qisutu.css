@@ -579,6 +579,14 @@ a:hover {
     color: var(--qisutu-primary);
 }
 
+.qisutu-subnav-separator {
+    flex: 0 0 1px;
+    height: 1px;
+    margin: 8px 12px 5px;
+    background: rgba(255, 255, 255, 0.28);
+    pointer-events: none;
+}
+
 .qisutu-sidebar-user {
     flex: 0 0 auto;
     display: flex;

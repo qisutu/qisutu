@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminAutomationJobs',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 29,
+    Order           => 702,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

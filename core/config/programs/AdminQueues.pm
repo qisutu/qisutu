@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminQueues',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 5,
+    Order           => 200,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

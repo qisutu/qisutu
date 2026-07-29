@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminCMDBTypes',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 25,
+    Order           => 601,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

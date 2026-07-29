@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminTicketStates',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 19,
+    Order           => 206,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

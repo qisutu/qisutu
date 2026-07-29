@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminCommunicationLog',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 12,
+    Order           => 305,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

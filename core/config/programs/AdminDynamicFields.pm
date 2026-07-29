@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminDynamicFields',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 20,
+    Order           => 500,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

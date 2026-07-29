@@ -29,7 +29,7 @@
     URL         => 'index.pl?Page=AdminAddons',
     Type        => 'SubNavigation',
     Parent      => 'Admin',
-    Order       => 34,
+    Order       => 905,
     AccessType  => 'agent',
     AccessTypes => [ 'agent' ],
     Permission  => 'admin.addon.manage',

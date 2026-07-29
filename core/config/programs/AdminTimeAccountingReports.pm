@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminTimeAccountingReports',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 32,
+    Order           => 801,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

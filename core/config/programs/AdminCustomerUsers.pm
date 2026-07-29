@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminCustomerUsers',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 3,
+    Order           => 102,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

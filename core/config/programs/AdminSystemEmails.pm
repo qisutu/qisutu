@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminSystemEmails',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 8,
+    Order           => 300,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

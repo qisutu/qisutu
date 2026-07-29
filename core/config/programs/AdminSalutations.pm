@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminSalutations',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 6,
+    Order           => 201,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

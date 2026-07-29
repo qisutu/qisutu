@@ -262,7 +262,22 @@ sub NavigationHTML {
             $HTML .= '</div>' . "\n";
             $HTML .= '<div class="' . $Output->HTMLEscape($SubClass) . '" data-nav-title="' . $Output->HTMLEscape($TitleText) . '">' . "\n";
 
+            my $PreviousAdminOrderBlock;
+
             for my $SubProgram ( @{$SubNavigation} ) {
+                if ( $Name eq 'Admin' ) {
+                    my $AdminOrderBlock = int( ( 0 + ( $SubProgram->{Order} || 0 ) ) / 100 );
+
+                    if (
+                        defined $PreviousAdminOrderBlock
+                        && $AdminOrderBlock != $PreviousAdminOrderBlock
+                    ) {
+                        $HTML .= '<div class="qisutu-subnav-separator" role="separator" aria-hidden="true"></div>' . "\n";
+                    }
+
+                    $PreviousAdminOrderBlock = $AdminOrderBlock;
+                }
+
                 my $SubName  = $SubProgram->{Name}  || '';
                 my $SubTitle = $SubProgram->{Title} || $SubName;
                 my $SubURL   = $SubProgram->{URL}   || 'index.pl';

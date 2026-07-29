@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminPermissions',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 910,
+    Order           => 904,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],

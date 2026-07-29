@@ -29,7 +29,7 @@
     URL             => 'index.pl?Page=AdminAPI',
     Type            => 'SubNavigation',
     Parent          => 'Admin',
-    Order           => 908,
+    Order           => 902,
     VisibleFor      => [ 'admin' ],
     AccessType      => 'agent',
     AccessTypes     => [ 'agent' ],
