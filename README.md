@@ -46,7 +46,7 @@ bereitgestellt.
 
 Die folgenden Befehle als root im Verzeichnis `/opt` ausführen:
 
-    wget https://o-fork.de/inst-kim/qisutu-1.0.1.tar.gz
+    wget https://ftp.qisutu.de/qisutu-1.0.1.tar.gz
     tar xzf qisutu-1.0.1.tar.gz
     mv qisutu-1.0.1 qisutu
 
@@ -88,7 +88,7 @@ Instanzen stehen in `INSTALL.md`.
 
 Die folgenden Befehle als root im Verzeichnis `/opt` ausführen:
 
-    wget https://o-fork.de/inst-kim/qisutu-1.0.1.tar.gz
+    wget https://ftp.qisutu.de/qisutu-1.0.1.tar.gz
     tar xzf qisutu-1.0.1.tar.gz
 
     chown qisutu:www-data -R /opt/qisutu-1.0.1
