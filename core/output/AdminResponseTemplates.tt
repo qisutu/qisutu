@@ -32,6 +32,32 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                 <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
 
+                <form class="qisutu-localized-content-language" method="get" action="[% FormAction %]" data-localized-content-language-form>
+                    <input type="hidden" name="Page" value="AdminResponseTemplates">
+                    [% IF ShowCreate %]
+                    <input type="hidden" name="Action" value="Create">
+                    [% END %]
+                    [% IF ShowEdit %]
+                    <input type="hidden" name="Action" value="Edit">
+                    <input type="hidden" name="TemplateID" value="[% TemplateID %]">
+                    [% END %]
+                    [% IF ShowTemplateQueue %]
+                    <input type="hidden" name="Action" value="TemplateQueue">
+                    <input type="hidden" name="TemplateID" value="[% AssignmentTemplateID %]">
+                    [% END %]
+                    [% IF ShowQueueTemplate %]
+                    <input type="hidden" name="Action" value="QueueTemplate">
+                    <input type="hidden" name="QueueID" value="[% AssignmentQueueID %]">
+                    [% END %]
+                    <div class="qisutu-form-field">
+                        <label for="qisutu-response-template-language">[% Translate.AdminTranslationLanguage %]</label>
+                        <select id="qisutu-response-template-language" name="TemplateLanguage" data-localized-content-language>
+                            [% RAW.LanguageOptionsHTML %]
+                        </select>
+                    </div>
+                    <button class="qisutu-button qisutu-button-secondary" type="submit">[% Translate.AdminFilterApply %]</button>
+                </form>
+
                 [% IF ShowList %]
                 <section class="qisutu-panel">
                     <div class="qisutu-panel-header">
@@ -40,7 +66,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <span class="qisutu-panel-subtitle">[% TemplateCount %] [% Translate.AdminEntries %]</span>
                         </div>
                         <div class="qisutu-panel-actions">
-                            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminResponseTemplates;Action=Create">[% Translate.AdminResponseTemplateCreate %]</a>
+                            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminResponseTemplates;Action=Create;TemplateLanguage=[% CurrentLanguage %]">[% Translate.AdminResponseTemplateCreate %]</a>
                         </div>
                     </div>
 
@@ -61,11 +87,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <tbody>
                                 [% FOREACH Template IN TemplateList %]
                                 <tr>
-                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminResponseTemplates;Action=Edit;TemplateID=[% Template.id %]">[% Template.name %]</a></td>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminResponseTemplates;Action=Edit;TemplateID=[% Template.id %];TemplateLanguage=[% CurrentLanguage %]">[% Template.name %]</a></td>
                                     <td>[% Template.description %]</td>
                                     <td>[% Template.content_preview %]</td>
                                     <td>
-                                        <a class="qisutu-table-link" href="index.pl?Page=AdminResponseTemplates;Action=TemplateQueue;TemplateID=[% Template.id %]">[% Template.queue_names %]</a>
+                                        <a class="qisutu-table-link" href="index.pl?Page=AdminResponseTemplates;Action=TemplateQueue;TemplateID=[% Template.id %];TemplateLanguage=[% CurrentLanguage %]">[% Template.queue_names %]</a>
                                     </td>
                                     <td>[% Template.attachment_count %]</td>
                                     <td>[% Template.active_label %]</td>
@@ -75,6 +101,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                             <input type="hidden" name="Page" value="AdminResponseTemplates">
                                             <input type="hidden" name="Step" value="ResponseTemplateDeactivate">
                                             <input type="hidden" name="TemplateID" value="[% Template.id %]">
+                                            <input type="hidden" name="TemplateLanguage" value="[% CurrentLanguage %]">
                                             <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminDeactivate %]</button>
                                         </form>
                                     </td>
@@ -105,10 +132,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <tbody>
                                 [% FOREACH Queue IN QueueList %]
                                 <tr>
-                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminResponseTemplates;Action=QueueTemplate;QueueID=[% Queue.id %]">[% Queue.full_name %]</a></td>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminResponseTemplates;Action=QueueTemplate;QueueID=[% Queue.id %];TemplateLanguage=[% CurrentLanguage %]">[% Queue.full_name %]</a></td>
                                     <td>[% Queue.template_names %]</td>
                                     <td>[% Queue.active_label %]</td>
-                                    <td><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminResponseTemplates;Action=QueueTemplate;QueueID=[% Queue.id %]">[% Translate.AdminAssign %]</a></td>
+                                    <td><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminResponseTemplates;Action=QueueTemplate;QueueID=[% Queue.id %];TemplateLanguage=[% CurrentLanguage %]">[% Translate.AdminAssign %]</a></td>
                                 </tr>
                                 [% END %]
                             </tbody>
@@ -121,11 +148,12 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 <section class="qisutu-panel">
                     <div class="qisutu-panel-header">
                         <h2>[% Translate.AdminResponseTemplateCreate %]</h2>
-                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminResponseTemplates">[% Translate.AdminBackToList %]</a>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminResponseTemplates;TemplateLanguage=[% CurrentLanguage %]">[% Translate.AdminBackToList %]</a>
                     </div>
                     <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]" enctype="multipart/form-data">
                         <input type="hidden" name="Page" value="AdminResponseTemplates">
                         <input type="hidden" name="Step" value="ResponseTemplateCreate">
+                        <input type="hidden" name="TemplateLanguage" value="[% CurrentLanguage %]">
 
                         <div class="qisutu-admin-form-columns">
                             <div class="qisutu-form-field">
@@ -168,12 +196,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <h2>[% Translate.AdminResponseTemplateEdit %]</h2>
                             <span class="qisutu-panel-subtitle">[% TemplateName %]</span>
                         </div>
-                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminResponseTemplates">[% Translate.AdminBackToList %]</a>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminResponseTemplates;TemplateLanguage=[% CurrentLanguage %]">[% Translate.AdminBackToList %]</a>
                     </div>
                     <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]" enctype="multipart/form-data">
                         <input type="hidden" name="Page" value="AdminResponseTemplates">
                         <input type="hidden" name="Step" value="ResponseTemplateUpdate">
                         <input type="hidden" name="TemplateID" value="[% TemplateID %]">
+                        <input type="hidden" name="TemplateLanguage" value="[% CurrentLanguage %]">
 
                         <div class="qisutu-admin-form-columns">
                             <div class="qisutu-form-field">
@@ -208,7 +237,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                         <div class="qisutu-form-actions">
                             <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
-                            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminResponseTemplates;Action=TemplateQueue;TemplateID=[% TemplateID %]">[% Translate.AdminResponseTemplateAssignQueues %]</a>
+                            <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminResponseTemplates;Action=TemplateQueue;TemplateID=[% TemplateID %];TemplateLanguage=[% CurrentLanguage %]">[% Translate.AdminResponseTemplateAssignQueues %]</a>
                         </div>
                     </form>
 
@@ -224,6 +253,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <input type="hidden" name="Step" value="ResponseTemplateAttachmentDelete">
                                     <input type="hidden" name="TemplateID" value="[% TemplateID %]">
                                     <input type="hidden" name="AttachmentID" value="[% Attachment.id %]">
+                                    <input type="hidden" name="TemplateLanguage" value="[% CurrentLanguage %]">
                                     <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminRemove %]</button>
                                 </form>
                             </div>
@@ -243,12 +273,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <h2>[% Translate.AdminResponseTemplateAssignQueues %]</h2>
                             <span class="qisutu-panel-subtitle">[% AssignmentTemplateName %]</span>
                         </div>
-                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminResponseTemplates">[% Translate.AdminBackToList %]</a>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminResponseTemplates;TemplateLanguage=[% CurrentLanguage %]">[% Translate.AdminBackToList %]</a>
                     </div>
                     <form method="post" action="[% FormAction %]">
                         <input type="hidden" name="Page" value="AdminResponseTemplates">
                         <input type="hidden" name="Step" value="ResponseTemplateQueueSave">
                         <input type="hidden" name="TemplateID" value="[% AssignmentTemplateID %]">
+                        <input type="hidden" name="TemplateLanguage" value="[% CurrentLanguage %]">
                         <div class="qisutu-assignment-checkbox-grid">
                             [% FOREACH Queue IN QueueList %]
                             <label class="qisutu-assignment-checkbox">
@@ -271,12 +302,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <h2>[% Translate.AdminResponseQueueAssignTemplates %]</h2>
                             <span class="qisutu-panel-subtitle">[% AssignmentQueueName %]</span>
                         </div>
-                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminResponseTemplates">[% Translate.AdminBackToList %]</a>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminResponseTemplates;TemplateLanguage=[% CurrentLanguage %]">[% Translate.AdminBackToList %]</a>
                     </div>
                     <form method="post" action="[% FormAction %]">
                         <input type="hidden" name="Page" value="AdminResponseTemplates">
                         <input type="hidden" name="Step" value="ResponseQueueTemplateSave">
                         <input type="hidden" name="QueueID" value="[% AssignmentQueueID %]">
+                        <input type="hidden" name="TemplateLanguage" value="[% CurrentLanguage %]">
                         <div class="qisutu-assignment-checkbox-grid">
                             [% FOREACH Template IN TemplateList %]
                             <label class="qisutu-assignment-checkbox">
@@ -297,3 +329,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
+            <script src="[% StaticBase %]/js/qisutu-localized-content.js?v=[% SystemVersion %]"></script>

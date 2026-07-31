@@ -159,10 +159,10 @@ ok( !exists $Removed{'core/config/programs/CMDB.pm'}, 'aktive CMDB-Navigation wi
 
 my $ReleaseContent = join "\n", read_lines('release.conf');
 my ($ReleaseVersion) = $ReleaseContent =~ /^version=([^\s]+)$/m;
-is( $ReleaseVersion, '1.0.1', 'das Paket ist das erste offizielle Release 1.0.1' );
+is( $ReleaseVersion, '1.0.1', 'das Paket verwendet Programmversion 1.0.1' );
 like( $ReleaseContent, qr{^minimum_program_version=1[.]0[.]1$}m, 'offizielle Updates beginnen bei Version 1.0.1' );
 like( $ReleaseContent, qr{^database_version=1[.]0[.]1$}m, 'die offizielle Datenbankbasis ist Version 1.0.1' );
-is_deeply( [ sort keys %Removed ], [], 'das erste offizielle Release enthält keine Update-Entfernungseinträge' );
+is_deeply( [ sort keys %Removed ], [], 'Version 1.0.1 enthält keine Update-Entfernungseinträge' );
 
 my $MigrationRoot = File::Spec->catdir( $Root, 'install', 'update', 'database' );
 opendir my $MigrationDH, $MigrationRoot or die "Cannot inspect $MigrationRoot: $!";

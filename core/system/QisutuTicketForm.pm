@@ -1555,7 +1555,7 @@ sub _CoreFieldsEnsure {
         );
         return if !$Result;
         my $FieldID = $Self->{DB}->LastInsertID('ticket_form_field');
-        for my $Language (qw(de en fr it)) {
+        for my $Language ( @{ $Self->_LanguageList() } ) {
             my $Label = $Self->_T( $TranslationKey, $Language, $Fallback );
             $Result = $Self->{DB}->Do(
                 'INSERT INTO ticket_form_field_translation (
@@ -1659,7 +1659,38 @@ sub _LanguageClean {
     my ( $Self, $Language ) = @_;
     $Language ||= 'en';
     $Language =~ s{[^A-Za-z0-9_-]}{}g;
+    $Language =~ tr{_}{-};
+
+    if ( $Language =~ m{\A([A-Za-z]{2,3})-([A-Za-z]{2})\z} ) {
+        $Language = lc($1) . '-' . uc($2);
+    }
+    else {
+        $Language = lc $Language;
+    }
+
     return $Language || 'en';
+}
+
+sub _LanguageList {
+    my ($Self) = @_;
+
+    my $Default = $Self->_LanguageClean( $Self->{Config}->{Language}->{Default} || 'en' );
+    my $Path    = $Self->{Config}->{Paths}->{Language} || '';
+    my %Language = ( $Default => 1 );
+
+    if ( $Path && opendir my $DirectoryHandle, $Path ) {
+        while ( my $Entry = readdir $DirectoryHandle ) {
+            next if $Entry !~ m{\A([A-Za-z0-9_-]+)[.]pm\z};
+            my $Code = $Self->_LanguageClean($1);
+            $Language{$Code} = 1 if $Code;
+        }
+        closedir $DirectoryHandle;
+    }
+
+    return [
+        $Default,
+        sort grep { $_ ne $Default } keys %Language,
+    ];
 }
 
 sub _Trim {

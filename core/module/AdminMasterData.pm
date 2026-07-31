@@ -50,6 +50,27 @@ sub Run {
     my $Admin      = $Self->_AdminObject();
     my $Step       = $Request->{Step} || '';
     my $Language   = $Request->{Language} || $Self->{Config}->{Language}->{Default} || 'en';
+    my $ContentLanguage = $Language;
+    my $LanguageList    = [];
+
+    if ( $Definition->{LocalizedContent} ) {
+        my $Loaded = eval {
+            require QisutuAgentNotificationTemplates;
+            1;
+        };
+
+        if ($Loaded) {
+            $ContentLanguage = QisutuAgentNotificationTemplates->LanguageClean(
+                $Request->{ContentLanguage} || $Language,
+                $Self->{Config}->{Language}->{Default} || 'en',
+            );
+            $LanguageList = QisutuAgentNotificationTemplates->Languages();
+        }
+    }
+
+    my %ContentLanguageParam = $Definition->{LocalizedContent}
+        ? ( Language => $ContentLanguage )
+        : ();
 
     if ( $Admin && $Step eq $Definition->{CreateStep} ) {
         my $CreateMethod = $Definition->{CreateMethod};
@@ -59,9 +80,13 @@ sub Run {
             $Definition->{ValueParam} => $Request->{Value},
             SortOrder       => $Request->{SortOrder},
             ChangedByUserID => $User->{user_account_id},
+            %ContentLanguageParam,
         );
 
-        return { Redirect => 'index.pl?Page=' . $Definition->{Page} } if !$Admin->Error();
+        return {
+            Redirect => 'index.pl?Page=' . $Definition->{Page}
+                . ( $Definition->{LocalizedContent} ? ';ContentLanguage=' . $Self->_URLEncode($ContentLanguage) : '' ),
+        } if !$Admin->Error();
     }
     elsif ( $Admin && $Step eq $Definition->{UpdateStep} ) {
         my $UpdateMethod = $Definition->{UpdateMethod};
@@ -73,9 +98,14 @@ sub Run {
             Active          => $Request->{Active},
             SortOrder       => $Request->{SortOrder},
             ChangedByUserID => $User->{user_account_id},
+            %ContentLanguageParam,
         );
 
-        return { Redirect => 'index.pl?Page=' . $Definition->{Page} . ';Action=Edit;ItemID=' . ( $Request->{ItemID} || 0 ) } if !$Admin->Error();
+        return {
+            Redirect => 'index.pl?Page=' . $Definition->{Page}
+                . ';Action=Edit;ItemID=' . ( $Request->{ItemID} || 0 )
+                . ( $Definition->{LocalizedContent} ? ';ContentLanguage=' . $Self->_URLEncode($ContentLanguage) : '' ),
+        } if !$Admin->Error();
     }
     elsif ( $Admin && $Step eq $Definition->{DeactivateStep} ) {
         my $DeactivateMethod = $Definition->{DeactivateMethod};
@@ -85,12 +115,20 @@ sub Run {
             ChangedByUserID => $User->{user_account_id},
         );
 
-        return { Redirect => 'index.pl?Page=' . $Definition->{Page} } if !$Admin->Error();
+        return {
+            Redirect => 'index.pl?Page=' . $Definition->{Page}
+                . ( $Definition->{LocalizedContent} ? ';ContentLanguage=' . $Self->_URLEncode($ContentLanguage) : '' ),
+        } if !$Admin->Error();
     }
 
     my $Action     = $Request->{Action} || 'List';
     my $ListMethod = $Definition->{ListMethod};
-    my $ItemList   = $Admin ? $Admin->$ListMethod( IncludeInactive => 1 ) : [];
+    my $ItemList   = $Admin
+        ? $Admin->$ListMethod(
+            IncludeInactive => 1,
+            %ContentLanguageParam,
+        )
+        : [];
     my $Item;
 
     for my $ListItem ( @{$ItemList} ) {
@@ -108,6 +146,7 @@ sub Run {
 
         $Item = $Admin->$GetMethod(
             $Definition->{IDParam} => $Request->{ItemID},
+            %ContentLanguageParam,
         );
 
         if ( !$Item ) {
@@ -154,6 +193,12 @@ sub Run {
             ItemActiveChecked  => $Item && $Item->{active} ? 'checked' : '',
             PlaceholderList    => $PlaceholderList,
             PlaceholderCount   => scalar @{$PlaceholderList},
+            HasContentLanguages => $Definition->{LocalizedContent} ? 1 : 0,
+            CurrentContentLanguage => $ContentLanguage,
+            ContentLanguageOptionsHTML => $Self->_LanguageOptionsHTML(
+                Languages => $LanguageList,
+                Selected  => $ContentLanguage,
+            ),
             CreateValueFieldHTML => $Self->_ValueFieldHTML(
                 LabelKey => $Definition->{ValueLabel},
                 Textarea => $Definition->{ValueIsTextarea},
@@ -176,6 +221,24 @@ sub Run {
             ShowEdit           => $Action eq 'Edit' ? 1 : 0,
         },
     };
+}
+
+sub _LanguageOptionsHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $HTML = '';
+
+    for my $Language ( @{ $Param{Languages} || [] } ) {
+        my $Code     = $Language->{code} || '';
+        my $Label    = $Language->{label} || $Code;
+        my $Selected = $Code eq ( $Param{Selected} || '' ) ? ' selected' : '';
+
+        $HTML .= '<option value="' . $Self->_Escape($Code) . '"' . $Selected . '>'
+            . $Self->_Escape($Label)
+            . '</option>';
+    }
+
+    return $HTML;
 }
 
 sub _ValueFieldHTML {
@@ -235,6 +298,15 @@ sub _Escape {
     $Value =~ s/>/&gt;/g;
     $Value =~ s/"/&quot;/g;
     $Value =~ s/'/&#39;/g;
+
+    return $Value;
+}
+
+sub _URLEncode {
+    my ( $Self, $Value ) = @_;
+
+    $Value = '' if !defined $Value;
+    $Value =~ s{([^A-Za-z0-9_\-\.])}{sprintf('%%%02X', ord($1))}eg;
 
     return $Value;
 }

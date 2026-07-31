@@ -32,6 +32,24 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                 <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
 
+                [% IF HasContentLanguages %]
+                <form class="qisutu-localized-content-language" method="get" action="[% FormAction %]" data-localized-content-language-form>
+                    <input type="hidden" name="Page" value="[% PageName %]">
+                    [% IF ShowCreate %]<input type="hidden" name="Action" value="Create">[% END %]
+                    [% IF ShowEdit %]
+                    <input type="hidden" name="Action" value="Edit">
+                    <input type="hidden" name="ItemID" value="[% ItemID %]">
+                    [% END %]
+                    <div class="qisutu-form-field">
+                        <label for="qisutu-localized-content-language">[% Translate.AdminTranslationLanguage %]</label>
+                        <select id="qisutu-localized-content-language" name="ContentLanguage" data-localized-content-language>
+                            [% RAW.ContentLanguageOptionsHTML %]
+                        </select>
+                    </div>
+                    <button class="qisutu-button qisutu-button-secondary" type="submit">[% Translate.AdminFilterApply %]</button>
+                </form>
+                [% END %]
+
                 [% IF ShowList %]
                 <section class="qisutu-panel">
                     <div class="qisutu-panel-header">
@@ -40,7 +58,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <span class="qisutu-panel-subtitle">[% ItemCount %] [% Translate.AdminEntries %]</span>
                         </div>
                         <div class="qisutu-panel-actions">
-                            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=[% PageName %];Action=Create">[% CreateTitle %]</a>
+                            <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=[% PageName %];Action=Create;ContentLanguage=[% CurrentContentLanguage %]">[% CreateTitle %]</a>
                         </div>
                     </div>
 
@@ -58,7 +76,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <tbody>
                                 [% FOREACH Item IN ItemList %]
                                 <tr>
-                                    <td><a class="qisutu-table-link" href="index.pl?Page=[% PageName %];Action=Edit;ItemID=[% Item.id %]">[% Item.name %]</a></td>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=[% PageName %];Action=Edit;ItemID=[% Item.id %];ContentLanguage=[% CurrentContentLanguage %]">[% Item.name %]</a></td>
                                     <td>[% Item.value_preview %]</td>
                                     <td>[% Item.active_label %]</td>
                                     <td>[% Item.sort_order %]</td>
@@ -67,6 +85,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                             <input type="hidden" name="Page" value="[% PageName %]">
                                             <input type="hidden" name="Step" value="[% DeactivateStep %]">
                                             <input type="hidden" name="ItemID" value="[% Item.id %]">
+                                            <input type="hidden" name="ContentLanguage" value="[% CurrentContentLanguage %]">
                                             <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminDeactivate %]</button>
                                         </form>
                                     </td>
@@ -82,12 +101,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 <section class="qisutu-panel">
                     <div class="qisutu-panel-header">
                         <h2>[% CreateTitle %]</h2>
-                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=[% PageName %]">[% Translate.AdminBackToList %]</a>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=[% PageName %];ContentLanguage=[% CurrentContentLanguage %]">[% Translate.AdminBackToList %]</a>
                     </div>
 
                     <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
                         <input type="hidden" name="Page" value="[% PageName %]">
                         <input type="hidden" name="Step" value="[% CreateStep %]">
+                        <input type="hidden" name="ContentLanguage" value="[% CurrentContentLanguage %]">
 
                         <div class="qisutu-admin-form-columns">
                             <div class="qisutu-form-field">
@@ -128,13 +148,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <h2>[% EditTitle %]</h2>
                             <span class="qisutu-panel-subtitle">[% ItemName %]</span>
                         </div>
-                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=[% PageName %]">[% Translate.AdminBackToList %]</a>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=[% PageName %];ContentLanguage=[% CurrentContentLanguage %]">[% Translate.AdminBackToList %]</a>
                     </div>
 
                     <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
                         <input type="hidden" name="Page" value="[% PageName %]">
                         <input type="hidden" name="Step" value="[% UpdateStep %]">
                         <input type="hidden" name="ItemID" value="[% ItemID %]">
+                        <input type="hidden" name="ContentLanguage" value="[% CurrentContentLanguage %]">
 
                         <div class="qisutu-admin-form-columns">
                             <div class="qisutu-form-field">
@@ -177,3 +198,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
+            <script src="[% StaticBase %]/js/qisutu-localized-content.js?v=[% SystemVersion %]"></script>

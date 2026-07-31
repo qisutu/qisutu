@@ -28,44 +28,35 @@ use utf8;
 
 use parent 'QisutuNotification';
 
+use QisutuCustomerAutoResponseTemplates;
 use QisutuHTML;
 use QisutuMail;
 
 sub ResponseTypes {
-    return [
-        {
-            type       => 'customer_ticket_created',
-            name       => 'Ticket durch Kunden erstellt',
-            sort_order => 100,
-            subject    => 'Eingangsbestätigung: {{Ticket.Number}} – {{Ticket.Title}}',
-            body_html  => '<p>Hallo {{CustomerUser.FullName}},</p><p>vielen Dank für Ihre Nachricht. Ihr Ticket <strong>{{Ticket.Number}}</strong> wurde angelegt.</p><p><strong>{{Ticket.Title}}</strong></p><p>{{Ticket.LinkHTML}}</p>',
-        },
-        {
-            type       => 'customer_ticket_reply',
-            name       => 'Kundenantwort eingegangen',
-            sort_order => 200,
-            subject    => 'Eingangsbestätigung zu Ticket {{Ticket.Number}}',
-            body_html  => '<p>Hallo {{CustomerUser.FullName}},</p><p>Ihre Antwort zu Ticket <strong>{{Ticket.Number}}</strong> ist eingegangen.</p><p>{{Ticket.LinkHTML}}</p>',
-        },
-        {
-            type       => 'incoming_email_rejected',
-            name       => 'Eingehende E-Mail abgelehnt',
-            sort_order => 300,
-            subject    => 'Ihre E-Mail konnte nicht angenommen werden',
-            body_html  => '<p>Hallo {{Incoming.FromName}},</p><p>Ihre E-Mail mit dem Betreff <strong>{{Incoming.Subject}}</strong> konnte nicht angenommen werden.</p><p>Bitte wenden Sie sich auf einem anderen Weg an unseren Support.</p>',
-        },
-        {
-            type       => 'closed_ticket_follow_up',
-            name       => 'Kundenantwort auf geschlossenes Ticket',
-            sort_order => 400,
-            subject    => 'Antwort zu geschlossenem Ticket {{Ticket.Number}}',
-            body_html  => '<p>Hallo {{CustomerUser.FullName}},</p><p>Ihre Nachricht bezieht sich auf das bereits geschlossene Ticket <strong>{{Ticket.Number}}</strong>.</p><p>{{Ticket.LinkHTML}}</p>',
-        },
-    ];
+    my ( $Self, %Param ) = @_;
+
+    return QisutuCustomerAutoResponseTemplates->Templates(
+        Language => $Param{Language} || 'de',
+    );
+}
+
+sub LanguageList {
+    return QisutuCustomerAutoResponseTemplates->Languages();
+}
+
+sub LanguageClean {
+    my ( $Self, $Language ) = @_;
+
+    return QisutuCustomerAutoResponseTemplates->LanguageClean(
+        $Language,
+        $Self->{Config}->{Language}->{Default} || 'en',
+    );
 }
 
 sub TemplateList {
-    my ($Self) = @_;
+    my ( $Self, %Param ) = @_;
+
+    my $Language = $Self->LanguageClean( $Param{Language} );
 
     $Self->SchemaEnsure() || return [];
     $Self->_DefaultTemplatesEnsure();
@@ -74,7 +65,10 @@ sub TemplateList {
     my $Rows = $Self->{DB}->SelectAll(
         'SELECT *
          FROM customer_auto_response_template
+         WHERE language = ?
          ORDER BY sort_order ASC, name ASC'
+        ,
+        $Language,
     );
 
     if ( !$Rows ) {
@@ -82,12 +76,9 @@ sub TemplateList {
         return [];
     }
 
-    my %Known = map { $_->{type} => $_ } @{ ResponseTypes() };
     for my $Row ( @{$Rows} ) {
         $Row->{active_label} = $Row->{active} ? 'Translate:AdminActiveYes' : 'Translate:AdminActiveNo';
-        $Row->{display_name} = $Known{ $Row->{response_type} }
-            ? $Known{ $Row->{response_type} }->{name}
-            : ( $Row->{name} || $Row->{response_type} );
+        $Row->{display_name} = $Row->{name} || $Row->{response_type};
         $Row->{body_preview} = QisutuHTML->PlainTextPreview( $Row->{body_html} || '', 160 );
     }
 
@@ -97,7 +88,8 @@ sub TemplateList {
 sub TemplateGet {
     my ( $Self, %Param ) = @_;
 
-    my $Type = $Self->_ResponseTypeClean( $Param{ResponseType} || $Param{Type} );
+    my $Type     = $Self->_ResponseTypeClean( $Param{ResponseType} || $Param{Type} );
+    my $Language = $Self->LanguageClean( $Param{Language} );
     return if !$Type;
 
     $Self->SchemaEnsure() || return;
@@ -108,8 +100,10 @@ sub TemplateGet {
         'SELECT *
          FROM customer_auto_response_template
          WHERE response_type = ?
+            AND language = ?
          LIMIT 1',
         $Type,
+        $Language,
     );
 
     if ( !$Template ) {
@@ -123,7 +117,8 @@ sub TemplateGet {
 sub TemplateUpdate {
     my ( $Self, %Param ) = @_;
 
-    my $Type = $Self->_ResponseTypeClean( $Param{ResponseType} || $Param{Type} );
+    my $Type     = $Self->_ResponseTypeClean( $Param{ResponseType} || $Param{Type} );
+    my $Language = $Self->LanguageClean( $Param{Language} );
     return if !$Type;
 
     $Self->SchemaEnsure() || return;
@@ -143,12 +138,14 @@ sub TemplateUpdate {
     my $Result = $Self->{DB}->Do(
         'UPDATE customer_auto_response_template
          SET subject = ?, body_html = ?, active = ?, changed_by_user_id = ?
-         WHERE response_type = ?',
+         WHERE response_type = ?
+            AND language = ?',
         $Subject,
         $Body,
         $Active,
         $UserID,
         $Type,
+        $Language,
     );
 
     if ( !$Result ) {
@@ -182,13 +179,6 @@ sub Send {
     $Self->_DefaultTemplatesEnsure();
     return 0 if $Self->{LastError};
 
-    my $Template = $Self->TemplateGet( ResponseType => $Type );
-    return 0 if !$Template;
-    if ( !$Template->{active} ) {
-        $Self->{LastError} = 'Customer auto-response template is inactive';
-        return 0;
-    }
-
     my $Ticket = $TicketID ? $Self->_TicketDataGet( TicketID => $TicketID ) : {};
     if ( $TicketID && !$Ticket ) {
         $Self->{LastError} ||= 'Ticket data could not be loaded for customer auto-response';
@@ -203,6 +193,21 @@ sub Send {
     );
     if ( !$RecipientEmail ) {
         $Self->{LastError} = 'No valid customer recipient found for auto-response';
+        return 0;
+    }
+
+    my $Language = $Self->_RecipientLanguage(
+        Language       => $Param{Language},
+        Ticket         => $Ticket,
+        RecipientEmail => $RecipientEmail,
+    );
+    my $Template = $Self->TemplateGet(
+        ResponseType => $Type,
+        Language     => $Language,
+    );
+    return 0 if !$Template;
+    if ( !$Template->{active} ) {
+        $Self->{LastError} = 'Customer auto-response template is inactive';
         return 0;
     }
 
@@ -234,6 +239,7 @@ sub Send {
     my $Placeholder = $Self->_PlaceholderBuild(
         Ticket          => $Ticket,
         TicketLinkPage  => 'CustomerTicketZoom',
+        Language        => $Language,
     );
     $Placeholder->{'Incoming.Subject'}   = $Param{IncomingSubject} || '';
     $Placeholder->{'Incoming.FromName'}  = $Param{IncomingFromName} || $RecipientName;
@@ -326,6 +332,7 @@ sub SchemaEnsure {
         'CREATE TABLE IF NOT EXISTS customer_auto_response_template (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             response_type VARCHAR(100) NOT NULL,
+            language VARCHAR(10) NOT NULL DEFAULT "de",
             name VARCHAR(255) NOT NULL,
             subject VARCHAR(500) NOT NULL DEFAULT "",
             body_html LONGTEXT NOT NULL,
@@ -336,8 +343,8 @@ sub SchemaEnsure {
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
-            UNIQUE KEY customer_auto_response_template_type_unique (response_type),
-            KEY customer_auto_response_template_active_sort (active, sort_order)
+            UNIQUE KEY customer_auto_response_template_type_language_unique (response_type, language),
+            KEY customer_auto_response_template_language_active_sort (language, active, sort_order)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
         'CREATE TABLE IF NOT EXISTS customer_auto_response_event_log (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -357,6 +364,90 @@ sub SchemaEnsure {
     for my $SQL (@SQL) {
         if ( !$Self->{DB}->Do($SQL) ) {
             $Self->{LastError} = $Self->{DB}->Error() || 'Customer auto-response schema could not be prepared';
+            return;
+        }
+    }
+
+    my $LanguageColumn = $Self->_SchemaObjectCount(
+        SQL => 'SELECT COUNT(*) AS object_count
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = ?
+                  AND COLUMN_NAME = ?',
+        Bind => [ 'customer_auto_response_template', 'language' ],
+    );
+    return if !defined $LanguageColumn;
+
+    if ( !$LanguageColumn ) {
+        my $OK = $Self->{DB}->Do(
+            'ALTER TABLE customer_auto_response_template
+             ADD COLUMN language VARCHAR(10) NOT NULL DEFAULT "de" AFTER response_type'
+        );
+        if ( !$OK ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Customer auto-response language column could not be prepared';
+            return;
+        }
+    }
+
+    my $OldUnique = $Self->_SchemaObjectCount(
+        SQL => 'SELECT COUNT(*) AS object_count
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = ?
+                  AND INDEX_NAME = ?',
+        Bind => [ 'customer_auto_response_template', 'customer_auto_response_template_type_unique' ],
+    );
+    return if !defined $OldUnique;
+
+    if ($OldUnique) {
+        my $OK = $Self->{DB}->Do(
+            'ALTER TABLE customer_auto_response_template
+             DROP INDEX customer_auto_response_template_type_unique'
+        );
+        if ( !$OK ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Old customer auto-response template index could not be removed';
+            return;
+        }
+    }
+
+    my $LanguageUnique = $Self->_SchemaObjectCount(
+        SQL => 'SELECT COUNT(*) AS object_count
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = ?
+                  AND INDEX_NAME = ?',
+        Bind => [ 'customer_auto_response_template', 'customer_auto_response_template_type_language_unique' ],
+    );
+    return if !defined $LanguageUnique;
+
+    if ( !$LanguageUnique ) {
+        my $OK = $Self->{DB}->Do(
+            'ALTER TABLE customer_auto_response_template
+             ADD UNIQUE KEY customer_auto_response_template_type_language_unique (response_type, language)'
+        );
+        if ( !$OK ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Customer auto-response language index could not be prepared';
+            return;
+        }
+    }
+
+    my $LanguageSort = $Self->_SchemaObjectCount(
+        SQL => 'SELECT COUNT(*) AS object_count
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = ?
+                  AND INDEX_NAME = ?',
+        Bind => [ 'customer_auto_response_template', 'customer_auto_response_template_language_active_sort' ],
+    );
+    return if !defined $LanguageSort;
+
+    if ( !$LanguageSort ) {
+        my $OK = $Self->{DB}->Do(
+            'ALTER TABLE customer_auto_response_template
+             ADD KEY customer_auto_response_template_language_active_sort (language, active, sort_order)'
+        );
+        if ( !$OK ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Customer auto-response language sort index could not be prepared';
             return;
         }
     }
@@ -397,22 +488,25 @@ sub _DefaultTemplatesEnsure {
 
     return 1 if $Self->{CustomerAutoResponseDefaultsEnsured};
 
-    for my $Template ( @{ ResponseTypes() } ) {
-        my $Result = $Self->{DB}->Do(
-            'INSERT INTO customer_auto_response_template (
-                response_type, name, subject, body_html, active, sort_order,
-                created_by_user_id, changed_by_user_id
-             ) VALUES (?, ?, ?, ?, 0, ?, 1, 1)
-             ON DUPLICATE KEY UPDATE name = VALUES(name), sort_order = VALUES(sort_order)',
-            $Template->{type},
-            $Template->{name},
-            $Template->{subject},
-            $Template->{body_html},
-            $Template->{sort_order},
-        );
-        if ( !$Result ) {
-            $Self->{LastError} = $Self->{DB}->Error() || 'Default customer auto-response templates could not be prepared';
-            return;
+    for my $Language ( @{ $Self->LanguageList() } ) {
+        for my $Template ( @{ $Self->ResponseTypes( Language => $Language->{code} ) } ) {
+            my $Result = $Self->{DB}->Do(
+                'INSERT INTO customer_auto_response_template (
+                    response_type, language, name, subject, body_html, active, sort_order,
+                    created_by_user_id, changed_by_user_id
+                 ) VALUES (?, ?, ?, ?, ?, 0, ?, 1, 1)
+                 ON DUPLICATE KEY UPDATE name = VALUES(name), sort_order = VALUES(sort_order)',
+                $Template->{type},
+                $Language->{code},
+                $Template->{name},
+                $Template->{subject},
+                $Template->{body_html},
+                $Template->{sort_order},
+            );
+            if ( !$Result ) {
+                $Self->{LastError} = $Self->{DB}->Error() || 'Default customer auto-response templates could not be prepared';
+                return;
+            }
         }
     }
 
@@ -424,12 +518,54 @@ sub _ResponseTypeClean {
     my ( $Self, $Type ) = @_;
 
     $Type = $Self->_Trim($Type);
-    my %Allowed = map { $_->{type} => 1 } @{ ResponseTypes() };
+    my %Allowed = map { $_->{type} => 1 } @{ $Self->ResponseTypes( Language => 'en' ) };
     if ( !$Type || !$Allowed{$Type} ) {
         $Self->{LastError} = 'Invalid customer auto-response type';
         return '';
     }
     return $Type;
+}
+
+sub _RecipientLanguage {
+    my ( $Self, %Param ) = @_;
+
+    if ( defined $Param{Language} && $Param{Language} ne '' ) {
+        return $Self->LanguageClean( $Param{Language} );
+    }
+
+    my $Ticket = ref $Param{Ticket} eq 'HASH' ? $Param{Ticket} : {};
+    my $Row;
+
+    if ( ( $Ticket->{customer_user_id} || 0 ) =~ m{\A\d+\z} && $Ticket->{customer_user_id} ) {
+        $Row = $Self->{DB}->SelectRow(
+            'SELECT language_preference.preference_value AS language
+             FROM customer_user cu
+             LEFT JOIN user_preference language_preference
+                ON language_preference.user_account_id = cu.user_account_id
+               AND language_preference.preference_key = "language"
+             WHERE cu.id = ?
+             LIMIT 1',
+            $Ticket->{customer_user_id},
+        );
+    }
+
+    if ( !$Row && ( $Param{RecipientEmail} || '' ) ) {
+        $Row = $Self->{DB}->SelectRow(
+            'SELECT language_preference.preference_value AS language
+             FROM user_account ua
+             LEFT JOIN user_preference language_preference
+                ON language_preference.user_account_id = ua.id
+               AND language_preference.preference_key = "language"
+             WHERE LOWER(ua.email) = LOWER(?)
+               AND ua.account_type = "customer"
+               AND ua.is_active = 1
+             ORDER BY ua.id ASC
+             LIMIT 1',
+            $Param{RecipientEmail},
+        );
+    }
+
+    return $Self->LanguageClean( $Row ? $Row->{language} : '' );
 }
 
 sub _TicketSubjectBuild {

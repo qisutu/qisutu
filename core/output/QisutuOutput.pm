@@ -568,6 +568,14 @@ sub _LanguageData {
         $Language = 'en';
     }
 
+    $Language =~ tr{_}{-};
+    if ( $Language =~ m{\A([A-Za-z]{2,3})-([A-Za-z]{2})\z} ) {
+        $Language = lc($1) . '-' . uc($2);
+    }
+    else {
+        $Language = lc $Language;
+    }
+
     $Self->{LanguageCache} ||= {};
 
     if ( exists $Self->{LanguageCache}->{$Language} ) {

@@ -48,6 +48,7 @@ sub Run {
     my $User    = $Param{User}    || {};
     my $Admin   = $Self->_AdminObject();
     my $Step    = $Request->{Step} || '';
+    my $Language = $Request->{Language} || $Self->{Config}->{Language}->{Default} || 'en';
 
     if ( $Admin && $Step eq 'QueueCreate' ) {
         $Admin->QueueCreate(
@@ -101,8 +102,8 @@ sub Run {
     my $QueueList       = $Admin ? $Admin->QueueList() : [];
     my $GroupList       = $Admin ? $Admin->GroupList() : [];
     my $SystemEmailList = $Admin ? $Admin->SystemEmailList() : [];
-    my $SalutationList  = $Admin ? $Admin->SalutationList() : [];
-    my $SignatureList   = $Admin ? $Admin->SignatureList() : [];
+    my $SalutationList  = $Admin ? $Admin->SalutationList( Language => $Language ) : [];
+    my $SignatureList   = $Admin ? $Admin->SignatureList( Language => $Language ) : [];
     my $CalendarList    = $Admin ? $Admin->CalendarList() : [];
     my $Queue;
     my $QueuePrimaryGroupID = '';

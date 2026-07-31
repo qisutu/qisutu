@@ -42,6 +42,14 @@ weiterentwickelt; notwendige Änderungen werden über
 den integrierten Updater und die dauerhaft mitgeführten Datenmigrationen
 bereitgestellt.
 
+## Sprachen
+
+Qisutu 1.0.1 enthält elf vollständige Oberflächensprachen:
+Deutsch (`de`), Englisch (`en`), Französisch (`fr`), Italienisch (`it`),
+Brasilianisches Portugiesisch (`pt-BR`), Europäisches Portugiesisch (`pt-PT`),
+Spanisch (`es`), Niederländisch (`nl`), Polnisch (`pl`), Tschechisch (`cs`)
+und Türkisch (`tr`).
+
 ## Installation
 
 Die folgenden Befehle als root im Verzeichnis `/opt` ausführen:
@@ -58,6 +66,11 @@ Die folgenden Befehle als root im Verzeichnis `/opt` ausführen:
     cd /opt/qisutu
     chmod +x install.sh
     ./install.sh
+
+Direkt zu Beginn fragt `install.sh` nach einer der elf Oberflächensprachen.
+Die Auswahl wird in der Instanzkonfiguration gespeichert, der Webinstaller
+öffnet sich sofort in dieser Sprache und übernimmt sie als voreingestellte
+Standardsprache für Qisutu.
 
 Der Name des Instanzverzeichnisses bestimmt die technischen Instanzwerte
 unmittelbar. Aus `/opt/qisutu` entsteht die Instanz `qisutu`. Es wird kein

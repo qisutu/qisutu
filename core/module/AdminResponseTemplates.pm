@@ -57,11 +57,18 @@ sub Run {
         Config => $Self->{Config},
         DB     => $Self->{DB},
     );
+    my $TemplateLanguage = $Object->LanguageClean(
+        $Request->{TemplateLanguage} || $Language,
+    );
     my $ErrorMessage = '';
     my $AttachmentMaxSizeMB    = $Self->_AttachmentMaxSizeMB();
     my $AttachmentMaxSizeBytes = $AttachmentMaxSizeMB * 1024 * 1024;
 
-    if ( $Step eq 'ResponseTemplateCreate' || $Step eq 'ResponseTemplateUpdate' ) {
+    if ( !$Object->SchemaEnsure() ) {
+        $ErrorMessage = $Object->Error() || 'Translate:AdminResponseTemplateSaveFailed';
+    }
+
+    if ( !$ErrorMessage && ( $Step eq 'ResponseTemplateCreate' || $Step eq 'ResponseTemplateUpdate' ) ) {
         my $UploadResult = $Self->_UploadedAttachments(
             Request      => $Request,
             MaxSizeBytes => $AttachmentMaxSizeBytes,
@@ -88,6 +95,7 @@ sub Run {
 
                 if ( $Step eq 'ResponseTemplateCreate' ) {
                     $TemplateID = $Object->TemplateCreate(
+                        Language        => $TemplateLanguage,
                         Name            => $Request->{Name},
                         Description     => $Request->{Description},
                         Content         => $Request->{Content},
@@ -100,6 +108,7 @@ sub Run {
                     $TemplateID = $Request->{TemplateID} || 0;
                     $Saved = $Object->TemplateUpdate(
                         TemplateID     => $TemplateID,
+                        Language       => $TemplateLanguage,
                         Name           => $Request->{Name},
                         Description    => $Request->{Description},
                         Content        => $Request->{Content},
@@ -124,7 +133,10 @@ sub Run {
 
                 if ( $Saved && $Self->{DB}->Commit() ) {
                     return {
-                        Redirect => 'index.pl?Page=AdminResponseTemplates;Action=Edit;TemplateID=' . $TemplateID,
+                        Redirect => 'index.pl?Page=AdminResponseTemplates;Action=Edit;TemplateID='
+                            . $TemplateID
+                            . ';TemplateLanguage='
+                            . $Self->_URLEncode($TemplateLanguage),
                     };
                 }
 
@@ -135,29 +147,35 @@ sub Run {
 
         $Action = $Step eq 'ResponseTemplateCreate' ? 'Create' : 'Edit';
     }
-    elsif ( $Step eq 'ResponseTemplateDeactivate' ) {
+    elsif ( !$ErrorMessage && $Step eq 'ResponseTemplateDeactivate' ) {
         if ( $Object->TemplateDeactivate(
             TemplateID      => $Request->{TemplateID},
             ChangedByUserID => $UserID,
         ) ) {
-            return { Redirect => 'index.pl?Page=AdminResponseTemplates' };
+            return {
+                Redirect => 'index.pl?Page=AdminResponseTemplates;TemplateLanguage='
+                    . $Self->_URLEncode($TemplateLanguage),
+            };
         }
         $ErrorMessage = $Object->Error() || 'Translate:AdminResponseTemplateDeactivateFailed';
     }
-    elsif ( $Step eq 'ResponseTemplateAttachmentDelete' ) {
+    elsif ( !$ErrorMessage && $Step eq 'ResponseTemplateAttachmentDelete' ) {
         my $TemplateID = $Request->{TemplateID} || 0;
         if ( $Object->AttachmentDelete(
             TemplateID   => $TemplateID,
             AttachmentID => $Request->{AttachmentID},
         ) ) {
             return {
-                Redirect => 'index.pl?Page=AdminResponseTemplates;Action=Edit;TemplateID=' . $TemplateID,
+                Redirect => 'index.pl?Page=AdminResponseTemplates;Action=Edit;TemplateID='
+                    . $TemplateID
+                    . ';TemplateLanguage='
+                    . $Self->_URLEncode($TemplateLanguage),
             };
         }
         $ErrorMessage = $Object->Error() || 'Translate:AdminResponseTemplateAttachmentDeleteFailed';
         $Action = 'Edit';
     }
-    elsif ( $Step eq 'ResponseTemplateQueueSave' ) {
+    elsif ( !$ErrorMessage && $Step eq 'ResponseTemplateQueueSave' ) {
         my $TemplateID = $Request->{TemplateID} || 0;
         my $QueueIDs   = $Self->_IDList( $Request->{QueueID} );
 
@@ -167,14 +185,19 @@ sub Run {
                 QueueIDs        => $QueueIDs,
                 ChangedByUserID => $UserID,
             ) && $Self->{DB}->Commit() ) {
-                return { Redirect => 'index.pl?Page=AdminResponseTemplates;Action=TemplateQueue;TemplateID=' . $TemplateID };
+                return {
+                    Redirect => 'index.pl?Page=AdminResponseTemplates;Action=TemplateQueue;TemplateID='
+                        . $TemplateID
+                        . ';TemplateLanguage='
+                        . $Self->_URLEncode($TemplateLanguage),
+                };
             }
             eval { $Self->{DB}->Rollback(); 1; };
         }
         $ErrorMessage = $Object->Error() || $Self->{DB}->Error() || 'Translate:AdminResponseTemplateAssignmentSaveFailed';
         $Action = 'TemplateQueue';
     }
-    elsif ( $Step eq 'ResponseQueueTemplateSave' ) {
+    elsif ( !$ErrorMessage && $Step eq 'ResponseQueueTemplateSave' ) {
         my $QueueID     = $Request->{QueueID} || 0;
         my $TemplateIDs = $Self->_IDList( $Request->{TemplateID} );
 
@@ -184,7 +207,12 @@ sub Run {
                 TemplateIDs     => $TemplateIDs,
                 ChangedByUserID => $UserID,
             ) && $Self->{DB}->Commit() ) {
-                return { Redirect => 'index.pl?Page=AdminResponseTemplates;Action=QueueTemplate;QueueID=' . $QueueID };
+                return {
+                    Redirect => 'index.pl?Page=AdminResponseTemplates;Action=QueueTemplate;QueueID='
+                        . $QueueID
+                        . ';TemplateLanguage='
+                        . $Self->_URLEncode($TemplateLanguage),
+                };
             }
             eval { $Self->{DB}->Rollback(); 1; };
         }
@@ -192,8 +220,14 @@ sub Run {
         $Action = 'QueueTemplate';
     }
 
-    my $Templates = $Object->TemplateList( IncludeInactive => 1 );
-    my $Queues    = $Object->QueueList( IncludeInactive => 1 );
+    my $Templates = $Object->TemplateList(
+        IncludeInactive => 1,
+        Language        => $TemplateLanguage,
+    );
+    my $Queues = $Object->QueueList(
+        IncludeInactive => 1,
+        Language        => $TemplateLanguage,
+    );
     my $Template;
     my $AssignmentTemplate;
     my $AssignmentQueue;
@@ -211,7 +245,10 @@ sub Run {
 
     if ( $Action eq 'Edit' ) {
         my $TemplateID = $Request->{TemplateID} || 0;
-        $Template = $Object->TemplateGet( TemplateID => $TemplateID );
+        $Template = $Object->TemplateGet(
+            TemplateID => $TemplateID,
+            Language   => $TemplateLanguage,
+        );
         if ( !$Template ) {
             $Action = 'List';
             $ErrorMessage ||= $Object->Error() || 'Translate:AdminResponseTemplateNotFound';
@@ -222,7 +259,10 @@ sub Run {
     }
     elsif ( $Action eq 'TemplateQueue' ) {
         my $TemplateID = $Request->{TemplateID} || 0;
-        $AssignmentTemplate = $Object->TemplateGet( TemplateID => $TemplateID );
+        $AssignmentTemplate = $Object->TemplateGet(
+            TemplateID => $TemplateID,
+            Language   => $TemplateLanguage,
+        );
         if ( !$AssignmentTemplate ) {
             $Action = 'List';
             $ErrorMessage ||= $Object->Error() || 'Translate:AdminResponseTemplateNotFound';
@@ -266,6 +306,11 @@ sub Run {
             ProgramTitle       => 'Translate:AdminResponseTemplatesTitle',
             ProgramDescription => 'Translate:AdminResponseTemplatesDescription',
             FormAction         => 'index.pl',
+            CurrentLanguage    => $TemplateLanguage,
+            LanguageOptionsHTML => $Self->_LanguageOptionsHTML(
+                Languages => $Object->LanguageList(),
+                Selected  => $TemplateLanguage,
+            ),
             TemplateList       => $Templates,
             TemplateCount      => scalar @{$Templates},
             QueueList          => $Queues,
@@ -377,6 +422,48 @@ sub _IDList {
     my @IDs = grep { defined $_ && $_ =~ m{\A\d+\z} && $_ > 0 && !$Seen{$_}++ } @Values;
 
     return \@IDs;
+}
+
+sub _LanguageOptionsHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $HTML = '';
+
+    for my $Language ( @{ $Param{Languages} || [] } ) {
+        my $Code     = $Language->{code} || '';
+        my $Label    = $Language->{label} || $Code;
+        my $Selected = $Code eq ( $Param{Selected} || '' ) ? ' selected' : '';
+
+        $HTML .= '<option value="' . $Self->_HTMLEscape($Code) . '"' . $Selected . '>'
+            . $Self->_HTMLEscape($Label)
+            . '</option>';
+    }
+
+    return $HTML;
+}
+
+sub _HTMLEscape {
+    my ( $Self, $Value ) = @_;
+
+    return $Self->{Output}->HTMLEscape($Value) if $Self->{Output};
+
+    $Value = '' if !defined $Value;
+    $Value =~ s{&}{&amp;}g;
+    $Value =~ s{<}{&lt;}g;
+    $Value =~ s{>}{&gt;}g;
+    $Value =~ s{"}{&quot;}g;
+    $Value =~ s{'}{&#39;}g;
+
+    return $Value;
+}
+
+sub _URLEncode {
+    my ( $Self, $Value ) = @_;
+
+    $Value = '' if !defined $Value;
+    $Value =~ s{([^A-Za-z0-9_\-\.])}{sprintf('%%%02X', ord($1))}eg;
+
+    return $Value;
 }
 
 sub _Translate {

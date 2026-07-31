@@ -26,6 +26,7 @@ use strict;
 use warnings;
 use utf8;
 
+use QisutuAgentNotificationTemplates;
 use QisutuHTML;
 use QisutuMail;
 
@@ -44,62 +45,41 @@ sub new {
 }
 
 sub NotificationTypes {
-    return [
-        {
-            type       => 'ticket_new_in_my_queues',
-            name       => 'Neues Ticket in meinen Queues',
-            sort_order => 100,
-            subject    => 'Neues Ticket {{Ticket.Number}} in {{Ticket.Queue}}',
-            body_html  => '<p>Hallo {{Agent.FullName}},</p><p>in deiner Queue <strong>{{Ticket.Queue}}</strong> wurde ein neues Ticket erstellt.</p><p><strong>{{Ticket.Number}}</strong> - {{Ticket.Title}}</p><p>{{Ticket.LinkHTML}}</p>',
-        },
-        {
-            type       => 'customer_reply_in_my_queues',
-            name       => 'Kundenantwort in Tickets von meinen Queues',
-            sort_order => 200,
-            subject    => 'Kundenantwort in Ticket {{Ticket.Number}}',
-            body_html  => '<p>Hallo {{Agent.FullName}},</p><p>in deiner Queue <strong>{{Ticket.Queue}}</strong> gibt es eine neue Kundenantwort.</p><p><strong>{{Ticket.Number}}</strong> - {{Ticket.Title}}</p><p>Kunde: {{Customer.Name}}<br>Ansprechpartner: {{CustomerUser.FullName}}</p><p>{{Ticket.LinkHTML}}</p>',
-        },
-        {
-            type       => 'ticket_assigned_to_me',
-            name       => 'Ticket wurde mir zugewiesen',
-            sort_order => 300,
-            subject    => 'Ticket {{Ticket.Number}} wurde dir zugewiesen',
-            body_html  => '<p>Hallo {{Agent.FullName}},</p><p>das Ticket <strong>{{Ticket.Number}}</strong> wurde dir zugewiesen.</p><p>{{Ticket.Title}}</p><p>{{Ticket.LinkHTML}}</p>',
-        },
-        {
-            type       => 'ticket_state_changed',
-            name       => 'Ticketstatus wurde geändert',
-            sort_order => 400,
-            subject    => 'Status geändert: Ticket {{Ticket.Number}}',
-            body_html  => '<p>Hallo {{Agent.FullName}},</p><p>der Status des Tickets <strong>{{Ticket.Number}}</strong> in deiner Queue <strong>{{Ticket.Queue}}</strong> wurde geändert.</p><p>Neuer Status: <strong>{{Ticket.State}}</strong></p><p>{{Ticket.LinkHTML}}</p>',
-        },
-        {
-            type       => 'ticket_escalation_reached',
-            name       => 'bei Eskalation',
-            sort_order => 500,
-            subject    => 'Eskalation erreicht: Ticket {{Ticket.Number}}',
-            body_html  => '<p>Hallo {{Agent.FullName}},</p><p>das Ticket <strong>{{Ticket.Number}}</strong> in deiner Queue <strong>{{Ticket.Queue}}</strong> ist eskaliert.</p><p>{{Ticket.Title}}</p><p>{{Ticket.LinkHTML}}</p>',
-        },
-        {
-            type       => 'ticket_pending_reached',
-            name       => 'bei Warten Status erreicht',
-            sort_order => 600,
-            subject    => 'Warten erreicht: Ticket {{Ticket.Number}}',
-            body_html  => '<p>Hallo {{Agent.FullName}},</p><p>bei Ticket <strong>{{Ticket.Number}}</strong> in deiner Queue <strong>{{Ticket.Queue}}</strong> ist der Warten-Status erreicht.</p><p>Warten bis: <strong>{{PendingUntil}}</strong><br>Erreicht seit: <strong>{{PendingReachedSince}}</strong></p><p>{{Ticket.LinkHTML}}</p>',
-        },
-    ];
+    my ( $Self, %Param ) = @_;
+
+    return QisutuAgentNotificationTemplates->Templates(
+        Language => $Param{Language} || 'de',
+    );
+}
+
+sub LanguageList {
+    return QisutuAgentNotificationTemplates->Languages();
+}
+
+sub LanguageClean {
+    my ( $Self, $Language ) = @_;
+
+    return QisutuAgentNotificationTemplates->LanguageClean(
+        $Language,
+        $Self->{Config}->{Language}->{Default} || 'en',
+    );
 }
 
 sub TemplateList {
     my ( $Self, %Param ) = @_;
 
+    my $Language = $Self->LanguageClean( $Param{Language} );
+
     $Self->SchemaEnsure() || return [];
-    $Self->_DefaultTemplatesEnsure();
+    $Self->_DefaultTemplatesEnsure() || return [];
 
     my $Rows = $Self->{DB}->SelectAll(
         'SELECT *
          FROM agent_notification_template
+         WHERE language = ?
          ORDER BY sort_order ASC, name ASC'
+        ,
+        $Language,
     );
 
     if ( !$Rows ) {
@@ -107,13 +87,9 @@ sub TemplateList {
         return [];
     }
 
-    my %Known = map { $_->{type} => $_ } @{ NotificationTypes() };
-
     for my $Row ( @{$Rows} ) {
         $Row->{active_label} = $Row->{active} ? 'Translate:AdminActiveYes' : 'Translate:AdminActiveNo';
-        $Row->{display_name} = $Known{ $Row->{notification_type} }
-            ? $Known{ $Row->{notification_type} }->{name}
-            : ( $Row->{name} || $Row->{notification_type} );
+        $Row->{display_name} = $Row->{name} || $Row->{notification_type};
         $Row->{body_preview} = QisutuHTML->PlainTextPreview( $Row->{body_html} || '', 160 );
     }
 
@@ -123,18 +99,21 @@ sub TemplateList {
 sub TemplateGet {
     my ( $Self, %Param ) = @_;
 
-    my $Type = $Self->_NotificationTypeClean( $Param{NotificationType} );
+    my $Type     = $Self->_NotificationTypeClean( $Param{NotificationType} );
+    my $Language = $Self->LanguageClean( $Param{Language} );
     return if !$Type;
 
     $Self->SchemaEnsure() || return;
-    $Self->_DefaultTemplatesEnsure();
+    $Self->_DefaultTemplatesEnsure() || return;
 
     my $Template = $Self->{DB}->SelectRow(
         'SELECT *
          FROM agent_notification_template
          WHERE notification_type = ?
+            AND language = ?
          LIMIT 1',
         $Type,
+        $Language,
     );
 
     if ( !$Template ) {
@@ -148,11 +127,12 @@ sub TemplateGet {
 sub TemplateUpdate {
     my ( $Self, %Param ) = @_;
 
-    my $Type = $Self->_NotificationTypeClean( $Param{NotificationType} );
+    my $Type     = $Self->_NotificationTypeClean( $Param{NotificationType} );
+    my $Language = $Self->LanguageClean( $Param{Language} );
     return if !$Type;
 
     $Self->SchemaEnsure() || return;
-    $Self->_DefaultTemplatesEnsure();
+    $Self->_DefaultTemplatesEnsure() || return;
 
     my $Subject = $Self->_Trim( $Param{Subject} );
     my $Body    = QisutuHTML->Sanitize( $Param{BodyHTML} || '' );
@@ -170,12 +150,14 @@ sub TemplateUpdate {
              body_html = ?,
              active = ?,
              changed_by_user_id = ?
-         WHERE notification_type = ?',
+         WHERE notification_type = ?
+            AND language = ?',
         $Subject,
         $Body,
         $Active,
         $UserID,
         $Type,
+        $Language,
     );
 
     if ( !$Result ) {
@@ -210,17 +192,6 @@ sub Send {
 
     $Self->_DefaultTemplatesEnsure();
     if ( $Self->{LastError} ) {
-        return 0;
-    }
-
-    my $Template = $Self->TemplateGet( NotificationType => $Type );
-    if ( !$Template ) {
-        $Self->{LastError} ||= 'Agent notification template was not found';
-        return 0;
-    }
-
-    if ( !$Template->{active} ) {
-        $Self->{LastError} = 'Agent notification template is inactive';
         return 0;
     }
 
@@ -271,9 +242,27 @@ sub Send {
 
     my $Sent = 0;
     my @ErrorMessages;
+    my %TemplateForLanguage;
 
     for my $Agent ( @{$RecipientList} ) {
         next if !$Agent->{email};
+
+        my $Language = $Self->LanguageClean( $Agent->{language} );
+        if ( !exists $TemplateForLanguage{$Language} ) {
+            $TemplateForLanguage{$Language} = $Self->TemplateGet(
+                NotificationType => $Type,
+                Language         => $Language,
+            ) || 0;
+        }
+
+        my $Template = $TemplateForLanguage{$Language};
+        if ( !$Template ) {
+            push @ErrorMessages, ( $Agent->{email} || 'unknown recipient' )
+                . ': agent notification template was not found for language ' . $Language;
+            next;
+        }
+
+        next if !$Template->{active};
 
         if ( $Self->_RequiresEventLog( NotificationType => $Type ) ) {
             next if $Self->_EventAlreadySent(
@@ -289,6 +278,7 @@ sub Send {
             Agent        => $Agent,
             ChangedByID  => $Param{ChangedByUserID},
             AssignedID   => $Param{TargetUserID},
+            Language     => $Language,
         );
 
         my $Subject = $Self->_PlaceholderReplacePlain(
@@ -418,6 +408,7 @@ sub SchemaEnsure {
         'CREATE TABLE IF NOT EXISTS agent_notification_template (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             notification_type VARCHAR(100) NOT NULL,
+            language VARCHAR(10) NOT NULL DEFAULT "de",
             name VARCHAR(255) NOT NULL,
             subject VARCHAR(500) NOT NULL DEFAULT "",
             body_html LONGTEXT NOT NULL,
@@ -428,8 +419,8 @@ sub SchemaEnsure {
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
-            UNIQUE KEY agent_notification_template_type_unique (notification_type),
-            KEY agent_notification_template_active_sort (active, sort_order)
+            UNIQUE KEY agent_notification_template_type_language_unique (notification_type, language),
+            KEY agent_notification_template_language_active_sort (language, active, sort_order)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
 
         'CREATE TABLE IF NOT EXISTS agent_notification_event_log (
@@ -455,9 +446,109 @@ sub SchemaEnsure {
         }
     }
 
+    my $LanguageColumn = $Self->_SchemaObjectCount(
+        SQL => 'SELECT COUNT(*) AS object_count
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = ?
+                  AND COLUMN_NAME = ?',
+        Bind => [ 'agent_notification_template', 'language' ],
+    );
+    return if !defined $LanguageColumn;
+
+    if ( !$LanguageColumn ) {
+        my $OK = $Self->{DB}->Do(
+            'ALTER TABLE agent_notification_template
+             ADD COLUMN language VARCHAR(10) NOT NULL DEFAULT "de" AFTER notification_type'
+        );
+        if ( !$OK ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Agent notification language column could not be prepared';
+            return;
+        }
+    }
+
+    my $OldUnique = $Self->_SchemaObjectCount(
+        SQL => 'SELECT COUNT(*) AS object_count
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = ?
+                  AND INDEX_NAME = ?',
+        Bind => [ 'agent_notification_template', 'agent_notification_template_type_unique' ],
+    );
+    return if !defined $OldUnique;
+
+    if ($OldUnique) {
+        my $OK = $Self->{DB}->Do(
+            'ALTER TABLE agent_notification_template
+             DROP INDEX agent_notification_template_type_unique'
+        );
+        if ( !$OK ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Old agent notification template index could not be removed';
+            return;
+        }
+    }
+
+    my $LanguageUnique = $Self->_SchemaObjectCount(
+        SQL => 'SELECT COUNT(*) AS object_count
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = ?
+                  AND INDEX_NAME = ?',
+        Bind => [ 'agent_notification_template', 'agent_notification_template_type_language_unique' ],
+    );
+    return if !defined $LanguageUnique;
+
+    if ( !$LanguageUnique ) {
+        my $OK = $Self->{DB}->Do(
+            'ALTER TABLE agent_notification_template
+             ADD UNIQUE KEY agent_notification_template_type_language_unique (notification_type, language)'
+        );
+        if ( !$OK ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Agent notification language index could not be prepared';
+            return;
+        }
+    }
+
+    my $LanguageSort = $Self->_SchemaObjectCount(
+        SQL => 'SELECT COUNT(*) AS object_count
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = ?
+                  AND INDEX_NAME = ?',
+        Bind => [ 'agent_notification_template', 'agent_notification_template_language_active_sort' ],
+    );
+    return if !defined $LanguageSort;
+
+    if ( !$LanguageSort ) {
+        my $OK = $Self->{DB}->Do(
+            'ALTER TABLE agent_notification_template
+             ADD KEY agent_notification_template_language_active_sort (language, active, sort_order)'
+        );
+        if ( !$OK ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Agent notification language sort index could not be prepared';
+            return;
+        }
+    }
+
     $Self->{SchemaChecked} = 1;
 
     return 1;
+}
+
+sub _SchemaObjectCount {
+    my ( $Self, %Param ) = @_;
+
+    my $Row = $Self->{DB}->SelectRow(
+        $Param{SQL},
+        @{ $Param{Bind} || [] },
+    );
+
+    if ( !$Row || !defined $Row->{object_count} ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Agent notification schema metadata could not be loaded';
+        return;
+    }
+
+    return int( $Row->{object_count} || 0 );
 }
 
 sub PlaceholderList {
@@ -590,6 +681,7 @@ sub ContentTemplateRenderHTML {
         AssignedID  => $Param{AssignedID},
         TicketLinkPage => $Param{TicketLinkPage},
         SystemPlaceholder => $Param{SystemPlaceholder},
+        Language    => $Param{Language},
     );
 
     return $Self->_PlaceholderReplaceHTML(
@@ -602,35 +694,39 @@ sub ContentTemplateRenderHTML {
 sub _DefaultTemplatesEnsure {
     my ($Self) = @_;
 
-    return if $Self->{DefaultsEnsured};
+    return 1 if $Self->{DefaultsEnsured};
 
-    for my $Template ( @{ NotificationTypes() } ) {
-        my $Result = $Self->{DB}->Do(
-            'INSERT INTO agent_notification_template (
-                notification_type,
-                name,
-                subject,
-                body_html,
-                active,
-                sort_order,
-                created_by_user_id,
-                changed_by_user_id
-             ) VALUES (
-                ?, ?, ?, ?, 1, ?, 1, 1
-             )
-             ON DUPLICATE KEY UPDATE
-                name = VALUES(name),
-                sort_order = VALUES(sort_order)',
-            $Template->{type},
-            $Template->{name},
-            $Template->{subject},
-            $Template->{body_html},
-            $Template->{sort_order},
-        );
+    for my $Language ( @{ $Self->LanguageList() } ) {
+        for my $Template ( @{ $Self->NotificationTypes( Language => $Language->{code} ) } ) {
+            my $Result = $Self->{DB}->Do(
+                'INSERT INTO agent_notification_template (
+                    notification_type,
+                    language,
+                    name,
+                    subject,
+                    body_html,
+                    active,
+                    sort_order,
+                    created_by_user_id,
+                    changed_by_user_id
+                 ) VALUES (
+                    ?, ?, ?, ?, ?, 1, ?, 1, 1
+                 )
+                 ON DUPLICATE KEY UPDATE
+                    name = VALUES(name),
+                    sort_order = VALUES(sort_order)',
+                $Template->{type},
+                $Language->{code},
+                $Template->{name},
+                $Template->{subject},
+                $Template->{body_html},
+                $Template->{sort_order},
+            );
 
-        if ( !$Result ) {
-            $Self->{LastError} = $Self->{DB}->Error() || 'Default agent notification templates could not be prepared';
-            return;
+            if ( !$Result ) {
+                $Self->{LastError} = $Self->{DB}->Error() || 'Default agent notification templates could not be prepared';
+                return;
+            }
         }
     }
 
@@ -752,7 +848,8 @@ sub _QueueAgentList {
             ua.login,
             ua.email,
             ua.firstname,
-            ua.lastname
+            ua.lastname,
+            language_preference.preference_value AS language
          FROM ticket_queue_group tqg
          INNER JOIN user_group ug
             ON ug.id = tqg.user_group_id
@@ -765,6 +862,9 @@ sub _QueueAgentList {
             AND ua.account_type = ?
             AND ua.is_active = 1
             AND ua.is_system_user = 0
+         LEFT JOIN user_preference language_preference
+            ON language_preference.user_account_id = ua.id
+            AND language_preference.preference_key = "language"
          WHERE tqg.queue_id = ?
             AND tqg.active = 1
             AND tqg.permission_key IN (?, ?)
@@ -788,7 +888,8 @@ sub _QueueAgentList {
                 ua.login,
                 ua.email,
                 ua.firstname,
-                ua.lastname
+                ua.lastname,
+                language_preference.preference_value AS language
              FROM ticket_queue_group tqg
              INNER JOIN user_group ug
                 ON ug.id = tqg.user_group_id
@@ -801,6 +902,9 @@ sub _QueueAgentList {
                 AND ua.account_type = ?
                 AND ua.is_active = 1
                 AND ua.is_system_user = 0
+             LEFT JOIN user_preference language_preference
+                ON language_preference.user_account_id = ua.id
+                AND language_preference.preference_key = "language"
              WHERE tqg.queue_id = ?
                 AND tqg.active = 1
                 AND ua.email <> ""
@@ -811,6 +915,7 @@ sub _QueueAgentList {
     }
 
     for my $Agent ( @{$Rows} ) {
+        $Agent->{language} = $Self->LanguageClean( $Agent->{language} );
         $Agent->{full_name} = $Self->_UserName(
             Firstname => $Agent->{firstname},
             Lastname  => $Agent->{lastname},
@@ -828,13 +933,22 @@ sub _AgentByUserID {
     return [] if $UserID !~ m{\A\d+\z} || !$UserID;
 
     my $Agent = $Self->{DB}->SelectRow(
-        'SELECT id, login, email, firstname, lastname
-         FROM user_account
-         WHERE id = ?
-            AND account_type = ?
-            AND is_active = 1
-            AND is_system_user = 0
-            AND email <> ""
+        'SELECT
+            ua.id,
+            ua.login,
+            ua.email,
+            ua.firstname,
+            ua.lastname,
+            language_preference.preference_value AS language
+         FROM user_account ua
+         LEFT JOIN user_preference language_preference
+            ON language_preference.user_account_id = ua.id
+            AND language_preference.preference_key = "language"
+         WHERE ua.id = ?
+            AND ua.account_type = ?
+            AND ua.is_active = 1
+            AND ua.is_system_user = 0
+            AND ua.email <> ""
          LIMIT 1',
         $UserID,
         'agent',
@@ -842,6 +956,7 @@ sub _AgentByUserID {
 
     return [] if !$Agent;
 
+    $Agent->{language} = $Self->LanguageClean( $Agent->{language} );
     $Agent->{full_name} = $Self->_UserName(
         Firstname => $Agent->{firstname},
         Lastname  => $Agent->{lastname},
@@ -910,14 +1025,14 @@ sub _TicketDataGet {
         Login     => $Ticket->{customer_user_login},
     );
 
-    $Ticket->{pending_reached_since} = '';
+    $Ticket->{pending_reached_seconds} = 0;
     if ( $Ticket->{pending_until} ) {
         my $Duration = $Self->{DB}->SelectRow(
             'SELECT TIMESTAMPDIFF(SECOND, ?, NOW()) AS seconds_since',
             $Ticket->{pending_until},
         );
         if ( $Duration && ( $Duration->{seconds_since} || 0 ) > 0 ) {
-            $Ticket->{pending_reached_since} = $Self->_DurationText( Seconds => $Duration->{seconds_since} );
+            $Ticket->{pending_reached_seconds} = $Duration->{seconds_since};
         }
     }
 
@@ -931,6 +1046,9 @@ sub _PlaceholderBuild {
 
     my $Ticket = $Param{Ticket} || {};
     my $Agent  = $Param{Agent}  || {};
+    my $Language = $Self->LanguageClean(
+        $Param{Language} || $Agent->{language},
+    );
     my $ChangedBy = ref $Param{ChangedBy} eq 'HASH'
         ? $Param{ChangedBy}
         : $Self->_UserDataGet( UserID => $Param{ChangedByID} );
@@ -944,8 +1062,12 @@ sub _PlaceholderBuild {
         TicketID => $Ticket->{id},
         Page     => $Param{TicketLinkPage},
     ) : '';
+    my $TicketLinkText = QisutuAgentNotificationTemplates->TicketLinkText(
+        Language => $Language,
+        Number   => $Ticket->{ticket_number} || $Ticket->{id},
+    );
     my $TicketLinkHTML = $TicketLink
-        ? '<a href="' . $TicketLink . '">Ticket ' . $Self->_Escape( $Ticket->{ticket_number} || $Ticket->{id} ) . ' öffnen</a>'
+        ? '<a href="' . $TicketLink . '">' . $Self->_Escape($TicketLinkText) . '</a>'
         : '';
 
     return {
@@ -986,7 +1108,12 @@ sub _PlaceholderBuild {
         'AssignedAgent.Login'     => $Assigned->{login} || '',
         'AssignedAgent.Email'    => $Assigned->{email} || '',
         'PendingUntil'           => $Self->_DateTimeDisplay( $Ticket->{pending_until} || '' ),
-        'PendingReachedSince'    => $Ticket->{pending_reached_since} || '',
+        'PendingReachedSince'    => ( $Ticket->{pending_reached_seconds} || 0 )
+            ? QisutuAgentNotificationTemplates->DurationText(
+                Language => $Language,
+                Seconds  => $Ticket->{pending_reached_seconds},
+            )
+            : ( $Ticket->{pending_reached_since} || '' ),
         'Escalation.Type'        => $Ticket->{escalation_state} || '',
         'Escalation.DueTime'     => $Self->_DateTimeDisplay( $Ticket->{escalation_due_time} || '' ),
     };
@@ -1331,7 +1458,7 @@ sub _NotificationTypeClean {
     $Type = $Self->_Trim($Type);
     return '' if !$Type;
 
-    my %Allowed = map { $_->{type} => 1 } @{ NotificationTypes() };
+    my %Allowed = map { $_->{type} => 1 } @{ $Self->NotificationTypes( Language => 'en' ) };
 
     if ( !$Allowed{$Type} ) {
         $Self->{LastError} = 'Invalid agent notification type';
@@ -1356,22 +1483,10 @@ sub _DateTimeDisplay {
 sub _DurationText {
     my ( $Self, %Param ) = @_;
 
-    my $Seconds = $Param{Seconds} || 0;
-    $Seconds = 0 if $Seconds < 0;
-
-    my $Minutes = int( $Seconds / 60 );
-    my $Hours   = int( $Minutes / 60 );
-    my $Days    = int( $Hours / 24 );
-
-    if ( $Days > 0 ) {
-        return $Days == 1 ? '1 Tag' : $Days . ' Tage';
-    }
-
-    if ( $Hours > 0 ) {
-        return $Hours == 1 ? '1 Stunde' : $Hours . ' Stunden';
-    }
-
-    return $Minutes == 1 ? '1 Minute' : $Minutes . ' Minuten';
+    return QisutuAgentNotificationTemplates->DurationText(
+        Language => $Param{Language} || 'de',
+        Seconds  => $Param{Seconds},
+    );
 }
 
 sub _UserName {

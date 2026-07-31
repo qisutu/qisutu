@@ -471,7 +471,12 @@ sub _ValueValidate {
         $Value = $Self->_WebPathNormalize($Value);
     }
     elsif ( ( $Definition->{key} || '' ) eq 'system.default_language' ) {
-        if ( $Value !~ m{\A(?:de|en)\z} ) {
+        my $LanguagePath = $Self->{Config}->{Paths}->{Language} || '';
+        my $LanguageFile = $LanguagePath && $Value =~ m{\A[A-Za-z0-9_-]+\z}
+            ? File::Spec->catfile( $LanguagePath, "$Value.pm" )
+            : '';
+
+        if ( !$LanguageFile || !-f $LanguageFile || -l $LanguageFile ) {
             $Self->{LastError} = 'Default system language is invalid';
             return ( '', 0 );
         }

@@ -21,7 +21,7 @@ Primärschlüssel, Indizes und Fremdschlüssel. Nach den Datenmigrationen wird
 dieser Abgleich erneut ausgeführt, damit der endgültige Strukturstand geprüft
 ist.
 
-2. Kumulative Datenmigrationen ab 1.0.2
+2. Kumulative Datenmigrationen ab 1.0.1
 
 Notwendige INSERT-, UPDATE- und Datenumwandlungsschritte liegen künftig unter:
 
@@ -29,9 +29,9 @@ install/update/database/DATENBANKVERSION/
 
 Beispiel:
 
-install/update/database/1.0.2/001-beispiel.sql
+install/update/database/1.0.1/001-beispiel.sql
 
-Jede ab 1.0.2 veröffentlichte Migration bleibt unverändert in allen späteren
+Jede ab 1.0.1 veröffentlichte Migration bleibt unverändert in allen späteren
 Updatepaketen enthalten. Dadurch kann eine offizielle Installation direkt von
 einem älteren veröffentlichten Stand aktualisiert werden.
 
@@ -50,7 +50,7 @@ protokollierte Migrationen werden anhand ihres eindeutigen Migrationsschlüssels
 nicht erneut ausgeführt. Die zusätzlich gespeicherte Prüfsumme dokumentiert den
 bei der Ausführung vorhandenen Dateistand.
 
-Eine ab 1.0.2 veröffentlichte Migration behält dauerhaft denselben Verzeichnis- und
+Eine ab 1.0.1 veröffentlichte Migration behält dauerhaft denselben Verzeichnis- und
 Dateinamen und darf nicht aus späteren Updatepaketen entfernt werden. Jede
 Migration muss den bestehenden Datenzustand selbst prüfen und wiederholbar
 sicher sein, beispielsweise durch CREATE TABLE IF NOT EXISTS, INSERT ... ON

@@ -103,6 +103,14 @@ like( $NewTicketHTML, qr{\{\{Ticket[.]LinkHTML\}\}}, 'ticket HTML link stays ava
         my ( $Self, $SQL, @Bind ) = @_;
 
         if ( $SQL =~ m{FROM\s+ticket_queue\s+q}s ) {
+            if ( ( $Bind[0] || '' ) eq 'en' ) {
+                return {
+                    queue_name         => 'Inbox',
+                    queue_full_name    => 'Support::Inbox',
+                    salutation_content => '<p>Hello {{CustomerUser.Firstname}}, ticket {{Ticket.Number}}</p>',
+                    signature_content  => '<p>Kind regards, {{Agent.FullName}}</p><p>{{Ticket.LinkHTML}}</p>',
+                };
+            }
             return {
                 queue_name         => 'Posteingang',
                 queue_full_name    => 'Support::Posteingang',
@@ -130,7 +138,13 @@ like( $NewTicketHTML, qr{\{\{Ticket[.]LinkHTML\}\}}, 'ticket HTML link stays ava
             return { priority_name => '3 normal' };
         }
 
-        if ( $SQL =~ m{sal[.]content\s+AS\s+salutation_content.*FROM\s+ticket\s+t}s ) {
+        if ( $SQL =~ m{AS\s+salutation_content.*FROM\s+ticket\s+t}s ) {
+            if ( ( $Bind[0] || '' ) eq 'en' ) {
+                return {
+                    salutation_content => '<p>Hello {{CustomerUser.Firstname}}, ticket {{Ticket.Number}}</p>',
+                    signature_content  => '<p>Kind regards, {{Agent.FullName}}</p><p>{{Ticket.LinkHTML}}</p>',
+                };
+            }
             return {
                 salutation_content => '<p>Hallo {{CustomerUser.Firstname}} {{CustomerUser.Lastname}}, Ticket {{Ticket.Number}}</p>',
                 signature_content  => '<p>{{Agent.FullName}} | {{Ticket.Queue}}</p><p>{{Ticket.LinkHTML}}</p>',
@@ -194,6 +208,7 @@ my $CreateHTML = $CreateModule->_QueueTemplateHTML(
     Title          => 'Druckerproblem',
     StateID        => 1,
     PriorityID     => 3,
+    Language       => 'de',
 );
 
 like( $CreateHTML, qr{Hallo Klara Kundin}, 'ticket creation inserts a resolved salutation into the editor template' );
@@ -205,11 +220,33 @@ my $ZoomModule = AgentTicketZoom->new( Config => $Config, DB => $DB );
 my $ZoomHTML = $ZoomModule->_QueueReplyTemplate(
     TicketID => 42,
     User     => $User,
+    Language => 'de',
 );
 
 like( $ZoomHTML, qr{Hallo Klara Kundin, Ticket 2026000042}, 'ticket zoom resolves salutation and ticket number immediately' );
 like( $ZoomHTML, qr{Ada Agentin [|] Support::Posteingang}, 'ticket zoom resolves the current agent in the signature' );
 like( $ZoomHTML, qr{https://support[.]example[.]test/qisutu/index[.]pl[?]Page=AgentTicketZoom&amp;TicketID=42}, 'ticket zoom inserts the ticket link' );
 unlike( $ZoomHTML, qr{\{\{[A-Za-z0-9_.]+\}\}}, 'ticket zoom leaves no supported placeholder unresolved' );
+
+my $EnglishCreateHTML = $CreateModule->_QueueTemplateHTML(
+    QueueID        => 1,
+    User           => $User,
+    CustomerUserID => 9,
+    OwnerUserID    => 7,
+    Title          => 'Printer problem',
+    StateID        => 1,
+    PriorityID     => 3,
+    Language       => 'en',
+);
+like( $EnglishCreateHTML, qr{Hello Klara}, 'ticket creation selects the salutation in the agent language' );
+like( $EnglishCreateHTML, qr{Kind regards, Ada Agentin}, 'ticket creation selects the signature in the agent language' );
+
+my $EnglishZoomHTML = $ZoomModule->_QueueReplyTemplate(
+    TicketID => 42,
+    User     => $User,
+    Language => 'en',
+);
+like( $EnglishZoomHTML, qr{Hello Klara, ticket 2026000042}, 'ticket replies select the salutation in the agent language' );
+like( $EnglishZoomHTML, qr{Kind regards, Ada Agentin}, 'ticket replies select the signature in the agent language' );
 
 done_testing();

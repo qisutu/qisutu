@@ -27,6 +27,7 @@ use warnings;
 use utf8;
 
 use Digest::SHA qw(sha256_hex);
+use File::Spec;
 use QisutuMail;
 use QisutuOutput;
 use QisutuSystemSetting;
@@ -781,70 +782,74 @@ sub _UserLanguage {
 sub _LanguageClean {
     my ( $Self, $Language ) = @_;
 
-    $Language = lc( $Language || '' );
-    return $Language if $Language =~ m{\A(?:de|en|fr|it)\z};
+    my $LanguagePath = $Self->{Config}->{Paths}->{Language} || '';
+    if ( !$LanguagePath && $Self->{Config}->{RootPath} ) {
+        $LanguagePath = File::Spec->catdir( $Self->{Config}->{RootPath}, 'core', 'language' );
+    }
 
-    my $Default = lc( $Self->{Config}->{Language}->{Default} || 'en' );
-    return $Default if $Default =~ m{\A(?:de|en|fr|it)\z};
+    for my $Candidate (
+        $Language,
+        $Self->{Config}->{Language}->{Default} || '',
+        'en',
+    ) {
+        $Candidate = $Self->_LanguageCanonical($Candidate);
+        next if !$Candidate;
+
+        my $File = File::Spec->catfile( $LanguagePath, "$Candidate.pm" );
+        return $Candidate if $LanguagePath && -f $File && !-l $File;
+    }
 
     return 'en';
+}
+
+sub _LanguageCanonical {
+    my ( $Self, $Language ) = @_;
+
+    return '' if !defined $Language || ref $Language;
+    $Language =~ s{\A\s+|\s+\z}{}g;
+    $Language =~ tr{_}{-};
+    return '' if $Language !~ m{\A[A-Za-z]{2,3}(?:-[A-Za-z]{2})?\z};
+
+    if ( $Language =~ m{\A([A-Za-z]{2,3})-([A-Za-z]{2})\z} ) {
+        return lc($1) . '-' . uc($2);
+    }
+
+    return lc $Language;
 }
 
 sub _MailText {
     my ( $Self, $Language ) = @_;
 
-    my %Text = (
-        de => {
-            ResetSubject   => 'Qisutu: Passwort zurücksetzen',
-            ChangedSubject => 'Qisutu: Passwort wurde geändert',
-            Greeting       => 'Hallo {name},',
-            RequestIntro   => 'für Ihr Qisutu-Benutzerkonto wurde das Zurücksetzen des Passworts angefordert.',
-            Button         => 'Neues Passwort festlegen',
-            Validity       => 'Der Link ist {minutes} Minuten gültig und kann nur einmal verwendet werden.',
-            Ignore         => 'Falls Sie diese Änderung nicht angefordert haben, können Sie diese E-Mail ignorieren.',
-            LinkHint       => 'Falls der Button nicht funktioniert, öffnen Sie diesen Link:',
-            ChangedIntro   => 'Das Passwort Ihres Qisutu-Benutzerkontos wurde erfolgreich geändert.',
-            ChangedWarning => 'Falls Sie diese Änderung nicht vorgenommen haben, wenden Sie sich bitte unverzüglich an den Qisutu-Administrator.',
-        },
-        en => {
-            ResetSubject   => 'Qisutu: Reset password',
-            ChangedSubject => 'Qisutu: Password changed',
-            Greeting       => 'Hello {name},',
-            RequestIntro   => 'a password reset was requested for your Qisutu user account.',
-            Button         => 'Set a new password',
-            Validity       => 'The link is valid for {minutes} minutes and can only be used once.',
-            Ignore         => 'If you did not request this change, you can ignore this e-mail.',
-            LinkHint       => 'If the button does not work, open this link:',
-            ChangedIntro   => 'The password for your Qisutu user account was changed successfully.',
-            ChangedWarning => 'If you did not make this change, contact the Qisutu administrator immediately.',
-        },
-        fr => {
-            ResetSubject   => 'Qisutu : réinitialiser le mot de passe',
-            ChangedSubject => 'Qisutu : mot de passe modifié',
-            Greeting       => 'Bonjour {name},',
-            RequestIntro   => 'une réinitialisation du mot de passe a été demandée pour votre compte utilisateur Qisutu.',
-            Button         => 'Définir un nouveau mot de passe',
-            Validity       => 'Le lien est valable pendant {minutes} minutes et ne peut être utilisé qu’une seule fois.',
-            Ignore         => 'Si vous n’avez pas demandé cette modification, vous pouvez ignorer cet e-mail.',
-            LinkHint       => 'Si le bouton ne fonctionne pas, ouvrez ce lien :',
-            ChangedIntro   => 'Le mot de passe de votre compte utilisateur Qisutu a été modifié avec succès.',
-            ChangedWarning => 'Si vous n’avez pas effectué cette modification, contactez immédiatement l’administrateur Qisutu.',
-        },
-        it => {
-            ResetSubject   => 'Qisutu: reimposta la password',
-            ChangedSubject => 'Qisutu: password modificata',
-            Greeting       => 'Buongiorno {name},',
-            RequestIntro   => 'è stata richiesta la reimpostazione della password per il suo account utente Qisutu.',
-            Button         => 'Imposta una nuova password',
-            Validity       => 'Il link è valido per {minutes} minuti e può essere utilizzato una sola volta.',
-            Ignore         => 'Se non ha richiesto questa modifica, può ignorare questa e-mail.',
-            LinkHint       => 'Se il pulsante non funziona, apra questo link:',
-            ChangedIntro   => 'La password del suo account utente Qisutu è stata modificata correttamente.',
-            ChangedWarning => 'Se non ha effettuato questa modifica, contatti immediatamente l’amministratore Qisutu.',
-        },
+    my $OutputConfig = { %{ $Self->{Config} || {} } };
+    $OutputConfig->{Paths} = { %{ $Self->{Config}->{Paths} || {} } };
+    if ( !$OutputConfig->{Paths}->{Language} && $Self->{Config}->{RootPath} ) {
+        $OutputConfig->{Paths}->{Language}
+            = File::Spec->catdir( $Self->{Config}->{RootPath}, 'core', 'language' );
+    }
+
+    my $Output = QisutuOutput->new( Config => $OutputConfig );
+    my %Key = (
+        ResetSubject   => 'PasswordResetEmailSubject',
+        ChangedSubject => 'PasswordChangedEmailSubject',
+        Greeting       => 'PasswordEmailGreeting',
+        RequestIntro   => 'PasswordResetEmailIntro',
+        Button         => 'PasswordResetEmailButton',
+        Validity       => 'PasswordResetEmailValidity',
+        Ignore         => 'PasswordResetEmailIgnore',
+        LinkHint       => 'PasswordResetEmailLinkHint',
+        ChangedIntro   => 'PasswordChangedEmailIntro',
+        ChangedWarning => 'PasswordChangedEmailWarning',
     );
 
-    return $Text{$Language} || $Text{en};
+    my %Text;
+    for my $Field ( keys %Key ) {
+        $Text{$Field} = $Output->Translate(
+            Key      => $Key{$Field},
+            Language => $Language,
+        );
+    }
+
+    return \%Text;
 }
 
 sub _UserDisplayName {

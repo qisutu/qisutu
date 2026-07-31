@@ -31,6 +31,77 @@ fi
 
 ROOT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
+INSTALL_LANGUAGE=""
+INSTALL_LANGUAGE_LABEL=""
+
+select_install_language() {
+    local selection=""
+
+    if [[ ! -t 0 ]]; then
+        selection="${QISUTU_INSTALL_LANGUAGE:-}"
+        if [[ -z "$selection" ]]; then
+            echo "Die Installationssprache muss ausgewählt werden." >&2
+            echo "Bitte install.sh in einem interaktiven Terminal starten oder QISUTU_INSTALL_LANGUAGE setzen." >&2
+            exit 1
+        fi
+
+        case "$selection" in
+            de) INSTALL_LANGUAGE="de"; INSTALL_LANGUAGE_LABEL="Deutsch" ;;
+            en) INSTALL_LANGUAGE="en"; INSTALL_LANGUAGE_LABEL="English" ;;
+            fr) INSTALL_LANGUAGE="fr"; INSTALL_LANGUAGE_LABEL="Français" ;;
+            it) INSTALL_LANGUAGE="it"; INSTALL_LANGUAGE_LABEL="Italiano" ;;
+            pt-BR|pt-br|pt_BR|pt_br) INSTALL_LANGUAGE="pt-BR"; INSTALL_LANGUAGE_LABEL="Português (Brasil)" ;;
+            pt-PT|pt-pt|pt_PT|pt_pt) INSTALL_LANGUAGE="pt-PT"; INSTALL_LANGUAGE_LABEL="Português (Portugal)" ;;
+            es) INSTALL_LANGUAGE="es"; INSTALL_LANGUAGE_LABEL="Español" ;;
+            nl) INSTALL_LANGUAGE="nl"; INSTALL_LANGUAGE_LABEL="Nederlands" ;;
+            pl) INSTALL_LANGUAGE="pl"; INSTALL_LANGUAGE_LABEL="Polski" ;;
+            cs) INSTALL_LANGUAGE="cs"; INSTALL_LANGUAGE_LABEL="Čeština" ;;
+            tr) INSTALL_LANGUAGE="tr"; INSTALL_LANGUAGE_LABEL="Türkçe" ;;
+            *)
+                echo "Ungültige Installationssprache in QISUTU_INSTALL_LANGUAGE: $selection" >&2
+                exit 1
+                ;;
+        esac
+        return
+    fi
+
+    printf '\nQisutu – Sprache auswählen / Select language\n\n'
+    printf '[1] Wenn Sie Qisutu auf Deutsch verwenden möchten, geben Sie 1 ein.\n'
+    printf '[2] If you want to use Qisutu in English, enter 2.\n'
+    printf '[3] Pour utiliser Qisutu en français, saisissez 3.\n'
+    printf '[4] Per utilizzare Qisutu in italiano, inserire 4.\n'
+    printf '[5] Se você deseja usar o Qisutu em português do Brasil, digite 5.\n'
+    printf '[6] Se pretender utilizar o Qisutu em português de Portugal, introduza 6.\n'
+    printf '[7] Si desea utilizar Qisutu en español, introduzca 7.\n'
+    printf '[8] Als u Qisutu in het Nederlands wilt gebruiken, voert u 8 in.\n'
+    printf '[9] Aby korzystać z Qisutu w języku polskim, wpisz 9.\n'
+    printf '[10] Chcete-li používat Qisutu v češtině, zadejte 10.\n'
+    printf '[11] Qisutu’yu Türkçe kullanmak istiyorsanız 11 girin.\n\n'
+
+    while true; do
+        printf 'Auswahl / Selection [1-11]: '
+        read -r selection
+        case "$selection" in
+            1) INSTALL_LANGUAGE="de"; INSTALL_LANGUAGE_LABEL="Deutsch"; break ;;
+            2) INSTALL_LANGUAGE="en"; INSTALL_LANGUAGE_LABEL="English"; break ;;
+            3) INSTALL_LANGUAGE="fr"; INSTALL_LANGUAGE_LABEL="Français"; break ;;
+            4) INSTALL_LANGUAGE="it"; INSTALL_LANGUAGE_LABEL="Italiano"; break ;;
+            5) INSTALL_LANGUAGE="pt-BR"; INSTALL_LANGUAGE_LABEL="Português (Brasil)"; break ;;
+            6) INSTALL_LANGUAGE="pt-PT"; INSTALL_LANGUAGE_LABEL="Português (Portugal)"; break ;;
+            7) INSTALL_LANGUAGE="es"; INSTALL_LANGUAGE_LABEL="Español"; break ;;
+            8) INSTALL_LANGUAGE="nl"; INSTALL_LANGUAGE_LABEL="Nederlands"; break ;;
+            9) INSTALL_LANGUAGE="pl"; INSTALL_LANGUAGE_LABEL="Polski"; break ;;
+            10) INSTALL_LANGUAGE="cs"; INSTALL_LANGUAGE_LABEL="Čeština"; break ;;
+            11) INSTALL_LANGUAGE="tr"; INSTALL_LANGUAGE_LABEL="Türkçe"; break ;;
+            *) printf 'Ungültige Auswahl / Invalid selection.\n' >&2 ;;
+        esac
+    done
+
+    printf '\n%s\n\n' "$INSTALL_LANGUAGE_LABEL"
+}
+
+select_install_language
+
 if [[ "$ROOT_PATH" =~ [[:space:]] ]]; then
     echo "Der Qisutu-Installationspfad darf keine Leerzeichen enthalten: $ROOT_PATH" >&2
     exit 1
@@ -150,6 +221,7 @@ install_complete_path=$INSTALL_COMPLETE_PATH
 session_cookie=$SESSION_COOKIE
 db_name=$DB_NAME
 db_user=$DB_USER
+install_language=$INSTALL_LANGUAGE
 EOF_INSTANCE
     chmod 0640 "$INSTANCE_CONFIG_FILE"
 }
@@ -276,6 +348,7 @@ else
 fi
 
 validate_instance_values
+write_instance_config
 
 if [[ -f "$LOCK_FILE" ]]; then
     echo "Diese Qisutu-Instanz ist bereits vollständig installiert." >&2

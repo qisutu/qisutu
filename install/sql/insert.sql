@@ -224,6 +224,7 @@ INSERT INTO `ticket_article` (
 
 INSERT INTO `customer_auto_response_template` (
     `response_type`,
+    `language`,
     `name`,
     `subject`,
     `body_html`,
@@ -232,9 +233,9 @@ INSERT INTO `customer_auto_response_template` (
     `created_by_user_id`,
     `changed_by_user_id`
 ) VALUES
-    ('customer_ticket_created', 'Ticket durch Kunden erstellt', 'Eingangsbestätigung: {{Ticket.Number}} – {{Ticket.Title}}', '<p>Hallo {{CustomerUser.FullName}},</p><p>vielen Dank für Ihre Nachricht. Ihr Ticket <strong>{{Ticket.Number}}</strong> wurde angelegt.</p><p><strong>{{Ticket.Title}}</strong></p><p>{{Ticket.LinkHTML}}</p>', 0, 100, 1, 1),
-    ('customer_ticket_reply', 'Kundenantwort eingegangen', 'Eingangsbestätigung zu Ticket {{Ticket.Number}}', '<p>Hallo {{CustomerUser.FullName}},</p><p>Ihre Antwort zu Ticket <strong>{{Ticket.Number}}</strong> ist eingegangen.</p><p>{{Ticket.LinkHTML}}</p>', 0, 200, 1, 1),
-    ('incoming_email_rejected', 'Eingehende E-Mail abgelehnt', 'Ihre E-Mail konnte nicht angenommen werden', '<p>Hallo {{Incoming.FromName}},</p><p>Ihre E-Mail mit dem Betreff <strong>{{Incoming.Subject}}</strong> konnte nicht angenommen werden.</p><p>Bitte wenden Sie sich auf einem anderen Weg an unseren Support.</p>', 0, 300, 1, 1),
-    ('closed_ticket_follow_up', 'Kundenantwort auf geschlossenes Ticket', 'Antwort zu geschlossenem Ticket {{Ticket.Number}}', '<p>Hallo {{CustomerUser.FullName}},</p><p>Ihre Nachricht bezieht sich auf das bereits geschlossene Ticket <strong>{{Ticket.Number}}</strong>.</p><p>{{Ticket.LinkHTML}}</p>', 0, 400, 1, 1);
+    ('customer_ticket_created', 'de', 'Ticket durch Kunden erstellt', 'Eingangsbestätigung: {{Ticket.Number}} – {{Ticket.Title}}', '<p>Hallo {{CustomerUser.FullName}},</p><p>vielen Dank für Ihre Nachricht. Ihr Ticket <strong>{{Ticket.Number}}</strong> wurde angelegt.</p><p><strong>{{Ticket.Title}}</strong></p><p>{{Ticket.LinkHTML}}</p>', 0, 100, 1, 1),
+    ('customer_ticket_reply', 'de', 'Kundenantwort eingegangen', 'Eingangsbestätigung zu Ticket {{Ticket.Number}}', '<p>Hallo {{CustomerUser.FullName}},</p><p>Ihre Antwort zu Ticket <strong>{{Ticket.Number}}</strong> ist eingegangen.</p><p>{{Ticket.LinkHTML}}</p>', 0, 200, 1, 1),
+    ('incoming_email_rejected', 'de', 'Eingehende E-Mail abgelehnt', 'Ihre E-Mail konnte nicht angenommen werden', '<p>Hallo {{Incoming.FromName}},</p><p>Ihre E-Mail mit dem Betreff <strong>{{Incoming.Subject}}</strong> konnte nicht angenommen werden.</p><p>Bitte wenden Sie sich auf einem anderen Weg an unseren Support.</p>', 0, 300, 1, 1),
+    ('closed_ticket_follow_up', 'de', 'Kundenantwort auf geschlossenes Ticket', 'Antwort zu geschlossenem Ticket {{Ticket.Number}}', '<p>Hallo {{CustomerUser.FullName}},</p><p>Ihre Nachricht bezieht sich auf das bereits geschlossene Ticket <strong>{{Ticket.Number}}</strong>.</p><p>{{Ticket.LinkHTML}}</p>', 0, 400, 1, 1);
 
 COMMIT;

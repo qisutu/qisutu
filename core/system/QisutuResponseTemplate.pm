@@ -26,6 +26,7 @@ use strict;
 use warnings;
 use utf8;
 
+use QisutuAgentNotificationTemplates;
 use QisutuHTML;
 
 sub new {
@@ -48,9 +49,84 @@ sub Error {
     return $Self->{LastError} || '';
 }
 
+sub LanguageList {
+    return QisutuAgentNotificationTemplates->Languages();
+}
+
+sub LanguageClean {
+    my ( $Self, $Language ) = @_;
+
+    return QisutuAgentNotificationTemplates->LanguageClean(
+        $Language,
+        $Self->{Config}->{Language}->{Default} || 'en',
+    );
+}
+
+sub SchemaEnsure {
+    my ($Self) = @_;
+
+    return 1 if $Self->{SchemaChecked};
+    return if !$Self->{DB};
+
+    my @SQL = (
+        'CREATE TABLE IF NOT EXISTS response_template_translation (
+            template_id BIGINT UNSIGNED NOT NULL,
+            language VARCHAR(10) NOT NULL,
+            name VARCHAR(190) NOT NULL,
+            description TEXT NULL,
+            content LONGTEXT NOT NULL,
+            created_by_user_id BIGINT UNSIGNED NOT NULL DEFAULT 1,
+            changed_by_user_id BIGINT UNSIGNED NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (template_id, language),
+            KEY response_template_translation_language_name (language, name),
+            CONSTRAINT response_template_translation_template_fk
+                FOREIGN KEY (template_id) REFERENCES response_template (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+
+        'INSERT IGNORE INTO response_template_translation (
+            template_id,
+            language,
+            name,
+            description,
+            content,
+            created_by_user_id,
+            changed_by_user_id,
+            created_at,
+            changed_at
+         )
+         SELECT
+            id,
+            "de",
+            name,
+            description,
+            content,
+            created_by_user_id,
+            changed_by_user_id,
+            created_at,
+            changed_at
+         FROM response_template',
+    );
+
+    for my $SQL (@SQL) {
+        if ( !$Self->{DB}->Do($SQL) ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Response template translation schema could not be prepared';
+            return;
+        }
+    }
+
+    $Self->{SchemaChecked} = 1;
+    return 1;
+}
+
 sub TemplateList {
     my ( $Self, %Param ) = @_;
 
+    $Self->SchemaEnsure() || return [];
+
+    my $Language        = $Self->LanguageClean( $Param{Language} );
+    my $DefaultLanguage = $Self->LanguageClean( $Self->{Config}->{Language}->{Default} );
     my @Bind;
     my $Where = '';
 
@@ -61,9 +137,15 @@ sub TemplateList {
     my $Rows = $Self->{DB}->SelectAll(
         'SELECT
             rt.id,
-            rt.name,
-            rt.description,
-            rt.content,
+            COALESCE(
+                NULLIF(current_translation.name, ""),
+                NULLIF(default_translation.name, ""),
+                NULLIF(german_translation.name, ""),
+                rt.name
+            ) AS name,
+            COALESCE(current_translation.description, "") AS description,
+            COALESCE(current_translation.content, "") AS content,
+            CASE WHEN current_translation.language IS NULL THEN 0 ELSE 1 END AS translation_exists,
             rt.active,
             rt.sort_order,
             rt.created_at,
@@ -72,6 +154,15 @@ sub TemplateList {
             COUNT(DISTINCT rta.id) AS attachment_count,
             GROUP_CONCAT(DISTINCT tq.full_name ORDER BY tq.sort_order ASC, tq.full_name ASC SEPARATOR ", ") AS queue_names
          FROM response_template rt
+         LEFT JOIN response_template_translation current_translation
+            ON current_translation.template_id = rt.id
+           AND current_translation.language = ?
+         LEFT JOIN response_template_translation default_translation
+            ON default_translation.template_id = rt.id
+           AND default_translation.language = ?
+         LEFT JOIN response_template_translation german_translation
+            ON german_translation.template_id = rt.id
+           AND german_translation.language = "de"
          LEFT JOIN response_template_queue rtq
             ON rtq.template_id = rt.id
          LEFT JOIN ticket_queue tq
@@ -80,9 +171,13 @@ sub TemplateList {
             ON rta.template_id = rt.id
          ' . $Where . '
          GROUP BY
-            rt.id, rt.name, rt.description, rt.content, rt.active,
-            rt.sort_order, rt.created_at, rt.changed_at
+            rt.id, rt.name, rt.active, rt.sort_order, rt.created_at, rt.changed_at,
+            current_translation.language, current_translation.name,
+            current_translation.description, current_translation.content,
+            default_translation.name, german_translation.name
          ORDER BY rt.sort_order ASC, rt.name ASC',
+        $Language,
+        $DefaultLanguage,
         @Bind,
     );
 
@@ -97,26 +192,56 @@ sub TemplateList {
 sub TemplateListForQueue {
     my ( $Self, %Param ) = @_;
 
+    $Self->SchemaEnsure() || return [];
+
     my $QueueID = $Param{QueueID} || 0;
+    my $Language = $Self->LanguageClean( $Param{Language} );
+    my $DefaultLanguage = $Self->LanguageClean( $Self->{Config}->{Language}->{Default} );
 
     return [] if $QueueID !~ m{\A\d+\z} || !$QueueID;
 
     my $Rows = $Self->{DB}->SelectAll(
         'SELECT
             rt.id,
-            rt.name,
-            rt.description,
+            COALESCE(
+                NULLIF(current_translation.name, ""),
+                NULLIF(default_translation.name, ""),
+                NULLIF(german_translation.name, ""),
+                rt.name
+            ) AS name,
+            COALESCE(
+                current_translation.description,
+                default_translation.description,
+                german_translation.description,
+                rt.description,
+                ""
+            ) AS description,
             rt.sort_order,
             COUNT(rta.id) AS attachment_count
          FROM response_template rt
+         LEFT JOIN response_template_translation current_translation
+            ON current_translation.template_id = rt.id
+           AND current_translation.language = ?
+         LEFT JOIN response_template_translation default_translation
+            ON default_translation.template_id = rt.id
+           AND default_translation.language = ?
+         LEFT JOIN response_template_translation german_translation
+            ON german_translation.template_id = rt.id
+           AND german_translation.language = "de"
          INNER JOIN response_template_queue rtq
             ON rtq.template_id = rt.id
            AND rtq.queue_id = ?
          LEFT JOIN response_template_attachment rta
             ON rta.template_id = rt.id
          WHERE rt.active = 1
-         GROUP BY rt.id, rt.name, rt.description, rt.sort_order
+         GROUP BY
+            rt.id, rt.name, rt.description, rt.sort_order,
+            current_translation.name, current_translation.description,
+            default_translation.name, default_translation.description,
+            german_translation.name, german_translation.description
          ORDER BY rt.sort_order ASC, rt.name ASC',
+        $Language,
+        $DefaultLanguage,
         $QueueID,
     );
 
@@ -131,23 +256,44 @@ sub TemplateListForQueue {
 sub TemplateGet {
     my ( $Self, %Param ) = @_;
 
+    $Self->SchemaEnsure() || return;
+
     my $TemplateID = $Param{TemplateID} || 0;
+    my $Language = $Self->LanguageClean( $Param{Language} );
+    my $DefaultLanguage = $Self->LanguageClean( $Self->{Config}->{Language}->{Default} );
 
     return if $TemplateID !~ m{\A\d+\z} || !$TemplateID;
 
     my $Template = $Self->{DB}->SelectRow(
         'SELECT
-            id,
-            name,
-            description,
-            content,
-            active,
-            sort_order,
-            created_at,
-            changed_at
-         FROM response_template
-         WHERE id = ?
+            rt.id,
+            COALESCE(
+                NULLIF(current_translation.name, ""),
+                NULLIF(default_translation.name, ""),
+                NULLIF(german_translation.name, ""),
+                rt.name
+            ) AS name,
+            COALESCE(current_translation.description, "") AS description,
+            COALESCE(current_translation.content, "") AS content,
+            CASE WHEN current_translation.language IS NULL THEN 0 ELSE 1 END AS translation_exists,
+            rt.active,
+            rt.sort_order,
+            rt.created_at,
+            rt.changed_at
+         FROM response_template rt
+         LEFT JOIN response_template_translation current_translation
+            ON current_translation.template_id = rt.id
+           AND current_translation.language = ?
+         LEFT JOIN response_template_translation default_translation
+            ON default_translation.template_id = rt.id
+           AND default_translation.language = ?
+         LEFT JOIN response_template_translation german_translation
+            ON german_translation.template_id = rt.id
+           AND german_translation.language = "de"
+         WHERE rt.id = ?
          LIMIT 1',
+        $Language,
+        $DefaultLanguage,
         $TemplateID,
     );
 
@@ -162,8 +308,12 @@ sub TemplateGet {
 sub TemplateForQueueGet {
     my ( $Self, %Param ) = @_;
 
+    $Self->SchemaEnsure() || return;
+
     my $TemplateID = $Param{TemplateID} || 0;
     my $QueueID    = $Param{QueueID} || 0;
+    my $Language   = $Self->LanguageClean( $Param{Language} );
+    my $DefaultLanguage = $Self->LanguageClean( $Self->{Config}->{Language}->{Default} );
 
     return if $TemplateID !~ m{\A\d+\z} || !$TemplateID;
     return if $QueueID !~ m{\A\d+\z} || !$QueueID;
@@ -171,18 +321,45 @@ sub TemplateForQueueGet {
     my $Template = $Self->{DB}->SelectRow(
         'SELECT
             rt.id,
-            rt.name,
-            rt.description,
-            rt.content,
+            COALESCE(
+                NULLIF(current_translation.name, ""),
+                NULLIF(default_translation.name, ""),
+                NULLIF(german_translation.name, ""),
+                rt.name
+            ) AS name,
+            COALESCE(
+                current_translation.description,
+                default_translation.description,
+                german_translation.description,
+                rt.description,
+                ""
+            ) AS description,
+            COALESCE(
+                NULLIF(current_translation.content, ""),
+                NULLIF(default_translation.content, ""),
+                NULLIF(german_translation.content, ""),
+                rt.content
+            ) AS content,
             rt.active,
             rt.sort_order
          FROM response_template rt
+         LEFT JOIN response_template_translation current_translation
+            ON current_translation.template_id = rt.id
+           AND current_translation.language = ?
+         LEFT JOIN response_template_translation default_translation
+            ON default_translation.template_id = rt.id
+           AND default_translation.language = ?
+         LEFT JOIN response_template_translation german_translation
+            ON german_translation.template_id = rt.id
+           AND german_translation.language = "de"
          INNER JOIN response_template_queue rtq
             ON rtq.template_id = rt.id
            AND rtq.queue_id = ?
          WHERE rt.id = ?
            AND rt.active = 1
          LIMIT 1',
+        $Language,
+        $DefaultLanguage,
         $QueueID,
         $TemplateID,
     );
@@ -207,6 +384,9 @@ sub TemplateForQueueGet {
 sub TemplateCreate {
     my ( $Self, %Param ) = @_;
 
+    $Self->SchemaEnsure() || return;
+
+    my $Language    = $Self->LanguageClean( $Param{Language} );
     my $Name        = $Self->_Trim( $Param{Name} );
     my $Description = $Self->_Trim( $Param{Description} );
     my $Content     = QisutuHTML->Sanitize( $Param{Content} || '' );
@@ -266,13 +446,63 @@ sub TemplateCreate {
         return;
     }
 
+    my $Translated = $Self->{DB}->Do(
+        'INSERT INTO response_template_translation (
+            template_id,
+            language,
+            name,
+            description,
+            content,
+            created_by_user_id,
+            changed_by_user_id
+         ) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        $TemplateID,
+        $Language,
+        $Name,
+        $Description,
+        $Content,
+        $UserID,
+        $UserID,
+    );
+
+    if ( !$Translated ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Response template translation could not be created';
+        return;
+    }
+
+    if ( $Language ne 'de' ) {
+        my $GermanMarker = $Self->{DB}->Do(
+            'INSERT IGNORE INTO response_template_translation (
+                template_id,
+                language,
+                name,
+                description,
+                content,
+                created_by_user_id,
+                changed_by_user_id
+             ) VALUES (?, "de", ?, "", "", ?, ?)',
+            $TemplateID,
+            $Name,
+            $UserID,
+            $UserID,
+        );
+
+        if ( !$GermanMarker ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Response template language marker could not be created';
+            return;
+        }
+    }
+
     return $TemplateID;
 }
 
 sub TemplateUpdate {
     my ( $Self, %Param ) = @_;
 
+    $Self->SchemaEnsure() || return;
+
     my $TemplateID = $Param{TemplateID} || 0;
+    my $Language    = $Self->LanguageClean( $Param{Language} );
     my $Name        = $Self->_Trim( $Param{Name} );
     my $Description = $Self->_Trim( $Param{Description} );
     my $Content     = QisutuHTML->Sanitize( $Param{Content} || '' );
@@ -298,27 +528,69 @@ sub TemplateUpdate {
     $SortOrder = 1000 if $SortOrder !~ m{\A\d+\z} || $SortOrder < 1;
     $UserID    = 1 if $UserID !~ m{\A\d+\z} || !$UserID;
 
-    my $Result = $Self->{DB}->Do(
-        'UPDATE response_template
-         SET name = ?,
-             description = ?,
-             content = ?,
-             active = ?,
-             sort_order = ?,
-             changed_by_user_id = ?,
-             changed_at = NOW()
-         WHERE id = ?',
-        $Name,
-        $Description,
-        $Content,
-        $Active,
-        $SortOrder,
-        $UserID,
-        $TemplateID,
-    );
+    my $Result = $Language eq 'de'
+        ? $Self->{DB}->Do(
+            'UPDATE response_template
+             SET name = ?,
+                 description = ?,
+                 content = ?,
+                 active = ?,
+                 sort_order = ?,
+                 changed_by_user_id = ?,
+                 changed_at = NOW()
+             WHERE id = ?',
+            $Name,
+            $Description,
+            $Content,
+            $Active,
+            $SortOrder,
+            $UserID,
+            $TemplateID,
+        )
+        : $Self->{DB}->Do(
+            'UPDATE response_template
+             SET active = ?,
+                 sort_order = ?,
+                 changed_by_user_id = ?,
+                 changed_at = NOW()
+             WHERE id = ?',
+            $Active,
+            $SortOrder,
+            $UserID,
+            $TemplateID,
+        );
 
     if ( !$Result ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Response template could not be updated';
+        return;
+    }
+
+    my $Translated = $Self->{DB}->Do(
+        'INSERT INTO response_template_translation (
+            template_id,
+            language,
+            name,
+            description,
+            content,
+            created_by_user_id,
+            changed_by_user_id
+         ) VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+            name = VALUES(name),
+            description = VALUES(description),
+            content = VALUES(content),
+            changed_by_user_id = VALUES(changed_by_user_id)',
+        $TemplateID,
+        $Language,
+        $Name,
+        $Description,
+        $Content,
+        $UserID,
+        $UserID,
+    );
+
+    if ( !$Translated ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Response template translation could not be saved';
         return;
     }
 
@@ -354,6 +626,10 @@ sub TemplateDeactivate {
 sub QueueList {
     my ( $Self, %Param ) = @_;
 
+    $Self->SchemaEnsure() || return [];
+
+    my $Language        = $Self->LanguageClean( $Param{Language} );
+    my $DefaultLanguage = $Self->LanguageClean( $Self->{Config}->{Language}->{Default} );
     my $Rows = $Self->{DB}->SelectAll(
         'SELECT
             tq.id,
@@ -361,15 +637,34 @@ sub QueueList {
             tq.active,
             tq.sort_order,
             COUNT(rtq.template_id) AS template_count,
-            GROUP_CONCAT(rt.name ORDER BY rt.sort_order ASC, rt.name ASC SEPARATOR ", ") AS template_names
+            GROUP_CONCAT(
+                COALESCE(
+                    NULLIF(current_translation.name, ""),
+                    NULLIF(default_translation.name, ""),
+                    NULLIF(german_translation.name, ""),
+                    rt.name
+                )
+                ORDER BY rt.sort_order ASC, rt.name ASC SEPARATOR ", "
+            ) AS template_names
          FROM ticket_queue tq
          LEFT JOIN response_template_queue rtq
             ON rtq.queue_id = tq.id
          LEFT JOIN response_template rt
             ON rt.id = rtq.template_id
+         LEFT JOIN response_template_translation current_translation
+            ON current_translation.template_id = rt.id
+           AND current_translation.language = ?
+         LEFT JOIN response_template_translation default_translation
+            ON default_translation.template_id = rt.id
+           AND default_translation.language = ?
+         LEFT JOIN response_template_translation german_translation
+            ON german_translation.template_id = rt.id
+           AND german_translation.language = "de"
          ' . ( $Param{IncludeInactive} ? '' : 'WHERE tq.active = 1' ) . '
          GROUP BY tq.id, tq.full_name, tq.active, tq.sort_order
-         ORDER BY tq.sort_order ASC, tq.full_name ASC'
+         ORDER BY tq.sort_order ASC, tq.full_name ASC',
+        $Language,
+        $DefaultLanguage,
     );
 
     if ( !defined $Rows ) {
@@ -631,6 +926,7 @@ sub AttachmentsForArticle {
     my $Template = $Self->TemplateForQueueGet(
         TemplateID              => $TemplateID,
         QueueID                 => $QueueID,
+        Language                => $Param{Language},
         IncludeAttachmentContent => 1,
     );
 

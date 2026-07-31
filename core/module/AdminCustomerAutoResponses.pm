@@ -46,6 +46,7 @@ sub Run {
 
     my $Request = $Param{Request} || {};
     my $User    = $Param{User} || {};
+    my $Language = $Request->{Language} || $Self->{Config}->{Language}->{Default} || 'en';
     my $Action  = $Request->{Action} || 'List';
     my $Type    = $Request->{ResponseType} || '';
     my $Error   = '';
@@ -54,17 +55,24 @@ sub Run {
         Config => $Self->{Config},
         DB     => $Self->{DB},
     );
+    my $ResponseLanguage = $Response->LanguageClean(
+        $Request->{ResponseLanguage} || $Language,
+    );
 
     if ( ( $Request->{Step} || '' ) eq 'AutoResponseUpdate' ) {
         if ( $Response->TemplateUpdate(
             ResponseType    => $Type,
+            Language        => $ResponseLanguage,
             Subject         => $Request->{Subject},
             BodyHTML        => $Request->{BodyHTML},
             Active          => $Request->{Active},
             ChangedByUserID => $User->{user_account_id},
         ) ) {
             return {
-                Redirect => 'index.pl?Page=AdminCustomerAutoResponses;Action=Edit;ResponseType=' . $Self->_URLEncode($Type),
+                Redirect => 'index.pl?Page=AdminCustomerAutoResponses;Action=Edit;ResponseType='
+                    . $Self->_URLEncode($Type)
+                    . ';ResponseLanguage='
+                    . $Self->_URLEncode($ResponseLanguage),
             };
         }
 
@@ -72,12 +80,15 @@ sub Run {
         $Action = 'Edit';
     }
 
-    my $TemplateList = $Response->TemplateList();
+    my $TemplateList = $Response->TemplateList( Language => $ResponseLanguage );
     $Error ||= $Response->Error();
     my $Template;
 
     if ( $Action eq 'Edit' ) {
-        $Template = $Response->TemplateGet( ResponseType => $Type );
+        $Template = $Response->TemplateGet(
+            ResponseType => $Type,
+            Language     => $ResponseLanguage,
+        );
         if ( !$Template ) {
             $Error ||= $Response->Error() || 'Customer auto-response template was not found';
             $Action = 'List';
@@ -95,6 +106,11 @@ sub Run {
             TemplateList          => $TemplateList,
             TemplateCount         => scalar @{$TemplateList},
             PlaceholderList       => $PlaceholderList,
+            CurrentLanguage       => $ResponseLanguage,
+            LanguageOptionsHTML   => $Self->_LanguageOptionsHTML(
+                Languages => $Response->LanguageList(),
+                Selected  => $ResponseLanguage,
+            ),
             CurrentType           => $Template ? ( $Template->{response_type} || '' ) : '',
             CurrentName           => $Template ? ( $Template->{name} || '' ) : '',
             CurrentSubject        => $Template ? ( $Template->{subject} || '' ) : '',
@@ -107,6 +123,24 @@ sub Run {
             FormAction            => 'index.pl',
         },
     };
+}
+
+sub _LanguageOptionsHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $HTML = '';
+
+    for my $Language ( @{ $Param{Languages} || [] } ) {
+        my $Code     = $Language->{code} || '';
+        my $Label    = $Language->{label} || $Code;
+        my $Selected = $Code eq ( $Param{Selected} || '' ) ? ' selected' : '';
+
+        $HTML .= '<option value="' . $Self->{Output}->HTMLEscape($Code) . '"' . $Selected . '>'
+            . $Self->{Output}->HTMLEscape($Label)
+            . '</option>';
+    }
+
+    return $HTML;
 }
 
 sub _URLEncode {

@@ -93,7 +93,7 @@ for my $Table (qw(
 
 unlike( $Schema, qr/CREATE TABLE IF NOT EXISTS `knowledge_(?:article|category)_group`/, 'the clean schema contains no obsolete FAQ group tables' );
 
-for my $Language (qw(de en fr it)) {
+for my $Language (qw(de en fr it pt-BR pt-PT es nl pl cs tr)) {
     my $Translations = content("core/language/$Language.pm");
     like( $Translations, qr/^\s*KnowledgeBaseNavigation\s*=>/m, "$Language contains knowledge base translations" );
     like( $Translations, qr/^\s*KnowledgeInsertSolution\s*=>/m, "$Language contains editor insertion translations" );

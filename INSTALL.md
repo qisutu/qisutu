@@ -60,6 +60,12 @@ Im Hauptverzeichnis der betreffenden Instanz ausführen:
 
     sudo ./install.sh
 
+Als erste Installationsangabe wird eine der elf unterstützten Sprachen
+ausgewählt. `install.sh` speichert diese Auswahl in
+`var/install/instance.conf`. Der anschließende Webinstaller erscheint bereits
+in der gewählten Sprache und verwendet sie als voreingestellte
+Standardsprache für Qisutu.
+
 ### Normale Installation
 
 Liegt Qisutu im empfohlenen Verzeichnis `/opt/qisutu`, nimmt das Skript alle

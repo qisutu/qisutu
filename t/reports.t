@@ -130,7 +130,7 @@ for my $Path (qw(
     ok( length($Content) > 100, "$Path is present" );
 }
 
-for my $Language (qw(de en fr it)) {
+for my $Language (qw(de en fr it pt-BR pt-PT es nl pl cs tr)) {
     my $Translations = do "$FindBin::Bin/../core/language/$Language.pm";
     ok( ref $Translations eq 'HASH', "$Language translations load" );
     is( $Translations->{ReportCreate} ? 1 : 0, 1, "$Language contains report translations" );

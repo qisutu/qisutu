@@ -31,6 +31,7 @@ use QisutuService;
 use QisutuTimeAccounting;
 use QisutuCMDB;
 use QisutuKnowledgeBase;
+use QisutuLocalizedContent;
 use QisutuNotification;
 
 sub new {
@@ -117,6 +118,7 @@ sub Run {
                 StateID           => $Request->{StateID},
                 PriorityID        => $Request->{PriorityID},
                 PendingUntil      => $Request->{PendingUntil},
+                Language          => $Language,
             ),
         );
     }
@@ -125,6 +127,7 @@ sub Run {
         my $QueueCheck = $Self->_QueueTemplateData(
             QueueID => $Request->{QueueID},
             User    => $User,
+            Language => $Language,
         );
         my $DynamicFieldObject = $Self->_DynamicFieldObject();
 
@@ -184,6 +187,7 @@ sub Run {
             StateID        => $StateID,
             PriorityID     => $PriorityID,
             PendingUntil   => $PendingUntil,
+            Language       => $Language,
         );
     }
 
@@ -993,6 +997,7 @@ sub _QueueTemplateData {
             StateID        => $Param{StateID},
             PriorityID     => $Param{PriorityID},
             PendingUntil   => $Param{PendingUntil},
+            Language       => $Param{Language},
         ),
     };
 }
@@ -1002,6 +1007,17 @@ sub _QueueTemplateHTML {
 
     my $QueueID = $Param{QueueID} || 0;
     return '' if !$QueueID;
+
+    my $LocalizedContent = QisutuLocalizedContent->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
+    return '' if !$LocalizedContent->SchemaEnsure();
+
+    my $Language = $LocalizedContent->LanguageClean( $Param{Language} );
+    my $DefaultLanguage = $LocalizedContent->LanguageClean(
+        $Self->{Config}->{Language}->{Default},
+    );
 
     my $Loaded = eval {
         require QisutuHTML;
@@ -1013,18 +1029,42 @@ sub _QueueTemplateHTML {
         'SELECT
             q.name AS queue_name,
             q.full_name AS queue_full_name,
-            sal.content AS salutation_content,
-            sig.content AS signature_content
+            COALESCE(
+                NULLIF(sal_current.content, ""),
+                NULLIF(sal_default.content, ""),
+                sal.content
+            ) AS salutation_content,
+            COALESCE(
+                NULLIF(sig_current.content, ""),
+                NULLIF(sig_default.content, ""),
+                sig.content
+            ) AS signature_content
          FROM ticket_queue q
          LEFT JOIN salutation sal
             ON sal.id = q.salutation_id
            AND sal.active = 1
+         LEFT JOIN salutation_translation sal_current
+            ON sal_current.salutation_id = sal.id
+           AND sal_current.language = ?
+         LEFT JOIN salutation_translation sal_default
+            ON sal_default.salutation_id = sal.id
+           AND sal_default.language = ?
          LEFT JOIN signature sig
             ON sig.id = q.signature_id
            AND sig.active = 1
+         LEFT JOIN signature_translation sig_current
+            ON sig_current.signature_id = sig.id
+           AND sig_current.language = ?
+         LEFT JOIN signature_translation sig_default
+            ON sig_default.signature_id = sig.id
+           AND sig_default.language = ?
          WHERE q.id = ?
            AND q.active = 1
          LIMIT 1',
+        $Language,
+        $DefaultLanguage,
+        $Language,
+        $DefaultLanguage,
         $QueueID,
     );
 
@@ -1084,6 +1124,7 @@ sub _QueueTemplateHTML {
         lastname  => $User->{lastname} || '',
         login     => $User->{login} || '',
         email     => $User->{email} || '',
+        language  => $Language,
     };
     my $Renderer = QisutuNotification->new(
         Config => $Self->{Config},
@@ -1099,6 +1140,7 @@ sub _QueueTemplateHTML {
         AssignedID        => $Param{OwnerUserID} || $User->{user_account_id},
         SystemPlaceholder => $Renderer->SystemPlaceholderHash(),
         PreserveEmptyKeys => [ qw(Ticket.Number Ticket.Link Ticket.LinkHTML) ],
+        Language          => $Language,
     );
     $Salutation = $Renderer->ContentTemplateRenderHTML( %RenderParam, HTML => $Salutation ) if $Salutation;
     $Signature  = $Renderer->ContentTemplateRenderHTML( %RenderParam, HTML => $Signature ) if $Signature;

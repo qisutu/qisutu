@@ -42,6 +42,7 @@ sub _Definition {
         ValueIsTextarea => 1,
         RichText       => 1,
         ContentPlaceholders => 1,
+        LocalizedContent => 1,
         IDParam        => 'SignatureID',
         ListMethod     => 'SignatureList',
         GetMethod      => 'SignatureGet',

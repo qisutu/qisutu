@@ -52,6 +52,9 @@ sub Run {
     my $Error    = '';
 
     my $Notification = $Self->_NotificationObject();
+    my $NotificationLanguage = $Notification
+        ? $Notification->LanguageClean( $Request->{NotificationLanguage} || $Language )
+        : $Language;
 
     if ( !$Notification ) {
         $Error = 'Agent notification module could not be loaded';
@@ -62,6 +65,7 @@ sub Run {
         if (
             $Notification->TemplateUpdate(
                 NotificationType => $Type,
+                Language         => $NotificationLanguage,
                 Subject          => $Request->{Subject},
                 BodyHTML         => $Request->{BodyHTML},
                 Active           => $Request->{Active},
@@ -70,7 +74,10 @@ sub Run {
             )
         {
             return {
-                Redirect => 'index.pl?Page=AdminAgentNotifications;Action=Edit;NotificationType=' . $Self->_URLEncode($Type),
+                Redirect => 'index.pl?Page=AdminAgentNotifications;Action=Edit;NotificationType='
+                    . $Self->_URLEncode($Type)
+                    . ';NotificationLanguage='
+                    . $Self->_URLEncode($NotificationLanguage),
             };
         }
 
@@ -78,12 +85,15 @@ sub Run {
         $Action = 'Edit';
     }
 
-    my $TemplateList = $Notification ? $Notification->TemplateList() : [];
+    my $TemplateList = $Notification
+        ? $Notification->TemplateList( Language => $NotificationLanguage )
+        : [];
     my $Template;
 
     if ( $Notification && $Action eq 'Edit' ) {
         $Template = $Notification->TemplateGet(
             NotificationType => $Type,
+            Language         => $NotificationLanguage,
         );
 
         if ( !$Template ) {
@@ -105,6 +115,11 @@ sub Run {
             PlaceholderList    => $PlaceholderList,
             PlaceholderCount   => scalar @{$PlaceholderList},
             CurrentType        => $Template ? ( $Template->{notification_type} || '' ) : '',
+            CurrentLanguage    => $NotificationLanguage,
+            LanguageOptionsHTML => $Self->_LanguageOptionsHTML(
+                Languages => $Notification ? $Notification->LanguageList() : [],
+                Selected  => $NotificationLanguage,
+            ),
             CurrentName        => $Template ? ( $Template->{name} || '' ) : '',
             CurrentSubject     => $Template ? ( $Template->{subject} || '' ) : '',
             CurrentBodyHTML    => $Template ? ( $Template->{body_html} || '' ) : '',
@@ -116,6 +131,24 @@ sub Run {
             FormAction         => 'index.pl',
         },
     };
+}
+
+sub _LanguageOptionsHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $HTML = '';
+
+    for my $Language ( @{ $Param{Languages} || [] } ) {
+        my $Code  = $Language->{code} || '';
+        my $Label = $Language->{label} || $Code;
+        my $Selected = $Code eq ( $Param{Selected} || '' ) ? ' selected' : '';
+
+        $HTML .= '<option value="' . $Self->{Output}->HTMLEscape($Code) . '"' . $Selected . '>'
+            . $Self->{Output}->HTMLEscape($Label)
+            . '</option>';
+    }
+
+    return $HTML;
 }
 
 sub _NotificationObject {

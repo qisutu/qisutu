@@ -27,6 +27,7 @@ use warnings;
 use utf8;
 
 use QisutuHTML;
+use QisutuLocalizedContent;
 use QisutuMail;
 use QisutuOAuth2;
 use QisutuSecurity;
@@ -452,9 +453,10 @@ sub SystemEmailList {
 sub SalutationList {
     my ( $Self, %Param ) = @_;
 
-    return $Self->_MasterDataList(
-        Table           => 'salutation',
-        ExtraSelect     => 'content',
+    return $Self->_LocalizedContentCall(
+        Method          => 'ItemList',
+        Type            => 'salutation',
+        Language        => $Param{Language},
         IncludeInactive => $Param{IncludeInactive},
     );
 }
@@ -462,9 +464,10 @@ sub SalutationList {
 sub SignatureList {
     my ( $Self, %Param ) = @_;
 
-    return $Self->_MasterDataList(
-        Table           => 'signature',
-        ExtraSelect     => 'content',
+    return $Self->_LocalizedContentCall(
+        Method          => 'ItemList',
+        Type            => 'signature',
+        Language        => $Param{Language},
         IncludeInactive => $Param{IncludeInactive},
     );
 }
@@ -530,20 +533,22 @@ sub SystemEmailDeactivate {
 sub SalutationGet {
     my ( $Self, %Param ) = @_;
 
-    return $Self->_MasterDataGet(
-        Table       => 'salutation',
-        ExtraSelect => 'content',
-        ID          => $Param{SalutationID},
+    return $Self->_LocalizedContentCall(
+        Method   => 'ItemGet',
+        Type     => 'salutation',
+        ID       => $Param{SalutationID},
+        Language => $Param{Language},
     );
 }
 
 sub SalutationCreate {
     my ( $Self, %Param ) = @_;
 
-    return $Self->_MasterDataCreate(
-        Table           => 'salutation',
-        ExtraColumn     => 'content',
-        ExtraValue      => $Param{Content},
+    return $Self->_LocalizedContentCall(
+        Method          => 'ItemCreate',
+        Type            => 'salutation',
+        Language        => $Param{Language},
+        Content         => $Param{Content},
         Name            => $Param{Name},
         SortOrder       => $Param{SortOrder},
         ChangedByUserID => $Param{ChangedByUserID},
@@ -553,10 +558,11 @@ sub SalutationCreate {
 sub SalutationUpdate {
     my ( $Self, %Param ) = @_;
 
-    return $Self->_MasterDataUpdate(
-        Table           => 'salutation',
-        ExtraColumn     => 'content',
-        ExtraValue      => $Param{Content},
+    return $Self->_LocalizedContentCall(
+        Method          => 'ItemUpdate',
+        Type            => 'salutation',
+        Language        => $Param{Language},
+        Content         => $Param{Content},
         ID              => $Param{SalutationID},
         Name            => $Param{Name},
         Active          => $Param{Active},
@@ -568,8 +574,9 @@ sub SalutationUpdate {
 sub SalutationDeactivate {
     my ( $Self, %Param ) = @_;
 
-    return $Self->_MasterDataDeactivate(
-        Table           => 'salutation',
+    return $Self->_LocalizedContentCall(
+        Method          => 'ItemDeactivate',
+        Type            => 'salutation',
         ID              => $Param{SalutationID},
         ChangedByUserID => $Param{ChangedByUserID},
     );
@@ -578,20 +585,22 @@ sub SalutationDeactivate {
 sub SignatureGet {
     my ( $Self, %Param ) = @_;
 
-    return $Self->_MasterDataGet(
-        Table       => 'signature',
-        ExtraSelect => 'content',
-        ID          => $Param{SignatureID},
+    return $Self->_LocalizedContentCall(
+        Method   => 'ItemGet',
+        Type     => 'signature',
+        ID       => $Param{SignatureID},
+        Language => $Param{Language},
     );
 }
 
 sub SignatureCreate {
     my ( $Self, %Param ) = @_;
 
-    return $Self->_MasterDataCreate(
-        Table           => 'signature',
-        ExtraColumn     => 'content',
-        ExtraValue      => $Param{Content},
+    return $Self->_LocalizedContentCall(
+        Method          => 'ItemCreate',
+        Type            => 'signature',
+        Language        => $Param{Language},
+        Content         => $Param{Content},
         Name            => $Param{Name},
         SortOrder       => $Param{SortOrder},
         ChangedByUserID => $Param{ChangedByUserID},
@@ -601,10 +610,11 @@ sub SignatureCreate {
 sub SignatureUpdate {
     my ( $Self, %Param ) = @_;
 
-    return $Self->_MasterDataUpdate(
-        Table           => 'signature',
-        ExtraColumn     => 'content',
-        ExtraValue      => $Param{Content},
+    return $Self->_LocalizedContentCall(
+        Method          => 'ItemUpdate',
+        Type            => 'signature',
+        Language        => $Param{Language},
+        Content         => $Param{Content},
         ID              => $Param{SignatureID},
         Name            => $Param{Name},
         Active          => $Param{Active},
@@ -616,8 +626,9 @@ sub SignatureUpdate {
 sub SignatureDeactivate {
     my ( $Self, %Param ) = @_;
 
-    return $Self->_MasterDataDeactivate(
-        Table           => 'signature',
+    return $Self->_LocalizedContentCall(
+        Method          => 'ItemDeactivate',
+        Type            => 'signature',
         ID              => $Param{SignatureID},
         ChangedByUserID => $Param{ChangedByUserID},
     );
@@ -4184,6 +4195,33 @@ sub _MasterDataList {
     return $Self->_RowsPrepare( Rows => $Rows );
 }
 
+sub _LocalizedContentCall {
+    my ( $Self, %Param ) = @_;
+
+    my $Method = delete $Param{Method};
+    my %Allowed = map { $_ => 1 } qw(ItemList ItemGet ItemCreate ItemUpdate ItemDeactivate);
+
+    if ( !$Method || !$Allowed{$Method} ) {
+        $Self->{LastError} = 'Invalid localized content operation';
+        return;
+    }
+
+    $Self->{LocalizedContentObject} ||= QisutuLocalizedContent->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
+
+    $Self->{LastError} = '';
+    $Self->{LocalizedContentObject}->{LastError} = '';
+
+    my $Result = $Self->{LocalizedContentObject}->$Method(%Param);
+    if ( $Self->{LocalizedContentObject}->Error() ) {
+        $Self->{LastError} = $Self->{LocalizedContentObject}->Error();
+    }
+
+    return $Result;
+}
+
 sub _MasterDataGet {
     my ( $Self, %Param ) = @_;
 
@@ -4662,6 +4700,14 @@ sub _LanguageClean {
 
     $Language = '' if !defined $Language;
     $Language =~ s{[^A-Za-z0-9_-]}{}g;
+    $Language =~ tr{_}{-};
+
+    if ( $Language =~ m{\A([A-Za-z]{2,3})-([A-Za-z]{2})\z} ) {
+        $Language = lc($1) . '-' . uc($2);
+    }
+    else {
+        $Language = lc $Language;
+    }
 
     return $Language || 'en';
 }

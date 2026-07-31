@@ -36,6 +36,7 @@ use QisutuTicketLink;
 use QisutuTicketHistory;
 use QisutuCMDB;
 use QisutuKnowledgeBase;
+use QisutuLocalizedContent;
 use QisutuNotification;
 use QisutuTicketPDF;
 
@@ -281,6 +282,7 @@ sub Run {
             $Template = $TemplateObject->TemplateForQueueGet(
                 TemplateID => $TemplateID,
                 QueueID    => $AccessibleTicket->{queue_id},
+                Language   => $Language,
             );
         }
 
@@ -565,6 +567,7 @@ sub Run {
             my $TemplateAttachments = $TemplateObject ? $TemplateObject->AttachmentsForArticle(
                 TemplateID   => $Request->{ResponseTemplateID},
                 QueueID      => $TicketForSubmit->{queue_id},
+                Language     => $Language,
                 AttachmentIDs => $AttachmentIDs,
                 UseSelection => $Request->{ResponseTemplateAttachmentSelection} ? 1 : 0,
             ) : undef;
@@ -948,10 +951,12 @@ sub Run {
     my $ReplyEmailTemplate  = $Self->_QueueReplyTemplate(
         TicketID => $Ticket->{id},
         User     => $Param{User} || {},
+        Language => $Language,
     );
     my $ResponseTemplateObject = $Self->_ResponseTemplateObject();
     my $ResponseTemplateList = $ResponseTemplateObject ? $ResponseTemplateObject->TemplateListForQueue(
         QueueID => $Ticket->{queue_id},
+        Language => $Language,
     ) : [];
     my $SelectedResponseTemplateID = $ArticleCreateError ? ( $Request->{ResponseTemplateID} || 0 ) : 0;
     for my $ResponseTemplate ( @{$ResponseTemplateList} ) {
@@ -3707,6 +3712,17 @@ sub _QueueReplyTemplate {
 
     return '' if !$Self->{DB} || !$TicketID;
 
+    my $LocalizedContent = QisutuLocalizedContent->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
+    return '' if !$LocalizedContent->SchemaEnsure();
+
+    my $Language = $LocalizedContent->LanguageClean( $Param{Language} );
+    my $DefaultLanguage = $LocalizedContent->LanguageClean(
+        $Self->{Config}->{Language}->{Default},
+    );
+
     eval {
         require QisutuHTML;
         1;
@@ -3714,19 +3730,43 @@ sub _QueueReplyTemplate {
 
     my $Row = $Self->{DB}->SelectRow(
         'SELECT
-            sal.content AS salutation_content,
-            sig.content AS signature_content
+            COALESCE(
+                NULLIF(sal_current.content, ""),
+                NULLIF(sal_default.content, ""),
+                sal.content
+            ) AS salutation_content,
+            COALESCE(
+                NULLIF(sig_current.content, ""),
+                NULLIF(sig_default.content, ""),
+                sig.content
+            ) AS signature_content
          FROM ticket t
          INNER JOIN ticket_queue q
             ON q.id = t.queue_id
          LEFT JOIN salutation sal
             ON sal.id = q.salutation_id
            AND sal.active = 1
+         LEFT JOIN salutation_translation sal_current
+            ON sal_current.salutation_id = sal.id
+           AND sal_current.language = ?
+         LEFT JOIN salutation_translation sal_default
+            ON sal_default.salutation_id = sal.id
+           AND sal_default.language = ?
          LEFT JOIN signature sig
             ON sig.id = q.signature_id
            AND sig.active = 1
+         LEFT JOIN signature_translation sig_current
+            ON sig_current.signature_id = sig.id
+           AND sig_current.language = ?
+         LEFT JOIN signature_translation sig_default
+            ON sig_default.signature_id = sig.id
+           AND sig_default.language = ?
          WHERE t.id = ?
          LIMIT 1',
+        $Language,
+        $DefaultLanguage,
+        $Language,
+        $DefaultLanguage,
         $TicketID,
     );
 
@@ -3744,6 +3784,7 @@ sub _QueueReplyTemplate {
         AgentUserID => $User->{user_account_id},
         ChangedByID => $User->{user_account_id},
         SystemPlaceholder => $Renderer->SystemPlaceholderHash(),
+        Language     => $Language,
     );
     $Salutation = $Renderer->ContentTemplateRenderHTML( %RenderParam, HTML => $Salutation ) if $Salutation;
     $Signature  = $Renderer->ContentTemplateRenderHTML( %RenderParam, HTML => $Signature ) if $Signature;

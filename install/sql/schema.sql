@@ -68,6 +68,7 @@ DROP TABLE IF EXISTS `agent_notification_template`;
 CREATE TABLE `agent_notification_template` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `notification_type` varchar(100) NOT NULL,
+  `language` varchar(10) NOT NULL DEFAULT 'de',
   `name` varchar(255) NOT NULL,
   `subject` varchar(500) NOT NULL DEFAULT '',
   `body_html` longtext NOT NULL,
@@ -78,8 +79,8 @@ CREATE TABLE `agent_notification_template` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `agent_notification_template_type_unique` (`notification_type`),
-  KEY `agent_notification_template_active_sort` (`active`,`sort_order`)
+  UNIQUE KEY `agent_notification_template_type_language_unique` (`notification_type`,`language`),
+  KEY `agent_notification_template_language_active_sort` (`language`,`active`,`sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -115,6 +116,7 @@ DROP TABLE IF EXISTS `customer_auto_response_template`;
 CREATE TABLE `customer_auto_response_template` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `response_type` varchar(100) NOT NULL,
+  `language` varchar(10) NOT NULL DEFAULT 'de',
   `name` varchar(255) NOT NULL,
   `subject` varchar(500) NOT NULL DEFAULT '',
   `body_html` longtext NOT NULL,
@@ -125,8 +127,8 @@ CREATE TABLE `customer_auto_response_template` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `customer_auto_response_template_type_unique` (`response_type`),
-  KEY `customer_auto_response_template_active_sort` (`active`,`sort_order`)
+  UNIQUE KEY `customer_auto_response_template_type_language_unique` (`response_type`,`language`),
+  KEY `customer_auto_response_template_language_active_sort` (`language`,`active`,`sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -703,6 +705,29 @@ CREATE TABLE `response_template` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `response_template_translation`
+--
+
+DROP TABLE IF EXISTS `response_template_translation`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `response_template_translation` (
+  `template_id` bigint(20) unsigned NOT NULL,
+  `language` varchar(10) NOT NULL,
+  `name` varchar(190) NOT NULL,
+  `description` text DEFAULT NULL,
+  `content` longtext NOT NULL,
+  `created_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`template_id`,`language`),
+  KEY `response_template_translation_language_name` (`language`,`name`),
+  CONSTRAINT `response_template_translation_template_fk` FOREIGN KEY (`template_id`) REFERENCES `response_template` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `response_template_attachment`
 --
 
@@ -752,6 +777,7 @@ CREATE TABLE `response_template_queue` (
 -- Table structure for table `salutation`
 --
 
+DROP TABLE IF EXISTS `salutation_translation`;
 DROP TABLE IF EXISTS `salutation`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -768,6 +794,27 @@ CREATE TABLE `salutation` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `salutation_name` (`name`),
   KEY `salutation_active_sort` (`active`,`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `salutation_translation`
+--
+
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `salutation_translation` (
+  `salutation_id` bigint(20) unsigned NOT NULL,
+  `language` varchar(10) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `content` longtext NOT NULL,
+  `created_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`salutation_id`,`language`),
+  KEY `salutation_translation_language_name` (`language`,`name`),
+  CONSTRAINT `salutation_translation_salutation_fk` FOREIGN KEY (`salutation_id`) REFERENCES `salutation` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -802,6 +849,7 @@ CREATE TABLE `service` (
 -- Table structure for table `signature`
 --
 
+DROP TABLE IF EXISTS `signature_translation`;
 DROP TABLE IF EXISTS `signature`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -818,6 +866,27 @@ CREATE TABLE `signature` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `signature_name` (`name`),
   KEY `signature_active_sort` (`active`,`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `signature_translation`
+--
+
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `signature_translation` (
+  `signature_id` bigint(20) unsigned NOT NULL,
+  `language` varchar(10) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `content` longtext NOT NULL,
+  `created_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`signature_id`,`language`),
+  KEY `signature_translation_language_name` (`language`,`name`),
+  CONSTRAINT `signature_translation_signature_fk` FOREIGN KEY (`signature_id`) REFERENCES `signature` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

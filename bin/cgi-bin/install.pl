@@ -31,6 +31,7 @@ use Digest::SHA qw(sha256_hex);
 use Encode qw(decode encode);
 use File::Basename qw(dirname);
 use File::Spec;
+use Fcntl qw(:flock);
 use FindBin;
 use IPC::Open3;
 use JSON::PP;
@@ -56,6 +57,8 @@ my $ThirdPartyFile = File::Spec->catfile( $RootPath, 'THIRD_PARTY_NOTICES.md' );
 my $LogFile = File::Spec->catfile( $RootPath, 'var', 'log', 'install.log' );
 my $BootstrapFile = File::Spec->catfile( $InstallPath, 'database-bootstrap.conf' );
 my $InstanceFile = File::Spec->catfile( $InstallPath, 'instance.conf' );
+my $InstallerOperationLockFile = File::Spec->catfile( $InstallPath, 'installer-operation.lock' );
+my $InstallerLanguagePath = File::Spec->catdir( $RootPath, 'core', 'language', 'installer' );
 my $ProgramVersion = '0.0.1';
 
 if ( open my $ReleaseHandle, '<:encoding(UTF-8)', $ReleaseFile ) {
@@ -74,6 +77,7 @@ my %InstanceConfig = (
     session_cookie => 'QISUTU_SESSION',
     db_name        => 'qisutu',
     db_user        => 'qisutu',
+    install_language => 'de',
 );
 
 if ( -r $InstanceFile ) {
@@ -99,6 +103,9 @@ $InstanceConfig{db_name} = 'qisutu'
     if $InstanceConfig{db_name} !~ m{\A[A-Za-z][A-Za-z0-9_]{0,63}\z};
 $InstanceConfig{db_user} = 'qisutu'
     if $InstanceConfig{db_user} !~ m{\A[A-Za-z][A-Za-z0-9_]{0,23}\z};
+$InstanceConfig{install_language} = _LanguageCanonical( $InstanceConfig{install_language} );
+$InstanceConfig{install_language} = 'de'
+    if !_InstallerLanguageAvailable( $InstanceConfig{install_language} );
 
 my $InstanceID       = $InstanceConfig{instance_id};
 my $WebPath          = $InstanceConfig{web_path};
@@ -106,11 +113,32 @@ my $SessionCookieName = $InstanceConfig{session_cookie};
 my $InstallCookieName = $SessionCookieName . '_INSTALL';
 my $DefaultDBName    = $InstanceConfig{db_name};
 my $DefaultDBUser    = $InstanceConfig{db_user};
+my $InstallLanguage  = $InstanceConfig{install_language};
+my $UILanguage       = $InstallLanguage;
+my $InstallerText    = {};
+my $InstallerEnglish = {};
 
 binmode STDOUT, ':raw';
 
 my $Request = _RequestParams();
 my ( $Token, $State, $NewSession ) = _SessionLoadOrCreate();
+if ( !$State->{welcome_done}
+    && (
+        ( $State->{ui_language} || '' ) ne $InstallLanguage
+        || ( $State->{default_language} || '' ) ne $InstallLanguage
+    )
+) {
+    $State->{ui_language}      = $InstallLanguage;
+    $State->{default_language} = $InstallLanguage;
+    _StateSave( $Token, $State );
+}
+$UILanguage = _LanguageCanonical(
+    $State->{ui_language}
+        || $State->{default_language}
+        || $InstallLanguage
+);
+$UILanguage = $InstallLanguage if !_InstallerLanguageAvailable($UILanguage);
+_InstallerLanguageLoad($UILanguage);
 my $Step = $Request->{Step} || 1;
 $Step = 1 if $Step !~ m{\A[1-6]\z};
 
@@ -118,7 +146,7 @@ if ( -f $LockFile && !( $Step == 6 && $State->{show_final} ) ) {
     _PrintResponse(
         Body => _Page(
             Step    => 6,
-            Title   => 'Qisutu ist bereits installiert',
+            Title   => _I('AlreadyInstalledTitle'),
             Content => _InstalledHTML(),
         ),
         Cookie => $NewSession ? _SessionCookie($Token) : '',
@@ -147,12 +175,12 @@ my $Error  = '';
 
 if ( ( $ENV{REQUEST_METHOD} || '' ) eq 'POST' ) {
     if ( !$Request->{CSRFToken} || $Request->{CSRFToken} ne ( $State->{csrf_token} || '' ) ) {
-        $Error = 'Die Installationssitzung ist ungültig. Bitte lade die Seite neu.';
+        $Error = _I('SessionInvalid');
     }
     elsif ( $Action eq 'Begin' ) {
         my $Checks = _SystemChecks();
         if ( grep { $_->{critical} && !$_->{ok} } @{$Checks} ) {
-            $Error = 'Mindestens eine zwingende Systemvoraussetzung ist nicht erfüllt.';
+            $Error = _I('RequiredCheckFailed');
             $Step  = 1;
         }
         else {
@@ -163,7 +191,7 @@ if ( ( $ENV{REQUEST_METHOD} || '' ) eq 'POST' ) {
     }
     elsif ( $Action eq 'AcceptLicense' ) {
         if ( !$Request->{LicenseAccepted} ) {
-            $Error = 'Die Lizenzbedingungen müssen bestätigt werden.';
+            $Error = _I('LicenseConfirmRequired');
             $Step  = 2;
         }
         else {
@@ -175,7 +203,7 @@ if ( ( $ENV{REQUEST_METHOD} || '' ) eq 'POST' ) {
     elsif ( $Action eq 'InstallDatabase' ) {
         my $Result = _DatabaseInstall( Request => $Request, State => $State );
         if ( !$Result->{success} ) {
-            $Error = $Result->{error} || 'Die Datenbankinstallation ist fehlgeschlagen.';
+            $Error = $Result->{error} || _I('DatabaseInstallFailed');
             $Step  = 3;
         }
         else {
@@ -186,7 +214,7 @@ if ( ( $ENV{REQUEST_METHOD} || '' ) eq 'POST' ) {
     }
     elsif ( $Action eq 'ContinueAfterDatabase' ) {
         if ( !$State->{database_done} ) {
-            $Error = 'Die Datenbank wurde noch nicht eingerichtet.';
+            $Error = _I('DatabaseNotReady');
             $Step  = 3;
         }
         else {
@@ -196,7 +224,7 @@ if ( ( $ENV{REQUEST_METHOD} || '' ) eq 'POST' ) {
     elsif ( $Action eq 'SaveSystem' ) {
         my $Result = _SystemSettingsSave( Request => $Request, State => $State );
         if ( !$Result->{success} ) {
-            $Error = $Result->{error} || 'Die Systemeinstellungen konnten nicht gespeichert werden.';
+            $Error = $Result->{error} || _I('SystemSaveFailed');
             $Step  = 4;
         }
         else {
@@ -207,30 +235,46 @@ if ( ( $ENV{REQUEST_METHOD} || '' ) eq 'POST' ) {
     }
     elsif ( $Action eq 'SkipMail' ) {
         if ( !$State->{system_done} ) {
-            $Error = 'Die Systemeinstellungen wurden noch nicht gespeichert.';
+            $Error = _I('SystemNotSaved');
             $Step  = 4;
         }
         else {
             $State->{mail_done}  = 1;
             $State->{mail_skip}  = 1;
-            $State->{show_final} = 1;
-            _StateSave( $Token, $State );
-            _InstallationLockCreate($State);
-            _Redirect( Location => 'install.pl?Step=6', Cookie => $NewSession ? _SessionCookie($Token) : '' );
+            my $Result = _InstallationFinalize(
+                Token => $Token,
+                State => $State,
+            );
+            if ( !$Result->{success} ) {
+                $Error = $Result->{error} || _I('InstallationFinalizeFailed');
+                $Step  = 5;
+            }
+            else {
+                $State = $Result->{state};
+                _Redirect( Location => 'install.pl?Step=6', Cookie => $NewSession ? _SessionCookie($Token) : '' );
+            }
         }
     }
     elsif ( $Action eq 'SaveMail' ) {
         my $Result = _MailSettingsSave( Request => $Request, State => $State );
         if ( !$Result->{success} ) {
-            $Error = $Result->{error} || 'Die E-Mail-Einstellungen konnten nicht gespeichert werden.';
+            $Error = $Result->{error} || _I('MailSaveFailed');
             $Step  = 5;
         }
         else {
             $State = $Result->{state};
-            $State->{show_final} = 1;
-            _StateSave( $Token, $State );
-            _InstallationLockCreate($State);
-            _Redirect( Location => 'install.pl?Step=6', Cookie => $NewSession ? _SessionCookie($Token) : '' );
+            my $Finalize = _InstallationFinalize(
+                Token => $Token,
+                State => $State,
+            );
+            if ( !$Finalize->{success} ) {
+                $Error = $Finalize->{error} || _I('InstallationFinalizeFailed');
+                $Step  = 5;
+            }
+            else {
+                $State = $Finalize->{state};
+                _Redirect( Location => 'install.pl?Step=6', Cookie => $NewSession ? _SessionCookie($Token) : '' );
+            }
         }
     }
     elsif ( $Action eq 'Finish' ) {
@@ -244,27 +288,27 @@ my $Content;
 my $Title;
 
 if ( $Step == 1 ) {
-    $Title   = 'Willkommen bei Qisutu';
+    $Title   = _I('TitleWelcome');
     $Content = _WelcomeHTML( Error => $Error, State => $State );
 }
 elsif ( $Step == 2 ) {
-    $Title   = 'Lizenzbedingungen';
+    $Title   = _I('TitleLicense');
     $Content = _LicenseHTML( Error => $Error, State => $State );
 }
 elsif ( $Step == 3 ) {
-    $Title   = 'Datenbank einrichten';
+    $Title   = _I('TitleDatabase');
     $Content = _DatabaseHTML( Error => $Error, State => $State, Request => $Request );
 }
 elsif ( $Step == 4 ) {
-    $Title   = 'Systemeinstellungen';
+    $Title   = _I('TitleSystem');
     $Content = _SystemHTML( Error => $Error, State => $State, Request => $Request );
 }
 elsif ( $Step == 5 ) {
-    $Title   = 'E-Mail-Einstellungen';
+    $Title   = _I('TitleMail');
     $Content = _MailHTML( Error => $Error, State => $State, Request => $Request );
 }
 else {
-    $Title   = 'Installation abgeschlossen';
+    $Title   = _I('TitleComplete');
     $Content = _FinalHTML( Error => $Error, State => $State );
 }
 
@@ -281,7 +325,7 @@ sub _WelcomeHTML {
 
     for my $Check ( @{$Checks} ) {
         my $Class = $Check->{ok} ? 'ok' : ( $Check->{critical} ? 'error' : 'warning' );
-        my $Label = $Check->{ok} ? 'OK' : ( $Check->{critical} ? 'Fehler' : 'Hinweis' );
+        my $Label = $Check->{ok} ? 'OK' : ( $Check->{critical} ? _I('StatusError') : _I('StatusNotice') );
         $HasError = 1 if $Check->{critical} && !$Check->{ok};
         $Rows .= '<tr><td>' . _Escape( $Check->{name} ) . '</td><td>' . _Escape( $Check->{detail} )
             . '</td><td><span class="qisutu-install-status ' . $Class . '">' . $Label . '</span></td></tr>';
@@ -290,9 +334,9 @@ sub _WelcomeHTML {
     return _ErrorHTML( $Param{Error} ) . qq{
         <div class="qisutu-install-welcome">
             <div>
-                <h2>Willkommen bei Qisutu</h2>
-                <p>Dieser Assistent richtet das Qisutu Ticketsystem, die Datenbank, den ersten Administrator und die wichtigsten Systemeinstellungen ein.</p>
-                <p>Die Installation führt dich Schritt für Schritt durch alle erforderlichen Angaben und prüft die wichtigsten Voraussetzungen automatisch.</p>
+                <h2>} . _Escape( _I('WelcomeHeading') ) . qq{</h2>
+                <p>} . _Escape( _I('WelcomeIntro') ) . qq{</p>
+                <p>} . _Escape( _I('WelcomeSteps') ) . qq{</p>
             </div>
             <div class="qisutu-install-company">
                 <strong>Franziska Steps</strong><br>
@@ -304,20 +348,20 @@ sub _WelcomeHTML {
                 <a href="mailto:support\@qisutu.de">support\@qisutu.de</a>
             </div>
         </div>
-        <h3>Instanz</h3>
+        <h3>} . _Escape( _I('Instance') ) . qq{</h3>
         <div class="qisutu-install-credentials">
-            <div><span>Instanzkennung</span><strong>} . _Escape($InstanceID) . qq{</strong></div>
-            <div><span>Webpfad</span><strong>} . _Escape($WebPath) . qq{</strong></div>
-            <div><span>Datenbankname</span><strong>} . _Escape($DefaultDBName) . qq{</strong></div>
-            <div><span>Datenbankbenutzer</span><strong>} . _Escape($DefaultDBUser) . qq{</strong></div>
+            <div><span>} . _Escape( _I('InstanceID') ) . qq{</span><strong>} . _Escape($InstanceID) . qq{</strong></div>
+            <div><span>} . _Escape( _I('WebPath') ) . qq{</span><strong>} . _Escape($WebPath) . qq{</strong></div>
+            <div><span>} . _Escape( _I('DatabaseName') ) . qq{</span><strong>} . _Escape($DefaultDBName) . qq{</strong></div>
+            <div><span>} . _Escape( _I('DatabaseUser') ) . qq{</span><strong>} . _Escape($DefaultDBUser) . qq{</strong></div>
         </div>
-        <h3>Systemprüfung</h3>
-        <div class="qisutu-install-table-wrap"><table><thead><tr><th>Prüfung</th><th>Ergebnis</th><th>Status</th></tr></thead><tbody>$Rows</tbody></table></div>
+        <h3>} . _Escape( _I('SystemCheck') ) . qq{</h3>
+        <div class="qisutu-install-table-wrap"><table><thead><tr><th>} . _Escape( _I('Check') ) . qq{</th><th>} . _Escape( _I('Result') ) . qq{</th><th>} . _Escape( _I('Status') ) . qq{</th></tr></thead><tbody>$Rows</tbody></table></div>
         <form method="post" action="install.pl">
             <input type="hidden" name="Step" value="1">
             <input type="hidden" name="Action" value="Begin">
             <input type="hidden" name="CSRFToken" value="} . _Escape( $Param{State}->{csrf_token} ) . qq{">
-            <div class="qisutu-install-actions"><button class="primary" type="submit"} . ( $HasError ? ' disabled' : '' ) . qq{>Installation starten</button></div>
+            <div class="qisutu-install-actions"><button class="primary" type="submit"} . ( $HasError ? ' disabled' : '' ) . qq{>} . _Escape( _I('StartInstallation') ) . qq{</button></div>
         </form>
     };
 }
@@ -328,15 +372,15 @@ sub _LicenseHTML {
     my $Third   = _FileRead($ThirdPartyFile);
 
     return _ErrorHTML( $Param{Error} ) . qq{
-        <p>Qisutu wird unter der GNU Affero General Public License, Version 3 oder später, veröffentlicht.</p>
+        <p>} . _Escape( _I('LicenseIntro') ) . qq{</p>
         <div class="qisutu-install-license"><h3>AGPL-3.0-or-later</h3><pre>} . _Escape($License) . qq{</pre></div>
-        <div class="qisutu-install-license"><h3>Hinweise zu Drittanbieter-Komponenten</h3><pre>} . _Escape($Third) . qq{</pre></div>
+        <div class="qisutu-install-license"><h3>} . _Escape( _I('ThirdPartyNotices') ) . qq{</h3><pre>} . _Escape($Third) . qq{</pre></div>
         <form method="post" action="install.pl">
             <input type="hidden" name="Step" value="2">
             <input type="hidden" name="Action" value="AcceptLicense">
             <input type="hidden" name="CSRFToken" value="} . _Escape( $Param{State}->{csrf_token} ) . qq{">
-            <label class="qisutu-install-check"><input type="checkbox" name="LicenseAccepted" value="1" required> Ich habe die Lizenzbedingungen und Hinweise gelesen und akzeptiert.</label>
-            <div class="qisutu-install-actions"><button class="primary" type="submit">Weiter</button></div>
+            <label class="qisutu-install-check"><input type="checkbox" name="LicenseAccepted" value="1" required> } . _Escape( _I('LicenseAccepted') ) . qq{</label>
+            <div class="qisutu-install-actions"><button class="primary" type="submit">} . _Escape( _I('Continue') ) . qq{</button></div>
         </form>
     };
 }
@@ -347,20 +391,20 @@ sub _DatabaseHTML {
 
     if ( $State->{database_done} ) {
         return _ErrorHTML( $Param{Error} ) . qq{
-            <div class="qisutu-install-success"><strong>Die Datenbank wurde erfolgreich eingerichtet.</strong></div>
-            } . ( $State->{database_warning} ? '<div class="qisutu-install-error"><strong>Sicherheitshinweis:</strong> ' . _Escape( $State->{database_warning} ) . '</div>' : '' ) . qq{
-            <p>Bitte schreibe dir diese Daten auf und bewahre sie sicher auf. Das Datenbankpasswort wurde direkt in <code>core/config/QisutuConfig.pm</code> eingetragen.</p>
+            <div class="qisutu-install-success"><strong>} . _Escape( _I('DatabaseSuccess') ) . qq{</strong></div>
+            } . ( $State->{database_warning} ? '<div class="qisutu-install-error"><strong>' . _Escape( _I('SecurityNotice') ) . '</strong> ' . _Escape( $State->{database_warning} ) . '</div>' : '' ) . qq{
+            <p>} . _Escape( _I('DatabaseCredentialsNote') ) . qq{</p>
             <div class="qisutu-install-credentials">
-                <div><span>Datenbankserver</span><strong>} . _Escape( $State->{db_host} ) . qq{</strong></div>
-                <div><span>Datenbankname</span><strong>} . _Escape( $State->{db_name} ) . qq{</strong></div>
-                <div><span>Datenbankbenutzer</span><strong>} . _Escape( $State->{db_user} ) . qq{</strong></div>
-                <div><span>Datenbankpasswort</span><strong class="credential">} . _Escape( $State->{db_password} ) . qq{</strong></div>
+                <div><span>} . _Escape( _I('DatabaseServer') ) . qq{</span><strong>} . _Escape( $State->{db_host} ) . qq{</strong></div>
+                <div><span>} . _Escape( _I('DatabaseName') ) . qq{</span><strong>} . _Escape( $State->{db_name} ) . qq{</strong></div>
+                <div><span>} . _Escape( _I('DatabaseUser') ) . qq{</span><strong>} . _Escape( $State->{db_user} ) . qq{</strong></div>
+                <div><span>} . _Escape( _I('DatabasePassword') ) . qq{</span><div class="qisutu-install-credential-value"><strong id="qisutu-install-database-password-step3" class="credential">} . _Escape( $State->{db_password} ) . qq{</strong><button class="qisutu-install-copy" type="button" data-copy-target="qisutu-install-database-password-step3" data-copy-label="} . _Escape( _I('Copy') ) . qq{" data-copied-label="} . _Escape( _I('Copied') ) . qq{">} . _Escape( _I('Copy') ) . qq{</button></div></div>
             </div>
             <form method="post" action="install.pl">
                 <input type="hidden" name="Step" value="3">
                 <input type="hidden" name="Action" value="ContinueAfterDatabase">
                 <input type="hidden" name="CSRFToken" value="} . _Escape( $State->{csrf_token} ) . qq{">
-                <div class="qisutu-install-actions"><button class="primary" type="submit">Weiter zu den Systemeinstellungen</button></div>
+                <div class="qisutu-install-actions"><button class="primary" type="submit">} . _Escape( _I('ContinueSystem') ) . qq{</button></div>
             </form>
         };
     }
@@ -373,22 +417,22 @@ sub _DatabaseHTML {
     my $AdminUser = $Request->{DBAdminUser} || 'root';
 
     return _ErrorHTML( $Param{Error} ) . qq{
-        <p>Der Datenbank-Administrator wird nur für die Einrichtung verwendet. Sein Passwort wird nicht gespeichert.</p>
+        <p>} . _Escape( _I('DatabaseAdminIntro') ) . qq{</p>
         <form method="post" action="install.pl" autocomplete="off">
             <input type="hidden" name="Step" value="3">
             <input type="hidden" name="Action" value="InstallDatabase">
             <input type="hidden" name="CSRFToken" value="} . _Escape( $State->{csrf_token} ) . qq{">
             <div class="qisutu-install-grid">
-                } . _Field( 'Datenbankserver', 'DBHost', $Host, 'text', 1 ) .
-                _Field( 'Port', 'DBPort', $Port, 'number', 1 ) .
-                _Field( 'Datenbankname', 'DBName', $Name, 'text', 1, 'readonly' ) .
-                _Field( 'Datenbankbenutzer für Qisutu', 'DBUser', $User, 'text', 1, 'readonly' ) .
-                _Field( 'Datenbank-Administrator', 'DBAdminUser', $AdminUser, 'text', 1 ) .
-                _Field( 'Passwort des Datenbank-Administrators', 'DBAdminPassword', '', 'password', 0 ) . qq{
+                } . _Field( _I('DatabaseServer'), 'DBHost', $Host, 'text', 1 ) .
+                _Field( _I('Port'), 'DBPort', $Port, 'number', 1 ) .
+                _Field( _I('DatabaseName'), 'DBName', $Name, 'text', 1, 'readonly' ) .
+                _Field( _I('DatabaseUserQisutu'), 'DBUser', $User, 'text', 1, 'readonly' ) .
+                _Field( _I('DatabaseAdmin'), 'DBAdminUser', $AdminUser, 'text', 1 ) .
+                _Field( _I('DatabaseAdminPassword'), 'DBAdminPassword', '', 'password', 0 ) . qq{
             </div>
-            } . ( -r $BootstrapFile ? '<label class="qisutu-install-check"><input type="checkbox" name="UseBootstrap" value="1" checked> Automatisch vorbereitete lokale Datenbankberechtigung verwenden. Die Administratorfelder oben werden dabei nicht gespeichert.</label>' : '' ) . qq{
-            <div class="qisutu-install-note">Eine vorhandene Datenbank wird nur akzeptiert, wenn sie vollständig leer ist. Bestehende Tabellen werden nicht überschrieben.</div>
-            <div class="qisutu-install-actions"><button class="primary" type="submit">Datenbank erstellen und befüllen</button></div>
+            } . ( -r $BootstrapFile ? '<label class="qisutu-install-check"><input type="checkbox" name="UseBootstrap" value="1" checked> ' . _Escape( _I('UseBootstrap') ) . '</label>' : '' ) . qq{
+            <div class="qisutu-install-note">} . _Escape( _I('EmptyDatabaseNote') ) . qq{</div>
+            <div class="qisutu-install-actions"><button class="primary" type="submit">} . _Escape( _I('CreateDatabase') ) . qq{</button></div>
         </form>
     };
 }
@@ -412,16 +456,16 @@ sub _SystemHTML {
             <input type="hidden" name="Action" value="SaveSystem">
             <input type="hidden" name="CSRFToken" value="} . _Escape( $State->{csrf_token} ) . qq{">
             <div class="qisutu-install-grid">
-                <div class="qisutu-install-field"><label for="HTTPType">Protokoll</label><select id="HTTPType" name="HTTPType"><option value="http"} . ( $HTTP eq 'http' ? ' selected' : '' ) . qq{>HTTP</option><option value="https"} . ( $HTTP eq 'https' ? ' selected' : '' ) . qq{>HTTPS</option></select></div>
-                } . _Field( 'FQDN / Servername', 'FQDN', $FQDN, 'text', 1 ) .
-                _Field( 'Webpfad', 'WebPath', $WebPath, 'text', 1, 'readonly' ) .
-                _Field( 'Administrator-E-Mail-Adresse', 'AdminEmail', $Email, 'email', 1 ) . qq{
-                <div class="qisutu-install-field"><label for="DefaultLanguage">Standardsprache</label><select id="DefaultLanguage" name="DefaultLanguage">} . _LanguageOptions($Language) . qq{</select></div>
-                } . _Field( 'Zeitzone', 'Timezone', $Timezone, 'text', 1 ) .
-                _Field( 'Ticket-Hook', 'TicketHook', $TicketHook, 'text', 1 ) .
-                _Field( 'Maximale Anhangsgröße in MB', 'AttachmentMaxSize', $Attachment, 'number', 1 ) . qq{
+                <div class="qisutu-install-field"><label for="HTTPType">} . _Escape( _I('Protocol') ) . qq{</label><select id="HTTPType" name="HTTPType"><option value="http"} . ( $HTTP eq 'http' ? ' selected' : '' ) . qq{>HTTP</option><option value="https"} . ( $HTTP eq 'https' ? ' selected' : '' ) . qq{>HTTPS</option></select></div>
+                } . _Field( _I('FQDN'), 'FQDN', $FQDN, 'text', 1 ) .
+                _Field( _I('WebPath'), 'WebPath', $WebPath, 'text', 1, 'readonly' ) .
+                _Field( _I('AdminEmail'), 'AdminEmail', $Email, 'email', 1 ) . qq{
+                <div class="qisutu-install-field"><label for="DefaultLanguage">} . _Escape( _I('DefaultLanguage') ) . qq{</label><select id="DefaultLanguage" name="DefaultLanguage">} . _LanguageOptions($Language) . qq{</select></div>
+                } . _Field( _I('Timezone'), 'Timezone', $Timezone, 'text', 1 ) .
+                _Field( _I('TicketHook'), 'TicketHook', $TicketHook, 'text', 1 ) .
+                _Field( _I('AttachmentMax'), 'AttachmentMaxSize', $Attachment, 'number', 1 ) . qq{
             </div>
-            <div class="qisutu-install-actions"><button class="primary" type="submit">Systemeinstellungen speichern</button></div>
+            <div class="qisutu-install-actions"><button class="primary" type="submit">} . _Escape( _I('SaveSystem') ) . qq{</button></div>
         </form>
     };
 }
@@ -432,39 +476,39 @@ sub _MailHTML {
     my $Request = $Param{Request} || {};
 
     return _ErrorHTML( $Param{Error} ) . qq{
-        <p>Die E-Mail-Konfiguration ist optional. Der Aufbau ist bereits für weitere Verbindungstypen vorbereitet; derzeit stehen IMAP und SMTP zur Verfügung.</p>
+        <p>} . _Escape( _I('MailOptionalIntro') ) . qq{</p>
         <form method="post" action="install.pl" autocomplete="off">
             <input type="hidden" name="Step" value="5">
             <input type="hidden" name="Action" value="SaveMail">
             <input type="hidden" name="CSRFToken" value="} . _Escape( $State->{csrf_token} ) . qq{">
             <section class="qisutu-install-mail-section">
-                <label class="qisutu-install-check"><input type="checkbox" name="IMAPEnabled" value="1"} . ( $Request->{IMAPEnabled} ? ' checked' : '' ) . qq{> Eingehende E-Mails über IMAP einrichten</label>
+                <label class="qisutu-install-check"><input type="checkbox" name="IMAPEnabled" value="1"} . ( $Request->{IMAPEnabled} ? ' checked' : '' ) . qq{> } . _Escape( _I('SetupIMAP') ) . qq{</label>
                 <div class="qisutu-install-grid">
-                    } . _SelectField( 'Verbindungstyp', 'InboundConnectionType', 'imap', [ [ imap => 'IMAP' ] ] ) .
-                    _Field( 'Bezeichnung', 'IMAPName', $Request->{IMAPName} || 'Standard IMAP', 'text', 0 ) .
-                    _Field( 'E-Mail-Adresse', 'IMAPEmail', $Request->{IMAPEmail} || '', 'email', 0 ) .
-                    _Field( 'IMAP-Server', 'IMAPHost', $Request->{IMAPHost} || '', 'text', 0 ) .
-                    _Field( 'Port', 'IMAPPort', $Request->{IMAPPort} || '993', 'number', 0 ) .
-                    _SelectField( 'Verschlüsselung', 'IMAPSecurity', $Request->{IMAPSecurity} || 'imaps', [ [ imap => 'Keine / IMAP' ], [ imap_starttls => 'STARTTLS' ], [ imaps => 'SSL/TLS' ] ] ) .
-                    _Field( 'Benutzername', 'IMAPUsername', $Request->{IMAPUsername} || '', 'text', 0 ) .
-                    _Field( 'Passwort', 'IMAPPassword', '', 'password', 0 ) .
-                    _Field( 'Ziel-Queue', 'IMAPQueue', 'Posteingang', 'text', 0, 'readonly' ) . qq{
+                    } . _SelectField( _I('ConnectionType'), 'InboundConnectionType', 'imap', [ [ imap => 'IMAP' ] ] ) .
+                    _Field( _I('Name'), 'IMAPName', $Request->{IMAPName} || _I('DefaultIMAP'), 'text', 0 ) .
+                    _Field( _I('EmailAddress'), 'IMAPEmail', $Request->{IMAPEmail} || '', 'email', 0 ) .
+                    _Field( _I('IMAPServer'), 'IMAPHost', $Request->{IMAPHost} || '', 'text', 0 ) .
+                    _Field( _I('Port'), 'IMAPPort', $Request->{IMAPPort} || '993', 'number', 0 ) .
+                    _SelectField( _I('Encryption'), 'IMAPSecurity', $Request->{IMAPSecurity} || 'imaps', [ [ imap => _I('NoneIMAP') ], [ imap_starttls => 'STARTTLS' ], [ imaps => 'SSL/TLS' ] ] ) .
+                    _Field( _I('Username'), 'IMAPUsername', $Request->{IMAPUsername} || '', 'text', 0 ) .
+                    _Field( _I('Password'), 'IMAPPassword', '', 'password', 0 ) .
+                    _Field( _I('TargetQueue'), 'IMAPQueue', _I('InboxQueue'), 'text', 0, 'readonly' ) . qq{
                 </div>
             </section>
             <section class="qisutu-install-mail-section">
-                <label class="qisutu-install-check"><input type="checkbox" name="SMTPEnabled" value="1"} . ( $Request->{SMTPEnabled} ? ' checked' : '' ) . qq{> Ausgehende E-Mails über SMTP einrichten</label>
+                <label class="qisutu-install-check"><input type="checkbox" name="SMTPEnabled" value="1"} . ( $Request->{SMTPEnabled} ? ' checked' : '' ) . qq{> } . _Escape( _I('SetupSMTP') ) . qq{</label>
                 <div class="qisutu-install-grid">
-                    } . _SelectField( 'Verbindungstyp', 'OutboundConnectionType', 'smtp', [ [ smtp => 'SMTP' ] ] ) .
-                    _Field( 'Bezeichnung', 'SMTPName', $Request->{SMTPName} || 'Standard SMTP', 'text', 0 ) .
-                    _Field( 'Absenderadresse', 'SMTPEmail', $Request->{SMTPEmail} || '', 'email', 0 ) .
-                    _Field( 'SMTP-Server', 'SMTPHost', $Request->{SMTPHost} || '', 'text', 0 ) .
-                    _Field( 'Port', 'SMTPPort', $Request->{SMTPPort} || '587', 'number', 0 ) .
-                    _SelectField( 'Verschlüsselung', 'SMTPSecurity', $Request->{SMTPSecurity} || 'smtp_starttls', [ [ smtp => 'Keine / SMTP' ], [ smtp_starttls => 'STARTTLS' ], [ smtps => 'SSL/TLS' ] ] ) .
-                    _Field( 'Benutzername', 'SMTPUsername', $Request->{SMTPUsername} || '', 'text', 0 ) .
-                    _Field( 'Passwort', 'SMTPPassword', '', 'password', 0 ) . qq{
+                    } . _SelectField( _I('ConnectionType'), 'OutboundConnectionType', 'smtp', [ [ smtp => 'SMTP' ] ] ) .
+                    _Field( _I('Name'), 'SMTPName', $Request->{SMTPName} || _I('DefaultSMTP'), 'text', 0 ) .
+                    _Field( _I('SenderAddress'), 'SMTPEmail', $Request->{SMTPEmail} || '', 'email', 0 ) .
+                    _Field( _I('SMTPServer'), 'SMTPHost', $Request->{SMTPHost} || '', 'text', 0 ) .
+                    _Field( _I('Port'), 'SMTPPort', $Request->{SMTPPort} || '587', 'number', 0 ) .
+                    _SelectField( _I('Encryption'), 'SMTPSecurity', $Request->{SMTPSecurity} || 'smtp_starttls', [ [ smtp => _I('NoneSMTP') ], [ smtp_starttls => 'STARTTLS' ], [ smtps => 'SSL/TLS' ] ] ) .
+                    _Field( _I('Username'), 'SMTPUsername', $Request->{SMTPUsername} || '', 'text', 0 ) .
+                    _Field( _I('Password'), 'SMTPPassword', '', 'password', 0 ) . qq{
                 </div>
             </section>
-            <div class="qisutu-install-actions"><button class="secondary" type="submit" name="Action" value="SkipMail" formnovalidate>E-Mail-Konfiguration überspringen</button><button class="primary" type="submit">Verbindungen testen und speichern</button></div>
+            <div class="qisutu-install-actions"><button class="secondary" type="submit" name="Action" value="SkipMail" formnovalidate>} . _Escape( _I('SkipMail') ) . qq{</button><button class="primary" type="submit">} . _Escape( _I('TestSaveConnections') ) . qq{</button></div>
         </form>
     };
 }
@@ -475,21 +519,21 @@ sub _FinalHTML {
     my $LoginURL = $State->{login_url} || "$WebPath/index.pl";
 
     return _ErrorHTML( $Param{Error} ) . qq{
-        <div class="qisutu-install-success"><strong>Qisutu wurde erfolgreich installiert.</strong></div>
-        <p>Bitte schreibe dir die folgenden Zugangsdaten auf. Das Administratorpasswort wird nach dem Verlassen dieser Seite nicht erneut angezeigt.</p>
+        <div class="qisutu-install-success"><strong>} . _Escape( _I('InstallSuccess') ) . qq{</strong></div>
+        <p>} . _Escape( _I('FinalCredentialsNote') ) . qq{</p>
         <div class="qisutu-install-credentials">
-            <div><span>Login-Adresse</span><strong><a href="} . _Escape($LoginURL) . qq{">} . _Escape($LoginURL) . qq{</a></strong></div>
-            <div><span>Benutzername</span><strong>admin</strong></div>
-            <div><span>Administratorpasswort</span><strong class="credential">} . _Escape( $State->{admin_password} || '' ) . qq{</strong></div>
-            <div><span>Datenbankname</span><strong>} . _Escape( $State->{db_name} || '' ) . qq{</strong></div>
-            <div><span>Datenbankbenutzer</span><strong>} . _Escape( $State->{db_user} || '' ) . qq{</strong></div>
-            <div><span>Datenbankpasswort</span><strong class="credential">} . _Escape( $State->{db_password} || '' ) . qq{</strong></div>
+            <div><span>} . _Escape( _I('LoginAddress') ) . qq{</span><strong><a href="} . _Escape($LoginURL) . qq{">} . _Escape($LoginURL) . qq{</a></strong></div>
+            <div><span>} . _Escape( _I('Username') ) . qq{</span><strong>admin</strong></div>
+            <div><span>} . _Escape( _I('AdminPassword') ) . qq{</span><div class="qisutu-install-credential-value"><strong id="qisutu-install-admin-password" class="credential">} . _Escape( $State->{admin_password} || '' ) . qq{</strong><button class="qisutu-install-copy" type="button" data-copy-target="qisutu-install-admin-password" data-copy-label="} . _Escape( _I('Copy') ) . qq{" data-copied-label="} . _Escape( _I('Copied') ) . qq{">} . _Escape( _I('Copy') ) . qq{</button></div></div>
+            <div><span>} . _Escape( _I('DatabaseName') ) . qq{</span><strong>} . _Escape( $State->{db_name} || '' ) . qq{</strong></div>
+            <div><span>} . _Escape( _I('DatabaseUser') ) . qq{</span><strong>} . _Escape( $State->{db_user} || '' ) . qq{</strong></div>
+            <div><span>} . _Escape( _I('DatabasePassword') ) . qq{</span><div class="qisutu-install-credential-value"><strong id="qisutu-install-database-password-final" class="credential">} . _Escape( $State->{db_password} || '' ) . qq{</strong><button class="qisutu-install-copy" type="button" data-copy-target="qisutu-install-database-password-final" data-copy-label="} . _Escape( _I('Copy') ) . qq{" data-copied-label="} . _Escape( _I('Copied') ) . qq{">} . _Escape( _I('Copy') ) . qq{</button></div></div>
         </div>
         <form method="post" action="install.pl">
             <input type="hidden" name="Step" value="6">
             <input type="hidden" name="Action" value="Finish">
             <input type="hidden" name="CSRFToken" value="} . _Escape( $State->{csrf_token} ) . qq{">
-            <div class="qisutu-install-actions"><button class="primary" type="submit">Zugangsdaten notiert – zum Qisutu Login</button></div>
+            <div class="qisutu-install-actions"><button class="primary" type="submit">} . _Escape( _I('CredentialsNoted') ) . qq{</button></div>
         </form>
     };
 }
@@ -498,9 +542,9 @@ sub _InstalledHTML {
     my $BaseURL = _ConfigBaseURLRead() || "$WebPath/index.pl";
     $BaseURL .= '/index.pl' if $BaseURL !~ m{index\.pl\z};
     return qq{
-        <div class="qisutu-install-success"><strong>Qisutu wurde bereits installiert.</strong></div>
-        <p>Eine erneute Installation ist aus Sicherheitsgründen gesperrt.</p>
-        <div class="qisutu-install-actions"><a class="button primary" href="} . _Escape($BaseURL) . qq{">Zum Qisutu Login</a></div>
+        <div class="qisutu-install-success"><strong>} . _Escape( _I('AlreadyInstalled') ) . qq{</strong></div>
+        <p>} . _Escape( _I('InstallLocked') ) . qq{</p>
+        <div class="qisutu-install-actions"><a class="button primary" href="} . _Escape($BaseURL) . qq{">} . _Escape( _I('ToLogin') ) . qq{</a></div>
     };
 }
 
@@ -508,6 +552,10 @@ sub _DatabaseInstall {
     my (%Param) = @_;
     my $Request = $Param{Request};
     my $State   = $Param{State};
+
+    my $OperationLock = _InstallerOperationLock();
+    return { success => 0, error => _I('InstallerOperationLockFailed') }
+        if !$OperationLock;
 
     my $Host      = _Trim( $Request->{DBHost} );
     my $Port      = _Trim( $Request->{DBPort} );
@@ -521,7 +569,7 @@ sub _DatabaseInstall {
     if ( $Request->{UseBootstrap} && -r $BootstrapFile ) {
         $Bootstrap = _BootstrapCredentials();
         if ($Bootstrap) {
-            return { success => 0, error => 'Die automatische lokale Datenbankberechtigung kann nur für localhost verwendet werden.' }
+            return { success => 0, error => _I('BootstrapLocalOnly') }
                 if $Host !~ m{\A(?:localhost|127\.0\.0\.1|::1)\z}i;
             $AdminUser = $Bootstrap->{user};
             $AdminPass = $Bootstrap->{password};
@@ -529,25 +577,31 @@ sub _DatabaseInstall {
         }
     }
 
-    return { success => 0, error => 'Datenbankserver, Datenbankname und Datenbank-Administrator sind Pflichtfelder.' }
+    return { success => 0, error => _I('DatabaseRequired') }
         if !$Host || !$DBName || !$AdminUser;
-    return { success => 0, error => 'Der Datenbankport ist ungültig.' } if $Port !~ m{\A\d+\z} || $Port < 1 || $Port > 65535;
-    return { success => 0, error => 'Der Datenbankname darf nur Buchstaben, Zahlen und Unterstriche enthalten.' } if $DBName !~ m{\A[A-Za-z0-9_]+\z};
-    return { success => 0, error => 'Die Datenbank-Schemadatei fehlt.' } if !-r $SchemaFile;
-    return { success => 0, error => 'Die Datenbank-Grunddatendatei fehlt.' } if !-r $InsertFile;
+    return { success => 0, error => _I('DatabasePortInvalid') } if $Port !~ m{\A\d+\z} || $Port < 1 || $Port > 65535;
+    return { success => 0, error => _I('DatabaseNameInvalid') } if $DBName !~ m{\A[A-Za-z0-9_]+\z};
+    return { success => 0, error => _I('SchemaMissing') } if !-r $SchemaFile;
+    return { success => 0, error => _I('SeedMissing') } if !-r $InsertFile;
 
     my $DBILoaded = eval { require DBI; require DBD::mysql; 1 };
-    return { success => 0, error => 'DBI oder DBD::mysql ist nicht installiert. Bitte zuerst install.sh als root ausführen.' } if !$DBILoaded;
+    return { success => 0, error => _I('DBModulesMissing') } if !$DBILoaded;
 
     my $DBPassword = _RandomPassword(32);
     my $AdminPassword = _RandomPassword(24);
     my $AdminPasswordHash = _PasswordHash($AdminPassword);
-    return { success => 0, error => 'Das Administratorpasswort konnte nicht sicher gehasht werden.' }
+    return { success => 0, error => _I('AdminPasswordHashFailed') }
         if !$AdminPasswordHash;
 
     my $AdminDSN = "DBI:mysql:host=$Host;port=$Port;mysql_enable_utf8mb4=1";
     my $AdminDBH = DBI->connect( $AdminDSN, $AdminUser, $AdminPass, { RaiseError => 0, PrintError => 0, AutoCommit => 1, mysql_enable_utf8mb4 => 1 } );
-    return { success => 0, error => 'Die Verbindung als Datenbank-Administrator ist fehlgeschlagen: ' . ( $DBI::errstr || 'unbekannter Fehler' ) } if !$AdminDBH;
+    return {
+        success => 0,
+        error   => _I(
+            'AdminConnectionFailed',
+            error => $DBI::errstr || _I('UnknownError'),
+        ),
+    } if !$AdminDBH;
 
     my ($Exists) = $AdminDBH->selectrow_array( 'SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?', undef, $DBName );
     my $Existed = $Exists ? 1 : 0;
@@ -556,7 +610,7 @@ sub _DatabaseInstall {
         ($TableCount) = $AdminDBH->selectrow_array( 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?', undef, $DBName );
         if ($TableCount) {
             $AdminDBH->disconnect();
-            return { success => 0, error => "Die Datenbank $DBName enthält bereits Tabellen und wird nicht überschrieben." };
+            return { success => 0, error => _I( 'DatabaseNotEmpty', database => $DBName ) };
         }
     }
 
@@ -575,7 +629,7 @@ sub _DatabaseInstall {
         $GrantHost,
     );
     if ( !defined $UserExists ) {
-        my $Message = $AdminDBH->errstr || 'Der vorhandene Datenbankbenutzer konnte nicht geprüft werden.';
+        my $Message = $AdminDBH->errstr || _I('ExistingUserCheckFailed');
         $AdminDBH->disconnect();
         return { success => 0, error => $Message };
     }
@@ -595,7 +649,7 @@ sub _DatabaseInstall {
     };
 
     if ( !$OK ) {
-        my $Message = $@ || $AdminDBH->errstr || 'Datenbank oder Benutzer konnten nicht angelegt werden';
+        my $Message = $@ || $AdminDBH->errstr || _I('DatabaseCreateFailed');
         $Message =~ s{\s+at\s+\S+\s+line\s+\d+\.?\s*\z}{};
         _DatabaseCleanup(
             DBH       => $AdminDBH,
@@ -620,7 +674,7 @@ sub _DatabaseInstall {
     if ( !$SchemaImport->{success} ) {
         _DatabaseCleanup( DBH => $AdminDBH, DBName => $DBName, Existed => $Existed, DBUser => $DBUser, GrantHost => $GrantHost, DropUser => $UserCreated );
         $AdminDBH->disconnect();
-        return { success => 0, error => 'Das Datenbankschema konnte nicht importiert werden: ' . $SchemaImport->{error} };
+        return { success => 0, error => _I( 'SchemaImportFailed', error => $SchemaImport->{error} ) };
     }
 
     my $DataImport = _SQLImport(
@@ -634,7 +688,7 @@ sub _DatabaseInstall {
     if ( !$DataImport->{success} ) {
         _DatabaseCleanup( DBH => $AdminDBH, DBName => $DBName, Existed => $Existed, DBUser => $DBUser, GrantHost => $GrantHost, DropUser => $UserCreated );
         $AdminDBH->disconnect();
-        return { success => 0, error => 'Die Datenbank-Grunddaten konnten nicht importiert werden: ' . $DataImport->{error} };
+        return { success => 0, error => _I( 'SeedImportFailed', error => $DataImport->{error} ) };
     }
 
     my $AppDSN = "DBI:mysql:database=$DBName;host=$Host;port=$Port;mysql_enable_utf8mb4=1";
@@ -642,7 +696,7 @@ sub _DatabaseInstall {
     if ( !$DBH ) {
         _DatabaseCleanup( DBH => $AdminDBH, DBName => $DBName, Existed => $Existed, DBUser => $DBUser, GrantHost => $GrantHost, DropUser => $UserCreated );
         $AdminDBH->disconnect();
-        return { success => 0, error => 'Die Verbindung mit dem neuen Qisutu-Datenbankbenutzer ist fehlgeschlagen: ' . ( $DBI::errstr || '' ) };
+        return { success => 0, error => _I( 'AppDBConnectionFailed', error => $DBI::errstr || _I('UnknownError') ) };
     }
 
     my $Finalize = _InitialDataFinalize(
@@ -653,7 +707,22 @@ sub _DatabaseInstall {
         $DBH->disconnect();
         _DatabaseCleanup( DBH => $AdminDBH, DBName => $DBName, Existed => $Existed, DBUser => $DBUser, GrantHost => $GrantHost, DropUser => $UserCreated );
         $AdminDBH->disconnect();
-        return { success => 0, error => 'Die Grunddaten konnten nicht abgeschlossen werden: ' . $Finalize->{error} };
+        return { success => 0, error => _I( 'SeedFinalizeFailed', error => $Finalize->{error} ) };
+    }
+
+    my $CredentialVerification = _AdminCredentialVerify(
+        DBH      => $DBH,
+        Password => $AdminPassword,
+    );
+    if ( !$CredentialVerification->{success} ) {
+        $DBH->disconnect();
+        _DatabaseCleanup( DBH => $AdminDBH, DBName => $DBName, Existed => $Existed, DBUser => $DBUser, GrantHost => $GrantHost, DropUser => $UserCreated );
+        $AdminDBH->disconnect();
+        return {
+            success => 0,
+            error   => $CredentialVerification->{error}
+                || _I('AdminCredentialVerificationFailed'),
+        };
     }
 
     $DBH->disconnect();
@@ -665,7 +734,8 @@ sub _DatabaseInstall {
     $State->{db_password}   = $DBPassword;
     $State->{admin_password}= $AdminPassword;
     $State->{database_done} = 1;
-    $State->{default_language} = 'de';
+    $State->{default_language} ||= $InstallLanguage;
+    $State->{ui_language}      ||= $InstallLanguage;
     $State->{ticket_hook} = 'Qisutu';
     $State->{attachment_max_size} = 25;
 
@@ -693,9 +763,9 @@ sub _InitialDataFinalize {
     my $DBH = $Param{DBH};
     my $AdminPasswordHash = $Param{AdminPasswordHash} || '';
 
-    return { success => 0, error => 'Die Datenbankverbindung für die Grunddaten fehlt.' }
+    return { success => 0, error => _I('SeedConnectionMissing') }
         if !$DBH;
-    return { success => 0, error => 'Der Hash des Administratorpassworts fehlt.' }
+    return { success => 0, error => _I('AdminPasswordHashMissing') }
         if !$AdminPasswordHash;
 
     my $Statement = $DBH->prepare(
@@ -704,7 +774,7 @@ sub _InitialDataFinalize {
          WHERE id = 1
              AND password_hash = ?'
     );
-    return { success => 0, error => $DBH->errstr || 'Das Administratorkonto konnte nicht vorbereitet werden.' }
+    return { success => 0, error => $DBH->errstr || _I('AdminAccountPrepareFailed') }
         if !$Statement;
 
     my $Result = $Statement->execute(
@@ -712,23 +782,131 @@ sub _InitialDataFinalize {
         'QISUTU_ADMIN_PASSWORD_NOT_SET',
     );
     if ( !defined $Result ) {
-        my $Error = $Statement->errstr || $DBH->errstr || 'Das Administratorpasswort konnte nicht gespeichert werden.';
+        my $Error = $Statement->errstr || $DBH->errstr || _I('AdminPasswordSaveFailed');
         $Statement->finish();
         return { success => 0, error => $Error };
     }
     $Statement->finish();
 
-    return { success => 0, error => 'Das Administratorkonto aus insert.sql wurde nicht eindeutig gefunden.' }
+    return { success => 0, error => _I('AdminAccountNotFound') }
         if $Result != 1;
 
     return { success => 1 };
+}
+
+sub _AdminCredentialVerify {
+    my (%Param) = @_;
+    my $DBH      = $Param{DBH};
+    my $Password = defined $Param{Password} ? $Param{Password} : '';
+
+    return { success => 0, error => _I('AdminCredentialVerificationFailed') }
+        if !$DBH || !$Password;
+
+    my $Account = $DBH->selectrow_hashref(
+        'SELECT id, login, account_type, authentication_type, is_active, password_hash
+         FROM user_account
+         WHERE id = 1
+            AND login = ?
+            AND account_type = ?
+         LIMIT 1',
+        undef,
+        'admin',
+        'agent',
+    );
+    return { success => 0, error => _I('AdminCredentialVerificationFailed') }
+        if !$Account
+        || ( $Account->{authentication_type} || 'local' ) ne 'local'
+        || !$Account->{is_active}
+        || !$Account->{password_hash};
+
+    my $CheckHash = crypt( $Password, $Account->{password_hash} ) || '';
+    return { success => 0, error => _I('AdminCredentialVerificationFailed') }
+        if !$CheckHash || $CheckHash ne $Account->{password_hash};
+
+    return { success => 1 };
+}
+
+sub _AdminCredentialSynchronize {
+    my ($State) = @_;
+    my $Password = $State->{admin_password} || '';
+    return { success => 0, error => _I('AdminCredentialVerificationFailed') }
+        if !$Password;
+
+    my $DBH = _ApplicationDBConnect($State);
+    return { success => 0, error => _I('DatabaseConnectionFailed') } if !$DBH;
+
+    my $PasswordHash = _PasswordHash($Password);
+    if ( !$PasswordHash ) {
+        $DBH->disconnect();
+        return { success => 0, error => _I('AdminPasswordHashFailed') };
+    }
+
+    my $Result = $DBH->do(
+        'UPDATE user_account
+         SET password_hash = ?,
+             authentication_type = ?,
+             is_active = 1,
+             failed_login_count = 0,
+             locked_until = NULL,
+             password_changed_at = NOW()
+         WHERE id = 1
+            AND login = ?
+            AND account_type = ?',
+        undef,
+        $PasswordHash,
+        'local',
+        'admin',
+        'agent',
+    );
+    if ( !defined $Result || $Result != 1 ) {
+        my $Error = $DBH->errstr || _I('AdminPasswordSaveFailed');
+        $DBH->disconnect();
+        return { success => 0, error => $Error };
+    }
+
+    my $Verification = _AdminCredentialVerify(
+        DBH      => $DBH,
+        Password => $Password,
+    );
+    $DBH->disconnect();
+    return $Verification;
+}
+
+sub _InstallationFinalize {
+    my (%Param) = @_;
+    my $Token = $Param{Token} || '';
+    my $State = $Param{State};
+
+    return { success => 0, error => _I('SessionInvalid') }
+        if !$Token || !$State;
+
+    my $OperationLock = _InstallerOperationLock();
+    return { success => 0, error => _I('InstallerOperationLockFailed') }
+        if !$OperationLock;
+    return { success => 0, error => _I('AlreadyInstalled') }
+        if -f $LockFile;
+
+    my $CredentialResult = _AdminCredentialSynchronize($State);
+    return $CredentialResult if !$CredentialResult->{success};
+
+    $State->{show_final} = 1;
+    _StateSave( $Token, $State );
+    _InstallationLockCreate($State);
+
+    return { success => 1, state => $State };
+}
+
+sub _InstallerOperationLock {
+    open my $LockHandle, '>>', $InstallerOperationLockFile or return;
+    flock( $LockHandle, LOCK_EX ) or return;
+    return $LockHandle;
 }
 
 sub _SystemSettingsSave {
     my (%Param) = @_;
     my $Request = $Param{Request};
     my $State   = $Param{State};
-    return { success => 0, error => 'Die Datenbank muss zuerst eingerichtet werden.' } if !$State->{database_done};
+    return { success => 0, error => _I('DatabaseFirst') } if !$State->{database_done};
 
     my $HTTP = $Request->{HTTPType} || '';
     my $FQDN = _Trim( $Request->{FQDN} );
@@ -738,18 +916,19 @@ sub _SystemSettingsSave {
     my $TicketHook = _Trim( $Request->{TicketHook} );
     my $Attachment = _Trim( $Request->{AttachmentMaxSize} );
 
-    return { success => 0, error => 'Das Protokoll ist ungültig.' } if $HTTP ne 'http' && $HTTP ne 'https';
-    return { success => 0, error => 'Der FQDN oder Servername ist ungültig.' } if !$FQDN || $FQDN !~ m{\A[A-Za-z0-9.\-:\[\]]+\z};
-    return { success => 0, error => 'Die Administrator-E-Mail-Adresse ist ungültig.' } if $Email !~ m{\A[^\s\@]+\@[^\s\@]+\.[^\s\@]+\z};
-    return { success => 0, error => 'Die Standardsprache ist ungültig.' } if $Language !~ m{\A(?:de|en|fr|it)\z};
-    return { success => 0, error => 'Die Zeitzone ist ungültig.' } if !$Timezone || $Timezone !~ m{\A[A-Za-z0-9_+\-/]+\z};
-    return { success => 0, error => 'Der Ticket-Hook ist ungültig.' } if !$TicketHook || length($TicketHook) > 50;
-    return { success => 0, error => 'Die maximale Anhangsgröße muss zwischen 1 und 10240 MB liegen.' } if $Attachment !~ m{\A\d+\z} || $Attachment < 1 || $Attachment > 10240;
+    return { success => 0, error => _I('ProtocolInvalid') } if $HTTP ne 'http' && $HTTP ne 'https';
+    return { success => 0, error => _I('FQDNInvalid') } if !$FQDN || $FQDN !~ m{\A[A-Za-z0-9.\-:\[\]]+\z};
+    return { success => 0, error => _I('AdminEmailInvalid') } if $Email !~ m{\A[^\s\@]+\@[^\s\@]+\.[^\s\@]+\z};
+    return { success => 0, error => _I('DefaultLanguageInvalid') } if !_LanguageValid($Language);
+    return { success => 0, error => _I('TimezoneInvalid') } if !$Timezone || $Timezone !~ m{\A[A-Za-z0-9_+\-/]+\z};
+    return { success => 0, error => _I('TicketHookInvalid') } if !$TicketHook || length($TicketHook) > 50;
+    return { success => 0, error => _I('AttachmentSizeInvalid') } if $Attachment !~ m{\A\d+\z} || $Attachment < 1 || $Attachment > 10240;
 
     $State->{http_type} = $HTTP;
     $State->{fqdn} = $FQDN;
     $State->{admin_email} = $Email;
     $State->{default_language} = $Language;
+    $State->{ui_language} = $Language;
     $State->{timezone} = $Timezone;
     $State->{ticket_hook} = $TicketHook;
     $State->{attachment_max_size} = 0 + $Attachment;
@@ -757,7 +936,7 @@ sub _SystemSettingsSave {
     $State->{login_url} = $State->{base_url} . '/index.pl';
 
     my $DBH = _ApplicationDBConnect($State);
-    return { success => 0, error => 'Die Qisutu-Datenbankverbindung ist fehlgeschlagen: ' . ( $DBI::errstr || '' ) } if !$DBH;
+    return { success => 0, error => _I( 'QisutuDBConnectionFailed', error => $DBI::errstr || _I('UnknownError') ) } if !$DBH;
 
     my %Settings = (
         'system.http_type'              => $HTTP,
@@ -782,7 +961,7 @@ sub _SystemSettingsSave {
     };
 
     if ( !$OK ) {
-        my $Message = $@ || $DBH->errstr || 'unbekannter Fehler';
+        my $Message = $@ || $DBH->errstr || _I('UnknownError');
         eval { $DBH->rollback() };
         $DBH->disconnect();
         return { success => 0, error => $Message };
@@ -801,15 +980,15 @@ sub _MailSettingsSave {
     my (%Param) = @_;
     my $Request = $Param{Request};
     my $State   = $Param{State};
-    return { success => 0, error => 'Die Systemeinstellungen müssen zuerst gespeichert werden.' } if !$State->{system_done};
+    return { success => 0, error => _I('SystemSettingsFirst') } if !$State->{system_done};
 
     my $IMAPEnabled = $Request->{IMAPEnabled} ? 1 : 0;
     my $SMTPEnabled = $Request->{SMTPEnabled} ? 1 : 0;
-    return { success => 0, error => 'Aktiviere mindestens IMAP oder SMTP oder überspringe die E-Mail-Konfiguration.' } if !$IMAPEnabled && !$SMTPEnabled;
+    return { success => 0, error => _I('MailEnableOrSkip') } if !$IMAPEnabled && !$SMTPEnabled;
 
     my %AllowedSecurity = map { $_ => 1 } qw(imap imap_starttls imaps smtp smtp_starttls smtps);
     my $DBH = _ApplicationDBConnect($State);
-    return { success => 0, error => 'Die Datenbankverbindung ist fehlgeschlagen.' } if !$DBH;
+    return { success => 0, error => _I('DatabaseConnectionFailed') } if !$DBH;
 
     my @TestMessages;
     my ($IMAP, $SMTP);
@@ -820,17 +999,17 @@ sub _MailSettingsSave {
         1;
     };
     if ( !$SecurityLoaded ) {
-        my $SecurityLoadError = $@ || 'unbekannter Modulfehler';
+        my $SecurityLoadError = $@ || _I('UnknownError');
         $SecurityLoadError =~ s{[\r\n]+}{ }g;
         _Log("Sicherheitssystem für Zugangsdaten konnte nicht geladen werden: $SecurityLoadError");
         $DBH->disconnect();
-        return { success => 0, error => 'Das Sicherheitssystem für Zugangsdaten konnte nicht geladen werden. Details stehen in var/log/install.log.' };
+        return { success => 0, error => _I('CredentialSecurityFailed') };
     }
     my $Security = QisutuSecurity->new( Config => QisutuConfig::Load() );
 
     if ($IMAPEnabled) {
         $IMAP = {
-            name       => _Trim( $Request->{IMAPName} ) || 'Standard IMAP',
+            name       => _Trim( $Request->{IMAPName} ) || _I('DefaultIMAP'),
             email      => lc _Trim( $Request->{IMAPEmail} ),
             host       => _Trim( $Request->{IMAPHost} ),
             port       => _Trim( $Request->{IMAPPort} ),
@@ -840,19 +1019,19 @@ sub _MailSettingsSave {
         };
         if ( !$IMAP->{email} || !$IMAP->{host} || !$IMAP->{username} || !$IMAP->{password} || $IMAP->{port} !~ m{\A\d+\z} || !$AllowedSecurity{ $IMAP->{security} } ) {
             $DBH->disconnect();
-            return { success => 0, error => 'Bitte fülle alle aktivierten IMAP-Felder vollständig und gültig aus.' };
+            return { success => 0, error => _I('IMAPFieldsInvalid') };
         }
         my $Test = _MailConnectionTest( Type => 'imap', Data => $IMAP, State => $State );
         if ( !$Test->{success} ) {
             $DBH->disconnect();
-            return { success => 0, error => 'Die IMAP-Verbindung ist fehlgeschlagen: ' . $Test->{message} };
+            return { success => 0, error => _I( 'IMAPConnectionFailed', error => $Test->{message} ) };
         }
         push @TestMessages, $Test->{message};
     }
 
     if ($SMTPEnabled) {
         $SMTP = {
-            name       => _Trim( $Request->{SMTPName} ) || 'Standard SMTP',
+            name       => _Trim( $Request->{SMTPName} ) || _I('DefaultSMTP'),
             email      => lc _Trim( $Request->{SMTPEmail} ),
             host       => _Trim( $Request->{SMTPHost} ),
             port       => _Trim( $Request->{SMTPPort} ),
@@ -862,12 +1041,12 @@ sub _MailSettingsSave {
         };
         if ( !$SMTP->{email} || !$SMTP->{host} || !$SMTP->{username} || !$SMTP->{password} || $SMTP->{port} !~ m{\A\d+\z} || !$AllowedSecurity{ $SMTP->{security} } ) {
             $DBH->disconnect();
-            return { success => 0, error => 'Bitte fülle alle aktivierten SMTP-Felder vollständig und gültig aus.' };
+            return { success => 0, error => _I('SMTPFieldsInvalid') };
         }
         my $Test = _MailConnectionTest( Type => 'smtp', Data => $SMTP, State => $State );
         if ( !$Test->{success} ) {
             $DBH->disconnect();
-            return { success => 0, error => 'Die SMTP-Verbindung ist fehlgeschlagen: ' . $Test->{message} };
+            return { success => 0, error => _I( 'SMTPConnectionFailed', error => $Test->{message} ) };
         }
         push @TestMessages, $Test->{message};
     }
@@ -893,7 +1072,7 @@ sub _MailSettingsSave {
     };
 
     if ( !$OK ) {
-        my $Message = $@ || $DBH->errstr || 'unbekannter Fehler';
+        my $Message = $@ || $DBH->errstr || _I('UnknownError');
         eval { $DBH->rollback() };
         $DBH->disconnect();
         return { success => 0, error => $Message };
@@ -913,7 +1092,7 @@ sub _MailConnectionTest {
     my $State = $Param{State};
 
     my $Loaded = eval { require QisutuMail; 1 };
-    return { success => 0, message => "QisutuMail konnte nicht geladen werden: $@" } if !$Loaded;
+    return { success => 0, message => _I( 'QisutuMailLoadFailed', error => $@ ) } if !$Loaded;
 
     my $Config = _ConfigHash($State);
     my $Mail = QisutuMail->new( Config => $Config, DB => undef );
@@ -943,23 +1122,23 @@ sub _MailConnectionTest {
 
     return {
         success => $Result && $Result->{Success} ? 1 : 0,
-        message => _MailMessage( $Result ? $Result->{Message} : 'Verbindungstest fehlgeschlagen' ),
+        message => _MailMessage( $Result ? $Result->{Message} : _I('MailTestFailed') ),
     };
 }
 
 sub _MailMessage {
     my ($Message) = @_;
     my %Map = (
-        'Translate:AdminSMTPConnectionOK' => 'SMTP-Verbindung erfolgreich',
-        'Translate:AdminIMAPConnectionOK' => 'IMAP-Verbindung erfolgreich',
-        'Translate:AdminSMTPConnectionFailed' => 'Verbindung zum SMTP-Server nicht möglich',
-        'Translate:AdminIMAPConnectionFailed' => 'Verbindung zum IMAP-Server nicht möglich',
-        'Translate:AdminSMTPAuthFailed' => 'SMTP-Anmeldung fehlgeschlagen',
-        'Translate:AdminIMAPAuthFailed' => 'IMAP-Anmeldung fehlgeschlagen',
-        'Translate:AdminSMTPSSLRequired' => 'IO::Socket::SSL fehlt für SMTP',
-        'Translate:AdminIMAPSSLRequired' => 'IO::Socket::SSL fehlt für IMAP',
+        'Translate:AdminSMTPConnectionOK'     => _I('SMTPConnectionOK'),
+        'Translate:AdminIMAPConnectionOK'     => _I('IMAPConnectionOK'),
+        'Translate:AdminSMTPConnectionFailed' => _I('SMTPServerUnavailable'),
+        'Translate:AdminIMAPConnectionFailed' => _I('IMAPServerUnavailable'),
+        'Translate:AdminSMTPAuthFailed'        => _I('SMTPAuthFailed'),
+        'Translate:AdminIMAPAuthFailed'        => _I('IMAPAuthFailed'),
+        'Translate:AdminSMTPSSLRequired'       => _I('SMTPSSLRequired'),
+        'Translate:AdminIMAPSSLRequired'       => _I('IMAPSSLRequired'),
     );
-    return $Map{$Message} || $Message || 'Verbindungstest fehlgeschlagen';
+    return $Map{$Message} || $Message || _I('MailTestFailed');
 }
 
 sub _BootstrapCredentials {
@@ -976,7 +1155,7 @@ sub _BootstrapCredentials {
 
 sub _BootstrapDelete {
     my ( $Bootstrap, $DBH ) = @_;
-    return { success => 0, error => 'Temporäre Datenbankberechtigung ist ungültig.' }
+    return { success => 0, error => _I('BootstrapInvalid') }
         if !$Bootstrap || !$Bootstrap->{user} || !$DBH;
 
     my $Account = $DBH->quote( $Bootstrap->{user} ) . '@' . $DBH->quote('localhost');
@@ -984,8 +1163,11 @@ sub _BootstrapDelete {
     if ( !$Result ) {
         return {
             success => 0,
-            error   => 'Der temporäre Datenbankbenutzer ' . $Bootstrap->{user} . ' konnte nicht automatisch entfernt werden: '
-                . ( $DBH->errstr || $@ || 'unbekannter Fehler' ),
+            error   => _I(
+                'BootstrapDeleteFailed',
+                user  => $Bootstrap->{user},
+                error => $DBH->errstr || $@ || _I('UnknownError'),
+            ),
         };
     }
 
@@ -997,13 +1179,13 @@ sub _SQLImport {
     my (%Param) = @_;
     my $SQLFile = $Param{File} || '';
 
-    return { success => 0, error => 'Die zu importierende SQL-Datei fehlt.' }
+    return { success => 0, error => _I('SQLFileMissing') }
         if !$SQLFile || !-r $SQLFile;
 
     my $ErrorHandle = gensym;
     local $ENV{MYSQL_PWD} = $Param{DBPassword};
     my $DatabaseCLI = _DatabaseCLI();
-    return { success => 0, error => 'Weder mariadb noch mysql wurde gefunden.' } if !$DatabaseCLI;
+    return { success => 0, error => _I('DatabaseCLIMissing') } if !$DatabaseCLI;
 
     my @Command = (
         $DatabaseCLI,
@@ -1016,9 +1198,10 @@ sub _SQLImport {
 
     my ( $In, $Out );
     my $PID = eval { open3( $In, $Out, $ErrorHandle, @Command ) };
-    return { success => 0, error => "mysql konnte nicht gestartet werden: $@" } if !$PID;
+    return { success => 0, error => _I( 'DatabaseCLIStartFailed', error => $@ ) } if !$PID;
 
-    open my $SQLHandle, '<:raw', $SQLFile or return { success => 0, error => "SQL-Datei kann nicht gelesen werden: $!" };
+    open my $SQLHandle, '<:raw', $SQLFile
+        or return { success => 0, error => _I( 'SQLReadFailed', error => $! ) };
     while ( read( $SQLHandle, my $Buffer, 65536 ) ) {
         print {$In} $Buffer;
     }
@@ -1033,7 +1216,10 @@ sub _SQLImport {
     my $Exit = $? >> 8;
 
     $Stderr =~ s{\Q$Param{DBPassword}\E}{[PASSWORT ENTFERNT]}g if $Param{DBPassword};
-    return { success => 0, error => _Trim($Stderr) || "mysql wurde mit Status $Exit beendet" } if $Exit != 0;
+    return {
+        success => 0,
+        error   => _Trim($Stderr) || _I( 'DatabaseCLIExit', status => $Exit ),
+    } if $Exit != 0;
     return { success => 1 };
 }
 
@@ -1067,10 +1253,10 @@ sub _ConfigWrite {
     my $Config = _ConfigText($State);
     my $FH;
     if ( !open $FH, '>:encoding(UTF-8)', $ConfigFile ) {
-        return { success => 0, error => "QisutuConfig.pm kann nicht geschrieben werden: $!" };
+        return { success => 0, error => _I( 'ConfigWriteFailed', error => $! ) };
     }
     print {$FH} $Config;
-    close $FH or return { success => 0, error => "QisutuConfig.pm konnte nicht vollständig gespeichert werden: $!" };
+    close $FH or return { success => 0, error => _I( 'ConfigSaveFailed', error => $! ) };
     chmod 0660, $ConfigFile;
     return { success => 1 };
 }
@@ -1192,7 +1378,12 @@ sub _ConfigHash {
 
 sub _SystemChecks {
     my @Checks;
-    push @Checks, { name => 'Perl', ok => $] >= 5.026 ? 1 : 0, critical => 1, detail => sprintf( 'Version %.3f', $] ) };
+    push @Checks, {
+        name     => 'Perl',
+        ok       => $] >= 5.026 ? 1 : 0,
+        critical => 1,
+        detail   => _I( 'VersionLabel', version => sprintf( '%.3f', $] ) ),
+    };
     push @Checks, _ModuleCheck( 'DBI', 1 );
     push @Checks, _ModuleCheck( 'DBD::mysql', 1 );
     push @Checks, _ModuleCheck( 'IO::Socket::SSL', 1 );
@@ -1202,21 +1393,26 @@ sub _SystemChecks {
     push @Checks, _ModuleCheck( 'Net::SMTP', 1 );
     push @Checks, _ModuleCheck( 'Net::LDAP', 1 );
     my $DatabaseCLI = _DatabaseCLI();
-    push @Checks, { name => 'MariaDB/MySQL Client', ok => $DatabaseCLI ? 1 : 0, critical => 1, detail => $DatabaseCLI ? $DatabaseCLI : 'nicht gefunden' };
-    push @Checks, { name => 'Apache CGI', ok => $ENV{GATEWAY_INTERFACE} ? 1 : 0, critical => 1, detail => $ENV{GATEWAY_INTERFACE} || 'nicht über CGI aufgerufen' };
-    push @Checks, { name => 'Datenbankschema', ok => -r $SchemaFile ? 1 : 0, critical => 1, detail => -r $SchemaFile ? 'lesbar' : 'fehlt' };
-    push @Checks, { name => 'Datenbank-Grunddaten', ok => -r $InsertFile ? 1 : 0, critical => 1, detail => -r $InsertFile ? 'lesbar' : 'fehlt' };
-    push @Checks, { name => 'QisutuConfig.pm', ok => -w $ConfigFile ? 1 : 0, critical => 1, detail => -w $ConfigFile ? 'beschreibbar' : 'nicht beschreibbar' };
-    push @Checks, { name => 'Installationsverzeichnis', ok => -w $InstallPath ? 1 : 0, critical => 1, detail => -w $InstallPath ? 'beschreibbar' : 'nicht beschreibbar' };
+    push @Checks, { name => 'MariaDB/MySQL Client', ok => $DatabaseCLI ? 1 : 0, critical => 1, detail => $DatabaseCLI ? $DatabaseCLI : _I('NotFound') };
+    push @Checks, { name => 'Apache CGI', ok => $ENV{GATEWAY_INTERFACE} ? 1 : 0, critical => 1, detail => $ENV{GATEWAY_INTERFACE} || _I('NotViaCGI') };
+    push @Checks, { name => _I('DatabaseSchema'), ok => -r $SchemaFile ? 1 : 0, critical => 1, detail => -r $SchemaFile ? _I('Readable') : _I('Missing') };
+    push @Checks, { name => _I('SeedData'), ok => -r $InsertFile ? 1 : 0, critical => 1, detail => -r $InsertFile ? _I('Readable') : _I('Missing') };
+    push @Checks, { name => 'QisutuConfig.pm', ok => -w $ConfigFile ? 1 : 0, critical => 1, detail => -w $ConfigFile ? _I('Writable') : _I('NotWritable') };
+    push @Checks, { name => _I('InstallationDirectory'), ok => -w $InstallPath ? 1 : 0, critical => 1, detail => -w $InstallPath ? _I('Writable') : _I('NotWritable') };
     my $Crypt = crypt( 'test', '$6$abcdefghijklmnop$' ) || '';
-    push @Checks, { name => 'SHA-512 Passwort-Hash', ok => $Crypt =~ m{\A\$6\$} ? 1 : 0, critical => 1, detail => $Crypt =~ m{\A\$6\$} ? 'verfügbar' : 'nicht verfügbar' };
+    push @Checks, { name => _I('PasswordHash'), ok => $Crypt =~ m{\A\$6\$} ? 1 : 0, critical => 1, detail => $Crypt =~ m{\A\$6\$} ? _I('Available') : _I('Unavailable') };
     return \@Checks;
 }
 
 sub _ModuleCheck {
     my ( $Module, $Critical ) = @_;
     my $OK = eval "require $Module; 1;" ? 1 : 0;
-    return { name => "Perl-Modul $Module", ok => $OK, critical => $Critical, detail => $OK ? 'vorhanden' : 'nicht installiert' };
+    return {
+        name     => _I( 'PerlModule', module => $Module ),
+        ok       => $OK,
+        critical => $Critical,
+        detail   => $OK ? _I('Present') : _I('NotInstalled'),
+    };
 }
 
 sub _DatabaseCLI {
@@ -1242,7 +1438,7 @@ sub _PasswordHash {
 
 sub _RandomPassword {
     my ($Length) = @_;
-    my @Chars = ( 'a' .. 'z', 'A' .. 'Z', 0 .. 9, '!', '@', '#', '%', '_', '-', '+', '=' );
+    my @Chars = split //, 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789@#%_+';
     return join '', map { $Chars[ _RandomInt( scalar @Chars ) ] } 1 .. $Length;
 }
 
@@ -1274,7 +1470,13 @@ sub _SessionLoadOrCreate {
         return ( $Cookie, $State, 0 ) if $State;
     }
     my $Token = _RandomToken();
-    my $State = { csrf_token => _RandomToken(), created_at => time, remote_addr => $ENV{REMOTE_ADDR} || '' };
+    my $State = {
+        csrf_token      => _RandomToken(),
+        created_at      => time,
+        remote_addr     => $ENV{REMOTE_ADDR} || '',
+        ui_language     => $InstallLanguage,
+        default_language => $InstallLanguage,
+    };
     _StateSave( $Token, $State );
     return ( $Token, $State, 1 );
 }
@@ -1325,17 +1527,24 @@ sub _InstallationLockCreate {
 sub _Page {
     my (%Param) = @_;
     my $Step = $Param{Step};
-    my @Labels = ( 'Willkommen', 'Lizenz', 'Datenbank', 'System', 'E-Mail', 'Abschluss' );
+    my @Labels = map { _I($_) } qw(
+        ProgressWelcome
+        ProgressLicense
+        ProgressDatabase
+        ProgressSystem
+        ProgressEmail
+        ProgressFinish
+    );
     my $Progress = '';
     for my $Index ( 1 .. 6 ) {
         my $Class = $Index < $Step ? 'done' : $Index == $Step ? 'active' : '';
         $Progress .= '<div class="' . $Class . '"><span>' . $Index . '</span><small>' . $Labels[ $Index - 1 ] . '</small></div>';
     }
 
-    return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>'
-        . _Escape( $Param{Title} ) . ' - Qisutu Installation</title><link rel="icon" type="image/x-icon" sizes="32x32" href="' . $WebPath . '/static/img/favicon.ico?v=2026072101"><link rel="apple-touch-icon" sizes="120x120" href="' . $WebPath . '/static/img/apple-touch-icon.png?v=2026072101"><link rel="stylesheet" href="' . $WebPath . '/static/css/qisutu-install.css?v=20260714"></head><body>'
-        . '<div class="qisutu-install-shell"><header><div class="brand"><img src="' . $WebPath . '/static/img/logo.png" alt="Qisutu"><strong>Qisutu Installation</strong></div><div class="step-text">Schritt ' . $Step . ' von 6</div></header>'
-        . '<nav class="qisutu-install-progress" aria-label="Installationsfortschritt">' . $Progress . '</nav>'
+    return '<!doctype html><html lang="' . _Escape($UILanguage) . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>'
+        . _Escape( $Param{Title} ) . ' - ' . _Escape( _I('PageBrand') ) . '</title><link rel="icon" type="image/x-icon" sizes="32x32" href="' . $WebPath . '/static/img/favicon.ico?v=2026072101"><link rel="apple-touch-icon" sizes="180x180" href="' . $WebPath . '/static/img/apple-touch-icon.png?v=2026072101"><link rel="stylesheet" href="' . $WebPath . '/static/css/qisutu-install.css?v=2026073001"><script src="' . $WebPath . '/static/js/qisutu-install.js?v=2026073001" defer></script></head><body>'
+        . '<div class="qisutu-install-shell"><header><div class="brand"><img src="' . $WebPath . '/static/img/logo.png" alt="Qisutu"><strong>' . _Escape( _I('PageBrand') ) . '</strong></div><div class="step-text">' . _Escape( _I( 'StepOf', step => $Step, total => 6 ) ) . '</div></header>'
+        . '<nav class="qisutu-install-progress" aria-label="' . _Escape( _I('ProgressAria') ) . '">' . $Progress . '</nav>'
         . '<main><h1>' . _Escape( $Param{Title} ) . '</h1>' . $Param{Content} . '</main>'
         . '<footer>Qisutu - Open Source Ticket System · AGPL-3.0-or-later</footer></div></body></html>';
 }
@@ -1354,16 +1563,104 @@ sub _SelectField {
     return $HTML . '</select></div>';
 }
 
+sub _InstallerLanguageLoad {
+    my ($Language) = @_;
+
+    $InstallerEnglish = _InstallerCatalogLoad('en');
+    $InstallerText    = _InstallerCatalogLoad($Language);
+    $InstallerText    = $InstallerEnglish if !%{$InstallerText};
+
+    return;
+}
+
+sub _InstallerCatalogLoad {
+    my ($Language) = @_;
+
+    $Language = _LanguageCanonical($Language);
+    return {} if !$Language;
+
+    my $File = File::Spec->catfile( $InstallerLanguagePath, "$Language.pm" );
+    return {} if !-f $File || -l $File;
+
+    my $Catalog = do $File;
+    return ref $Catalog eq 'HASH' ? $Catalog : {};
+}
+
+sub _InstallerLanguageAvailable {
+    my ($Language) = @_;
+
+    $Language = _LanguageCanonical($Language);
+    return if !$Language;
+
+    my $CoreFile = File::Spec->catfile( $RootPath, 'core', 'language', "$Language.pm" );
+    my $InstallFile = File::Spec->catfile( $InstallerLanguagePath, "$Language.pm" );
+    return -f $CoreFile && !-l $CoreFile && -f $InstallFile && !-l $InstallFile ? 1 : 0;
+}
+
+sub _LanguageCanonical {
+    my ($Language) = @_;
+
+    return '' if !defined $Language || ref $Language;
+    $Language =~ s{\A\s+|\s+\z}{}g;
+    $Language =~ tr{_}{-};
+    return '' if $Language !~ m{\A[A-Za-z]{2,3}(?:-[A-Za-z]{2})?\z};
+
+    if ( $Language =~ m{\A([A-Za-z]{2,3})-([A-Za-z]{2})\z} ) {
+        return lc($1) . '-' . uc($2);
+    }
+
+    return lc $Language;
+}
+
+sub _I {
+    my ( $Key, %Param ) = @_;
+
+    my $Text = exists $InstallerText->{$Key}
+        ? $InstallerText->{$Key}
+        : exists $InstallerEnglish->{$Key}
+            ? $InstallerEnglish->{$Key}
+            : $Key;
+
+    for my $Name ( sort { length($b) <=> length($a) } keys %Param ) {
+        my $Value = defined $Param{$Name} ? $Param{$Name} : '';
+        $Text =~ s{\{\Q$Name\E\}}{$Value}g;
+    }
+
+    return $Text;
+}
+
 sub _LanguageOptions {
     my ($Selected) = @_;
-    my @Options = ( [ de => 'Deutsch' ], [ en => 'English' ], [ fr => 'Français' ], [ it => 'Italiano' ] );
+    my @Options = (
+        [ de      => 'Deutsch' ],
+        [ en      => 'English' ],
+        [ fr      => 'Français' ],
+        [ it      => 'Italiano' ],
+        [ 'pt-BR' => 'Português (Brasil)' ],
+        [ 'pt-PT' => 'Português (Portugal)' ],
+        [ es      => 'Español' ],
+        [ nl      => 'Nederlands' ],
+        [ pl      => 'Polski' ],
+        [ cs      => 'Čeština' ],
+        [ tr      => 'Türkçe' ],
+    );
     return join '', map { '<option value="' . $_->[0] . '"' . ( $_->[0] eq $Selected ? ' selected' : '' ) . '>' . _Escape( $_->[1] ) . '</option>' } @Options;
+}
+
+sub _LanguageValid {
+    my ($Language) = @_;
+
+    $Language = _LanguageCanonical($Language);
+    return if !$Language;
+
+    my $File = File::Spec->catfile( $RootPath, 'core', 'language', "$Language.pm" );
+    return -f $File && !-l $File ? 1 : 0;
 }
 
 sub _ErrorHTML {
     my ($Error) = @_;
     return '' if !$Error;
-    return '<div class="qisutu-install-error"><strong>Fehler:</strong> ' . _Escape($Error) . '</div>';
+    return '<div class="qisutu-install-error"><strong>' . _Escape( _I('ErrorPrefix') ) . '</strong> ' . _Escape($Error) . '</div>';
 }
 
 sub _RequestParams {

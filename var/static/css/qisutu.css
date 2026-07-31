@@ -3230,6 +3230,33 @@ a:hover {
     font-size: 12px;
 }
 
+.qisutu-agent-notification-language,
+.qisutu-localized-content-language {
+    align-items: end;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin: 0 0 14px auto;
+}
+
+.qisutu-agent-notification-language .qisutu-form-field,
+.qisutu-localized-content-language .qisutu-form-field {
+    min-width: 240px;
+}
+
+@media (max-width: 640px) {
+    .qisutu-agent-notification-language,
+    .qisutu-localized-content-language {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .qisutu-agent-notification-language .qisutu-form-field,
+    .qisutu-localized-content-language .qisutu-form-field {
+        min-width: 0;
+    }
+}
+
 
 .qisutu-system-settings-table {
     table-layout: fixed;

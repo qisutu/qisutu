@@ -32,6 +32,21 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                 <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
 
+                <form class="qisutu-localized-content-language" method="get" action="[% FormAction %]" data-localized-content-language-form>
+                    <input type="hidden" name="Page" value="AdminCustomerAutoResponses">
+                    [% IF ShowEdit %]
+                    <input type="hidden" name="Action" value="Edit">
+                    <input type="hidden" name="ResponseType" value="[% CurrentType %]">
+                    [% END %]
+                    <div class="qisutu-form-field">
+                        <label for="qisutu-customer-auto-response-language">[% Translate.AdminTranslationLanguage %]</label>
+                        <select id="qisutu-customer-auto-response-language" name="ResponseLanguage" data-localized-content-language>
+                            [% RAW.LanguageOptionsHTML %]
+                        </select>
+                    </div>
+                    <button class="qisutu-button qisutu-button-secondary" type="submit">[% Translate.AdminFilterApply %]</button>
+                </form>
+
                 [% IF ShowList %]
                 <section class="qisutu-panel">
                     <div class="qisutu-panel-header">
@@ -54,10 +69,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <tbody>
                                 [% FOREACH Template IN TemplateList %]
                                 <tr>
-                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminCustomerAutoResponses;Action=Edit;ResponseType=[% Template.response_type %]">[% Template.display_name %]</a></td>
+                                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminCustomerAutoResponses;Action=Edit;ResponseType=[% Template.response_type %];ResponseLanguage=[% CurrentLanguage %]">[% Template.display_name %]</a></td>
                                     <td>[% Template.subject %]</td>
                                     <td>[% Template.active_label %]</td>
-                                    <td><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminCustomerAutoResponses;Action=Edit;ResponseType=[% Template.response_type %]">[% Translate.AdminEdit %]</a></td>
+                                    <td><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminCustomerAutoResponses;Action=Edit;ResponseType=[% Template.response_type %];ResponseLanguage=[% CurrentLanguage %]">[% Translate.AdminEdit %]</a></td>
                                 </tr>
                                 [% END %]
                             </tbody>
@@ -73,7 +88,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <h2>[% Translate.AdminCustomerAutoResponseEdit %]</h2>
                             <span class="qisutu-panel-subtitle">[% CurrentName %]</span>
                         </div>
-                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCustomerAutoResponses">[% Translate.AdminBackToList %]</a>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCustomerAutoResponses;ResponseLanguage=[% CurrentLanguage %]">[% Translate.AdminBackToList %]</a>
                     </div>
 
                     <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
@@ -81,6 +96,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <input type="hidden" name="Step" value="AutoResponseUpdate">
                         <input type="hidden" name="Action" value="Edit">
                         <input type="hidden" name="ResponseType" value="[% CurrentType %]">
+                        <input type="hidden" name="ResponseLanguage" value="[% CurrentLanguage %]">
 
                         <div class="qisutu-admin-form-columns">
                             <div class="qisutu-form-field">
@@ -127,3 +143,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
+            <script src="[% StaticBase %]/js/qisutu-localized-content.js?v=[% SystemVersion %]"></script>

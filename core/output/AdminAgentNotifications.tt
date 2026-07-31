@@ -32,6 +32,21 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                 <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
 
+                <form class="qisutu-agent-notification-language" method="get" action="[% FormAction %]" data-agent-notification-language-form>
+                    <input type="hidden" name="Page" value="AdminAgentNotifications">
+                    [% IF ShowEdit %]
+                    <input type="hidden" name="Action" value="Edit">
+                    <input type="hidden" name="NotificationType" value="[% CurrentType %]">
+                    [% END %]
+                    <div class="qisutu-form-field">
+                        <label for="qisutu-agent-notification-language">[% Translate.AdminTranslationLanguage %]</label>
+                        <select id="qisutu-agent-notification-language" name="NotificationLanguage" data-agent-notification-language>
+                            [% RAW.LanguageOptionsHTML %]
+                        </select>
+                    </div>
+                    <button class="qisutu-button qisutu-button-secondary" type="submit">[% Translate.AdminFilterApply %]</button>
+                </form>
+
                 [% IF ShowList %]
                 <section class="qisutu-panel">
                     <div class="qisutu-panel-header">
@@ -55,12 +70,12 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 [% FOREACH Template IN TemplateList %]
                                 <tr>
                                     <td>
-                                        <a class="qisutu-table-link" href="index.pl?Page=AdminAgentNotifications;Action=Edit;NotificationType=[% Template.notification_type %]">[% Template.display_name %]</a>
+                                        <a class="qisutu-table-link" href="index.pl?Page=AdminAgentNotifications;Action=Edit;NotificationType=[% Template.notification_type %];NotificationLanguage=[% CurrentLanguage %]">[% Template.display_name %]</a>
                                     </td>
                                     <td>[% Template.subject %]</td>
                                     <td>[% Template.active_label %]</td>
                                     <td>
-                                        <a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminAgentNotifications;Action=Edit;NotificationType=[% Template.notification_type %]">[% Translate.AdminEdit %]</a>
+                                        <a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminAgentNotifications;Action=Edit;NotificationType=[% Template.notification_type %];NotificationLanguage=[% CurrentLanguage %]">[% Translate.AdminEdit %]</a>
                                     </td>
                                 </tr>
                                 [% END %]
@@ -77,7 +92,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <h2>[% Translate.AdminAgentNotificationEdit %]</h2>
                             <span class="qisutu-panel-subtitle">[% CurrentName %]</span>
                         </div>
-                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminAgentNotifications">[% Translate.AdminBackToList %]</a>
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminAgentNotifications;NotificationLanguage=[% CurrentLanguage %]">[% Translate.AdminBackToList %]</a>
                     </div>
 
                     <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
@@ -85,6 +100,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <input type="hidden" name="Step" value="NotificationUpdate">
                         <input type="hidden" name="Action" value="Edit">
                         <input type="hidden" name="NotificationType" value="[% CurrentType %]">
+                        <input type="hidden" name="NotificationLanguage" value="[% CurrentLanguage %]">
 
                         <div class="qisutu-admin-form-columns">
                             <div class="qisutu-form-field">
@@ -133,3 +149,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
+            <script src="[% StaticBase %]/js/qisutu-agent-notifications.js?v=[% SystemVersion %]"></script>

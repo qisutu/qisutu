@@ -485,6 +485,14 @@ sub _LanguageClean {
     $Language = $Self->_Trim($Language);
     $Language = $Self->{Config}->{Language}->{Default} || 'en' if !$Language;
     $Language =~ s{[^A-Za-z0-9_-]}{}g;
+    $Language =~ tr{_}{-};
+
+    if ( $Language =~ m{\A([A-Za-z]{2,3})-([A-Za-z]{2})\z} ) {
+        $Language = lc($1) . '-' . uc($2);
+    }
+    else {
+        $Language = lc $Language;
+    }
 
     return $Language || 'en';
 }

@@ -317,7 +317,7 @@ sub _FieldParameters {
 sub _FormTranslationsFromRequest {
     my ( $Self, $R ) = @_;
     my %Value;
-    for my $Language (qw(de en fr it)) {
+    for my $Language ( @{ $Self->_LanguageList() } ) {
         $Value{$Language} = {
             title => $R->{ 'FormTitle_' . $Language }, description => $R->{ 'FormDescription_' . $Language },
             submit_label => $R->{ 'FormSubmitLabel_' . $Language }, confirmation_text => $R->{ 'FormConfirmation_' . $Language },
@@ -330,7 +330,7 @@ sub _FormTranslationsFromRequest {
 sub _FieldTranslationsFromRequest {
     my ( $Self, $R ) = @_;
     my %Value;
-    for my $Language (qw(de en fr it)) {
+    for my $Language ( @{ $Self->_LanguageList() } ) {
         $Value{$Language} = {
             label => $R->{ 'FieldLabel_' . $Language }, help_text => $R->{ 'FieldHelp_' . $Language },
             placeholder => $R->{ 'FieldPlaceholder_' . $Language },
@@ -453,7 +453,7 @@ sub _FieldValuesFromRequest {
 sub _DefaultFormTranslations {
     my ( $Self, $Language ) = @_;
     my %Value;
-    for my $Code (qw(de en fr it)) {
+    for my $Code ( @{ $Self->_LanguageList() } ) {
         $Value{$Code} = { title => '', description => '', submit_label => $Self->_T( 'TicketFormSubmit', $Code ),
             confirmation_text => $Self->_T( 'TicketFormConfirmationDefault', $Code ), consent_text => '' };
     }
@@ -462,14 +462,17 @@ sub _DefaultFormTranslations {
 
 sub _DefaultFieldTranslations {
     my ( $Self, $Language ) = @_;
-    return { map { $_ => { label => '', help_text => '', placeholder => '' } } qw(de en fr it) };
+    return {
+        map { $_ => { label => '', help_text => '', placeholder => '' } }
+            @{ $Self->_LanguageList() }
+    };
 }
 
 sub _FormTranslationsHTML {
     my ( $Self, %Param ) = @_;
     my $Value = $Param{Translations} || {};
     my $HTML = '';
-    for my $Code (qw(de en fr it)) {
+    for my $Code ( @{ $Self->_LanguageList() } ) {
         my $Row = $Value->{$Code} || {};
         $HTML .= '<details class="qisutu-ticket-form-language"' . ( $Code eq ( $Self->{Config}->{Language}->{Default} || 'de' ) ? ' open' : '' ) . '>'
             . '<summary>' . uc($Code) . '</summary><div class="qisutu-ticket-form-language-grid">'
@@ -489,7 +492,7 @@ sub _FieldTranslationsHTML {
     my ( $Self, %Param ) = @_;
     my $Value = $Param{Translations} || {};
     my $HTML = '';
-    for my $Code (qw(de en fr it)) {
+    for my $Code ( @{ $Self->_LanguageList() } ) {
         my $Row = $Value->{$Code} || {};
         $HTML .= '<details class="qisutu-ticket-form-language"' . ( $Code eq ( $Self->{Config}->{Language}->{Default} || 'de' ) ? ' open' : '' ) . '>'
             . '<summary>' . uc($Code) . '</summary><div class="qisutu-ticket-form-language-grid">'
@@ -602,6 +605,27 @@ sub _Textarea {
     my ( $Self, %Param ) = @_;
     return '<div class="qisutu-form-field qisutu-ticket-form-field-wide"><label>' . $Self->_E( $Param{Label} ) . '</label><textarea name="'
         . $Self->_E( $Param{Name} ) . '" rows="' . int( $Param{Rows} || 3 ) . '">' . $Self->_E( $Param{Value} ) . '</textarea></div>';
+}
+
+sub _LanguageList {
+    my ($Self) = @_;
+
+    my $Default = $Self->{Config}->{Language}->{Default} || 'en';
+    my $Path    = $Self->{Config}->{Paths}->{Language} || '';
+    my %Language = ( $Default => 1 );
+
+    if ( $Path && opendir my $DirectoryHandle, $Path ) {
+        while ( my $Entry = readdir $DirectoryHandle ) {
+            next if $Entry !~ m{\A([A-Za-z0-9_-]+)[.]pm\z};
+            $Language{$1} = 1;
+        }
+        closedir $DirectoryHandle;
+    }
+
+    return [
+        $Default,
+        sort grep { $_ ne $Default } keys %Language,
+    ];
 }
 
 sub _ID { my ( $Self, $Value ) = @_; return defined $Value && $Value =~ m{\A\d+\z} ? int($Value) : 0; }

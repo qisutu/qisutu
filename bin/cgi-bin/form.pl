@@ -233,9 +233,20 @@ sub _URLDecode {
 
 sub _LanguageClean {
     my ($Language) = @_;
+
     return '' if !defined $Language || ref $Language;
-    return lc $Language if $Language =~ m{\A(?:de|en|fr|it)\z}i;
-    return '';
+    $Language =~ tr{_}{-};
+    return '' if $Language !~ m{\A[A-Za-z]{2,3}(?:-[A-Za-z]{2})?\z};
+
+    if ( $Language =~ m{\A([A-Za-z]{2,3})-([A-Za-z]{2})\z} ) {
+        $Language = lc($1) . '-' . uc($2);
+    }
+    else {
+        $Language = lc $Language;
+    }
+
+    my $File = File::Spec->catfile( $QisutuHome, 'core', 'language', "$Language.pm" );
+    return -f $File && !-l $File ? $Language : '';
 }
 
 sub _HTMLResponse {

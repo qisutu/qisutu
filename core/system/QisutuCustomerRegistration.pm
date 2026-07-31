@@ -27,6 +27,7 @@ use warnings;
 use utf8;
 
 use Digest::SHA qw(sha256_hex);
+use File::Spec;
 use QisutuMail;
 use QisutuOutput;
 use QisutuSystemSetting;
@@ -731,13 +732,39 @@ sub _UserAgentClean {
 sub _LanguageClean {
     my ( $Self, $Language ) = @_;
 
-    $Language = lc( $Language || '' );
-    return $Language if $Language =~ m{\A(?:de|en|fr|it)\z};
+    my $LanguagePath = $Self->{Config}->{Paths}->{Language} || '';
+    if ( !$LanguagePath && $Self->{Config}->{RootPath} ) {
+        $LanguagePath = File::Spec->catdir( $Self->{Config}->{RootPath}, 'core', 'language' );
+    }
 
-    my $Default = lc( $Self->{Config}->{Language}->{Default} || 'en' );
-    return $Default if $Default =~ m{\A(?:de|en|fr|it)\z};
+    for my $Candidate (
+        $Language,
+        $Self->{Config}->{Language}->{Default} || '',
+        'en',
+    ) {
+        $Candidate = $Self->_LanguageCanonical($Candidate);
+        next if !$Candidate;
+
+        my $File = File::Spec->catfile( $LanguagePath, "$Candidate.pm" );
+        return $Candidate if $LanguagePath && -f $File && !-l $File;
+    }
 
     return 'en';
+}
+
+sub _LanguageCanonical {
+    my ( $Self, $Language ) = @_;
+
+    return '' if !defined $Language || ref $Language;
+    $Language =~ s{\A\s+|\s+\z}{}g;
+    $Language =~ tr{_}{-};
+    return '' if $Language !~ m{\A[A-Za-z]{2,3}(?:-[A-Za-z]{2})?\z};
+
+    if ( $Language =~ m{\A([A-Za-z]{2,3})-([A-Za-z]{2})\z} ) {
+        return lc($1) . '-' . uc($2);
+    }
+
+    return lc $Language;
 }
 
 sub _BaseURL {

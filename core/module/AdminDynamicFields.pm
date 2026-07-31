@@ -586,7 +586,8 @@ sub _TranslationLanguageOptions {
     }
 
     if ( @Languages == 1 ) {
-        push @Languages, [ de => 'de' ], [ en => 'en' ];
+        push @Languages, map { [ $_ => $_ ] }
+            qw(de en fr it pt-BR pt-PT es nl pl cs tr);
     }
 
     my $HTML = '';

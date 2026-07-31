@@ -177,7 +177,7 @@ for my $Path ( sort keys %IntegrationPattern ) {
     like( $Content, $IntegrationPattern{$Path}, "$Path contains ticket print integration" );
 }
 
-for my $Language (qw(de en fr it)) {
+for my $Language (qw(de en fr it pt-BR pt-PT es nl pl cs tr)) {
     my $Translations = do "$Root/core/language/$Language.pm";
     ok( ref $Translations eq 'HASH', "$Language translations load" );
     ok( $Translations->{TicketPrintWhole}, "$Language contains ticket print translations" );

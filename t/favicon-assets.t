@@ -41,8 +41,8 @@ is( ord( substr( $Favicon, 7, 1 ) ), 32, 'favicon contains a 32 pixel high icon'
 my $AppleIcon = _ReadBinary( File::Spec->catfile( $ImagePath, 'apple-touch-icon.png' ) );
 is( substr( $AppleIcon, 0, 8 ), "\x89PNG\x0d\x0a\x1a\x0a", 'Apple touch icon is a valid PNG file' );
 my ( $Width, $Height ) = unpack( 'NN', substr( $AppleIcon, 16, 8 ) );
-is( $Width, 120, 'Apple touch icon is 120 pixels wide' );
-is( $Height, 120, 'Apple touch icon is 120 pixels high' );
+is( $Width, 180, 'Apple touch icon is 180 pixels wide' );
+is( $Height, 180, 'Apple touch icon is 180 pixels high' );
 
 my $Head = _ReadText( File::Spec->catfile( $Root, 'core', 'output', 'Head.tt' ) );
 like( $Head, qr{rel="icon"[^>]+favicon[.]ico}, 'central application head includes the favicon' );

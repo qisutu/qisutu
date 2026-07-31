@@ -156,6 +156,10 @@ tr:last-child td { border-bottom: 0; }
 .qisutu-install-credentials span { color: #5c6979; }
 .qisutu-install-credentials strong { overflow-wrap: anywhere; }
 .qisutu-install-credentials .credential { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; background: #f4f6f8; border-radius: 5px; padding: 4px 7px; }
+.qisutu-install-credential-value { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.qisutu-install-credential-value .credential { flex: 1 1 auto; min-width: 0; letter-spacing: .04em; user-select: all; }
+.qisutu-install-copy { flex: 0 0 auto; padding: 7px 11px; background: #e3e9ef; color: #263b52; font-size: 13px; }
+.qisutu-install-copy:hover, .qisutu-install-copy:focus-visible { background: #d4dee8; }
 .qisutu-install-mail-section { margin-top: 20px; border: 1px solid #d8e0e9; border-radius: 9px; padding: 18px; }
 .qisutu-install-mail-section .qisutu-install-check { margin-top: 0; margin-bottom: 18px; color: #173d61; }
 code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
@@ -167,5 +171,7 @@ code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
     .qisutu-install-progress small { display: none; }
     .qisutu-install-welcome, .qisutu-install-grid { grid-template-columns: 1fr; }
     .qisutu-install-credentials > div { grid-template-columns: 1fr; gap: 5px; }
+    .qisutu-install-credential-value { align-items: stretch; flex-direction: column; }
+    .qisutu-install-copy { align-self: flex-start; }
     .step-text { display: none; }
 }

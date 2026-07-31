@@ -34,6 +34,7 @@ use lib File::Spec->catdir( $FindBin::Bin, '..', 'core', 'system' );
 use lib File::Spec->catdir( $FindBin::Bin, '..', 'core', 'module' );
 
 use QisutuCustomerAutoResponse;
+use QisutuCustomerAutoResponseTemplates;
 use QisutuMail;
 
 my @Type = map { $_->{type} } @{ QisutuCustomerAutoResponse->ResponseTypes() };
@@ -42,6 +43,18 @@ is_deeply(
     [ qw(customer_ticket_created customer_ticket_reply incoming_email_rejected closed_ticket_follow_up) ],
     'only the four agreed customer-originated events are available',
 );
+is(
+    scalar @{ QisutuCustomerAutoResponseTemplates->Languages() },
+    11,
+    'automatic responses support all eleven Qisutu languages',
+);
+for my $Language ( @{ QisutuCustomerAutoResponseTemplates->Languages() } ) {
+    is(
+        scalar @{ QisutuCustomerAutoResponseTemplates->Templates( Language => $Language->{code} ) },
+        4,
+        "$Language->{code} provides all four automatic responses",
+    );
+}
 
 my %Placeholder = map { ( $_->{placeholder} || '' ) => 1 } @{ QisutuCustomerAutoResponse->PlaceholderList() };
 ok( $Placeholder{'{{CustomerUser.Firstname}}'}, 'customer-user placeholders are offered' );
@@ -81,17 +94,25 @@ ok( !$Placeholder{'{{Agent.FullName}}'}, 'irrelevant agent-recipient placeholder
 
         if ( $SQL =~ m{FROM\s+customer_auto_response_template}si ) {
             my $Type = $Bind[0] || '';
+            my $Language = $Bind[1] || 'de';
             return {
                 response_type => $Type,
+                language      => $Language,
                 name          => 'Test response',
                 subject       => $Type eq 'incoming_email_rejected'
-                    ? 'Nicht angenommen: {{Incoming.Subject}}'
-                    : 'Empfangen: {{Ticket.Number}} – {{Ticket.Title}}',
+                    ? ( $Language eq 'en' ? 'Rejected: {{Incoming.Subject}}' : 'Nicht angenommen: {{Incoming.Subject}}' )
+                    : ( $Language eq 'pt-BR' ? 'Recebido: {{Ticket.Number}} – {{Ticket.Title}}' : 'Empfangen: {{Ticket.Number}} – {{Ticket.Title}}' ),
                 body_html     => $Type eq 'incoming_email_rejected'
                     ? '<p>{{Incoming.FromName}}: {{Incoming.Subject}}</p>'
-                    : '<p>Hallo {{CustomerUser.Firstname}}</p><p>{{Ticket.LinkHTML}}</p>',
+                    : ( $Language eq 'pt-BR'
+                        ? '<p>Olá {{CustomerUser.Firstname}}</p><p>{{Ticket.LinkHTML}}</p>'
+                        : '<p>Hallo {{CustomerUser.Firstname}}</p><p>{{Ticket.LinkHTML}}</p>' ),
                 active        => 1,
             };
+        }
+
+        if ( $SQL =~ m{FROM\s+information_schema\.(?:COLUMNS|STATISTICS)}si ) {
+            return { object_count => 1 };
         }
 
         if ( $SQL =~ m{FROM\s+customer_auto_response_event_log}si ) {
@@ -110,6 +131,7 @@ ok( !$Placeholder{'{{Agent.FullName}}'}, 'irrelevant agent-recipient placeholder
                 priority_name             => '3 normal',
                 customer_name             => 'Beispiel GmbH',
                 customer_number           => 'K-100',
+                customer_user_id           => 17,
                 customer_user_login       => 'klara',
                 customer_user_email       => 'klara@example.test',
                 customer_user_firstname   => 'Klara',
@@ -117,6 +139,14 @@ ok( !$Placeholder{'{{Agent.FullName}}'}, 'irrelevant agent-recipient placeholder
                 system_email_name         => 'Qisutu Support',
                 system_email              => 'support@example.test',
             };
+        }
+
+        if ( $SQL =~ m{FROM\s+customer_user\s+cu}si ) {
+            return { language => 'pt-BR' };
+        }
+
+        if ( $SQL =~ m{FROM\s+user_account\s+ua}si ) {
+            return { language => 'en' };
         }
 
         if ( $SQL =~ m{FROM\s+smtp_account}si ) {
@@ -184,7 +214,8 @@ my @Sent;
 
     is( scalar @Sent, 1, 'exactly one email is sent for the event' );
     like( $Sent[0]->{Subject}, qr{\A\[Qisutu\#2026000042\]}, 'customer response subject contains a reply-safe ticket reference' );
-    like( $Sent[0]->{Body}, qr{Hallo Klara}, 'customer placeholder is rendered in the email body' );
+    like( $Sent[0]->{Subject}, qr{Recebido}, 'the customer preference selects the Brazilian Portuguese template' );
+    like( $Sent[0]->{Body}, qr{Olá Klara}, 'customer placeholder is rendered in the recipient language' );
     like( $Sent[0]->{Body}, qr{Page=CustomerTicketZoom&amp;TicketID=42}, 'ticket link points to the customer portal' );
     unlike( $Sent[0]->{Body}, qr{Page=AgentTicketZoom}, 'customer email never exposes an agent ticket link' );
 
@@ -214,7 +245,7 @@ my @Sent;
         ),
         'explicit postmaster rejection response is sent',
     );
-    like( $Sent[1]->{Subject}, qr{Nicht angenommen: Unerlaubte Anfrage}, 'incoming subject placeholder is rendered' );
+    like( $Sent[1]->{Subject}, qr{Rejected: Unerlaubte Anfrage}, 'known incoming senders also receive their preferred language' );
 
     ok(
         !$Response->Send(
@@ -245,14 +276,16 @@ like( $EmailReply || '', qr{customer_ticket_reply}, 'ordinary customer email rep
 my $AdminTemplate = _Read( File::Spec->catfile( $Root, 'core', 'output', 'AdminCustomerAutoResponses.tt' ) );
 like( $AdminTemplate, qr{qisutu-richtext}, 'each automatic-response edit view uses CKEditor' );
 like( $AdminTemplate, qr{PlaceholderList}, 'the edit view presents its placeholder list' );
+like( $AdminTemplate, qr{name="ResponseLanguage"}, 'the administration view offers a language selector' );
 
 my $Release = _Read( File::Spec->catfile( $Root, 'release.conf' ) );
-like( $Release, qr{^version=1[.]0[.]1$}m, 'automatic responses are included in official release 1.0.1' );
+like( $Release, qr{^version=1[.]0[.]2$}m, 'automatic responses are included in release 1.0.1' );
 like( $Release, qr{^database_version=1[.]0[.]1$}m, 'automatic responses are included in the official database baseline' );
 
 my $Schema = _Read( File::Spec->catfile( $Root, 'install', 'sql', 'schema.sql' ) );
 like( $Schema, qr{CREATE TABLE `customer_auto_response_template`}, 'fresh installations create automatic-response templates' );
 like( $Schema, qr{CREATE TABLE `customer_auto_response_event_log`}, 'fresh installations create the duplicate-prevention log' );
+like( $Schema, qr{customer_auto_response_template_type_language_unique}, 'automatic responses are unique per event and language' );
 
 sub _Read {
     my ($File) = @_;

@@ -320,7 +320,18 @@ sub _LanguageList {
     my $Path = $Self->{Config}->{Paths}->{Language};
     my @Code;
     if ( $Path && opendir my $DH, $Path ) {
-        @Code = sort map { /^([A-Za-z0-9_-]+)\.pm$/ ? lc($1) : () } readdir $DH;
+        @Code = sort map {
+            next if !/^([A-Za-z0-9_-]+)\.pm$/;
+            my $Code = $1;
+            $Code =~ tr{_}{-};
+            if ( $Code =~ m{\A([A-Za-z]{2,3})-([A-Za-z]{2})\z} ) {
+                $Code = lc($1) . '-' . uc($2);
+            }
+            else {
+                $Code = lc $Code;
+            }
+            $Code;
+        } readdir $DH;
         closedir $DH;
     }
     return \@Code if @Code;
