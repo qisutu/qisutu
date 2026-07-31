@@ -1356,7 +1356,7 @@ sub _SelectField {
 
 sub _LanguageOptions {
     my ($Selected) = @_;
-    my @Options = ( [ de => 'Deutsch' ], [ en => 'English' ], [ fr => 'Français' ], [ it => 'Italiano' ] );
+    my @Options = ( [ de => 'Deutsch' ], [ en => 'English' ], [ fr => 'Français' ], [ it => 'Italiano' ], [ pt_BR => 'Português (Brasil)' ] );
     return join '', map { '<option value="' . $_->[0] . '"' . ( $_->[0] eq $Selected ? ' selected' : '' ) . '>' . _Escape( $_->[1] ) . '</option>' } @Options;
 }
 
