@@ -2661,6 +2661,7 @@ use utf8;
     TicketListSelectColumns => 'Wybierz pola',
     TicketListSelectColumnsHint => 'Wybierz pola, które mają być wyświetlane na Twojej liście zgłoszeń.',
     TicketListSelectView => 'Wybierz widok',
+    TicketListSaveDefaultView => 'Zapisz widok jako domyślny',
     TicketListTitle => 'Lista zgłoszeń',
     TicketListTotalTickets => 'Łączna liczba pasujących zgłoszeń',
     TicketListUnassigned => 'Nieprzypisany',

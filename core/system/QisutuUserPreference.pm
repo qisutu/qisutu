@@ -71,6 +71,7 @@ sub AgentPreferenceGet {
     $Preference->{start_page} = $Self->_StartPageClean( $Preference->{start_page} );
     $Preference->{ticket_after_reply_action} = $Self->_AfterReplyActionClean( $Preference->{ticket_after_reply_action} );
     $Preference->{ticket_list_limit} = $Self->_TicketListLimitClean( $Preference->{ticket_list_limit} );
+    $Preference->{ticket_list_default_view} = $Self->_TicketListDefaultViewClean( $Preference->{ticket_list_default_view} );
     $Preference->{absence_active} = $Preference->{absence_active} ? 1 : 0;
     $Preference->{absence_replacement_user_id} = $Self->_UserIDClean( $Preference->{absence_replacement_user_id} );
 
@@ -465,6 +466,7 @@ sub _DefaultAgentPreferences {
         theme                         => 'default',
         start_page                    => 'Dashboard',
         ticket_list_limit             => 20,
+        ticket_list_default_view      => 'new',
         ticket_after_reply_action     => 'stay',
         ticket_list_columns            => 'ticket_number,title,queue,state,priority,customer,customer_user,owner,escalation_state,next_escalation,pending_until,changed',
         notification_new_ticket       => 1,
@@ -534,6 +536,14 @@ sub _TicketListLimitClean {
 
     return int($Limit) if defined $Limit && $Limit =~ m{\A(?:10|20|30|40|50)\z};
     return 20;
+}
+
+sub _TicketListDefaultViewClean {
+    my ( $Self, $View ) = @_;
+
+    return $View if defined $View
+        && $View =~ m{\A(?:new|all_open|open|pending|closed|escalated|warning|customer_response|unassigned|age_under_8h|age_under_24h|age_under_3d|age_under_10d|age_over_10d|my)\z};
+    return 'new';
 }
 
 sub _AfterReplyActionClean {

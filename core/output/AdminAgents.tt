@@ -22,7 +22,7 @@ SPDX-FileCopyrightText: 2026 Franziska Steps
 SPDX-License-Identifier: AGPL-3.0-or-later
 %]
 
-            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-agents-title">
+            <section class="qisutu-dashboard qisutu-admin-agents" aria-labelledby="qisutu-admin-agents-title">
                 <div class="qisutu-dashboard-header">
                     <div>
                         <h1 id="qisutu-admin-agents-title">[% ProgramTitle %]</h1>
@@ -47,7 +47,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     </div>
 
                     <div class="qisutu-table-wrap">
-                        <table class="qisutu-table qisutu-table-compact">
+                        <table class="qisutu-table qisutu-table-compact qisutu-admin-agent-list-table">
                             <thead>
                                 <tr>
                                     <th>[% Translate.AdminLogin %]</th>

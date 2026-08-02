@@ -821,6 +821,37 @@ a:hover {
     font-size: 12px;
 }
 
+.qisutu-admin-agents,
+.qisutu-admin-agents .qisutu-panel,
+.qisutu-admin-agents .qisutu-table-wrap {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.qisutu-admin-agent-list-table {
+    table-layout: fixed;
+}
+
+.qisutu-admin-agent-list-table th,
+.qisutu-admin-agent-list-table td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.qisutu-admin-agent-list-table th:nth-child(1) { width: 15%; }
+.qisutu-admin-agent-list-table th:nth-child(2) { width: 14%; }
+.qisutu-admin-agent-list-table th:nth-child(3) { width: 18%; }
+.qisutu-admin-agent-list-table th:nth-child(4) { width: 11%; }
+.qisutu-admin-agent-list-table th:nth-child(5) { width: 27%; }
+.qisutu-admin-agent-list-table th:nth-child(6) { width: 7%; }
+.qisutu-admin-agent-list-table th:nth-child(7) { width: 8%; }
+
+@media (max-width: 900px) {
+    .qisutu-admin-agent-list-table {
+        min-width: 760px;
+    }
+}
+
 
 /* Compact responsive ticket lists */
 .qisutu-ticket-list-wrap {
@@ -3547,6 +3578,19 @@ a:hover {
 }
 
 /* Agent ticket list views, filters, sorting and selectable columns */
+.qisutu-ticket-list-page-description {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.qisutu-ticket-list-page-description p,
+.qisutu-ticket-list-default-view-form {
+    margin: 0;
+}
+
 .qisutu-ticket-list-panel {
     padding: 0;
     overflow: visible;
@@ -7127,6 +7171,7 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 .qisutu-ticket-form-intro { margin-bottom: 1.25rem; }
 .qisutu-ticket-form-fields { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .qisutu-ticket-form-field-wide { grid-column: 1 / -1; }
+.qisutu-ticket-form-fields select[multiple] { height: auto; min-height: 132px; padding: 8px 10px; }
 .qisutu-ticket-form-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
 .qisutu-ticket-form-admin .qisutu-panel + .qisutu-panel { margin-top: 1rem; }
 .qisutu-ticket-form-admin .qisutu-assignment-grid { display: grid; gap: .55rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }

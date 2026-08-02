@@ -2661,6 +2661,7 @@ use utf8;
     TicketListSelectColumns => 'Selecteer velden',
     TicketListSelectColumnsHint => 'Selecteer de velden die in uw ticketlijst moeten worden weergegeven.',
     TicketListSelectView => 'Selecteer weergave',
+    TicketListSaveDefaultView => 'Weergave als standaard opslaan',
     TicketListTitle => 'Ticketlijst',
     TicketListTotalTickets => 'Totaal overeenkomende tickets',
     TicketListUnassigned => 'Niet toegewezen',

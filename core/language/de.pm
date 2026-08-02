@@ -590,6 +590,7 @@ use utf8;
     TicketListEmptyTitle            => 'Keine Tickets gefunden',
     TicketListEmptyText             => 'Die ersten Tickets werden hier angezeigt.',
     TicketListSelectView             => 'Ansichten auswählen',
+    TicketListSaveDefaultView        => 'Ansicht als Standard speichern',
     TicketListSelectColumns          => 'Felder auswählen',
     TicketListSelectColumnsHint      => 'Wählen Sie die Felder aus, die in Ihrer Ticketliste angezeigt werden sollen.',
     TicketListViewNew                => 'Neu',

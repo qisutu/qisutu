@@ -2661,6 +2661,7 @@ use utf8;
     TicketListSelectColumns => 'Vyberte pole',
     TicketListSelectColumnsHint => 'Vyberte pole, která se mají zobrazit ve vašem seznamu tiketů.',
     TicketListSelectView => 'Vyberte zobrazení',
+    TicketListSaveDefaultView => 'Uložit zobrazení jako výchozí',
     TicketListTitle => 'Seznam požadavků',
     TicketListTotalTickets => 'Celkem odpovídající požadavky',
     TicketListUnassigned => 'Nepřiřazeno',

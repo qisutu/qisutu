@@ -2661,6 +2661,7 @@ use utf8;
     TicketListSelectColumns => 'Seleccionar campos',
     TicketListSelectColumnsHint => 'Seleccione los campos que deben mostrarse en su lista de tickets.',
     TicketListSelectView => 'Seleccionar vista',
+    TicketListSaveDefaultView => 'Guardar vista como predeterminada',
     TicketListTitle => 'Lista de solicitudes',
     TicketListTotalTickets => 'Total de solicitudes coincidentes',
     TicketListUnassigned => 'No asignado',

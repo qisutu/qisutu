@@ -2661,6 +2661,7 @@ use utf8;
     TicketListSelectColumns => 'Selecione os campos',
     TicketListSelectColumnsHint => 'Selecione os campos que devem ser exibidos na sua lista de tickets.',
     TicketListSelectView => 'Selecione a visualização',
+    TicketListSaveDefaultView => 'Salvar visualização como padrão',
     TicketListTitle => 'Lista de chamados',
     TicketListTotalTickets => 'Total de chamados correspondentes',
     TicketListUnassigned => 'Não atribuído',

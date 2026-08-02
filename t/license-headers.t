@@ -50,7 +50,7 @@ find(
                    $Relative =~ /\.(?:pm|pl|t|tt|sql|sh|service|path|conf|remove)$/
                 || $Relative =~ m{^var/static/js/qisutu-[^/]+\.js$}
                 || $Relative =~ m{^var/static/css/qisutu[^/]*\.css$}
-                || $Relative =~ m{^(?:README|INSTALL|MODULES|THIRD_PARTY_NOTICES)\.md$}
+                || $Relative =~ m{^(?:README(?:\.[A-Za-z-]+)?|INSTALL|MODULES|THIRD_PARTY_NOTICES)\.md$}
                 || $Relative eq '.gitignore'
                 || $Relative eq '.project';
 

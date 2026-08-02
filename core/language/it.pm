@@ -2661,6 +2661,7 @@ use utf8;
     TicketListSelectColumns => 'Seleziona campi',
     TicketListSelectColumnsHint => 'Seleziona i campi da visualizzare nell\'elenco dei ticket.',
     TicketListSelectView => 'Seleziona vista',
+    TicketListSaveDefaultView => 'Salva vista come predefinita',
     TicketListTitle => 'Elenco ticket',
     TicketListTotalTickets => 'Totale ticket corrispondenti',
     TicketListUnassigned => 'Non assegnati',

@@ -22,6 +22,8 @@ SPDX-FileCopyrightText: 2026 Franziska Steps
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
+[Deutsch](README.md) | [English](README.en.md) | [Français](README.fr.md) | [Italiano](README.it.md) | [Português (Brasil)](README.pt-BR.md) | [Português (Portugal)](README.pt-PT.md) | [Español](README.es.md) | [Nederlands](README.nl.md) | [Polski](README.pl.md) | [Čeština](README.cs.md) | [Türkçe](README.tr.md)
+
 # Qisutu
 
 Qisutu ist ein neues Open-Source-Ticketsystem auf Basis von Perl/CGI,

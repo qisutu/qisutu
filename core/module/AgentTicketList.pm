@@ -77,7 +77,10 @@ sub Run {
     );
     my $AllowedColumn = { map { $_->{key} => $_ } @{$ColumnDefinitions} };
 
-    my $View = $Self->_ViewClean( $Request->{View}, SearchActive => $SearchActive );
+    my $RequestedView = exists $Request->{View}
+        ? $Request->{View}
+        : $Preference->{ticket_list_default_view};
+    my $View = $Self->_ViewClean( $RequestedView, SearchActive => $SearchActive );
     my $FilterQueueID        = $Self->_FilterIDClean( $Request->{FilterQueueID} );
     my $FilterCustomerID     = $Self->_FilterIDClean( $Request->{FilterCustomerID} );
     my $FilterCustomerUserID = $Self->_FilterIDClean( $Request->{FilterCustomerUserID} );
@@ -93,6 +96,30 @@ sub Run {
         Default => $Self->_TicketListLimit( User => $User, Preference => $Preference ),
     );
     my $ListPage = $Self->_ListPageClean( $Request->{ListPage} );
+
+    if ( $PreferenceObject && ( $Request->{Step} || '' ) eq 'TicketListDefaultViewSave' && !$SearchActive ) {
+        $PreferenceObject->Set(
+            UserAccountID => $User->{user_account_id},
+            Key           => 'ticket_list_default_view',
+            Value         => $View,
+        );
+
+        if ( !$PreferenceObject->Error() ) {
+            return {
+                Redirect => $Self->_ListURL(
+                    View                 => $View,
+                    FilterQueueID        => $FilterQueueID,
+                    FilterCustomerID     => $FilterCustomerID,
+                    FilterCustomerUserID => $FilterCustomerUserID,
+                    FilterOwnerID        => $FilterOwnerID,
+                    SortBy               => $SortBy,
+                    SortDirection        => $SortDirection,
+                    PerPage              => $PerPage,
+                    ListPage             => $ListPage,
+                ),
+            };
+        }
+    }
 
     if ( $PreferenceObject && ( $Request->{Step} || '' ) eq 'TicketListColumnsSave' ) {
         my @Selected;
@@ -301,6 +328,8 @@ sub Run {
             PageTitle          => 'Translate:AgentTicketListTitle',
             ProgramTitle       => 'Translate:AgentTicketListTitle',
             ProgramDescription => 'Translate:ProgramTicketsDescription',
+            CanSaveDefaultView => $SearchActive ? 0 : 1,
+            CurrentView        => $View,
             TicketCount        => $TicketCount,
             ErrorMessage       => $ErrorMessage,
             ErrorClass         => $ErrorMessage ? '' : 'qisutu-hidden',

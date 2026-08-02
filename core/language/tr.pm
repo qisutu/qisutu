@@ -2661,6 +2661,7 @@ use utf8;
     TicketListSelectColumns => 'Alanları seçin',
     TicketListSelectColumnsHint => 'Talep listenizde görüntülenmesi gereken alanları seçin.',
     TicketListSelectView => 'Görünümü seçin',
+    TicketListSaveDefaultView => 'Görünümü varsayılan olarak kaydet',
     TicketListTitle => 'Talep listesi',
     TicketListTotalTickets => 'Toplam eşleşen talepler',
     TicketListUnassigned => 'Atanmamış',

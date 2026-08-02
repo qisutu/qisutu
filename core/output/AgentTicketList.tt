@@ -26,7 +26,17 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 <div class="qisutu-dashboard-header qisutu-ticket-list-page-header">
                     <div>
                         <h1 id="qisutu-agent-ticket-list-title">[% ProgramTitle %]</h1>
-                        <p>[% ProgramDescription %]</p>
+                        <div class="qisutu-ticket-list-page-description">
+                            <p>[% ProgramDescription %]</p>
+                            [% IF CanSaveDefaultView %]
+                            <form class="qisutu-ticket-list-default-view-form" method="post" action="index.pl">
+                                <input type="hidden" name="Page" value="AgentTicketList">
+                                <input type="hidden" name="Step" value="TicketListDefaultViewSave">
+                                <input type="hidden" name="View" value="[% CurrentView %]">
+                                <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="submit">[% Translate.TicketListSaveDefaultView %]</button>
+                            </form>
+                            [% END %]
+                        </div>
                     </div>
                 </div>
 

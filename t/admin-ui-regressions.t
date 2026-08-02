@@ -71,4 +71,18 @@ is( $FieldsetCount, 2, 'queue creation and editing use the radio-card fieldset' 
 like( $QueueCSS, qr![.]qisutu-admin-radio-group\s*\{[^}]*display:\s*grid!s, 'queue follow-up choices are stacked in a grid' );
 like( $QueueCSS, qr![.]qisutu-admin-radio-group label\s*\{[^}]*display:\s*flex!s, 'each queue follow-up choice has a separate card layout' );
 
+my $AgentTemplate = content( 'core', 'output', 'AdminAgents.tt' );
+like( $AgentTemplate, qr{qisutu-admin-agent-list-table}, 'the agent overview uses its bounded table layout' );
+like( $QueueCSS, qr![.]qisutu-admin-agent-list-table\s*\{[^}]*table-layout:\s*fixed!s, 'the agent table cannot widen the complete workspace' );
+like( $QueueCSS, qr![.]qisutu-admin-agent-list-table th,\s*[.]qisutu-admin-agent-list-table td\s*\{[^}]*overflow-wrap:\s*anywhere!s, 'long group lists wrap inside the agent table' );
+like( $QueueCSS, qr![.]qisutu-ticket-form-fields select\[multiple\]\s*\{[^}]*height:\s*auto[^}]*min-height:\s*132px!s, 'customer-form multiselects retain their visible multi-row height' );
+
+my $TicketListTemplate = content( 'core', 'output', 'AgentTicketList.tt' );
+like( $TicketListTemplate, qr{name="Step" value="TicketListDefaultViewSave"}, 'the agent ticket list contains the explicit default-view button' );
+
+for my $Language (qw(de en fr it nl pl pt-BR pt-PT es cs tr)) {
+    my $LanguageContent = content( 'core', 'language', $Language . '.pm' );
+    like( $LanguageContent, qr{TicketListSaveDefaultView\s*=>}, "the default-view button is translated in $Language" );
+}
+
 done_testing();
