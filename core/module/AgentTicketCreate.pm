@@ -161,6 +161,8 @@ sub Run {
     my $CreateError           = '';
     my $SendEmail             = $IsSubmit ? ( $Request->{SendEmail} ? 1 : 0 ) : 1;
     my $TimeAccountingInput;
+    my $RecipientEmail        = '';
+    my $RecipientName         = '';
 
     if ($IsSubmit) {
         $TimeAccountingInput = $TimeAccountingObject->InputParse( Request => $Request );
@@ -214,6 +216,20 @@ sub Run {
             $CreateError = 'Translate:AgentTicketCreateResponsibleInvalid';
         }
 
+        if ( !$CreateError && !( $Request->{CustomerUserID} || 0 ) ) {
+            my $Recipient = $Self->_EmailRecipientParse(
+                Value => $Request->{CustomerUserSearch} || '',
+            );
+
+            if ( !$Recipient->{Valid} ) {
+                $CreateError = 'Translate:AgentTicketCreateCustomerUserRequired';
+            }
+            else {
+                $RecipientEmail = $Recipient->{Email};
+                $RecipientName  = $Recipient->{Name};
+            }
+        }
+
         if ( !$CreateError ) {
             my $CcCheck = $Self->_EmailRecipientsParse(
                 Value    => $Request->{Cc} || '',
@@ -260,6 +276,8 @@ sub Run {
                 QueueID           => $QueueID,
                 ServiceID         => $ServiceID,
                 CustomerUserID    => $Request->{CustomerUserID},
+                RecipientEmail    => $RecipientEmail,
+                RecipientName     => $RecipientName,
                 OwnerUserID       => $Request->{OwnerUserID},
                 ResponsibleUserID => $Request->{ResponsibleUserID},
                 Title             => $Request->{Title},
@@ -1325,6 +1343,36 @@ sub _EmailRecipientsParse {
         Valid  => 1,
         Header => join( ', ', @Emails ),
         Emails => \@Emails,
+    };
+}
+
+sub _EmailRecipientParse {
+    my ( $Self, %Param ) = @_;
+
+    my $Value = $Param{Value} || '';
+    $Value =~ s{\r|\n}{ }g;
+    $Value =~ s{\A\s+|\s+\z}{}g;
+
+    return { Valid => 0 } if !$Value || $Value =~ m{[;,]};
+
+    my $Email = $Value;
+    my $Name  = '';
+
+    if ( $Value =~ m{\A(.*?)\s*<([^<>]+)>\s*\z} ) {
+        $Name  = $1 || '';
+        $Email = $2 || '';
+        $Name =~ s{\A\s+|\s+\z}{}g;
+        $Name =~ s{\A["']|["']\z}{}g;
+    }
+
+    $Email =~ s{\A\s+|\s+\z}{}g;
+    return { Valid => 0 }
+        if $Email !~ m{\A[A-Z0-9._%+\-]+\@[A-Z0-9.\-]+\.[A-Z]{2,}\z}i;
+
+    return {
+        Valid => 1,
+        Email => $Email,
+        Name  => $Name,
     };
 }
 

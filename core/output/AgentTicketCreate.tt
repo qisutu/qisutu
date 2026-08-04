@@ -51,9 +51,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 <div class="qisutu-form-field qisutu-autocomplete">
                                     <label for="qisutu-agent-ticket-create-customer-user">[% Translate.AgentTicketCreateToCustomerUser %] *</label>
                                     <input type="hidden" id="qisutu-agent-ticket-create-customer-user-id" name="CustomerUserID" value="[% CustomerUserID %]" data-qisutu-autocomplete-target>
-                                    <input id="qisutu-agent-ticket-create-customer-user" type="text" name="CustomerUserSearch" value="[% CustomerUserSearch %]" required autocomplete="off" placeholder="[% Translate.TicketToolCustomerSearchPlaceholder %]" data-qisutu-autocomplete data-qisutu-customer-user-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AgentTicketCreate&amp;Step=CustomerUserLookup" data-qisutu-autocomplete-hidden="qisutu-agent-ticket-create-customer-user-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]">
+                                    <input id="qisutu-agent-ticket-create-customer-user" type="text" name="CustomerUserSearch" value="[% CustomerUserSearch %]" required autocomplete="off" placeholder="[% Translate.TicketToolCustomerSearchPlaceholder %]" data-qisutu-autocomplete data-qisutu-customer-user-autocomplete data-qisutu-autocomplete-free-email data-qisutu-free-email-invalid="[% Translate.AgentTicketCreateCustomerUserRequired %]" data-qisutu-autocomplete-url="index.pl?Page=AgentTicketCreate&amp;Step=CustomerUserLookup" data-qisutu-autocomplete-hidden="qisutu-agent-ticket-create-customer-user-id" data-qisutu-autocomplete-min="2" data-qisutu-autocomplete-empty="[% Translate.TicketToolSearchNoResults %]" data-qisutu-autocomplete-loading="[% Translate.TicketToolSearchLoading %]" data-qisutu-autocomplete-error="[% Translate.TicketToolSearchError %]">
                                     <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
-                                    <span class="qisutu-form-hint">[% Translate.TicketToolCustomerSearchHelp %]</span>
+                                    <span class="qisutu-form-hint">[% Translate.AgentTicketCreateRecipientHelp %]</span>
                                 </div>
 
                                 <div class="qisutu-form-field qisutu-autocomplete">
@@ -223,4 +223,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js?v=2026071802"></script>
             <script src="[% StaticBase %]/js/qisutu-knowledge-insert.js?v=2026071901"></script>
-            <script src="[% StaticBase %]/js/qisutu-agent-ticket-create.js?v=2026072001"></script>
+            <script src="[% StaticBase %]/js/qisutu-agent-ticket-create.js?v=2026080401"></script>

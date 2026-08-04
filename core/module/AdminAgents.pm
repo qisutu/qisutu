@@ -434,6 +434,7 @@ sub _LabelByLanguageFromRequest {
     my ( $Self, %Param ) = @_;
 
     my $Request = $Param{Request} || {};
+    my %SupportedLanguage = map { $_ => 1 } qw(de en fr it es nl pl cs tr pt-BR pt-PT);
     my %Label;
     my $RowCount = $Request->{TranslationRowCount} || 0;
 
@@ -454,7 +455,7 @@ sub _LabelByLanguageFromRequest {
         my $Value = $Request->{ 'TranslationLabel_' . $Index } || '';
 
         $Code =~ s{[^A-Za-z0-9_-]}{}g;
-        next if !$Code || !$Value;
+        next if !$Code || !$Value || !$SupportedLanguage{$Code};
 
         $Label{$Code} = $Value;
     }
@@ -467,50 +468,18 @@ sub _TranslationLanguageOptions {
 
     my $Selected = $Param{Selected} || '';
     my @Language = (
-        [ '' => '-' ],
-        [ aa => 'aa - Afar' ], [ ab => 'ab - Abkhazian' ], [ af => 'af - Afrikaans' ],
-        [ ak => 'ak - Akan' ], [ am => 'am - Amharic' ], [ ar => 'ar - Arabic' ],
-        [ as => 'as - Assamese' ], [ ay => 'ay - Aymara' ], [ az => 'az - Azerbaijani' ],
-        [ ba => 'ba - Bashkir' ], [ be => 'be - Belarusian' ], [ bg => 'bg - Bulgarian' ],
-        [ bh => 'bh - Bihari' ], [ bi => 'bi - Bislama' ], [ bn => 'bn - Bengali' ],
-        [ bo => 'bo - Tibetan' ], [ br => 'br - Breton' ], [ bs => 'bs - Bosnian' ],
-        [ ca => 'ca - Catalan' ], [ co => 'co - Corsican' ], [ cs => 'cs - Czech' ],
-        [ cy => 'cy - Welsh' ], [ da => 'da - Danish' ], [ de => 'de - German' ],
-        [ dz => 'dz - Dzongkha' ], [ el => 'el - Greek' ], [ en => 'en - English' ],
-        [ eo => 'eo - Esperanto' ], [ es => 'es - Spanish' ], [ et => 'et - Estonian' ],
-        [ eu => 'eu - Basque' ], [ fa => 'fa - Persian' ], [ fi => 'fi - Finnish' ],
-        [ fj => 'fj - Fijian' ], [ fo => 'fo - Faroese' ], [ fr => 'fr - French' ],
-        [ fy => 'fy - Frisian' ], [ ga => 'ga - Irish' ], [ gd => 'gd - Scottish Gaelic' ],
-        [ gl => 'gl - Galician' ], [ gn => 'gn - Guarani' ], [ gu => 'gu - Gujarati' ],
-        [ ha => 'ha - Hausa' ], [ haw => 'haw - Hawaiian' ], [ he => 'he - Hebrew' ],
-        [ hi => 'hi - Hindi' ], [ hr => 'hr - Croatian' ], [ ht => 'ht - Haitian Creole' ],
-        [ hu => 'hu - Hungarian' ], [ hy => 'hy - Armenian' ], [ id => 'id - Indonesian' ],
-        [ ig => 'ig - Igbo' ], [ is => 'is - Icelandic' ], [ it => 'it - Italian' ],
-        [ ja => 'ja - Japanese' ], [ jv => 'jv - Javanese' ], [ ka => 'ka - Georgian' ],
-        [ kk => 'kk - Kazakh' ], [ km => 'km - Khmer' ], [ kn => 'kn - Kannada' ],
-        [ ko => 'ko - Korean' ], [ ku => 'ku - Kurdish' ], [ ky => 'ky - Kyrgyz' ],
-        [ la => 'la - Latin' ], [ lb => 'lb - Luxembourgish' ], [ lo => 'lo - Lao' ],
-        [ lt => 'lt - Lithuanian' ], [ lv => 'lv - Latvian' ], [ mg => 'mg - Malagasy' ],
-        [ mi => 'mi - Maori' ], [ mk => 'mk - Macedonian' ], [ ml => 'ml - Malayalam' ],
-        [ mn => 'mn - Mongolian' ], [ mr => 'mr - Marathi' ], [ ms => 'ms - Malay' ],
-        [ mt => 'mt - Maltese' ], [ my => 'my - Burmese' ], [ nb => 'nb - Norwegian Bokmal' ],
-        [ ne => 'ne - Nepali' ], [ nl => 'nl - Dutch' ], [ nn => 'nn - Norwegian Nynorsk' ],
-        [ no => 'no - Norwegian' ], [ oc => 'oc - Occitan' ], [ or => 'or - Odia' ],
-        [ pa => 'pa - Punjabi' ], [ pl => 'pl - Polish' ], [ ps => 'ps - Pashto' ],
-        [ pt => 'pt - Portuguese' ], [ qu => 'qu - Quechua' ], [ rm => 'rm - Romansh' ],
-        [ ro => 'ro - Romanian' ], [ ru => 'ru - Russian' ], [ rw => 'rw - Kinyarwanda' ],
-        [ sa => 'sa - Sanskrit' ], [ sd => 'sd - Sindhi' ], [ si => 'si - Sinhala' ],
-        [ sk => 'sk - Slovak' ], [ sl => 'sl - Slovenian' ], [ sm => 'sm - Samoan' ],
-        [ sn => 'sn - Shona' ], [ so => 'so - Somali' ], [ sq => 'sq - Albanian' ],
-        [ sr => 'sr - Serbian' ], [ st => 'st - Southern Sotho' ], [ su => 'su - Sundanese' ],
-        [ sv => 'sv - Swedish' ], [ sw => 'sw - Swahili' ], [ ta => 'ta - Tamil' ],
-        [ te => 'te - Telugu' ], [ tg => 'tg - Tajik' ], [ th => 'th - Thai' ],
-        [ tk => 'tk - Turkmen' ], [ tl => 'tl - Tagalog' ], [ tn => 'tn - Tswana' ],
-        [ to => 'to - Tongan' ], [ tr => 'tr - Turkish' ], [ tt => 'tt - Tatar' ],
-        [ ty => 'ty - Tahitian' ], [ ug => 'ug - Uyghur' ], [ uk => 'uk - Ukrainian' ],
-        [ ur => 'ur - Urdu' ], [ uz => 'uz - Uzbek' ], [ vi => 'vi - Vietnamese' ],
-        [ wo => 'wo - Wolof' ], [ xh => 'xh - Xhosa' ], [ yi => 'yi - Yiddish' ],
-        [ yo => 'yo - Yoruba' ], [ zh => 'zh - Chinese' ], [ zu => 'zu - Zulu' ],
+        [ ''      => '-' ],
+        [ de      => 'de - German' ],
+        [ en      => 'en - English' ],
+        [ fr      => 'fr - French' ],
+        [ it      => 'it - Italian' ],
+        [ es      => 'es - Spanish' ],
+        [ nl      => 'nl - Dutch' ],
+        [ pl      => 'pl - Polish' ],
+        [ cs      => 'cs - Czech' ],
+        [ tr      => 'tr - Turkish' ],
+        [ 'pt-BR' => 'pt-BR - Portuguese (Brazil)' ],
+        [ 'pt-PT' => 'pt-PT - Portuguese (Portugal)' ],
     );
     my $HTML = '';
 
@@ -523,6 +492,7 @@ sub _TranslationLanguageOptions {
 
     return $HTML;
 }
+
 
 sub _Escape {
     my ( $Self, $Value ) = @_;

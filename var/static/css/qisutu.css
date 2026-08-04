@@ -804,6 +804,37 @@ a:hover {
     font-size: 13px;
 }
 
+.qisutu-admin-addons,
+.qisutu-admin-addons .qisutu-panel,
+.qisutu-admin-addons .qisutu-table-wrap {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.qisutu-admin-addons .qisutu-table {
+    table-layout: fixed;
+}
+
+.qisutu-admin-addons .qisutu-table th,
+.qisutu-admin-addons .qisutu-table td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.qisutu-addon-installed-table th:nth-child(1) { width: 22%; }
+.qisutu-addon-installed-table th:nth-child(2) { width: 28%; }
+.qisutu-addon-installed-table th:nth-child(3) { width: 12%; }
+.qisutu-addon-installed-table th:nth-child(4) { width: 16%; }
+.qisutu-addon-installed-table th:nth-child(5) { width: 22%; }
+
+.qisutu-addon-operation-table th:nth-child(1) { width: 5%; }
+.qisutu-addon-operation-table th:nth-child(2) { width: 18%; }
+.qisutu-addon-operation-table th:nth-child(3) { width: 11%; }
+.qisutu-addon-operation-table th:nth-child(4) { width: 12%; }
+.qisutu-addon-operation-table th:nth-child(5) { width: 42%; }
+.qisutu-addon-operation-table th:nth-child(6) { width: 12%; }
+
 .qisutu-table-link {
     color: var(--qisutu-primary);
     font-weight: 700;

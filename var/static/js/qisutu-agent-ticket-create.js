@@ -885,6 +885,22 @@
             return;
         }
 
+        function freeEmailValid(value) {
+            var candidate = String(value || '').trim();
+            var addressMatch;
+
+            if (!candidate || /[;,]/.test(candidate)) {
+                return false;
+            }
+
+            addressMatch = candidate.match(/^.*?<([^<>]+)>\s*$/);
+            if (addressMatch) {
+                candidate = String(addressMatch[1] || '').trim();
+            }
+
+            return /^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$/i.test(candidate);
+        }
+
         function bodyHasOwnText(html) {
             var container = document.createElement('div');
             container.innerHTML = html || '';
@@ -907,10 +923,18 @@
                 var hiddenID = input.getAttribute('data-qisutu-autocomplete-hidden') || '';
                 var hidden = hiddenID ? document.getElementById(hiddenID) : null;
                 var needsSelection = input.required || input.value.trim() !== '';
+                var allowsFreeEmail = input.hasAttribute('data-qisutu-autocomplete-free-email');
 
                 input.setCustomValidity('');
                 if (needsSelection && (!hidden || !hidden.value)) {
-                    input.setCustomValidity(selectionMessage);
+                    if (allowsFreeEmail && freeEmailValid(input.value)) {
+                        return;
+                    }
+                    input.setCustomValidity(
+                        allowsFreeEmail
+                            ? (input.getAttribute('data-qisutu-free-email-invalid') || selectionMessage)
+                            : selectionMessage
+                    );
                     invalid = invalid || input;
                 }
             });

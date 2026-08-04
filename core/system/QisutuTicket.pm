@@ -2185,6 +2185,8 @@ sub TicketCreateFromAgent {
     my $QueueID           = $Param{QueueID} || 0;
     my $ServiceID         = $Param{ServiceID} || 0;
     my $CustomerUserID    = $Param{CustomerUserID} || 0;
+    my $RecipientEmail    = $Param{RecipientEmail} || '';
+    my $RecipientName     = $Param{RecipientName} || '';
     my $OwnerUserID       = $Param{OwnerUserID} || 0;
     my $ResponsibleUserID = $Param{ResponsibleUserID} || 0;
     my $Title             = $Param{Title} || '';
@@ -2211,7 +2213,18 @@ sub TicketCreateFromAgent {
         return;
     }
 
-    if ( $CustomerUserID !~ m{\A\d+\z} || !$CustomerUserID ) {
+    $RecipientEmail =~ s{\r|\n}{}g;
+    $RecipientEmail =~ s{\A\s+|\s+\z}{}g;
+    $RecipientName  =~ s{\r|\n}{ }g;
+    $RecipientName  =~ s{\A\s+|\s+\z}{}g;
+    $RecipientName = substr $RecipientName, 0, 255 if length $RecipientName > 255;
+
+    if ( $CustomerUserID && $CustomerUserID !~ m{\A\d+\z} ) {
+        $Self->{LastError} = 'Translate:AgentTicketCreateCustomerUserInvalid';
+        return;
+    }
+
+    if ( !$CustomerUserID && $RecipientEmail !~ m{\A[A-Z0-9._%+\-]+\@[A-Z0-9.\-]+\.[A-Z]{2,}\z}i ) {
         $Self->{LastError} = 'Translate:AgentTicketCreateCustomerUserRequired';
         return;
     }
@@ -2280,32 +2293,44 @@ sub TicketCreateFromAgent {
         }
     }
 
-    my $CustomerUser = $Self->{DB}->SelectRow(
-        'SELECT
-            cu.id,
-            cu.customer_id,
-            ua.login,
-            ua.email,
-            ua.firstname,
-            ua.lastname
-         FROM customer_user cu
-         INNER JOIN customer c
-            ON c.id = cu.customer_id
-         INNER JOIN user_account ua
-            ON ua.id = cu.user_account_id
-         WHERE cu.id = ?
-           AND cu.active = 1
-           AND c.active = 1
-           AND ua.is_active = 1
-           AND ua.account_type = ?
-         LIMIT 1',
-        $CustomerUserID,
-        'customer',
-    );
+    my $CustomerUser;
+    if ($CustomerUserID) {
+        $CustomerUser = $Self->{DB}->SelectRow(
+            'SELECT
+                cu.id,
+                cu.customer_id,
+                ua.login,
+                ua.email,
+                ua.firstname,
+                ua.lastname
+             FROM customer_user cu
+             INNER JOIN customer c
+                ON c.id = cu.customer_id
+             INNER JOIN user_account ua
+                ON ua.id = cu.user_account_id
+             WHERE cu.id = ?
+               AND cu.active = 1
+               AND c.active = 1
+               AND ua.is_active = 1
+               AND ua.account_type = ?
+             LIMIT 1',
+            $CustomerUserID,
+            'customer',
+        );
 
-    if ( !$CustomerUser ) {
-        $Self->{LastError} = 'Translate:AgentTicketCreateCustomerUserInvalid';
-        return;
+        if ( !$CustomerUser ) {
+            $Self->{LastError} = 'Translate:AgentTicketCreateCustomerUserInvalid';
+            return;
+        }
+    }
+    else {
+        $CustomerUser = {
+            customer_id => undef,
+            login       => $RecipientEmail,
+            email       => $RecipientEmail,
+            firstname   => '',
+            lastname    => '',
+        };
     }
 
     if ( $SendEmail && !( $CustomerUser->{email} || '' ) ) {
@@ -2327,7 +2352,7 @@ sub TicketCreateFromAgent {
     };
 
     if ($ServiceID) {
-        if ( $ServiceID !~ m{\A\d+\z} ) {
+        if ( $ServiceID !~ m{\A\d+\z} || !$CustomerUserID ) {
             $Self->{LastError} = 'Translate:TicketServiceNotAvailable';
             return;
         }
@@ -2456,11 +2481,13 @@ sub TicketCreateFromAgent {
         Login     => $User->{login},
     );
     my $FromEmail = $Queue->{system_email_address} || $User->{email} || '';
-    my $ToName    = $Self->_UserName(
-        Firstname => $CustomerUser->{firstname},
-        Lastname  => $CustomerUser->{lastname},
-        Login     => $CustomerUser->{login},
-    );
+    my $ToName = $CustomerUserID
+        ? $Self->_UserName(
+            Firstname => $CustomerUser->{firstname},
+            Lastname  => $CustomerUser->{lastname},
+            Login     => $CustomerUser->{login},
+        )
+        : ( $RecipientName || $RecipientEmail );
     my $ToEmail = $CustomerUser->{email} || '';
 
     my $SMTPAccount;
@@ -2560,7 +2587,7 @@ sub TicketCreateFromAgent {
         $StateID,
         $PriorityID,
         $CustomerUser->{customer_id},
-        $CustomerUserID,
+        $CustomerUserID || undef,
         $OwnerUserID,
         $ResponsibleUserID || undef,
         $SLASnapshot->{service_id},

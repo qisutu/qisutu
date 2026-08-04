@@ -321,8 +321,7 @@ sub _LanguageList {
     my @Code;
     if ( $Path && opendir my $DH, $Path ) {
         @Code = sort map {
-            next if !/^([A-Za-z0-9_-]+)\.pm$/;
-            my $Code = $1;
+            my ($Code) = m{\A([A-Za-z0-9_-]+)\.pm\z};
             $Code =~ tr{_}{-};
             if ( $Code =~ m{\A([A-Za-z]{2,3})-([A-Za-z]{2})\z} ) {
                 $Code = lc($1) . '-' . uc($2);
@@ -331,7 +330,7 @@ sub _LanguageList {
                 $Code = lc $Code;
             }
             $Code;
-        } readdir $DH;
+        } grep { m{\A[A-Za-z0-9_-]+\.pm\z} } readdir $DH;
         closedir $DH;
     }
     return \@Code if @Code;
