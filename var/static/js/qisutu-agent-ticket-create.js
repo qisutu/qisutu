@@ -439,7 +439,7 @@
             }
             controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
 
-            if (!url || !customerUserID) {
+            if (!url) {
                 clearOptions();
                 return;
             }
@@ -476,15 +476,10 @@
             load(customerHidden.value, '');
         });
         customerInput.addEventListener('qisutu:autocomplete-cleared', function () {
-            clearOptions();
+            load('', service.value || '');
         });
 
-        if (customerHidden.value) {
-            load(customerHidden.value, initialServiceID);
-        }
-        else {
-            clearOptions();
-        }
+        load(customerHidden.value, initialServiceID);
     }
 
     function initPendingUntil() {

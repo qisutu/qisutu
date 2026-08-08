@@ -245,15 +245,11 @@ sub Run {
         }
 
         if ( !$CreateError && $ServiceID ) {
-            my $CustomerID = $ServiceObject->CustomerIDFromCustomerUser(
-                CustomerUserID => $Request->{CustomerUserID},
+            my $Service = $ServiceObject->ServiceGet(
+                ServiceID => $ServiceID,
             );
-            my $ResolvedSLA = $CustomerID ? $ServiceObject->SLAResolve(
-                CustomerID => $CustomerID,
-                ServiceID  => $ServiceID,
-            ) : undef;
-            if ( !$ResolvedSLA ) {
-                $CreateError = $ServiceObject->Error() || 'Translate:TicketServiceNotAvailable';
+            if ( !$Service || !$Service->{active} ) {
+                $CreateError = 'Translate:TicketServiceNotAvailable';
             }
         }
 
@@ -343,12 +339,10 @@ sub Run {
         CurrentPriorityID => $PriorityID,
         Language          => $Language,
     );
-    my $ServiceData = $Request->{CustomerUserID}
-        ? $Self->_ServiceOptionsData(
-            CustomerUserID => $Request->{CustomerUserID},
-            Language       => $Language,
-        )
-        : { success => 1, items => [] };
+    my $ServiceData = $Self->_ServiceOptionsData(
+        CustomerUserID => $Request->{CustomerUserID},
+        Language       => $Language,
+    );
     my $ServiceOptionsHTML = $Self->_ServiceOptionsHTML(
         Items             => $ServiceData->{items} || [],
         CurrentServiceID  => $ServiceID,
@@ -902,43 +896,54 @@ sub _ServiceOptionsData {
     my $CustomerUserID = $Param{CustomerUserID} || 0;
     my $Language       = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
     my $ServiceObject  = QisutuService->new( Config => $Self->{Config}, DB => $Self->{DB} );
-    my $CustomerID     = $ServiceObject->CustomerIDFromCustomerUser(
+    my $Rows = $ServiceObject->ServiceTreeList( ActiveOnly => 1 );
+    return { success => 0, items => [], error => $ServiceObject->Error() } if $ServiceObject->Error();
+
+    my %CustomerService;
+    my $CustomerID = $ServiceObject->CustomerIDFromCustomerUser(
         CustomerUserID => $CustomerUserID,
     );
-
-    return { success => 0, items => [] } if !$CustomerID;
-
-    my $Rows = $ServiceObject->AvailableServiceTreeList( CustomerID => $CustomerID );
-    return { success => 0, items => [], error => $ServiceObject->Error() } if $ServiceObject->Error();
+    if ($CustomerID) {
+        my $CustomerRows = $ServiceObject->AvailableServiceTreeList(
+            CustomerID => $CustomerID,
+        );
+        return { success => 0, items => [], error => $ServiceObject->Error() } if $ServiceObject->Error();
+        %CustomerService = map {
+            ( $_->{id} || 0 ) => $_
+        } grep {
+            $_->{sla_id}
+        } @{$CustomerRows};
+    }
 
     my @Items;
     for my $Row ( @{$Rows} ) {
+        my $Assigned = $CustomerService{ $Row->{id} || 0 } || {};
         push @Items, {
             id                     => $Row->{id},
             parent_id              => $Row->{parent_id} || 0,
             depth                  => $Row->{depth} || 0,
             has_children           => $Row->{has_children} ? 1 : 0,
-            selectable             => $Row->{selectable} ? 1 : 0,
+            selectable             => 1,
             name                   => $Row->{name} || $Row->{full_name} || '',
             label                  => $Row->{name} || $Row->{full_name} || '',
             full_label             => $Row->{full_name} || $Row->{name} || '',
-            sla_id                 => $Row->{sla_id} || 0,
-            sla_name               => $Row->{sla_name} || '',
-            calendar_name          => $Row->{calendar_name} || '',
-            update_mode            => $Row->{update_mode} || 'customer_response',
-            first_response_minutes => $Row->{first_response_minutes} || 0,
-            update_minutes         => $Row->{update_minutes} || 0,
-            solution_minutes       => $Row->{solution_minutes} || 0,
-            assignment_source      => $Row->{assignment_source} || 'customer',
+            sla_id                 => $Assigned->{sla_id} || 0,
+            sla_name               => $Assigned->{sla_name} || '',
+            calendar_name          => $Assigned->{calendar_name} || '',
+            update_mode            => $Assigned->{update_mode} || 'customer_response',
+            first_response_minutes => $Assigned->{first_response_minutes} || 0,
+            update_minutes         => $Assigned->{update_minutes} || 0,
+            solution_minutes       => $Assigned->{solution_minutes} || 0,
+            assignment_source      => $Assigned->{assignment_source} || 'service',
             assignment_source_label => $Self->_Translation(
-                Key      => ( $Row->{assignment_source} || '' ) eq 'customer' ? 'TicketSLASourceCustomer' : 'TicketSLASourceDefault',
+                Key      => ( $Assigned->{assignment_source} || '' ) eq 'customer' ? 'TicketSLASourceCustomer' : 'TicketSLASourceDefault',
                 Language => $Language,
-                Fallback => ( $Row->{assignment_source} || '' ) eq 'customer' ? 'Customer assignment' : 'Service default',
+                Fallback => ( $Assigned->{assignment_source} || '' ) eq 'customer' ? 'Customer assignment' : 'Service default',
             ),
             update_mode_label => $Self->_Translation(
-                Key      => ( $Row->{update_mode} || '' ) eq 'regular' ? 'AdminSLAUpdateModeRegular' : 'AdminSLAUpdateModeCustomer',
+                Key      => ( $Assigned->{update_mode} || '' ) eq 'regular' ? 'AdminSLAUpdateModeRegular' : 'AdminSLAUpdateModeCustomer',
                 Language => $Language,
-                Fallback => ( $Row->{update_mode} || '' ) eq 'regular' ? 'Regular update' : 'After customer response',
+                Fallback => ( $Assigned->{update_mode} || '' ) eq 'regular' ? 'Regular update' : 'After customer response',
             ),
         };
     }

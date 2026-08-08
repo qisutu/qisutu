@@ -2352,7 +2352,7 @@ sub TicketCreateFromAgent {
     };
 
     if ($ServiceID) {
-        if ( $ServiceID !~ m{\A\d+\z} || !$CustomerUserID ) {
+        if ( $ServiceID !~ m{\A\d+\z} ) {
             $Self->{LastError} = 'Translate:TicketServiceNotAvailable';
             return;
         }
@@ -2361,28 +2361,37 @@ sub TicketCreateFromAgent {
             Config => $Self->{Config},
             DB     => $Self->{DB},
         );
-        my $Resolved = $ServiceObject->SLAResolve(
-            CustomerID => $CustomerUser->{customer_id},
-            ServiceID  => $ServiceID,
+        my $Service = $ServiceObject->ServiceGet(
+            ServiceID => $ServiceID,
         );
-
-        if ( !$Resolved ) {
-            $Self->{LastError} = $ServiceObject->Error() || 'Translate:TicketServiceNotAvailable';
+        if ( !$Service || !$Service->{active} ) {
+            $Self->{LastError} = 'Translate:TicketServiceNotAvailable';
             return;
         }
 
-        $SLASnapshot = {
-            service_id             => $Resolved->{service_id},
-            sla_id                 => $Resolved->{sla_id},
-            sla_source             => 'sla',
-            assignment_source      => $Resolved->{assignment_source} || 'default',
-            sla_name               => $Resolved->{sla_name},
-            calendar_id            => $Resolved->{calendar_id},
-            update_mode            => $Resolved->{update_mode} || 'customer_response',
-            first_response_minutes => $Resolved->{first_response_minutes} || 0,
-            update_minutes         => $Resolved->{update_minutes} || 0,
-            solution_minutes       => $Resolved->{solution_minutes} || 0,
-        };
+        $SLASnapshot->{service_id} = $ServiceID;
+
+        if ( $CustomerUser->{customer_id} ) {
+            my $Resolved = $ServiceObject->SLAResolve(
+                CustomerID => $CustomerUser->{customer_id},
+                ServiceID  => $ServiceID,
+            );
+
+            if ($Resolved) {
+                $SLASnapshot = {
+                    service_id             => $Resolved->{service_id},
+                    sla_id                 => $Resolved->{sla_id},
+                    sla_source             => 'sla',
+                    assignment_source      => $Resolved->{assignment_source} || 'default',
+                    sla_name               => $Resolved->{sla_name},
+                    calendar_id            => $Resolved->{calendar_id},
+                    update_mode            => $Resolved->{update_mode} || 'customer_response',
+                    first_response_minutes => $Resolved->{first_response_minutes} || 0,
+                    update_minutes         => $Resolved->{update_minutes} || 0,
+                    solution_minutes       => $Resolved->{solution_minutes} || 0,
+                };
+            }
+        }
     }
 
     $OwnerUserID ||= $UserID;

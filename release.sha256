@@ -157,7 +157,7 @@ e1089b26b579446d56511e00013dc0cc788c7c3253398f57b155ec268b4caf7b  ./core/module/
 b3593b4b7a09a497815e967253e97f46c348a4b8d717a54d7ccfd4d3b05d653d  ./core/module/AdminTimeAccountingReports.pm
 a6e14ca91cb0f529b884b74857aab93c83e2f7bbbfaefe0eebd15a4369abbc87  ./core/module/AgentKnowledgeBase.pm
 4377aa152dd78b6498069d9870c81bc4c7637a799cd56f09ca341e4252caffc9  ./core/module/AgentPreferences.pm
-cf28e3d22b64451ab5c7758252d5cdbbd09a009a918cf64d183da343dde14b72  ./core/module/AgentTicketCreate.pm
+4458dc317502213330f94c3888b919fc4638f209bf49fe13e40ea20597269e26  ./core/module/AgentTicketCreate.pm
 db26a7ebf3521cdee898b5fa871ac4fd97af0cb21ae4dd220a281067856ddc9d  ./core/module/AgentTicketList.pm
 b21290ed38c9d90cb7e97d31a2c29a4944e889a52f43b3dcdec7f799e066dff8  ./core/module/AgentTicketZoom.pm
 8170331f3c0b51f212be2639d715a67cd1a4041e10e2b71fa4860b7114def2a5  ./core/module/CMDBItems.pm
@@ -212,7 +212,7 @@ bee670e5b7c4a9e3f3e000e567729f29360cc849fea3e13db99436324c5eff97  ./core/output/
 63679557c3514569f435b6d419b275edb83bfb2b9f2c79275f23bd521fdf93e2  ./core/output/AdminTimeAccountingReports.tt
 c5cae7b4e48420abf93fa860cc3ed05c1f4b932443f042b286d99baf0b93b18f  ./core/output/AgentKnowledgeBase.tt
 ea4e01c662824a36fea97f20ee5b529d2a194ab98207b51cc8ac0a9c81010383  ./core/output/AgentPreferences.tt
-a6d5704cf5223f5c62e416d054b013758187ddbcfc3738531bd99d86e926dd19  ./core/output/AgentTicketCreate.tt
+1d5b73cffb6f0d08ec3d3000b2a988d322043d11902214f967968792d8683191  ./core/output/AgentTicketCreate.tt
 88ec42a57c5febb542d777c52f549644b790d5f799dafce28673e56ed2b319eb  ./core/output/AgentTicketList.tt
 b0667940191899fb26dfad22d51068db071eb8b8f5702ffe656db58837923c51  ./core/output/AgentTicketZoom.tt
 fff20a55a3d11c669aa39c19d604fff1d77209e43ba99c72cb422e7f03a1f13b  ./core/output/CMDBItems.tt
@@ -300,7 +300,7 @@ a44a2f871949fd1474c9c96e5cb6cdbc0c49453eee0d42bedee88216bdb94597  ./core/system/
 368d94b662525a5c026833a5c6ed72385c4b0a4050bb09b78449cc37059cc11b  ./core/system/QisutuSession.pm
 7d458f6d9a15e0ed933e7f8c70201bb66e7d743c0aa34dc222d9b480efb486e4  ./core/system/QisutuSystemSetting.pm
 554aa15cf16d3d90245d1ddfc70b92b74397bc58af78a5b73cc446612620c554  ./core/system/QisutuTheme.pm
-be909acb3c18d48ddc27241a6df19d6e9372c63efeceb14328f1c7799bfda960  ./core/system/QisutuTicket.pm
+0d6a4425ce0f48f4dcd3d144bcf81bb93855438f78e7abc91b343289bdbffd09  ./core/system/QisutuTicket.pm
 2f1907dbf48cc17864f2bd6cac6a5dda5f74d8d59d5388f8001f23e47c4d4ed5  ./core/system/QisutuTicketForm.pm
 47b93a46968d1becd6442cf1ce50022b1bdca754b3e705709163ea61c688ff8f  ./core/system/QisutuTicketHistory.pm
 e381db0ab4150850702de18a997d5d799f50b7d1319575272b2fd46d4ee3ce8b  ./core/system/QisutuTicketLink.pm
@@ -326,6 +326,7 @@ c5d5617cd2c3a018c915651e6915691c9de25f25a76a8d1d073c646af2aecda7  ./t/addon-api.
 58db2790208c9746b52e57249318375e74b0b8c6a64116e685796e1b9be964a9  ./t/admin-ui-regressions.t
 1df3eda2416cdfcba0f9505f7e780f784c9d308ac2e95bc6e3bafddfff432269  ./t/agent-notification-languages.t
 de1d3fdf2af6071c04c9e7bf8b02d082388eca37bb3a87b31c080e15fc48fa43  ./t/agent-themes.t
+a8bf5a1c2305ff423b71e3a21b4e177b9363feaed641bd30a6efacbe56db0a2a  ./t/agent-ticket-services.t
 8c54cbb62dd6d20b9d74742f6a1d3998d54548290b9267bcc1324c8290304748  ./t/attachment-security.t
 99927854447e5f6efb5e3e662955ddf12a49e8abd9a6d17a60531f552f6ac470  ./t/communication-log.t
 7cb82f27b93cd848753f1c66d763d67e086957bdf12085785c60b634041db0f3  ./t/content-template-placeholders.t
@@ -620,7 +621,7 @@ d0922f85025c93d643bb4fe5c6f1641d8b600bca4e5a2f25dd6e87b8761afa16  ./var/static/j
 222b33e81919e58c46e669d588c83f7d21075f139384cd23168e3953e5a46e28  ./var/static/js/qisutu-admin-api.js
 a8ca9ea8376e77015400d33e93c7cec1653add84dcdf6abfdb7cb3149cde4990  ./var/static/js/qisutu-admin-dynamic-fields.js
 6abde8debb7812d96234ce66b57c595c9c086ba2b7603f5fd5809a0f111f6e26  ./var/static/js/qisutu-agent-notifications.js
-f722d44c4ae09799fd9d975362f525f905e528ef480d8b6e3de1152d2f00c194  ./var/static/js/qisutu-agent-ticket-create.js
+ee5d62436af0a91277d2a4e2bf0a2298ea9eb5af95b4e6678792578a5e209daa  ./var/static/js/qisutu-agent-ticket-create.js
 2d47d95dde57751713b1ea1539c634cdb4a6f34dc54b2180960fc43aa686a35a  ./var/static/js/qisutu-automation.js
 dab0dfdaaa0438e55b90a26eceadf1328fd88991aae433b954e35c3480c9bea2  ./var/static/js/qisutu-checklists-admin.js
 856e546ed91b3ea8eb18a5179b7805e3e8ddde6939d75e5f41bf84f8a78bf7bb  ./var/static/js/qisutu-cmdb.js
