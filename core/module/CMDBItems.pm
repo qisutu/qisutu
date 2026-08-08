@@ -40,11 +40,12 @@ sub new {
 sub Run {
     my($Self,%Param)=@_;my$R=$Param{Request}||{};my$User=$Param{User}||{};my$Language=$R->{Language}||'en';
     my$Object=QisutuCMDB->new(Config=>$Self->{Config},DB=>$Self->{DB},Output=>$Self->{Output});my$Permission=$Object->PermissionLevel(User=>$User);
-    my$ProgramPage=$Self->{Program}->{Name}||'CMDBItems';my$AdminMode=$ProgramPage eq'AdminCMDBItems'?1:0;
+    my$ProgramPage=$Self->{Program}->{Name}||'CMDBItems';
     if(!$Permission->{View}){return{Template=>'CMDBItems.tt',Data=>{PageTitle=>'Translate:CMDBItemsTitle',ProgramTitle=>'Translate:CMDBItemsTitle',ProgramDescription=>'Translate:CMDBDescription',AccessDenied=>1,ShowList=>0,ErrorMessage=>'Translate:CMDBAccessDenied',ErrorClass=>''}};}
 
     my$Step=$R->{Step}||'';my$Action=$R->{Action}||'List';my$CIID=$Self->_ID($R->{CIID});my$ContextTicketID=$Self->_ID($R->{TicketID});
-    if(!$AdminMode){
+    my$TicketContextMode=$ProgramPage eq'CMDBItems'&&$ContextTicketID?1:0;my$AdminMode=$TicketContextMode?0:1;
+    if($TicketContextMode){
         $Permission={View=>1,Create=>0,Change=>0,Import=>0,Admin=>0};
         my$Linked=$CIID&&$ContextTicketID?$Self->{DB}->SelectRow('SELECT 1 AS linked FROM ticket_cmdb_ci WHERE ticket_id=? AND ci_id=? LIMIT 1',$ContextTicketID,$CIID):undef;
         my$Ticket=$Linked?QisutuTicket->new(Config=>$Self->{Config},DB=>$Self->{DB},Output=>$Self->{Output})->TicketGet(TicketID=>$ContextTicketID,User=>$User,Language=>$Language):undef;

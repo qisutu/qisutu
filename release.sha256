@@ -160,7 +160,7 @@ a6e14ca91cb0f529b884b74857aab93c83e2f7bbbfaefe0eebd15a4369abbc87  ./core/module/
 4458dc317502213330f94c3888b919fc4638f209bf49fe13e40ea20597269e26  ./core/module/AgentTicketCreate.pm
 db26a7ebf3521cdee898b5fa871ac4fd97af0cb21ae4dd220a281067856ddc9d  ./core/module/AgentTicketList.pm
 b21290ed38c9d90cb7e97d31a2c29a4944e889a52f43b3dcdec7f799e066dff8  ./core/module/AgentTicketZoom.pm
-8170331f3c0b51f212be2639d715a67cd1a4041e10e2b71fa4860b7114def2a5  ./core/module/CMDBItems.pm
+f19107a3fa88497c7c0202875b345f34fc3186b95be5badce53db32190fc65b8  ./core/module/CMDBItems.pm
 355c0d605acf7d7acac57ce17d6f4e7e8abb144aeea523aeb2354e4ed7c6cf18  ./core/module/CustomerKnowledgeBase.pm
 f1d3aaaffb8b16f39cb87673c1dcb7f40eb8f83f98cb851b2402dbc96bf09393  ./core/module/CustomerPreferences.pm
 11ee26f76c5848effbaf40bdf77176d3f2bce61076e6bc13f5bfc9366f295f93  ./core/module/CustomerTicketCreate.pm
@@ -328,6 +328,7 @@ c5d5617cd2c3a018c915651e6915691c9de25f25a76a8d1d073c646af2aecda7  ./t/addon-api.
 de1d3fdf2af6071c04c9e7bf8b02d082388eca37bb3a87b31c080e15fc48fa43  ./t/agent-themes.t
 a8bf5a1c2305ff423b71e3a21b4e177b9363feaed641bd30a6efacbe56db0a2a  ./t/agent-ticket-services.t
 8c54cbb62dd6d20b9d74742f6a1d3998d54548290b9267bcc1324c8290304748  ./t/attachment-security.t
+8765ece8a095bb803c6f88d2115aca994ec39035e6300789be5f7263bd227fff  ./t/cmdb-navigation-access.t
 99927854447e5f6efb5e3e662955ddf12a49e8abd9a6d17a60531f552f6ac470  ./t/communication-log.t
 7cb82f27b93cd848753f1c66d763d67e086957bdf12085785c60b634041db0f3  ./t/content-template-placeholders.t
 f78112fccddd866f7b8f3623282702f8602ef1ad7d2933335703431f0ed8ad3e  ./t/customer-auto-responses.t
