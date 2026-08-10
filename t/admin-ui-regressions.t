@@ -83,6 +83,32 @@ like( $TicketListTemplate, qr{name="Step" value="TicketListDefaultViewSave"}, 't
 for my $Language (qw(de en fr it nl pl pt-BR pt-PT es cs tr)) {
     my $LanguageContent = content( 'core', 'language', $Language . '.pm' );
     like( $LanguageContent, qr{TicketListSaveDefaultView\s*=>}, "the default-view button is translated in $Language" );
+    like( $LanguageContent, qr{TicketChecklistDetails\s*=>}, "the checklist details button is translated in $Language" );
+    like( $LanguageContent, qr{TicketChecklistDetailsTitle\s*=>}, "the checklist details title is translated in $Language" );
+    like( $LanguageContent, qr{TicketChangeAccessDenied\s*=>}, "the read-only ticket error is translated in $Language" );
 }
+
+my $ChecklistAdminJS = content( 'var', 'static', 'js', 'qisutu-checklists-admin.js' );
+like( $ChecklistAdminJS, qr{qisutu-checklist-drag-handle[^\n]+draggable}, 'only the checklist drag handle is draggable' );
+unlike( $ChecklistAdminJS, qr{row[.]setAttribute\('draggable'}, 'the complete checklist row is no longer draggable' );
+like( $ChecklistAdminJS, qr{addEventListener\('drop'.*?preventDefault}s, 'checklist drops are consumed instead of inserting transfer text into fields' );
+like( $ChecklistAdminJS, qr{data-label-save}, 'new checklist rows include their explicit save action' );
+
+my $ChecklistAdminModule = content( 'core', 'module', 'AdminChecklists.pm' );
+like( $ChecklistAdminModule, qr{qisutu-checklist-admin-item-actions}, 'existing checklist rows include explicit save and remove actions' );
+
+my $TicketZoomModule = content( 'core', 'module', 'AgentTicketZoom.pm' );
+like( $TicketZoomModule, qr{data-qisutu-checklist-details-open}, 'ticket checklist items expose the details overlay button' );
+like( $TicketZoomModule, qr{\$Action ne 'service' && !\$Self->_BodyHasVisibleContent}, 'service changes can be saved without an additional editor note' );
+
+my $TicketZoomTemplate = content( 'core', 'output', 'AgentTicketZoom.tt' );
+unlike( $TicketZoomTemplate, qr{id="qisutu-ticket-tool-service-body"[^>]*\brequired\b}, 'the hidden service editor field no longer blocks the save button' );
+
+like( $QueueCSS, qr![.]qisutu-automation-form\s*\{[^}]*max-width:\s*none!s, 'automation trigger forms use the available workspace width' );
+like( $QueueCSS, qr![.]qisutu-ticket-checklist-item-meta\s*\{[^}]*flex-direction:\s*column!s, 'checklist details are placed below the required badge' );
+
+my $TicketSystem = content( 'core', 'system', 'QisutuTicket.pm' );
+unlike( $TicketSystem, qr{Ticket change access denied}, 'the raw English read-only ticket error is no longer emitted' );
+like( $TicketSystem, qr{Translate:TicketChangeAccessDenied}, 'ticket change denial uses the translated message key' );
 
 done_testing();

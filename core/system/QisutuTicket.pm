@@ -3904,7 +3904,7 @@ sub ArticleCreate {
         }
 
         if ( !$Self->_TicketChangeAllowed( Ticket => $Ticket, User => $User ) ) {
-            $Self->{LastError} = 'Ticket change access denied';
+        $Self->{LastError} = 'Translate:TicketChangeAccessDenied';
             return;
         }
     }
@@ -4336,7 +4336,7 @@ sub TicketPriorityUpdate {
     }
 
     if ( $User->{user_account_id} && !$Self->_TicketChangeAllowed( Ticket => $Ticket, User => $User ) ) {
-        $Self->{LastError} = 'Ticket change access denied';
+        $Self->{LastError} = 'Translate:TicketChangeAccessDenied';
         return;
     }
 
@@ -4424,7 +4424,7 @@ sub TicketQueueUpdate {
     }
 
     if ( $User->{user_account_id} && !$Self->_TicketChangeAllowed( Ticket => $Ticket, User => $User ) ) {
-        $Self->{LastError} = 'Ticket change access denied';
+        $Self->{LastError} = 'Translate:TicketChangeAccessDenied';
         return;
     }
 
@@ -4548,7 +4548,7 @@ sub TicketServiceUpdate {
     }
 
     if ( $User->{user_account_id} && !$Self->_TicketChangeAllowed( Ticket => $Ticket, User => $User ) ) {
-        $Self->{LastError} = 'Ticket change access denied';
+        $Self->{LastError} = 'Translate:TicketChangeAccessDenied';
         return;
     }
 
@@ -4704,7 +4704,7 @@ sub TicketCustomerUserUpdate {
     }
 
     if ( $User->{user_account_id} && !$Self->_TicketChangeAllowed( Ticket => $Ticket, User => $User ) ) {
-        $Self->{LastError} = 'Ticket change access denied';
+        $Self->{LastError} = 'Translate:TicketChangeAccessDenied';
         return;
     }
 
@@ -4913,7 +4913,7 @@ sub TicketOwnerUpdate {
     }
 
     if ( $User->{user_account_id} && !$Self->_TicketChangeAllowed( Ticket => $Ticket, User => $User ) ) {
-        $Self->{LastError} = 'Ticket change access denied';
+        $Self->{LastError} = 'Translate:TicketChangeAccessDenied';
         return;
     }
 
@@ -5004,7 +5004,7 @@ sub TicketResponsibleUpdate {
     }
 
     if ( $User->{user_account_id} && !$Self->_TicketChangeAllowed( Ticket => $Ticket, User => $User ) ) {
-        $Self->{LastError} = 'Ticket change access denied';
+        $Self->{LastError} = 'Translate:TicketChangeAccessDenied';
         return;
     }
 
@@ -5066,7 +5066,7 @@ sub TicketCloseUpdate {
     }
 
     if ( $User->{user_account_id} && !$Self->_TicketChangeAllowed( Ticket => $Ticket, User => $User ) ) {
-        $Self->{LastError} = 'Ticket change access denied';
+        $Self->{LastError} = 'Translate:TicketChangeAccessDenied';
         return;
     }
 

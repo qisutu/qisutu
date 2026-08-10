@@ -217,6 +217,12 @@ sub _DisplayValue {
     my $Value    = defined $Param{Value} ? $Param{Value} : '';
     my $Language = $Param{Language} || 'en';
 
+    if ( $Value =~ m{\ATranslate:(.+)\z} ) {
+        my $TranslationKey = $1;
+        my $Translated = $Self->_Translate( Key => $TranslationKey, Language => $Language );
+        return $Translated ne $TranslationKey ? $Translated : $Value;
+    }
+
     if ( $Field eq 'pending_until' && $Value =~ m{\A\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\z} ) {
         return $Self->_DateTimeFormat( DateTime => $Value, Language => $Language );
     }
@@ -289,9 +295,24 @@ sub _DetailsHTML {
                 my $Label = $Change->{label_key}
                     ? $Self->_Translate( Key => $Change->{label_key}, Language => $Language )
                     : ( $Change->{field} || '' );
+                my %DisplayField = (
+                    state    => 'state_id',
+                    priority => 'priority_id',
+                );
+                my $Field = $DisplayField{ $Change->{field} || '' } || ( $Change->{field} || '' );
+                my $OldValue = $Self->_DisplayValue(
+                    Field    => $Field,
+                    Value    => defined $Change->{old_value} ? $Change->{old_value} : '-',
+                    Language => $Language,
+                );
+                my $NewValue = $Self->_DisplayValue(
+                    Field    => $Field,
+                    Value    => defined $Change->{new_value} ? $Change->{new_value} : '-',
+                    Language => $Language,
+                );
                 $HTML .= '<li><span>' . $Self->_Escape($Label) . '</span><strong>'
-                    . $Self->_Escape( $Change->{old_value} || '-' ) . ' → '
-                    . $Self->_Escape( $Change->{new_value} || '-' ) . '</strong></li>';
+                    . $Self->_Escape($OldValue) . ' → '
+                    . $Self->_Escape($NewValue) . '</strong></li>';
             }
             $HTML .= '</ul>';
         }

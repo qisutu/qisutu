@@ -389,6 +389,7 @@ sub _FormItemsHTML {
     my $DescriptionText = $Self->{Output}->Translate( Key => 'AdminChecklistItemDescription', Language => $Language );
     my $SortOrder = $Self->{Output}->Translate( Key => 'AdminSortOrder', Language => $Language );
     my $Required = $Self->{Output}->Translate( Key => 'AdminChecklistRequiredBeforeClose', Language => $Language );
+    my $Save = $Self->{Output}->Translate( Key => 'AdminSave', Language => $Language );
     my $Remove = $Self->{Output}->Translate( Key => 'AdminRemove', Language => $Language );
 
     my $HTML = '';
@@ -400,10 +401,10 @@ sub _FormItemsHTML {
         my $Sort = $Item->{sort_order} || $Item->{SortOrder} || 1000;
         my $Checked = ( $Item->{is_required} || $Item->{IsRequired} ) ? ' checked' : '';
 
-        $HTML .= '<div class="qisutu-checklist-admin-item" data-qisutu-checklist-item-row draggable="true">';
+        $HTML .= '<div class="qisutu-checklist-admin-item" data-qisutu-checklist-item-row>';
         $HTML .= '<input type="hidden" name="ItemRowIndex" value="' . $Index . '">';
         $HTML .= '<input type="hidden" name="ItemID_' . $Index . '" value="' . $ItemID . '">';
-        $HTML .= '<span class="qisutu-checklist-drag-handle" aria-hidden="true">↕</span>';
+        $HTML .= '<span class="qisutu-checklist-drag-handle" draggable="true" aria-hidden="true">↕</span>';
         $HTML .= '<div class="qisutu-form-field qisutu-checklist-admin-item-name"><label>' . $Self->{Output}->HTMLEscape($ItemText) . '</label>';
         $HTML .= '<input type="text" name="ItemName_' . $Index . '" value="' . $Self->{Output}->HTMLEscape($Name) . '"></div>';
         $HTML .= '<div class="qisutu-form-field qisutu-checklist-admin-item-description"><label>' . $Self->{Output}->HTMLEscape($DescriptionText) . '</label>';
@@ -411,7 +412,10 @@ sub _FormItemsHTML {
         $HTML .= '<div class="qisutu-form-field qisutu-checklist-admin-item-sort"><label>' . $Self->{Output}->HTMLEscape($SortOrder) . '</label>';
         $HTML .= '<input type="number" name="ItemSortOrder_' . $Index . '" value="' . int($Sort) . '" min="1"></div>';
         $HTML .= '<label class="qisutu-form-checkbox qisutu-checklist-required-checkbox"><input type="checkbox" name="ItemRequired_' . $Index . '" value="1"' . $Checked . '><span>' . $Self->{Output}->HTMLEscape($Required) . '</span></label>';
+        $HTML .= '<div class="qisutu-checklist-admin-item-actions">';
+        $HTML .= '<button class="qisutu-button qisutu-button-small qisutu-button-primary" type="submit">' . $Self->{Output}->HTMLEscape($Save) . '</button>';
         $HTML .= '<button class="qisutu-button qisutu-button-small qisutu-button-danger qisutu-checklist-admin-item-remove" type="button" data-qisutu-checklist-item-remove>' . $Self->{Output}->HTMLEscape($Remove) . '</button>';
+        $HTML .= '</div>';
         $HTML .= '</div>';
         $Index++;
     }

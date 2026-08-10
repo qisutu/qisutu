@@ -1534,6 +1534,21 @@
 (function () {
     'use strict';
 
+    var detailsOverlay = document.querySelector('[data-qisutu-checklist-details-overlay]');
+    var detailsLastFocus = null;
+
+    function detailsClose() {
+        if (!detailsOverlay) {
+            return;
+        }
+        detailsOverlay.hidden = true;
+        detailsOverlay.setAttribute('aria-hidden', 'true');
+        if (detailsLastFocus && typeof detailsLastFocus.focus === 'function') {
+            detailsLastFocus.focus();
+        }
+        detailsLastFocus = null;
+    }
+
     document.addEventListener('change', function (event) {
         var toggle = event.target.closest('[data-qisutu-checklist-item-toggle]');
         if (!toggle) {
@@ -1543,6 +1558,49 @@
         if (form) {
             toggle.disabled = true;
             form.submit();
+        }
+    });
+
+    document.addEventListener('click', function (event) {
+        var openButton = event.target.closest('[data-qisutu-checklist-details-open]');
+        if (openButton) {
+            var item = openButton.closest('[data-qisutu-checklist-item-form]');
+            var source = item ? item.querySelector('[data-qisutu-checklist-details-content]') : null;
+            var itemName = item ? item.querySelector('.qisutu-ticket-checklist-item-text') : null;
+            var dialogContent = detailsOverlay ? detailsOverlay.querySelector('[data-qisutu-checklist-details-dialog-content]') : null;
+            var dialogName = detailsOverlay ? detailsOverlay.querySelector('[data-qisutu-checklist-details-name]') : null;
+
+            if (!detailsOverlay || !source || !dialogContent || !dialogName) {
+                return;
+            }
+
+            event.preventDefault();
+            detailsLastFocus = openButton;
+            dialogName.textContent = itemName ? itemName.textContent : '';
+            dialogContent.innerHTML = source.innerHTML;
+            detailsOverlay.hidden = false;
+            detailsOverlay.setAttribute('aria-hidden', 'false');
+            var closeButton = detailsOverlay.querySelector('[data-qisutu-checklist-details-close]');
+            if (closeButton) {
+                closeButton.focus();
+            }
+            return;
+        }
+
+        if (event.target.closest('[data-qisutu-checklist-details-close]')) {
+            event.preventDefault();
+            detailsClose();
+            return;
+        }
+
+        if (detailsOverlay && event.target === detailsOverlay) {
+            detailsClose();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && detailsOverlay && !detailsOverlay.hidden) {
+            detailsClose();
         }
     });
 

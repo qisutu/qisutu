@@ -2154,7 +2154,7 @@ sub _TicketToolUpdate {
         };
     }
 
-    if ( !$Self->_BodyHasVisibleContent( Body => $Body ) ) {
+    if ( $Action ne 'service' && !$Self->_BodyHasVisibleContent( Body => $Body ) ) {
         return {
             Success    => 0,
             ActiveTool => $Action,
@@ -4105,6 +4105,9 @@ sub _TicketChecklistListHTML {
     }
 
     my $RequiredLabel = $Self->{Output}->Translate( Key => 'TicketChecklistRequired', Language => $Language );
+    my $DetailsLabel = $Self->{Output}->Translate( Key => 'TicketChecklistDetails', Language => $Language );
+    my $DetailsTitle = $Self->{Output}->Translate( Key => 'TicketChecklistDetailsTitle', Language => $Language );
+    my $CloseLabel = $Self->{Output}->Translate( Key => 'CommonClose', Language => $Language );
     my $RemoveLabel = $Self->{Output}->Translate( Key => 'TicketChecklistRemove', Language => $Language );
     my $RemoveConfirm = $Self->{Output}->Translate( Key => 'TicketChecklistRemoveConfirm', Language => $Language );
 
@@ -4150,13 +4153,17 @@ sub _TicketChecklistListHTML {
             $ItemDescription =~ s{\r\n?}{\n}g;
             $ItemDescription =~ s{\n}{<br>}g;
 
-            $HTML .= '<label><input type="checkbox"' . $Checked . ( $ReadOnly ? ' disabled' : ' data-qisutu-checklist-item-toggle' ) . '><span class="qisutu-ticket-checklist-item-content"><span class="qisutu-ticket-checklist-item-text">' . $Self->_Escape( $Item->{name} || '' ) . '</span>';
-            if ($ItemDescription) {
-                $HTML .= '<span class="qisutu-ticket-checklist-item-description">' . $ItemDescription . '</span>';
-            }
-            $HTML .= '</span></label>';
-            if ( $Item->{is_required} ) {
-                $HTML .= '<span class="qisutu-ticket-checklist-required">' . $Self->_Escape($RequiredLabel) . '</span>';
+            $HTML .= '<label><input type="checkbox"' . $Checked . ( $ReadOnly ? ' disabled' : ' data-qisutu-checklist-item-toggle' ) . '><span class="qisutu-ticket-checklist-item-content"><span class="qisutu-ticket-checklist-item-text">' . $Self->_Escape( $Item->{name} || '' ) . '</span></span></label>';
+            if ( $Item->{is_required} || $ItemDescription ) {
+                $HTML .= '<span class="qisutu-ticket-checklist-item-meta">';
+                if ( $Item->{is_required} ) {
+                    $HTML .= '<span class="qisutu-ticket-checklist-required">' . $Self->_Escape($RequiredLabel) . '</span>';
+                }
+                if ($ItemDescription) {
+                    $HTML .= '<button class="qisutu-button qisutu-button-small qisutu-button-secondary qisutu-ticket-checklist-details-button" type="button" data-qisutu-checklist-details-open aria-haspopup="dialog">' . $Self->_Escape($DetailsLabel) . '</button>';
+                    $HTML .= '<span data-qisutu-checklist-details-content hidden>' . $ItemDescription . '</span>';
+                }
+                $HTML .= '</span>';
             }
             if ( $IsDone && $Item->{completed_at_display} ) {
                 my $CompletedBy = $Item->{completed_by_name} || '';
@@ -4179,6 +4186,14 @@ sub _TicketChecklistListHTML {
         $HTML .= '</details>';
     }
     $HTML .= '</div>';
+    $HTML .= '<div class="qisutu-ticket-checklist-details-overlay" data-qisutu-checklist-details-overlay aria-hidden="true" hidden>';
+    $HTML .= '<section class="qisutu-ticket-checklist-details-dialog" role="dialog" aria-modal="true" aria-labelledby="qisutu-ticket-checklist-details-title">';
+    $HTML .= '<div class="qisutu-ticket-checklist-details-header"><h3 id="qisutu-ticket-checklist-details-title">' . $Self->_Escape($DetailsTitle) . '</h3>';
+    $HTML .= '<button class="qisutu-ticket-checklist-details-close" type="button" aria-label="' . $Self->_Escape($CloseLabel) . '" data-qisutu-checklist-details-close>×</button></div>';
+    $HTML .= '<strong class="qisutu-ticket-checklist-details-name" data-qisutu-checklist-details-name></strong>';
+    $HTML .= '<div class="qisutu-ticket-checklist-details-content" data-qisutu-checklist-details-dialog-content></div>';
+    $HTML .= '<div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-checklist-details-close>' . $Self->_Escape($CloseLabel) . '</button></div>';
+    $HTML .= '</section></div>';
 
     return $HTML;
 }

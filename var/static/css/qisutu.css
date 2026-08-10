@@ -5693,6 +5693,8 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 .qisutu-automation-form {
     display: grid;
     gap: 16px;
+    width: 100%;
+    max-width: none;
 }
 
 .qisutu-automation-base-grid,
@@ -6665,8 +6667,8 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     display: grid;
     grid-template-columns: auto minmax(260px, 1fr) 120px auto auto;
     grid-template-areas:
-        "drag name sort required remove"
-        "drag description description description remove";
+        "drag name sort required actions"
+        "drag description description description actions";
     align-items: end;
     gap: 12px;
     padding: 12px;
@@ -6692,9 +6694,11 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     grid-area: sort;
 }
 
-.qisutu-checklist-admin-item-remove {
-    grid-area: remove;
+.qisutu-checklist-admin-item-actions {
+    grid-area: actions;
     align-self: center;
+    display: grid;
+    gap: 8px;
 }
 
 .qisutu-checklist-drag-handle {
@@ -6704,7 +6708,7 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     font-size: 18px;
 }
 
-.qisutu-checklist-admin-item[draggable="true"] .qisutu-checklist-drag-handle {
+.qisutu-checklist-drag-handle[draggable="true"] {
     cursor: grab;
 }
 
@@ -6846,19 +6850,16 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     font-weight: 700;
 }
 
-.qisutu-ticket-checklist-item-description {
-    color: #607080;
-    font-size: 11px;
-    line-height: 1.4;
-}
-
 .qisutu-ticket-checklist-item-done .qisutu-ticket-checklist-item-text {
     color: #6c7a84;
     text-decoration: line-through;
 }
 
-.qisutu-ticket-checklist-item-done .qisutu-ticket-checklist-item-description {
-    color: #82909a;
+.qisutu-ticket-checklist-item-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
 }
 
 .qisutu-ticket-checklist-required {
@@ -6872,11 +6873,79 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     white-space: nowrap;
 }
 
+.qisutu-ticket-checklist-details-button {
+    width: 100%;
+}
+
 .qisutu-ticket-checklist-completion {
     grid-column: 1 / -1;
     padding-left: 26px;
     color: #71808b;
     font-size: 10px;
+}
+
+.qisutu-ticket-checklist-details-overlay {
+    position: fixed;
+    z-index: 2200;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.58);
+}
+
+.qisutu-ticket-checklist-details-overlay[hidden] {
+    display: none;
+}
+
+.qisutu-ticket-checklist-details-dialog {
+    width: min(620px, 100%);
+    max-height: min(720px, calc(100vh - 48px));
+    overflow-y: auto;
+    padding: 22px;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.32);
+}
+
+.qisutu-ticket-checklist-details-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 16px;
+}
+
+.qisutu-ticket-checklist-details-header h3 {
+    margin: 0;
+}
+
+.qisutu-ticket-checklist-details-close {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 50%;
+    background: #fbfdfe;
+    color: var(--qisutu-muted);
+    cursor: pointer;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.qisutu-ticket-checklist-details-name {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--qisutu-text);
+}
+
+.qisutu-ticket-checklist-details-content {
+    color: #425463;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
 }
 
 .qisutu-ticket-checklist-remove-form {
@@ -6910,7 +6979,7 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
             "description"
             "sort"
             "required"
-            "remove";
+            "actions";
         align-items: stretch;
     }
 

@@ -84,17 +84,17 @@
             var descriptionLabel = escapeHTML(list.getAttribute('data-label-description'));
             var sortLabel = escapeHTML(list.getAttribute('data-label-sort'));
             var requiredLabel = escapeHTML(list.getAttribute('data-label-required'));
+            var saveLabel = escapeHTML(list.getAttribute('data-label-save'));
             var removeLabel = escapeHTML(list.getAttribute('data-label-remove'));
             var row = document.createElement('div');
             var position = rows().length + 1;
 
             row.className = 'qisutu-checklist-admin-item';
             row.setAttribute('data-qisutu-checklist-item-row', '1');
-            row.setAttribute('draggable', 'true');
             row.innerHTML = ''
                 + '<input type="hidden" name="ItemRowIndex" value="' + index + '">'
                 + '<input type="hidden" name="ItemID_' + index + '" value="">'
-                + '<span class="qisutu-checklist-drag-handle" aria-hidden="true">↕</span>'
+                + '<span class="qisutu-checklist-drag-handle" draggable="true" aria-hidden="true">↕</span>'
                 + '<div class="qisutu-form-field qisutu-checklist-admin-item-name">'
                 + '<label>' + itemLabel + '</label>'
                 + '<input type="text" name="ItemName_' + index + '" value="">'
@@ -111,7 +111,10 @@
                 + '<input type="checkbox" name="ItemRequired_' + index + '" value="1">'
                 + '<span>' + requiredLabel + '</span>'
                 + '</label>'
-                + '<button class="qisutu-button qisutu-button-small qisutu-button-danger qisutu-checklist-admin-item-remove" type="button" data-qisutu-checklist-item-remove>' + removeLabel + '</button>';
+                + '<div class="qisutu-checklist-admin-item-actions">'
+                + '<button class="qisutu-button qisutu-button-small qisutu-button-primary" type="submit">' + saveLabel + '</button>'
+                + '<button class="qisutu-button qisutu-button-small qisutu-button-danger qisutu-checklist-admin-item-remove" type="button" data-qisutu-checklist-item-remove>' + removeLabel + '</button>'
+                + '</div>';
 
             list.appendChild(row);
             var input = row.querySelector('input[type="text"]');
@@ -128,6 +131,11 @@
         var draggedRow = null;
 
         list.addEventListener('dragstart', function (event) {
+            var handle = event.target.closest('.qisutu-checklist-drag-handle');
+            if (!handle) {
+                event.preventDefault();
+                return;
+            }
             var row = event.target.closest('[data-qisutu-checklist-item-row]');
             if (!row) {
                 return;
@@ -152,6 +160,14 @@
             var box = target.getBoundingClientRect();
             var after = event.clientY > box.top + (box.height / 2);
             list.insertBefore(draggedRow, after ? target.nextSibling : target);
+        });
+
+        list.addEventListener('drop', function (event) {
+            if (!draggedRow) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
         });
 
         list.addEventListener('dragend', function () {

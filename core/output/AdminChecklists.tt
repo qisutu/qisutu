@@ -129,7 +129,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     </div>
                     <button class="qisutu-button qisutu-button-secondary" type="submit" name="FormAction" value="AddChecklistItem" formnovalidate data-qisutu-checklist-item-add>[% Translate.AdminChecklistItemAdd %]</button>
                 </div>
-                <div class="qisutu-checklist-admin-items" data-qisutu-checklist-item-list data-next-index="[% FormItemCount %]" data-label-item="[% Translate.AdminChecklistItemText %]" data-label-description="[% Translate.AdminChecklistItemDescription %]" data-label-sort="[% Translate.AdminSortOrder %]" data-label-required="[% Translate.AdminChecklistRequiredBeforeClose %]" data-label-remove="[% Translate.AdminRemove %]">
+                <div class="qisutu-checklist-admin-items" data-qisutu-checklist-item-list data-next-index="[% FormItemCount %]" data-label-item="[% Translate.AdminChecklistItemText %]" data-label-description="[% Translate.AdminChecklistItemDescription %]" data-label-sort="[% Translate.AdminSortOrder %]" data-label-required="[% Translate.AdminChecklistRequiredBeforeClose %]" data-label-save="[% Translate.AdminSave %]" data-label-remove="[% Translate.AdminRemove %]">
                     [% RAW.FormItemsHTML %]
                 </div>
                 <div class="qisutu-checklist-item-footer">
@@ -172,4 +172,3 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     </section>
     [% END %]
 </section>
-

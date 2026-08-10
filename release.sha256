@@ -95,11 +95,11 @@ fd64e06de0b79b2470344940b1bdc00ce4ff7c3c3203477c40c7055dea5565e4  ./core/config/
 2c15a015428190b5c767b29e81c0caeb3f50a981bc23af65c94539d2cf3911df  ./core/config/settings/System.pm
 297ff695703f6188a12d8fc723d591029ba239875bd67654d32a141a4bc6512a  ./core/config/themes/Christmas.pm
 ff1db7a5dbd95ff5871c5b8a612fdc53b2e3ac1f746fecc1840fda8ecf565599  ./core/config/themes/Default.pm
-e4867cb244fc9257c7d48175486accf0a82c9ab01063831a5261ab2f1e3e9135  ./core/language/cs.pm
-20f427125121a75ac366d8c5e94dfa9f0e4eae2d55e6782a580e042d23fec03f  ./core/language/de.pm
-84817414dcb020be691e8bb16948cb4623375b8b9332f6ff1faa61a01c4da532  ./core/language/en.pm
-734f21ceb0e73146ea829b90c878ca416705c4b57230499a060f9aff99a24366  ./core/language/es.pm
-b780c5236ca959be08170dafc2630721d29b39ae56887c938277cc11c7705273  ./core/language/fr.pm
+b7288e78182fd6f7c4e17eada5c38eee3a2e0d714e63d3687229baa99b17f6e9  ./core/language/cs.pm
+77ddda91aa35b950e4682e563501e340ca7abf9b292a3f36af5893eca8ef9754  ./core/language/de.pm
+14065be61669014b63fb3ab368665c604421553595199f5d35e2b603e8041a35  ./core/language/en.pm
+09b150ba3dbd558ca7bbed4ff981e557ed73fc69623f28a287623ded1bfb7964  ./core/language/es.pm
+ebbc16b1108e9e18ea28cd073676df3f48900f7814a197190343e25a9eca2aac  ./core/language/fr.pm
 4299276bbd050b1fd0f14d1ed98fb41821e59e108efb1694cace86c8b945fea5  ./core/language/installer/cs.pm
 84585eaaab2e40b7aa400f7a15f67f1d6cf3c7213912701c4e45c596e41d5b77  ./core/language/installer/de.pm
 048bf5fbd42221cdc70aa50647090a893ab2d0435fa7893995dd37420a1d6940  ./core/language/installer/en.pm
@@ -111,12 +111,12 @@ a2a2fdcc0891212acdb6861f46f0af7afc6541a104a033e4bfe31e588bc1aa0a  ./core/languag
 9948f0b59b3b09b4b86894ec0e90a5130ea2e64c28dca6c0d5b6163167d6eb72  ./core/language/installer/pt-BR.pm
 ce476f66ce78ed8675694308260f140da0f760cfee168369eb45078036f07bad  ./core/language/installer/pt-PT.pm
 d502b930ab599fc356f88c5cb701fd81927573e3acbaf03dff7081f15a8c964e  ./core/language/installer/tr.pm
-f880e37012cab3ba7ed31007215c2acfcc9f7199b3b08205f84ca5c265ad2772  ./core/language/it.pm
-cb5b732aa085b1dbab9ad42e8820370c76f91c6c119e009de0097f0d3fdccd5a  ./core/language/nl.pm
-adbff6902e85008b2ecb746955074dd65f939320ed2762d41a8ac3e09d3ab154  ./core/language/pl.pm
-967ec90970e4afdf243fdf96d758ab085cd72443e1eafb5ea57e91c934a53e18  ./core/language/pt-BR.pm
-b748c449305c7e8df4ed03e17d2d26e20d41ce1674638180c2da15037384d559  ./core/language/pt-PT.pm
-45e75b9634cc8f600c328339bd74ad5bdcc7e1836209cd85beaf578640d16987  ./core/language/tr.pm
+f51ebe558c4b98fba5a8a4f722117801b83559dc76134b05d07e057076a084f9  ./core/language/it.pm
+894a4a00f50877c5f726e7f3e0bc7033646d0375b12d9162fca17a21ebacbf62  ./core/language/nl.pm
+5bfd1943ca24a55160116de4fe1fe0b55b535b06402d1d1a04d885f7fb221f70  ./core/language/pl.pm
+3abcd91125460b0e1ab623329586a72ec8157195165e3e43c70066a0fa25d5ef  ./core/language/pt-BR.pm
+5aa87acae3b3ee9fec7b0fd957e7ba9a58c1bebefa748034fb68c308bd8380aa  ./core/language/pt-PT.pm
+f007646873f7b6a04b72a51f3f19e1db5db510acaddc995b5ce4490445075296  ./core/language/tr.pm
 9073ecf9581379ba6059ebc8df5536571c6f797a99b1607a9450006e8f4c7a6d  ./core/module/Admin.pm
 789ec13be71a9f8bbe444ba5e4092d4144d42625f25cfeb172c3ff646bcc70eb  ./core/module/AdminAPI.pm
 312630fe61f0b9d9ef662cc242852446f7d1ae5f39c4760bc79cd047cca501ce  ./core/module/AdminAddons.pm
@@ -128,7 +128,7 @@ b7c685527093c7e3a2ad8f14d86dc17239df03fc6b332acc77bdeab658134684  ./core/module/
 e6830267f90794270c607c784c80ff6ed1eeb895c7a3dd29e46d9b406b235ac4  ./core/module/AdminCMDBTypes.pm
 624af40a6727dbf729cfe721e3cbebc3b48f7893090a0b040440f949d66eaa82  ./core/module/AdminCSVImports.pm
 15b5755b0d74b454e069bf3c75e8ff17970dfd04555e99bea6ab3c9483da9e10  ./core/module/AdminCalendars.pm
-2e86b00d4c50257bcc0bb820b1b6c75688e1cde70e12bc851c293408cd9a3bf5  ./core/module/AdminChecklists.pm
+623c8648fa4a9b1f9bcaea7ea26663b5c94a994be62f2b2c867c1dbfa104d04c  ./core/module/AdminChecklists.pm
 3a808ea1c0132b51f03a4d1f9ee107c167365c8eef8bf894da6310494b2bc822  ./core/module/AdminCommunicationLog.pm
 1726d1795eee0eb265dc9ba802e38da4fec53e6b4cc85dd694f71d5ad93d8b50  ./core/module/AdminCustomerAutoResponses.pm
 0cb2da6a7da2d95b85126452de2319fa6115fc550a7e3fbfc0dee223f8d6b365  ./core/module/AdminCustomerServices.pm
@@ -159,7 +159,7 @@ a6e14ca91cb0f529b884b74857aab93c83e2f7bbbfaefe0eebd15a4369abbc87  ./core/module/
 4377aa152dd78b6498069d9870c81bc4c7637a799cd56f09ca341e4252caffc9  ./core/module/AgentPreferences.pm
 4458dc317502213330f94c3888b919fc4638f209bf49fe13e40ea20597269e26  ./core/module/AgentTicketCreate.pm
 db26a7ebf3521cdee898b5fa871ac4fd97af0cb21ae4dd220a281067856ddc9d  ./core/module/AgentTicketList.pm
-b21290ed38c9d90cb7e97d31a2c29a4944e889a52f43b3dcdec7f799e066dff8  ./core/module/AgentTicketZoom.pm
+eaee965410545e71c0f669b1607f413c68ae4062cc00b2df64f76906bca738a3  ./core/module/AgentTicketZoom.pm
 f19107a3fa88497c7c0202875b345f34fc3186b95be5badce53db32190fc65b8  ./core/module/CMDBItems.pm
 355c0d605acf7d7acac57ce17d6f4e7e8abb144aeea523aeb2354e4ed7c6cf18  ./core/module/CustomerKnowledgeBase.pm
 f1d3aaaffb8b16f39cb87673c1dcb7f40eb8f83f98cb851b2402dbc96bf09393  ./core/module/CustomerPreferences.pm
@@ -184,7 +184,7 @@ c60b39def340dbcf36c1f935742aef5b0ccf2958de49b42051771e80bcb1172c  ./core/output/
 192191eb2173eff7a19b686fb3f06b24c679a6f4346643784cfaf9e064110ee2  ./core/output/AdminCMDBTypes.tt
 15c7495808543bd3fe4862ef8929cc1b3e4d203dec78fe5f1ed1960191449296  ./core/output/AdminCSVImports.tt
 d32e28640d5f065b3c6a4486e511930ed8c7988cb010da8507fcffb38ff734cd  ./core/output/AdminCalendars.tt
-58563ae59709c48926d448f17705486d12a7a66a309becf0d8cdc3feb88bf4e1  ./core/output/AdminChecklists.tt
+246c5bc51b1c2a3bb17f8d9f134a768af761af15fb6b67e8ed0618fe4d5b7d8a  ./core/output/AdminChecklists.tt
 3cc87ee280fd7a61d5b61345c4afe6315ba15998be261036498f4664608f484c  ./core/output/AdminCommunicationLog.tt
 ff60a83644302fab1ff12b5b9fce6c3e2d2ea1dc51d60e45f2873c81f29b413c  ./core/output/AdminCustomerAutoResponses.tt
 7281481d0f5c45abae368ef1634eebd8acce821b042191916b0e7be46bc5924e  ./core/output/AdminCustomerServices.tt
@@ -214,7 +214,7 @@ c5cae7b4e48420abf93fa860cc3ed05c1f4b932443f042b286d99baf0b93b18f  ./core/output/
 ea4e01c662824a36fea97f20ee5b529d2a194ab98207b51cc8ac0a9c81010383  ./core/output/AgentPreferences.tt
 1d5b73cffb6f0d08ec3d3000b2a988d322043d11902214f967968792d8683191  ./core/output/AgentTicketCreate.tt
 88ec42a57c5febb542d777c52f549644b790d5f799dafce28673e56ed2b319eb  ./core/output/AgentTicketList.tt
-b0667940191899fb26dfad22d51068db071eb8b8f5702ffe656db58837923c51  ./core/output/AgentTicketZoom.tt
+2151d6f0070320ea1ae45bbd9c1ced8e4e24630aeff84b411f3244286dcf3461  ./core/output/AgentTicketZoom.tt
 fff20a55a3d11c669aa39c19d604fff1d77209e43ba99c72cb422e7f03a1f13b  ./core/output/CMDBItems.tt
 98f5a26f09e7099f4fd93360e97b95b3665ee21e7244da5be08140b68248a045  ./core/output/CustomerKnowledgeBase.tt
 f714de50da299be3697df14d538c7f1195107a0b9d66a1768ecf9e346f31af54  ./core/output/CustomerPreferences.tt
@@ -300,9 +300,9 @@ a44a2f871949fd1474c9c96e5cb6cdbc0c49453eee0d42bedee88216bdb94597  ./core/system/
 368d94b662525a5c026833a5c6ed72385c4b0a4050bb09b78449cc37059cc11b  ./core/system/QisutuSession.pm
 7d458f6d9a15e0ed933e7f8c70201bb66e7d743c0aa34dc222d9b480efb486e4  ./core/system/QisutuSystemSetting.pm
 554aa15cf16d3d90245d1ddfc70b92b74397bc58af78a5b73cc446612620c554  ./core/system/QisutuTheme.pm
-0d6a4425ce0f48f4dcd3d144bcf81bb93855438f78e7abc91b343289bdbffd09  ./core/system/QisutuTicket.pm
+8d0d4d89b4c4d552add111085a6ef96b15bc53a94828ed6e05aa458c2a40e118  ./core/system/QisutuTicket.pm
 2f1907dbf48cc17864f2bd6cac6a5dda5f74d8d59d5388f8001f23e47c4d4ed5  ./core/system/QisutuTicketForm.pm
-47b93a46968d1becd6442cf1ce50022b1bdca754b3e705709163ea61c688ff8f  ./core/system/QisutuTicketHistory.pm
+66706d44c27bf0ade8724d68b3aa23bd736ca41bb72e04663afad8108dfd5692  ./core/system/QisutuTicketHistory.pm
 e381db0ab4150850702de18a997d5d799f50b7d1319575272b2fd46d4ee3ce8b  ./core/system/QisutuTicketLink.pm
 2eb503740d03c283808b02f45e06d2241664cbcbca82bd60066de850e3162f9f  ./core/system/QisutuTicketPDF.pm
 1869e7008dd8a73b8ce28d76c0b7c60828b7bdaf0c4b093d198288752aa49e44  ./core/system/QisutuTicketSearch.pm
@@ -323,7 +323,7 @@ b3d038418b48f0856d62d3be8e4a69937c380feb7b6d0ad0a2c80f1989ad3512  ./release.conf
 ce4d2ca7ff54d811764afe5b463164e05019a08ac9af875870e0e1e652fb61ef  ./scriptfiles/qisutu-install-complete.service
 c5d5617cd2c3a018c915651e6915691c9de25f25a76a8d1d073c646af2aecda7  ./t/addon-api.t
 4f22f08c030b6b4de30bb571b7b91ad3accf531ffa0ce6718256ead58cc07f22  ./t/addon-framework.t
-58db2790208c9746b52e57249318375e74b0b8c6a64116e685796e1b9be964a9  ./t/admin-ui-regressions.t
+3e2cd1773ab203783ea5112e1fa9a4491bb19a76363325920f48b0641e1ee0a6  ./t/admin-ui-regressions.t
 1df3eda2416cdfcba0f9505f7e780f784c9d308ac2e95bc6e3bafddfff432269  ./t/agent-notification-languages.t
 de1d3fdf2af6071c04c9e7bf8b02d082388eca37bb3a87b31c080e15fc48fa43  ./t/agent-themes.t
 a8bf5a1c2305ff423b71e3a21b4e177b9363feaed641bd30a6efacbe56db0a2a  ./t/agent-ticket-services.t
@@ -362,6 +362,7 @@ f35a4d0137b75500ec8de76b76bb88af49e588ec34496bae3aed7f0976c1ed26  ./t/reports.t
 e0e0d4ed4a3aaa0a82dac7d7e2e7f9d89d8e20598ba9d364faa4dd704e780629  ./t/smtp-oauth2.t
 bd6d36a33ab31e93bd2f9622fa09c37c49631513aa193787745b776f4cdbef4f  ./t/system-email-navigation.t
 32b0bdf88e33f05845d4c7a662b30594c65aa032c82915c58a1534794c79deb9  ./t/template-rendering.t
+74802400335e54a0c2539c1bf5a172754c7ce2672ad63b36ea08d1f9be89d15b  ./t/ticket-history-translations.t
 b8b51f5ba7f4b8bf00e4c591abc317c1591c9f50dd96b93904985215f1619be2  ./t/ticket-list-default-view.t
 e4804f56f379bb5209c1f87a53dc5be2ffa2d01587716d0078e64cd303056542  ./t/ticket-print.t
 9927179900ece96e3737641cb377a1e9f93782c7d4640e6bf74bfb7a1fbb8d78  ./t/ticket-tool-close-note.t
@@ -376,7 +377,7 @@ df8e3be95c6a0f7d52893cc31eab6d2e51114da5e72232e451edc69f2ae4e64a  ./var/static/c
 17ef6296e2c291fda40a546ea5ce4b2843b1bd9162f76b05833614ce686f6393  ./var/static/css/qisutu-install.css
 cc5e8a337046c7465407b69bca1cf1d6c7186344c530593a6f7cf0c3f9e0f6e0  ./var/static/css/qisutu-login.css
 4cfed73a096b2da90e541ac7f627852004ec2700246f8eab2293d834670b9aad  ./var/static/css/qisutu-ticket-form-public.css
-5545d55905ec23b2f3fa34d30b5fbcdcd3b95155521b3b86767b3c5e9427f9a8  ./var/static/css/qisutu.css
+fbbb925448f1619573105001dc58e2f035a06ac6aaebab1e0af6b6db47728fad  ./var/static/css/qisutu.css
 78814a3e40f8b1040161015af3b50fbc6d600e333fa13ee710c8333201414a01  ./var/static/css/themes/christmas.css
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./var/static/img/.keep
 f288da2e48aa605255faa6adbcfb3d49b6c1ecb9f8bc00fc1d2f17af32cb949e  ./var/static/img/apple-touch-icon.png
@@ -624,7 +625,7 @@ a8ca9ea8376e77015400d33e93c7cec1653add84dcdf6abfdb7cb3149cde4990  ./var/static/j
 6abde8debb7812d96234ce66b57c595c9c086ba2b7603f5fd5809a0f111f6e26  ./var/static/js/qisutu-agent-notifications.js
 ee5d62436af0a91277d2a4e2bf0a2298ea9eb5af95b4e6678792578a5e209daa  ./var/static/js/qisutu-agent-ticket-create.js
 2d47d95dde57751713b1ea1539c634cdb4a6f34dc54b2180960fc43aa686a35a  ./var/static/js/qisutu-automation.js
-dab0dfdaaa0438e55b90a26eceadf1328fd88991aae433b954e35c3480c9bea2  ./var/static/js/qisutu-checklists-admin.js
+58e1a1dd0c0bddc88fd985fcb2890913e1db0f218926aa54ba9aaabba67e4cbc  ./var/static/js/qisutu-checklists-admin.js
 856e546ed91b3ea8eb18a5179b7805e3e8ddde6939d75e5f41bf84f8a78bf7bb  ./var/static/js/qisutu-cmdb.js
 2930bdc17ea2ecef2c8d2e7afaf68d44ea2089d3e96de186826b97f0ce902a71  ./var/static/js/qisutu-dashboard.js
 3aeec3b967136d8efc3e57f9508e64b0cfc080ccb746e00d529573230f406ba5  ./var/static/js/qisutu-install.js
@@ -638,7 +639,7 @@ b99c2d215b2f46e46cc3725a6a51534c0410fadfb1e1f24d1de8b354d33c921f  ./var/static/j
 eb0f674dc993c5576c6aec1fb981b7d3e487fc11b09efe971753852e21418333  ./var/static/js/qisutu-sidebar.js
 8a634cde4d0153425b9f0a0c1175972b212491e26b8f17deb60eafd65096585a  ./var/static/js/qisutu-ticket-forms-admin.js
 f5798e6876bac94129fd71c09b1fd54e0077d73b83dd453dc96ca53486c95b95  ./var/static/js/qisutu-ticket-list.js
-5b30487518332f9d068998382b315ac4fec0bd4419e600c707f4e6dba6cc0490  ./var/static/js/qisutu-ticket-zoom.js
+1b62061c3f4672db717164015c3c2c920cc7715272ae8141e425ab3dd124cacf  ./var/static/js/qisutu-ticket-zoom.js
 b59133d62b46edcc34f401d5fa9defc9992e88d427de325b28634f9bc955fe76  ./var/static/js/qisutu-two-factor.js
 3a850fa5f08101db6f40676c2786e10bd2cd5fff7b12ffdf1e0c434d4e49d90c  ./var/static/js/qrcode-generator/LICENSE.txt
 79ec86f82856005b1c887905cfccfcfbec3821ca61c7fd5a952faa5f778f791c  ./var/static/js/qrcode-generator/qrcode.js

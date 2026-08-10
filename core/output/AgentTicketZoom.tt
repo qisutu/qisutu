@@ -255,7 +255,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                             </div>
                                             <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
                                                 <label for="qisutu-ticket-tool-service-body">[% Translate.TicketToolInternalArticle %]</label>
-                                                <textarea id="qisutu-ticket-tool-service-body" class="qisutu-richtext" name="ToolArticleBody" rows="5" required></textarea>
+                                                <textarea id="qisutu-ticket-tool-service-body" class="qisutu-richtext" name="ToolArticleBody" rows="5"></textarea>
                                                 <p class="qisutu-form-help">[% Translate.TicketToolInternalArticleHelp %]</p>
                                             </div>
                                         </div>
