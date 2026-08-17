@@ -408,7 +408,10 @@ sub _MasterData {
     if ( $Param{Type} eq 'dynamic-fields' ) {
         $Rows = $Self->{Dynamic}->FieldList( Language => 'en' );
         for my $Field ( @{$Rows || []} ) {
-            $Field->{options} = $Self->{Dynamic}->OptionList( FieldID => $Field->{id} ) || [];
+            $Field->{options} = $Self->{Dynamic}->OptionList(
+                FieldID => $Field->{id},
+                Language => 'en',
+            ) || [];
         }
     }
     else {

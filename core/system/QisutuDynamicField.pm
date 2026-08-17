@@ -50,7 +50,6 @@ sub FieldList {
     my ( $Self, %Param ) = @_;
 
     my $Language        = $Self->_LanguageClean( $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en' );
-    my $DefaultLanguage = $Self->_LanguageClean( $Self->{Config}->{Language}->{Default} || 'en' );
     my $IncludeInactive = $Param{IncludeInactive} ? 1 : 0;
     my $QueueID         = $Param{QueueID} || 0;
     my $QueueJoin       = '';
@@ -71,7 +70,7 @@ sub FieldList {
         'SELECT
             f.id,
             f.name,
-            COALESCE(current_translation.label, default_translation.label, f.label, f.name) AS label,
+            COALESCE(current_translation.label, f.label, f.name) AS label,
             f.field_type,
             f.is_required,
             f.show_empty_value,
@@ -83,12 +82,9 @@ sub FieldList {
          LEFT JOIN ticket_dynamic_field_translation current_translation
             ON current_translation.field_id = f.id
            AND current_translation.language = ?
-         LEFT JOIN ticket_dynamic_field_translation default_translation
-            ON default_translation.field_id = f.id
-           AND default_translation.language = ?
          ' . $Where . '
          ORDER BY f.sort_order ASC, label ASC, f.id ASC',
-        $QueueID ? ( $QueueID, $Language, $DefaultLanguage ) : ( $Language, $DefaultLanguage ),
+        $QueueID ? ( $QueueID, $Language ) : ($Language),
     );
 
     if ( !$Rows ) {
@@ -137,6 +133,9 @@ sub FieldCreate {
     return if !$Selection;
     my $UserID       = $Param{ChangedByUserID} || 1;
     my $Labels       = $Param{LabelByLanguage} || {};
+    my $OptionTranslations = ref $Param{OptionTranslations} eq 'HASH'
+        ? $Param{OptionTranslations}
+        : {};
     my $DefaultLabel = $Self->_FirstTranslationLabel( Labels => $Labels );
 
     if ( !$Name || !$DefaultLabel ) {
@@ -191,6 +190,7 @@ sub FieldCreate {
     if ( $Selection->{IsSelection} && !$Self->OptionSave(
         FieldID         => $FieldID,
         Options         => $Selection->{Options},
+        OptionTranslations => $OptionTranslations,
         ChangedByUserID => $UserID,
     ) ) {
         $Self->{DB}->Rollback();
@@ -223,9 +223,18 @@ sub FieldUpdate {
     return if !$Selection;
     my $UserID       = $Param{ChangedByUserID} || 1;
     my $Labels       = $Param{LabelByLanguage} || {};
-    my $DefaultLabel = $Self->_FirstTranslationLabel( Labels => $Labels );
+    my $OptionTranslations = ref $Param{OptionTranslations} eq 'HASH'
+        ? $Param{OptionTranslations}
+        : {};
+    my $ExistingField = $FieldID =~ m{\A\d+\z} && $FieldID
+        ? $Self->FieldGet( FieldID => $FieldID )
+        : undef;
+    my $DefaultLabel = $Self->_FirstTranslationLabel(
+        Labels        => $Labels,
+        ExistingLabel => $ExistingField ? $ExistingField->{label} : '',
+    );
 
-    if ( $FieldID !~ m{\A\d+\z} || !$FieldID || !$DefaultLabel ) {
+    if ( $FieldID !~ m{\A\d+\z} || !$FieldID || !$ExistingField || !$DefaultLabel ) {
         $Self->{LastError} = 'Translate:AdminDynamicFieldNameAndLabelRequired';
         return;
     }
@@ -273,6 +282,7 @@ sub FieldUpdate {
     if ( $Selection->{IsSelection} && !$Self->OptionSave(
         FieldID         => $FieldID,
         Options         => $Selection->{Options},
+        OptionTranslations => $OptionTranslations,
         ChangedByUserID => $UserID,
     ) ) {
         $Self->{DB}->Rollback();
@@ -391,12 +401,38 @@ sub OptionList {
     my $FieldID = $Param{FieldID} || 0;
     return [] if $FieldID !~ m{\A\d+\z} || !$FieldID;
 
+    my $Language = $Param{Language}
+        ? $Self->_LanguageClean( $Param{Language} )
+        : '';
+    my ( $SQL, @Bind );
+
+    if ($Language) {
+        $SQL = 'SELECT
+                    field_option.id,
+                    field_option.field_id,
+                    field_option.option_key,
+                    COALESCE(current_translation.option_value, field_option.option_value) AS option_value,
+                    field_option.option_value AS base_option_value,
+                    field_option.sort_order
+                FROM ticket_dynamic_field_option field_option
+                LEFT JOIN ticket_dynamic_field_option_translation current_translation
+                   ON current_translation.option_id = field_option.id
+                  AND current_translation.language = ?
+                WHERE field_option.field_id = ?
+                ORDER BY field_option.sort_order ASC, field_option.id ASC';
+        @Bind = ( $Language, $FieldID );
+    }
+    else {
+        $SQL = 'SELECT id, field_id, option_key, option_value, option_value AS base_option_value, sort_order
+                FROM ticket_dynamic_field_option
+                WHERE field_id = ?
+                ORDER BY sort_order ASC, id ASC';
+        @Bind = ($FieldID);
+    }
+
     my $Rows = $Self->{DB}->SelectAll(
-        'SELECT id, field_id, option_key, option_value, sort_order
-         FROM ticket_dynamic_field_option
-         WHERE field_id = ?
-         ORDER BY sort_order ASC, id ASC',
-        $FieldID,
+        $SQL,
+        @Bind,
     );
 
     if ( !$Rows ) {
@@ -407,11 +443,48 @@ sub OptionList {
     return $Rows;
 }
 
+sub OptionTranslationList {
+    my ( $Self, %Param ) = @_;
+
+    my $FieldID = $Param{FieldID} || 0;
+    return {} if $FieldID !~ m{\A\d+\z} || !$FieldID;
+
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT translation.language, field_option.option_key, translation.option_value
+         FROM ticket_dynamic_field_option_translation translation
+         INNER JOIN ticket_dynamic_field_option field_option
+            ON field_option.id = translation.option_id
+         WHERE field_option.field_id = ?
+         ORDER BY translation.language ASC, field_option.sort_order ASC, field_option.id ASC',
+        $FieldID,
+    );
+
+    if ( !$Rows ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Dynamic field option translations could not be loaded';
+        return {};
+    }
+
+    my %Translation;
+    for my $Row ( @{$Rows} ) {
+        my $Language = $Row->{language} || '';
+        my $OptionKey = $Row->{option_key} || '';
+        next if !$Language || !$OptionKey;
+        $Translation{$Language}->{$OptionKey} = defined $Row->{option_value}
+            ? $Row->{option_value}
+            : '';
+    }
+
+    return \%Translation;
+}
+
 sub OptionSave {
     my ( $Self, %Param ) = @_;
 
     my $FieldID = $Param{FieldID} || 0;
     my $Options = ref $Param{Options} eq 'ARRAY' ? $Param{Options} : [];
+    my $Translations = ref $Param{OptionTranslations} eq 'HASH'
+        ? $Param{OptionTranslations}
+        : {};
     my $UserID  = $Param{ChangedByUserID} || 1;
 
     return if $FieldID !~ m{\A\d+\z} || !$FieldID;
@@ -426,6 +499,7 @@ sub OptionSave {
         return;
     }
 
+    my %OptionIDByKey;
     for my $Option ( @{$Options} ) {
         next if ref $Option ne 'HASH';
 
@@ -445,6 +519,49 @@ sub OptionSave {
         if ( !$Result ) {
             $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminDynamicFieldOptionSaveFailed';
             return;
+        }
+
+        my $OptionID = $Self->{DB}->LastInsertID('ticket_dynamic_field_option');
+        if ( !$OptionID ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminDynamicFieldOptionSaveFailed';
+            return;
+        }
+        $OptionIDByKey{ $Option->{option_key} } = $OptionID;
+    }
+
+    for my $Language ( sort keys %{$Translations} ) {
+        my $CleanLanguage = $Self->_LanguageClean($Language);
+        my $LanguageValues = $Translations->{$Language};
+
+        if ( $CleanLanguage ne $Language || ref $LanguageValues ne 'HASH' ) {
+            $Self->{LastError} = 'Translate:AdminDynamicFieldOptionTranslationInvalid';
+            return;
+        }
+
+        for my $OptionKey ( sort keys %{$LanguageValues} ) {
+            my $OptionValue = $Self->_Trim( $LanguageValues->{$OptionKey} );
+            next if $OptionValue eq '';
+
+            if ( !$OptionIDByKey{$OptionKey} || length($OptionValue) > 255 || $OptionValue =~ m{[\r\n]} ) {
+                $Self->{LastError} = 'Translate:AdminDynamicFieldOptionTranslationInvalid';
+                return;
+            }
+
+            my $Result = $Self->{DB}->Do(
+                'INSERT INTO ticket_dynamic_field_option_translation (
+                    option_id, language, option_value, created_by_user_id, changed_by_user_id
+                 ) VALUES (?, ?, ?, ?, ?)',
+                $OptionIDByKey{$OptionKey},
+                $CleanLanguage,
+                $OptionValue,
+                $UserID,
+                $UserID,
+            );
+
+            if ( !$Result ) {
+                $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminDynamicFieldOptionSaveFailed';
+                return;
+            }
         }
     }
 
@@ -792,7 +909,7 @@ sub FormHTML {
             }
 
             my %Selected = map { $_ => 1 } @{$SelectedValues};
-            my $Options = $Self->OptionList( FieldID => $FieldID );
+            my $Options = $Self->OptionList( FieldID => $FieldID, Language => $Language );
             return '' if $Self->Error();
 
             my $Multiple = $Type eq 'multiselect' ? ' multiple' : '';
@@ -889,7 +1006,7 @@ sub DisplayHTML {
         if ( $Type eq 'dropdown' || $Type eq 'multiselect' ) {
             my $SelectedValues = $Self->_ValueList($RawValue);
             if ( @{$SelectedValues} ) {
-                my $Options = $Self->OptionList( FieldID => $FieldID );
+                my $Options = $Self->OptionList( FieldID => $FieldID, Language => $Language );
                 my %Label = map {
                     ( $_->{option_key} || '' ) => ( $_->{option_value} || $_->{option_key} || '' )
                 } @{$Options};
@@ -1166,8 +1283,10 @@ sub _FirstTranslationLabel {
 
     my $Labels = $Param{Labels} || {};
     my $DefaultLanguage = $Self->_LanguageClean( $Self->{Config}->{Language}->{Default} || 'en' );
+    my $ExistingLabel = $Self->_Trim( $Param{ExistingLabel} );
 
     return $Self->_Trim( $Labels->{$DefaultLanguage} ) if $Self->_Trim( $Labels->{$DefaultLanguage} );
+    return $ExistingLabel if $ExistingLabel;
 
     for my $Language ( sort keys %{$Labels} ) {
         my $Label = $Self->_Trim( $Labels->{$Language} );

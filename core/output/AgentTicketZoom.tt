@@ -590,7 +590,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 <input type="hidden" name="Step" value="ArticleCreate">
                                 <input type="hidden" name="TicketID" value="[% TicketID %]">
                                 <input type="hidden" name="ArticleMode" value="[% DefaultArticleMode %]" data-qisutu-article-mode>
-                                <input type="hidden" name="ReplyArticleID" value="" data-qisutu-reply-article-id>
+                                <input type="hidden" name="ReplyArticleID" value="[% SubmittedReplyArticleID %]" data-qisutu-reply-article-id>
 
                                 <h3 class="qisutu-ticket-reply-form-title" data-qisutu-reply-form-title>[% ReplyFormDefaultTitle %]</h3>
 
@@ -617,13 +617,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <select id="qisutu-response-template-select" name="ResponseTemplateID" data-qisutu-response-template-select data-qisutu-ticket-id="[% TicketID %]">
                                         <option value="">[% Translate.TicketResponseTemplateNone %]</option>
                                         [% FOREACH ResponseTemplate IN TicketResponseTemplateList %]
-                                        <option value="[% ResponseTemplate.id %]" [% ResponseTemplate.selected %]>[% ResponseTemplate.name %]</option>
+                                        <option value="[% ResponseTemplate.id %]" data-response-template-language="[% ResponseTemplate.language %]" [% ResponseTemplate.selected %]>[% ResponseTemplate.selection_label %]</option>
                                         [% END %]
                                     </select>
                                     <p class="qisutu-form-help">[% Translate.TicketResponseTemplateHelp %]</p>
                                     <p class="qisutu-form-error qisutu-hidden" data-qisutu-response-template-error>[% Translate.TicketResponseTemplateLoadFailed %]</p>
                                 </div>
 
+                                <input type="hidden" name="ResponseTemplateLanguage" value="[% TicketSelectedResponseTemplateLanguage %]" data-qisutu-response-template-language>
                                 <div data-qisutu-response-template-hidden-inputs>
                                     [% IF SubmittedResponseTemplateAttachmentSelection %]
                                     <input type="hidden" name="ResponseTemplateAttachmentSelection" value="1">
@@ -989,5 +990,5 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js?v=2026071802"></script>
             <script src="[% StaticBase %]/js/qisutu-knowledge-insert.js?v=2026071901"></script>
-            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026071802"></script>
+            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026081603"></script>
             <script src="[% StaticBase %]/js/qisutu-cmdb.js?v=2026071801"></script>

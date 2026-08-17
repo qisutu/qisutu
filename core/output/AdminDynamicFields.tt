@@ -295,7 +295,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </template>
 
             <template id="qisutu-translation-row-template">
-                <div class="qisutu-translation-row" data-qisutu-translation-row>
+                <div class="qisutu-translation-row" data-qisutu-translation-row data-qisutu-translation-index="">
                     <div class="qisutu-form-field">
                         <label>[% Translate.AdminTranslationLanguage %]</label>
                         <select data-qisutu-translation-language>[% RAW.TranslationLanguageOptionsHTML %]</select>
@@ -305,6 +305,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <input type="text" data-qisutu-translation-label>
                     </div>
                     <button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-translation-remove>[% Translate.AdminRemove %]</button>
+                    <div class="qisutu-dynamic-option-translations qisutu-hidden" data-qisutu-option-translation-fields>
+                        <strong>[% Translate.AdminDynamicFieldOptionTranslations %]</strong>
+                        <span class="qisutu-form-hint">[% Translate.AdminDynamicFieldOptionTranslationsHint %]</span>
+                        <div class="qisutu-dynamic-option-translation-rows" data-qisutu-option-translation-rows></div>
+                    </div>
                 </div>
             </template>
             <script src="[% StaticBase %]/js/qisutu-admin-dynamic-fields.js"></script>

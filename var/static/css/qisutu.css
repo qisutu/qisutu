@@ -4488,6 +4488,37 @@ body.qisutu-overlay-open {
     white-space: nowrap;
 }
 
+.qisutu-dynamic-option-translations {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid #d4dde6;
+    border-radius: 7px;
+    background: #f7fafc;
+}
+
+.qisutu-dynamic-option-translations.qisutu-hidden {
+    display: none;
+}
+
+.qisutu-dynamic-option-translation-rows {
+    display: grid;
+    gap: 8px;
+}
+
+.qisutu-dynamic-option-translation-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.75fr) minmax(240px, 1.25fr);
+    gap: 10px;
+    align-items: center;
+}
+
+.qisutu-dynamic-option-translation-row label {
+    overflow-wrap: anywhere;
+    font-weight: 700;
+}
+
 .qisutu-dynamic-show-empty {
     margin-top: 4px;
 }
@@ -4503,7 +4534,8 @@ body.qisutu-overlay-open {
 }
 
 @media (max-width: 700px) {
-    .qisutu-dynamic-option-row {
+    .qisutu-dynamic-option-row,
+    .qisutu-dynamic-option-translation-row {
         grid-template-columns: 1fr;
     }
 }

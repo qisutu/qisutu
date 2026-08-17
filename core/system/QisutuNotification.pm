@@ -243,6 +243,8 @@ sub Send {
     my $Sent = 0;
     my @ErrorMessages;
     my %TemplateForLanguage;
+    my $Article;
+    my $ArticleLoaded = 0;
 
     for my $Agent ( @{$RecipientList} ) {
         next if !$Agent->{email};
@@ -264,6 +266,19 @@ sub Send {
 
         next if !$Template->{active};
 
+        if (
+            !$ArticleLoaded
+            && $Self->_ArticleBodyPlaceholderPresent(
+                ( $Template->{subject} || '' ) . "\n" . ( $Template->{body_html} || '' )
+            )
+        ) {
+            $Article = $Self->_TicketArticleDataGet(
+                TicketID  => $TicketID,
+                ArticleID => $Param{ArticleID},
+            );
+            $ArticleLoaded = 1;
+        }
+
         if ( $Self->_RequiresEventLog( NotificationType => $Type ) ) {
             next if $Self->_EventAlreadySent(
                 NotificationType => $Type,
@@ -279,6 +294,7 @@ sub Send {
             ChangedByID  => $Param{ChangedByUserID},
             AssignedID   => $Param{TargetUserID},
             Language     => $Language,
+            Article      => $Article,
         );
 
         my $Subject = $Self->_PlaceholderReplacePlain(
@@ -565,6 +581,7 @@ sub PlaceholderList {
         { placeholder => '{{Ticket.Priority}}',       description => 'Priorität des Tickets' },
         { placeholder => '{{Ticket.Link}}',           description => 'URL zum Ticket' },
         { placeholder => '{{Ticket.LinkHTML}}',       description => 'fertiger HTML-Link zum Ticket' },
+        { placeholder => '{{Ticket.ArticleBody[15]}}', description => 'Die ersten 15 Textzeilen des Ticketartikels; die Zahl ist frei wählbar' },
         { placeholder => '{{System.Name}}',           description => 'Systemname' },
         { placeholder => '{{System.HTTPType}}',       description => 'HTTP-Typ des Systems' },
         { placeholder => '{{System.FQDN}}',           description => 'FQDN des Systems' },
@@ -682,6 +699,16 @@ sub ContentTemplateRenderHTML {
         TicketLinkPage => $Param{TicketLinkPage},
         SystemPlaceholder => $Param{SystemPlaceholder},
         Language    => $Param{Language},
+        Article     => ref $Param{Article} eq 'HASH'
+            ? $Param{Article}
+            : (
+                $Self->_ArticleBodyPlaceholderPresent($HTML) && ( $Ticket->{id} || 0 )
+                    ? $Self->_TicketArticleDataGet(
+                        TicketID  => $Ticket->{id},
+                        ArticleID => $Param{ArticleID},
+                    )
+                    : undef
+            ),
     );
 
     return $Self->_PlaceholderReplaceHTML(
@@ -1069,6 +1096,8 @@ sub _PlaceholderBuild {
     my $TicketLinkHTML = $TicketLink
         ? '<a href="' . $TicketLink . '">' . $Self->_Escape($TicketLinkText) . '</a>'
         : '';
+    my $Article = ref $Param{Article} eq 'HASH' ? $Param{Article} : {};
+    my $ArticleBody = $Self->_ArticleBodyPlainText( Article => $Article );
 
     return {
         'Agent.FullName'         => $Agent->{full_name} || '',
@@ -1083,6 +1112,7 @@ sub _PlaceholderBuild {
         'Ticket.Priority'        => $Ticket->{priority_name} || '',
         'Ticket.Link'            => $TicketLink,
         'Ticket.LinkHTML'        => $TicketLinkHTML,
+        'Ticket.ArticleBody'     => $ArticleBody,
         'System.Name'            => $SystemPlaceholder->{'System.Name'} || '',
         'System.HTTPType'        => $SystemPlaceholder->{'System.HTTPType'} || '',
         'System.FQDN'            => $SystemPlaceholder->{'System.FQDN'} || '',
@@ -1126,6 +1156,23 @@ sub _PlaceholderReplaceHTML {
     my $Placeholder = $Param{Placeholder} || {};
     my %PreserveEmpty = map { $_ => 1 } @{ ref $Param{PreserveEmptyKeys} eq 'ARRAY' ? $Param{PreserveEmptyKeys} : [] };
 
+    # CKEditor stores a placeholder entered on its own line inside a paragraph.
+    # Remove only that wrapper before inserting the block-level article excerpt.
+    $HTML =~ s{
+        <p\b[^>]*>\s*
+        (\{\{\s*Ticket[.]ArticleBody(?:\[\s*\d{1,4}\s*\])?\s*\}\})
+        \s*</p>
+    }{$1}gix;
+
+    $HTML =~ s{
+        \{\{\s*Ticket[.]ArticleBody(?:\[\s*(\d{1,4})\s*\])?\s*\}\}
+    }{
+        $Self->_ArticleBodyHTML(
+            Text  => $Placeholder->{'Ticket.ArticleBody'} || '',
+            Lines => defined $1 ? $1 : undef,
+        )
+    }gex;
+
     $HTML =~ s{\{\{\s*([A-Za-z0-9_.]+)\s*\}\}}{
         my $Key = $1;
         if ( $PreserveEmpty{$Key} && ( !exists $Placeholder->{$Key} || !defined $Placeholder->{$Key} || $Placeholder->{$Key} eq '' ) ) {
@@ -1148,6 +1195,15 @@ sub _PlaceholderReplacePlain {
     my $Text        = $Param{Text} || '';
     my $Placeholder = $Param{Placeholder} || {};
 
+    $Text =~ s{
+        \{\{\s*Ticket[.]ArticleBody(?:\[\s*(\d{1,4})\s*\])?\s*\}\}
+    }{
+        $Self->_ArticleBodyExcerpt(
+            Text  => $Placeholder->{'Ticket.ArticleBody'} || '',
+            Lines => defined $1 ? $1 : undef,
+        )
+    }gex;
+
     $Text =~ s{\{\{\s*([A-Za-z0-9_.]+)\s*\}\}}{
         my $Value = exists $Placeholder->{$1} ? $Placeholder->{$1} : '';
         $Value =~ s{<[^>]+>}{}g;
@@ -1158,6 +1214,114 @@ sub _PlaceholderReplacePlain {
     $Text =~ s{\A\s+|\s+\z}{}g;
 
     return $Text;
+}
+
+sub _ArticleBodyPlaceholderPresent {
+    my ( $Self, $Text ) = @_;
+
+    return 0 if !defined $Text || $Text eq '';
+    return $Text =~ m{
+        \{\{\s*Ticket[.]ArticleBody(?:\[\s*\d{1,4}\s*\])?\s*\}\}
+    }x ? 1 : 0;
+}
+
+sub _TicketArticleDataGet {
+    my ( $Self, %Param ) = @_;
+
+    my $TicketID  = $Param{TicketID} || 0;
+    my $ArticleID = $Param{ArticleID} || 0;
+    return {} if $TicketID !~ m{\A\d+\z} || !$TicketID || !$Self->{DB};
+
+    if ( $ArticleID =~ m{\A\d+\z} && $ArticleID ) {
+        my $Article = $Self->{DB}->SelectRow(
+            'SELECT id, ticket_id, article_number, sender_type, body, content_type
+             FROM ticket_article
+             WHERE id = ? AND ticket_id = ?
+             LIMIT 1',
+            $ArticleID,
+            $TicketID,
+        );
+        return $Article if $Article;
+    }
+
+    my $Article = $Self->{DB}->SelectRow(
+        'SELECT id, ticket_id, article_number, sender_type, body, content_type
+         FROM ticket_article
+         WHERE ticket_id = ? AND sender_type = ?
+         ORDER BY article_number DESC, id DESC
+         LIMIT 1',
+        $TicketID,
+        'customer',
+    );
+    return $Article if $Article;
+
+    return $Self->{DB}->SelectRow(
+        'SELECT id, ticket_id, article_number, sender_type, body, content_type
+         FROM ticket_article
+         WHERE ticket_id = ?
+         ORDER BY article_number DESC, id DESC
+         LIMIT 1',
+        $TicketID,
+    ) || {};
+}
+
+sub _ArticleBodyPlainText {
+    my ( $Self, %Param ) = @_;
+
+    my $Article = ref $Param{Article} eq 'HASH' ? $Param{Article} : {};
+    my $Body = defined $Article->{body} ? $Article->{body} : '';
+    return '' if $Body eq '';
+
+    $Body =~ s{\r\n|\r}{\n}g;
+    $Body =~ s{\x00}{}g;
+
+    my $IsHTML = ( $Article->{content_type} || '' ) =~ m{text/html}i ? 1 : 0;
+    if ($IsHTML) {
+        $Body = QisutuHTML->Sanitize($Body);
+        $Body =~ s{<\s*br\s*/?\s*>}{\n}gi;
+        $Body =~ s{<\s*/\s*(?:p|div|li|tr|h[1-6]|blockquote|pre)\s*>}{\n}gi;
+    }
+
+    my @Line = split /\n/, $Body, -1;
+    for my $Line (@Line) {
+        $Line = QisutuHTML->PlainTextSearch($Line) if $IsHTML;
+        $Line =~ s{\A[ \t]+|[ \t]+\z}{}g;
+    }
+    shift @Line while @Line && $Line[0] eq '';
+    pop @Line while @Line && $Line[-1] eq '';
+
+    return join "\n", @Line;
+}
+
+sub _ArticleBodyExcerpt {
+    my ( $Self, %Param ) = @_;
+
+    my $Text = defined $Param{Text} ? $Param{Text} : '';
+    return '' if $Text eq '';
+
+    my @Line = split /\n/, $Text, -1;
+    if ( defined $Param{Lines} ) {
+        my $Limit = int( $Param{Lines} || 0 );
+        return '' if $Limit < 1;
+        $Limit = 1000 if $Limit > 1000;
+        $#Line = $Limit - 1 if @Line > $Limit;
+    }
+
+    return join "\n", @Line;
+}
+
+sub _ArticleBodyHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Text = $Self->_ArticleBodyExcerpt(%Param);
+    return '' if $Text eq '';
+
+    $Text = $Self->_Escape($Text);
+    $Text =~ s{\n}{<br>}g;
+
+    return '<div style="margin:12px 0;padding:12px;background:#f5f5f5;border-left:3px solid #d8e0e7;">'
+        . $Text
+        . '</div>';
 }
 
 sub _MailHTMLBuild {

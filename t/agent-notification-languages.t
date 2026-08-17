@@ -77,6 +77,14 @@ my $Portugal = QisutuAgentNotificationTemplates->Templates( Language => 'pt-PT' 
 like( $Brazil, qr{Contato:}, 'Brazilian Portuguese uses the Brazilian contact term' );
 like( $Portugal, qr{Contacto:}, 'European Portuguese uses the European contact term' );
 
+my %AgentPlaceholder = map {
+    ( $_->{placeholder} || '' ) => 1
+} @{ QisutuNotification->PlaceholderList() };
+ok(
+    $AgentPlaceholder{'{{Ticket.ArticleBody[15]}}'},
+    'agent notification settings offer the configurable article-line placeholder',
+);
+
 {
     package Local::AgentNotificationOutput;
 
@@ -255,6 +263,42 @@ my $GermanPlaceholder = $Runtime->_PlaceholderBuild(
 like( $EnglishPlaceholder->{'Ticket.LinkHTML'}, qr{Open ticket 2026000042}, 'the ticket link follows the recipient language' );
 like( $GermanPlaceholder->{'Ticket.LinkHTML'}, qr{Ticket 2026000042 öffnen}, 'the German ticket link remains German' );
 
+my $ArticleText = $Runtime->_ArticleBodyPlainText(
+    Article => {
+        content_type => 'text/html',
+        body => '<p>Line 1 &amp; safe</p><p>Line 2</p><p>&lt;Line 3&gt;</p>',
+    },
+);
+is(
+    $ArticleText,
+    "Line 1 & safe\nLine 2\n<Line 3>",
+    'HTML ticket articles are converted to safe text while preserving their lines',
+);
+my $ArticlePlaceholder = { 'Ticket.ArticleBody' => $ArticleText };
+my $ArticleHTML = $Runtime->_PlaceholderReplaceHTML(
+    HTML        => '<p>Before</p>{{Ticket.ArticleBody[2]}}<p>After</p>',
+    Placeholder => $ArticlePlaceholder,
+);
+like( $ArticleHTML, qr{Line 1 &amp; safe<br>Line 2}, 'the requested first two article lines are inserted into an HTML notification' );
+unlike( $ArticleHTML, qr{Line 3}, 'an HTML agent notification excludes article lines after the configured limit' );
+like( $ArticleHTML, qr{background: #f5f5f5}, 'the article excerpt is displayed as a separate readable block' );
+like(
+    $Runtime->_PlaceholderReplaceHTML(
+        HTML        => '{{Ticket.ArticleBody}}',
+        Placeholder => $ArticlePlaceholder,
+    ),
+    qr{&lt;Line 3&gt;},
+    'the article placeholder without a number includes the complete article text',
+);
+is(
+    $Runtime->_PlaceholderReplacePlain(
+        Text        => 'Excerpt: {{Ticket.ArticleBody[2]}}',
+        Placeholder => $ArticlePlaceholder,
+    ),
+    'Excerpt: Line 1 & safe Line 2',
+    'the configurable article-line placeholder is also safe in notification subjects',
+);
+
 {
     package Local::MultilingualSendNotification;
 
@@ -268,7 +312,11 @@ like( $GermanPlaceholder->{'Ticket.LinkHTML'}, qr{Ticket 2026000042 öffnen}, 't
         my ($Template) = grep {
             $_->{type} eq $Param{NotificationType}
         } @{ QisutuAgentNotificationTemplates->Templates( Language => $Param{Language} ) };
-        return { %{$Template}, active => 1 };
+        return {
+            %{$Template},
+            body_html => ( $Template->{body_html} || '' ) . '<p>{{Ticket.ArticleBody[2]}}</p>',
+            active    => 1,
+        };
     }
     sub _TicketDataGet {
         return {
@@ -299,6 +347,17 @@ like( $GermanPlaceholder->{'Ticket.LinkHTML'}, qr{Ticket 2026000042 öffnen}, 't
     sub _RecipientPreferenceFilter {
         my ( $Self, %Param ) = @_;
         return $Param{RecipientList};
+    }
+    sub _TicketArticleDataGet {
+        my ( $Self, %Param ) = @_;
+        push @{ $Self->{LoadedArticles} }, { %Param };
+        return {
+            id           => $Param{ArticleID},
+            ticket_id    => $Param{TicketID},
+            sender_type  => 'customer',
+            content_type => 'text/plain',
+            body         => "Agent line 1\nAgent line 2\nAgent line 3",
+        };
     }
     sub _ActiveSMTPAccount {
         return {
@@ -340,6 +399,7 @@ my @Sent;
         $Sender->Send(
             NotificationType => 'ticket_new_in_my_queues',
             TicketID         => 42,
+            ArticleID        => 77,
         ),
         2,
         'one notification is sent to each recipient',
@@ -349,11 +409,18 @@ my @Sent;
         [ 'en', 'fr' ],
         'the send path loads the template in each recipient agent language',
     );
+    is_deeply(
+        $Sender->{LoadedArticles},
+        [ { TicketID => 42, ArticleID => 77 } ],
+        'the triggering ticket article is loaded only once for all agent recipients',
+    );
 }
 like( $Sent[0]->{Subject}, qr{\ANew ticket 2026000042}, 'the English agent receives the English subject' );
 like( $Sent[1]->{Subject}, qr{\ANouveau ticket 2026000042}, 'the French agent receives the French subject' );
 like( $Sent[0]->{Body}, qr{Hello Eve English}, 'the English agent receives the English body' );
 like( $Sent[1]->{Body}, qr{Bonjour François Français}, 'the French agent receives the French body' );
+like( $Sent[0]->{Body}, qr{Agent line 1<br>Agent line 2}, 'the agent notification contains the requested article excerpt' );
+unlike( $Sent[0]->{Body}, qr{Agent line 3}, 'the agent notification respects the configured article line limit' );
 
 sub content {
     my (@Parts) = @_;

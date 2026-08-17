@@ -101,10 +101,55 @@
 }
 
 .qisutu-login-message {
-    min-height: 22px;
     margin-bottom: 14px;
     color: var(--qisutu-danger);
     font-size: 14px;
+}
+
+.qisutu-login-language {
+    margin-bottom: 8px;
+}
+
+.qisutu-login-language-control {
+    display: flex;
+    gap: 8px;
+}
+
+.qisutu-login-language select {
+    min-width: 0;
+    height: 42px;
+    flex: 1 1 auto;
+    padding: 8px 34px 8px 11px;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 7px;
+    background: #ffffff;
+    color: var(--qisutu-text);
+    font: inherit;
+}
+
+.qisutu-login-language-icon {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    flex: 0 0 42px;
+    align-items: center;
+    justify-content: center;
+    color: var(--qisutu-primary);
+}
+
+.qisutu-login-language-icon svg {
+    width: 25px;
+    height: 25px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.qisutu-login-language select:focus {
+    outline: 3px solid rgba(15, 118, 110, 0.16);
+    border-color: var(--qisutu-primary);
 }
 
 .qisutu-login-form {

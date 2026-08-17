@@ -510,6 +510,13 @@
         var dynamicFields = document.querySelector('[data-qisutu-create-dynamic-fields]');
         var customerInput = document.querySelector('[data-qisutu-customer-user-autocomplete]');
         var ownerInput = document.getElementById('qisutu-agent-ticket-create-owner');
+        var responseTemplateField = document.querySelector('[data-qisutu-create-response-template-field]');
+        var responseTemplateSelect = document.querySelector('[data-qisutu-create-response-template-select]');
+        var responseTemplateLanguage = document.querySelector('[data-qisutu-create-response-template-language]');
+        var responseTemplateError = document.querySelector('[data-qisutu-create-response-template-error]');
+        var responseTemplateHidden = document.querySelector('[data-qisutu-create-response-template-hidden-inputs]');
+        var responseTemplateAttachmentWrap = document.querySelector('[data-qisutu-create-response-template-attachment-wrap]');
+        var responseTemplateAttachmentList = document.querySelector('[data-qisutu-create-response-template-attachment-list]');
         var contextFields = [
             document.getElementById('qisutu-agent-ticket-create-title-field'),
             document.getElementById('qisutu-agent-ticket-create-state'),
@@ -523,6 +530,8 @@
 
         var lastTemplate = body.value || '';
         var templateRequestIndex = 0;
+        var responseTemplateRequestIndex = 0;
+        var responseTemplateAttachments = [];
 
         function editorGetData() {
             if (body.qisutuEditor && body.qisutuEditor.getData) {
@@ -551,6 +560,263 @@
             }, 100);
         }
 
+        function responseTemplateErrorToggle(show) {
+            if (responseTemplateError) {
+                responseTemplateError.classList.toggle('qisutu-hidden', !show);
+            }
+        }
+
+        function responseTemplateFieldToggle() {
+            if (!responseTemplateField || !responseTemplateSelect) {
+                return;
+            }
+
+            var hasTemplates = responseTemplateSelect.options.length > 1;
+            responseTemplateField.classList.toggle('qisutu-hidden', !hasTemplates);
+            responseTemplateSelect.disabled = !hasTemplates;
+        }
+
+        function responseTemplateHiddenRead() {
+            var ids = [];
+            var selectionIsExplicit = false;
+
+            if (!responseTemplateHidden) {
+                return { ids: ids, explicit: false };
+            }
+
+            responseTemplateHidden.querySelectorAll('input[name="ResponseTemplateAttachmentID"]').forEach(function (input) {
+                var id = Number(input.value || 0);
+                if (id > 0 && ids.indexOf(id) === -1) {
+                    ids.push(id);
+                }
+            });
+
+            selectionIsExplicit = !!responseTemplateHidden.querySelector('input[name="ResponseTemplateAttachmentSelection"]');
+
+            return { ids: ids, explicit: selectionIsExplicit };
+        }
+
+        function responseTemplateAttachmentsRender() {
+            if (responseTemplateHidden) {
+                responseTemplateHidden.innerHTML = '';
+
+                if (responseTemplateSelect && responseTemplateSelect.value) {
+                    var marker = document.createElement('input');
+                    marker.type = 'hidden';
+                    marker.name = 'ResponseTemplateAttachmentSelection';
+                    marker.value = '1';
+                    responseTemplateHidden.appendChild(marker);
+                }
+
+                responseTemplateAttachments.forEach(function (attachment) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'ResponseTemplateAttachmentID';
+                    input.value = String(attachment.id || '');
+                    responseTemplateHidden.appendChild(input);
+                });
+            }
+
+            if (!responseTemplateAttachmentWrap || !responseTemplateAttachmentList) {
+                return;
+            }
+
+            responseTemplateAttachmentList.innerHTML = '';
+            responseTemplateAttachmentWrap.classList.toggle('qisutu-hidden', !responseTemplateAttachments.length);
+
+            if (!responseTemplateAttachments.length) {
+                return;
+            }
+
+            var removeLabel = responseTemplateAttachmentList.getAttribute('data-qisutu-response-template-remove-label') || 'Nicht mitsenden';
+            var list = document.createElement('ul');
+            list.className = 'qisutu-ticket-reply-attachment-items';
+
+            responseTemplateAttachments.forEach(function (attachment, index) {
+                var item = document.createElement('li');
+                var info = document.createElement('span');
+                var remove = document.createElement('button');
+                var size = attachment.size_display || '';
+
+                info.textContent = (attachment.filename || 'attachment.bin') + (size ? ' (' + size + ')' : '');
+                remove.type = 'button';
+                remove.className = 'qisutu-ticket-reply-attachment-remove';
+                remove.textContent = removeLabel;
+                remove.addEventListener('click', function () {
+                    responseTemplateAttachments.splice(index, 1);
+                    responseTemplateAttachmentsRender();
+                });
+
+                item.appendChild(info);
+                item.appendChild(remove);
+                list.appendChild(item);
+            });
+
+            responseTemplateAttachmentList.appendChild(list);
+        }
+
+        function responseTemplateBodyBuild(baseTemplate, content) {
+            var parser = new DOMParser();
+            var documentObject = parser.parseFromString('<div id="qisutu-response-template-root">' + (baseTemplate || '') + '</div>', 'text/html');
+            var root = documentObject.getElementById('qisutu-response-template-root');
+            var slot;
+
+            if (!root) {
+                return baseTemplate || '';
+            }
+
+            slot = root.querySelector('.qisutu-response-template-slot');
+
+            if (!slot) {
+                slot = documentObject.createElement('div');
+                slot.className = 'qisutu-response-template-slot';
+
+                var signature = root.querySelector('.qisutu-mail-signature');
+                if (signature && signature.parentNode) {
+                    signature.parentNode.insertBefore(slot, signature);
+                }
+                else {
+                    root.appendChild(slot);
+                }
+            }
+
+            slot.innerHTML = content || '<p><br></p><p><br></p>';
+            return root.innerHTML;
+        }
+
+        function responseTemplateSlotSet(content) {
+            editorSetData(responseTemplateBodyBuild(editorGetData(), content));
+        }
+
+        function responseTemplateSelectedLanguage() {
+            if (!responseTemplateSelect || responseTemplateSelect.selectedIndex < 0) {
+                return '';
+            }
+
+            var option = responseTemplateSelect.options[responseTemplateSelect.selectedIndex];
+            return option ? (option.getAttribute('data-response-template-language') || '') : '';
+        }
+
+        function responseTemplateOptionsSet(templates) {
+            if (!responseTemplateSelect) {
+                return;
+            }
+
+            var noneLabel = responseTemplateSelect.getAttribute('data-qisutu-none-label') || 'Keine Antwort-Vorlage';
+            responseTemplateSelect.innerHTML = '';
+
+            var emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = noneLabel;
+            responseTemplateSelect.appendChild(emptyOption);
+
+            (Array.isArray(templates) ? templates : []).forEach(function (template) {
+                var templateID = Number(template && template.id ? template.id : 0);
+                if (!templateID) {
+                    return;
+                }
+
+                var option = document.createElement('option');
+                option.value = String(templateID);
+                option.setAttribute('data-response-template-language', template.language || '');
+                option.textContent = template.selection_label || template.name || '';
+                responseTemplateSelect.appendChild(option);
+            });
+
+            responseTemplateFieldToggle();
+        }
+
+        function responseTemplateReset(clearEditorSlot) {
+            responseTemplateRequestIndex += 1;
+            responseTemplateAttachments = [];
+            responseTemplateErrorToggle(false);
+
+            if (responseTemplateSelect) {
+                responseTemplateSelect.value = '';
+            }
+            if (responseTemplateLanguage) {
+                responseTemplateLanguage.value = '';
+            }
+
+            responseTemplateAttachmentsRender();
+
+            if (clearEditorSlot) {
+                responseTemplateSlotSet('');
+            }
+        }
+
+        function responseTemplateLoad(templateID, insertContent, preserveSubmittedSelection) {
+            var url = responseTemplateSelect ? (responseTemplateSelect.getAttribute('data-qisutu-response-template-url') || '') : '';
+            var queueID = queue.value || '';
+            var selectedLanguage = responseTemplateSelectedLanguage();
+            var serial = ++responseTemplateRequestIndex;
+            var submitted = preserveSubmittedSelection ? responseTemplateHiddenRead() : { ids: [], explicit: false };
+
+            responseTemplateErrorToggle(false);
+
+            if (!url || !templateID || !queueID) {
+                responseTemplateAttachments = [];
+                responseTemplateAttachmentsRender();
+                if (insertContent) {
+                    responseTemplateSlotSet('');
+                }
+                return;
+            }
+
+            if (responseTemplateLanguage) {
+                responseTemplateLanguage.value = selectedLanguage;
+            }
+
+            fetch(templateURL(url, queueID)
+                + '&ResponseTemplateID=' + encodeURIComponent(templateID)
+                + '&ResponseTemplateLanguage=' + encodeURIComponent(selectedLanguage), {
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error('response template request failed');
+                }
+                return response.json();
+            }).then(function (data) {
+                if (serial !== responseTemplateRequestIndex) {
+                    return;
+                }
+
+                if (!data || !data.success) {
+                    throw new Error('response template could not be loaded');
+                }
+
+                if (insertContent) {
+                    var generatedBody = responseTemplateBodyBuild(
+                        data.body_template || editorGetData(),
+                        data.content || ''
+                    );
+                    editorSetData(generatedBody);
+                    lastTemplate = generatedBody;
+                }
+
+                responseTemplateAttachments = Array.isArray(data.attachments) ? data.attachments.slice() : [];
+
+                if (preserveSubmittedSelection && submitted.explicit) {
+                    responseTemplateAttachments = responseTemplateAttachments.filter(function (attachment) {
+                        return submitted.ids.indexOf(Number(attachment.id || 0)) !== -1;
+                    });
+                }
+
+                responseTemplateAttachmentsRender();
+            }).catch(function () {
+                if (serial !== responseTemplateRequestIndex) {
+                    return;
+                }
+
+                responseTemplateAttachments = [];
+                responseTemplateAttachmentsRender();
+                responseTemplateErrorToggle(true);
+            });
+        }
+
         var dynamicFieldsRequestIndex = 0;
 
         function fieldValue(id) {
@@ -577,7 +843,7 @@
             return baseURL + (baseURL.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
         }
 
-        function templateLoad(force) {
+        function templateLoad(force, refreshResponseTemplates) {
             var url = queue.getAttribute('data-qisutu-template-url') || '';
             var queueID = queue.value || '';
             var previousTemplate = lastTemplate;
@@ -590,6 +856,9 @@
                     lastTemplate = '';
                     editorSetData('');
                 }
+                if (refreshResponseTemplates) {
+                    responseTemplateOptionsSet([]);
+                }
                 return;
             }
 
@@ -601,8 +870,16 @@
                 }
                 return response.json();
             }).then(function (data) {
-                if (currentRequest !== templateRequestIndex || !data || !data.success) {
+                if (currentRequest !== templateRequestIndex) {
                     return;
+                }
+
+                if (!data || !data.success) {
+                    throw new Error('template failed');
+                }
+
+                if (refreshResponseTemplates) {
+                    responseTemplateOptionsSet(data.response_templates || []);
                 }
 
                 var newTemplate = data.body_template || '';
@@ -612,6 +889,9 @@
                     lastTemplate = newTemplate;
                 }
             }).catch(function () {
+                if (refreshResponseTemplates && currentRequest === templateRequestIndex) {
+                    responseTemplateOptionsSet([]);
+                }
                 // Die bereits vorhandene Eingabe bleibt bei einem Ladefehler erhalten.
             });
         }
@@ -651,16 +931,31 @@
             });
         }
 
+        function contextTemplateLoad() {
+            if (responseTemplateSelect && responseTemplateSelect.value) {
+                var currentBody = editorGetData();
+
+                if (!currentBody.trim() || currentBody === lastTemplate) {
+                    responseTemplateLoad(responseTemplateSelect.value, true, false);
+                }
+                return;
+            }
+
+            templateLoad(false, false);
+        }
+
         queue.addEventListener('change', function () {
             var queueID = queue.value || '';
 
+            responseTemplateReset(false);
+            responseTemplateOptionsSet([]);
             dynamicFieldsLoad(queueID);
-            templateLoad(true);
+            templateLoad(true, true);
         });
 
         contextFields.forEach(function (field) {
             field.addEventListener('change', function () {
-                templateLoad(false);
+                contextTemplateLoad();
             });
         });
 
@@ -669,12 +964,43 @@
                 return;
             }
             input.addEventListener('qisutu:autocomplete-selected', function () {
-                templateLoad(false);
+                contextTemplateLoad();
             });
             input.addEventListener('qisutu:autocomplete-cleared', function () {
-                templateLoad(false);
+                contextTemplateLoad();
             });
         });
+
+        if (responseTemplateSelect) {
+            responseTemplateSelect.addEventListener('change', function () {
+                var templateID = responseTemplateSelect.value || '';
+
+                if (!templateID) {
+                    responseTemplateAttachments = [];
+                    responseTemplateAttachmentsRender();
+                    responseTemplateErrorToggle(false);
+                    if (responseTemplateLanguage) {
+                        responseTemplateLanguage.value = '';
+                    }
+                    templateLoad(true, false);
+                    return;
+                }
+
+                responseTemplateLoad(templateID, true, false);
+            });
+        }
+
+        responseTemplateFieldToggle();
+
+        if (responseTemplateSelect && responseTemplateSelect.value) {
+            if (responseTemplateLanguage) {
+                responseTemplateLanguage.value = responseTemplateSelectedLanguage();
+            }
+            responseTemplateLoad(responseTemplateSelect.value, false, true);
+        }
+        else {
+            responseTemplateAttachmentsRender();
+        }
     }
 
     function initAttachments() {

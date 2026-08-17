@@ -288,6 +288,8 @@ sub main {
         %{$Param},
         IPAddress       => $ENV{REMOTE_ADDR}      || '',
         UserAgent       => $ENV{HTTP_USER_AGENT} || '',
+        BrowserLanguage => $ENV{HTTP_ACCEPT_LANGUAGE} || '',
+        LoginLanguageCookie => _CookieGet( Name => 'QisutuPublicLanguage' ),
         SecureCookie    => ( ( $ENV{HTTPS} || '' ) eq 'on' ? 1 : 0 ),
         FormAction      => 'index.pl',
         SuccessLocation => 'index.pl',

@@ -35,7 +35,7 @@ Site do projeto: https://qisutu.de
 
 Qisutu é um sistema open source instalável de forma autónoma, com portais de
 agentes e clientes, processamento de e-mail, autenticação por diretório,
-automatização, base de conhecimento, CMDB, relatórios e API REST. Qisutu 1.0.1
+automatização, base de conhecimento, CMDB, relatórios e API REST. Qisutu 1.0.2
 é uma versão estável aprovada para produção e já não se encontra em fase de
 desenvolvimento. Interfaces e estruturas da base de dados continuam a evoluir
 na manutenção regular; as alterações necessárias são fornecidas pelo
@@ -43,7 +43,7 @@ atualizador integrado e por migrações de dados mantidas permanentemente.
 
 ## Idiomas
 
-Qisutu 1.0.1 inclui onze idiomas completos: alemão (`de`), inglês (`en`),
+Qisutu 1.0.2 inclui onze idiomas completos: alemão (`de`), inglês (`en`),
 francês (`fr`), italiano (`it`), português brasileiro (`pt-BR`), português
 europeu (`pt-PT`), espanhol (`es`), neerlandês (`nl`), polaco (`pl`), checo
 (`cs`) e turco (`tr`).
@@ -52,9 +52,9 @@ europeu (`pt-PT`), espanhol (`es`), neerlandês (`nl`), polaco (`pl`), checo
 
 Execute como root em `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.1.tar.gz
-    tar xzf qisutu-1.0.1.tar.gz
-    mv qisutu-1.0.1 qisutu
+    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
+    tar xzf qisutu-1.0.2.tar.gz
+    mv qisutu-1.0.2 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -89,18 +89,18 @@ instâncias encontram-se em `INSTALL.md`.
 
 Execute como root em `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.1.tar.gz
-    tar xzf qisutu-1.0.1.tar.gz
+    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
+    tar xzf qisutu-1.0.2.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-1.0.1
+    chown qisutu:www-data -R /opt/qisutu-1.0.2
 
-    cd /opt/qisutu-1.0.1
+    cd /opt/qisutu-1.0.2
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-1.0.1
-    rm qisutu-1.0.1.tar.gz
+    rm -R qisutu-1.0.2
+    rm qisutu-1.0.2.tar.gz
 
 O atualizador identifica a instância através de `var/install/instance.conf`,
 para apenas o respetivo daemon e bloqueia só a recolha de e-mail correspondente.
@@ -126,7 +126,7 @@ módulos na administração; o daemon executa as operações sobre ficheiros
 separadamente do processo web. Cada módulo pode fornecer ligações e ecrãs
 próprios e guardar segredos cifrados.
 
-Qisutu 1.0.1 também fornece a API interna versionada 1.0: serviços reutilizáveis,
+Qisutu 1.0.2 também fornece a API interna versionada 1.0: serviços reutilizáveis,
 eventos persistentes do núcleo entregues pelo daemon, rotas REST isoladas com
 permissões próprias e pontos controlados na interface. Os módulos anteriores
 continuam compatíveis. Um módulo pode declarar a versão e as capacidades

@@ -25,6 +25,88 @@
 (function () {
     'use strict';
 
+    function optionDescriptors(form) {
+        var rows = form.querySelector('[data-qisutu-option-rows]');
+        var descriptors = [];
+
+        if (!rows) {
+            return descriptors;
+        }
+
+        Array.prototype.slice.call(rows.querySelectorAll('[data-qisutu-option-row]')).forEach(function (row) {
+            var keyInput = row.querySelector('[data-qisutu-option-key]');
+            var valueInput = row.querySelector('[data-qisutu-option-value]');
+            var keyName = keyInput ? keyInput.name || '' : '';
+            var match = keyName.match(/^OptionKey_(\d+)$/);
+            var key = keyInput ? keyInput.value || '' : '';
+            var value = valueInput ? valueInput.value || '' : '';
+
+            if (!match || (!key && !value)) {
+                return;
+            }
+
+            descriptors.push({
+                index: match[1],
+                label: value || key
+            });
+        });
+
+        return descriptors;
+    }
+
+    function syncOptionTranslations(form) {
+        var fieldType = form.querySelector('[data-qisutu-field-type]');
+        var descriptors = optionDescriptors(form);
+        var selectionType = fieldType && (fieldType.value === 'dropdown' || fieldType.value === 'multiselect');
+
+        Array.prototype.slice.call(form.querySelectorAll('[data-qisutu-translation-row]')).forEach(function (translationRow) {
+            var translationIndex = translationRow.getAttribute('data-qisutu-translation-index') || '';
+            var container = translationRow.querySelector('[data-qisutu-option-translation-fields]');
+            var rows = container ? container.querySelector('[data-qisutu-option-translation-rows]') : null;
+            var existing = {};
+
+            if (!translationIndex || !container || !rows) {
+                return;
+            }
+
+            Array.prototype.slice.call(rows.querySelectorAll('[data-qisutu-option-translation-row]')).forEach(function (row) {
+                var optionIndex = row.getAttribute('data-qisutu-option-index') || '';
+                var input = row.querySelector('[data-qisutu-option-translation-value]');
+
+                if (optionIndex && input) {
+                    existing[optionIndex] = input.value || '';
+                }
+            });
+
+            rows.textContent = '';
+
+            descriptors.forEach(function (descriptor) {
+                var row = document.createElement('div');
+                var label = document.createElement('label');
+                var input = document.createElement('input');
+
+                row.className = 'qisutu-dynamic-option-translation-row';
+                row.setAttribute('data-qisutu-option-translation-row', '');
+                row.setAttribute('data-qisutu-option-index', descriptor.index);
+
+                label.textContent = descriptor.label;
+                label.setAttribute('data-qisutu-option-translation-label', '');
+
+                input.type = 'text';
+                input.name = 'OptionTranslation_' + translationIndex + '_' + descriptor.index;
+                input.maxLength = 255;
+                input.value = existing[descriptor.index] || '';
+                input.setAttribute('data-qisutu-option-translation-value', '');
+
+                row.appendChild(label);
+                row.appendChild(input);
+                rows.appendChild(row);
+            });
+
+            container.classList.toggle('qisutu-hidden', !selectionType || !descriptors.length);
+        });
+    }
+
     function translationSetup(form) {
         var rows = form.querySelector('[data-qisutu-translation-rows]');
         var count = form.querySelector('[data-qisutu-translation-count]');
@@ -42,11 +124,13 @@
             var language = fragment.querySelector('[data-qisutu-translation-language]');
             var label = fragment.querySelector('[data-qisutu-translation-label]');
 
+            row.setAttribute('data-qisutu-translation-index', String(index));
             language.name = 'TranslationLanguage_' + index;
             label.name = 'TranslationLabel_' + index;
             count.value = index;
 
             rows.appendChild(row);
+            syncOptionTranslations(form);
         });
 
         rows.addEventListener('click', function (event) {
@@ -69,6 +153,8 @@
 
             row.remove();
         });
+
+        syncOptionTranslations(form);
     }
 
     function optionSetup(form) {
@@ -135,6 +221,7 @@
             });
 
             refreshDefaults();
+            syncOptionTranslations(form);
         }
 
         addButton.addEventListener('click', function () {
@@ -165,6 +252,9 @@
             if (row && event.target.matches('[data-qisutu-option-key]')) {
                 syncDefaultValue(row);
             }
+            if (row && (event.target.matches('[data-qisutu-option-key]') || event.target.matches('[data-qisutu-option-value]'))) {
+                syncOptionTranslations(form);
+            }
         });
 
         rows.addEventListener('click', function (event) {
@@ -178,6 +268,7 @@
             row = button.closest('[data-qisutu-option-row]');
             if (row) {
                 row.remove();
+                syncOptionTranslations(form);
             }
         });
 
@@ -193,6 +284,7 @@
         fieldType.addEventListener('change', refresh);
         form.addEventListener('submit', function () {
             Array.prototype.slice.call(rows.querySelectorAll('[data-qisutu-option-row]')).forEach(syncDefaultValue);
+            syncOptionTranslations(form);
         });
 
         refresh();

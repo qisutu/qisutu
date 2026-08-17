@@ -88,7 +88,7 @@ for my $Table (qw(
     knowledge_category knowledge_category_translation knowledge_article knowledge_article_revision
     knowledge_article_customer knowledge_article_queue knowledge_article_usage
 )) {
-    like( $Schema, qr/CREATE TABLE IF NOT EXISTS `\Q$Table\E`/, "$Table is part of the 1.0.1 fresh-install schema" );
+    like( $Schema, qr/CREATE TABLE IF NOT EXISTS `\Q$Table\E`/, "$Table is part of the 1.0.2 fresh-install schema" );
 }
 
 unlike( $Schema, qr/CREATE TABLE IF NOT EXISTS `knowledge_(?:article|category)_group`/, 'the clean schema contains no obsolete FAQ group tables' );

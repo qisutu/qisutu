@@ -40,6 +40,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                 <form class="qisutu-login-form" method="post" action="[% FormAction %]" autocomplete="on">
                     <input type="hidden" name="Step" value="CustomerRegistrationSubmit">
+                    <input type="hidden" name="Language" value="[% Language %]">
 
                     <div class="qisutu-login-field">
                         <label for="qisutu-registration-firstname">[% Translate.CustomerRegistrationFirstname %]</label>
@@ -97,7 +98,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     </button>
 
                     <div class="qisutu-login-links">
-                        <a class="qisutu-login-link" href="index.pl">[% Translate.PasswordBackToLogin %]</a>
+                        <a class="qisutu-login-link" href="[% LoginURL %]">[% Translate.PasswordBackToLogin %]</a>
                     </div>
                 </form>
             </div>

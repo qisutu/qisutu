@@ -338,24 +338,27 @@ sub Options {
     ) || [];
     my $DynamicFields = $Self->{DB}->SelectAll(
         'SELECT f.id, f.name, f.field_type,
-                COALESCE(current_translation.label, default_translation.label, f.label, f.name) AS label
+                COALESCE(current_translation.label, f.label, f.name) AS label
          FROM ticket_dynamic_field f
          LEFT JOIN ticket_dynamic_field_translation current_translation
             ON current_translation.field_id = f.id AND current_translation.language = ?
-         LEFT JOIN ticket_dynamic_field_translation default_translation
-            ON default_translation.field_id = f.id AND default_translation.language = ?
          WHERE f.active = 1
          ORDER BY f.sort_order, label, f.id',
         $Language,
-        $Self->{Config}->{Language}->{Default} || 'en',
     ) || [];
     for my $Field ( @{$DynamicFields} ) {
         if ( ( $Field->{field_type} || '' ) eq 'dropdown' || ( $Field->{field_type} || '' ) eq 'multiselect' ) {
             $Field->{options} = $Self->{DB}->SelectAll(
-                'SELECT option_key, option_value
-                 FROM ticket_dynamic_field_option
-                 WHERE field_id = ? AND active = 1
-                 ORDER BY sort_order, option_value, id',
+                'SELECT
+                    field_option.option_key,
+                    COALESCE(current_translation.option_value, field_option.option_value) AS option_value
+                 FROM ticket_dynamic_field_option field_option
+                 LEFT JOIN ticket_dynamic_field_option_translation current_translation
+                    ON current_translation.option_id = field_option.id
+                   AND current_translation.language = ?
+                 WHERE field_option.field_id = ?
+                 ORDER BY field_option.sort_order, option_value, field_option.id',
+                $Language,
                 $Field->{id},
             ) || [];
         }

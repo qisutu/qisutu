@@ -1495,6 +1495,29 @@ CREATE TABLE `ticket_dynamic_field_option` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `ticket_dynamic_field_option_translation`
+--
+
+DROP TABLE IF EXISTS `ticket_dynamic_field_option_translation`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ticket_dynamic_field_option_translation` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `option_id` bigint(20) unsigned NOT NULL,
+  `language` varchar(20) NOT NULL,
+  `option_value` varchar(255) NOT NULL,
+  `created_by_user_id` bigint(20) unsigned NOT NULL,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `changed_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ticket_dynamic_field_option_translation_option_language` (`option_id`,`language`),
+  KEY `ticket_dynamic_field_option_translation_language` (`language`),
+  CONSTRAINT `ticket_dynamic_field_option_translation_option_fk` FOREIGN KEY (`option_id`) REFERENCES `ticket_dynamic_field_option` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `ticket_dynamic_field_queue`
 --
 
@@ -3693,7 +3716,7 @@ CREATE TABLE IF NOT EXISTS `database_version` (
   UNIQUE KEY `database_version_version_unique` (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `database_version` (`version`) VALUES ('1.0.1');
+INSERT INTO `database_version` (`version`) VALUES ('1.0.2');
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

@@ -33,6 +33,7 @@ use QisutuCMDB;
 use QisutuKnowledgeBase;
 use QisutuLocalizedContent;
 use QisutuNotification;
+use QisutuResponseTemplate;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -123,6 +124,24 @@ sub Run {
         );
     }
 
+    if ( $Step eq 'ResponseTemplateGet' ) {
+        return $Self->_JSONResponse(
+            Data => $Self->_ResponseTemplateData(
+                QueueID           => $Request->{QueueID},
+                ResponseTemplateID => $Request->{ResponseTemplateID},
+                ResponseTemplateLanguage => $Request->{ResponseTemplateLanguage},
+                User              => $User,
+                Language          => $Language,
+                CustomerUserID    => $Request->{CustomerUserID},
+                OwnerUserID       => $Request->{OwnerUserID},
+                Title             => $Request->{Title},
+                StateID           => $Request->{StateID},
+                PriorityID        => $Request->{PriorityID},
+                PendingUntil      => $Request->{PendingUntil},
+            ),
+        );
+    }
+
     if ( $Step eq 'DynamicFields' ) {
         my $QueueCheck = $Self->_QueueTemplateData(
             QueueID => $Request->{QueueID},
@@ -206,6 +225,33 @@ sub Run {
                 MaxSizeMB  => $AttachmentMaxSizeMB,
                 Language   => $Language,
             );
+        }
+
+        if ( !$CreateError && ( $Request->{ResponseTemplateID} || 0 ) ) {
+            my $TemplateObject = $Self->_ResponseTemplateObject();
+            my $TemplateLanguage = $TemplateObject ? $TemplateObject->LanguageClean(
+                $Request->{ResponseTemplateLanguage} || $Language,
+            ) : $Language;
+            my $AttachmentIDs  = $Self->_RequestIDList(
+                Value => $Request->{ResponseTemplateAttachmentID},
+            );
+            my $TemplateAttachments = $Self->_QueueCreateAccessCheck(
+                QueueID => $QueueID,
+                User    => $User,
+            ) && $TemplateObject ? $TemplateObject->AttachmentsForArticle(
+                TemplateID    => $Request->{ResponseTemplateID},
+                QueueID       => $QueueID,
+                Language      => $TemplateLanguage,
+                AttachmentIDs => $AttachmentIDs,
+                UseSelection  => $Request->{ResponseTemplateAttachmentSelection} ? 1 : 0,
+            ) : undef;
+
+            if ( !$TemplateObject || !defined $TemplateAttachments || $TemplateObject->Error() ) {
+                $CreateError = 'Translate:TicketResponseTemplateLoadFailed';
+            }
+            else {
+                push @{$Attachments}, @{$TemplateAttachments};
+            }
         }
 
         if ( !$CreateError && ( $Request->{OwnerUserSearch} || '' ) ne '' && !( $Request->{OwnerUserID} || 0 ) ) {
@@ -356,6 +402,23 @@ sub Run {
         }
     }
 
+    my $ResponseTemplateList = $Self->_ResponseTemplateListForQueue(
+        QueueID => $QueueID,
+        User    => $User,
+        Language => $Language,
+    );
+    my $SelectedResponseTemplateID = $CreateError ? ( $Request->{ResponseTemplateID} || 0 ) : 0;
+    my $SelectedResponseTemplateLanguage = $CreateError
+        ? ( $Request->{ResponseTemplateLanguage} || '' )
+        : '';
+    for my $ResponseTemplate ( @{$ResponseTemplateList} ) {
+        $ResponseTemplate->{selected}
+            = ( $ResponseTemplate->{id} || 0 ) == $SelectedResponseTemplateID
+                && ( $ResponseTemplate->{language} || '' ) eq $SelectedResponseTemplateLanguage
+            ? 'selected'
+            : '';
+    }
+
     my $TicketDynamicFieldsHTML = $DynamicFieldObject && $QueueID
         ? $DynamicFieldObject->FormHTML(
             QueueID  => $QueueID,
@@ -415,6 +478,16 @@ sub Run {
             AttachmentMaxSizeMB => $AttachmentMaxSizeMB,
             AttachmentMaxSizeBytes => $AttachmentMaxSizeByte,
             HasKnowledgeAccess  => $KnowledgePermission->{View} ? 1 : 0,
+            TicketResponseTemplateList => $ResponseTemplateList,
+            HasTicketResponseTemplates => @{$ResponseTemplateList} ? 1 : 0,
+            TicketSelectedResponseTemplateID => $SelectedResponseTemplateID,
+            TicketSelectedResponseTemplateLanguage => $SelectedResponseTemplateLanguage,
+            SubmittedResponseTemplateAttachmentIDs => $CreateError
+                ? $Self->_RequestIDList( Value => $Request->{ResponseTemplateAttachmentID} )
+                : [],
+            SubmittedResponseTemplateAttachmentSelection => $CreateError
+                && $Request->{ResponseTemplateAttachmentSelection} ? 1 : 0,
+            ResponseTemplateFieldClass => @{$ResponseTemplateList} ? '' : 'qisutu-hidden',
         },
     };
 }
@@ -995,19 +1068,11 @@ sub _QueueTemplateData {
     my $QueueID = $Param{QueueID} || 0;
     my $User    = $Param{User} || {};
 
-    return { success => 0, body_template => '' }
-        if $QueueID !~ m{\A\d+\z} || !$QueueID;
-
-    my $PermissionObject = $Self->_PermissionObject();
-    return { success => 0, body_template => '' } if !$PermissionObject;
-
-    my $Allowed = $PermissionObject->QueueAccessCheck(
-        UserID     => $User->{user_account_id},
-        QueueID    => $QueueID,
-        Permission => 'ticket.create',
-    );
-
-    return { success => 0, body_template => '' } if !$Allowed;
+    return { success => 0, body_template => '', response_templates => [] }
+        if !$Self->_QueueCreateAccessCheck(
+            QueueID => $QueueID,
+            User    => $User,
+        );
 
     return {
         success       => 1,
@@ -1022,6 +1087,105 @@ sub _QueueTemplateData {
             PendingUntil   => $Param{PendingUntil},
             Language       => $Param{Language},
         ),
+        response_templates => $Self->_ResponseTemplateListForQueue(
+            QueueID => $QueueID,
+            User    => $User,
+            Language => $Param{Language},
+        ),
+    };
+}
+
+sub _QueueCreateAccessCheck {
+    my ( $Self, %Param ) = @_;
+
+    my $QueueID = $Param{QueueID} || 0;
+    my $User    = $Param{User} || {};
+
+    return 0 if $QueueID !~ m{\A\d+\z} || !$QueueID;
+
+    my $PermissionObject = $Self->_PermissionObject();
+    return 0 if !$PermissionObject;
+
+    return $PermissionObject->QueueAccessCheck(
+        UserID     => $User->{user_account_id},
+        QueueID    => $QueueID,
+        Permission => 'ticket.create',
+    ) ? 1 : 0;
+}
+
+sub _ResponseTemplateListForQueue {
+    my ( $Self, %Param ) = @_;
+
+    return [] if !$Self->_QueueCreateAccessCheck(
+        QueueID => $Param{QueueID},
+        User    => $Param{User},
+    );
+
+    my $TemplateObject = $Self->_ResponseTemplateObject();
+    return [] if !$TemplateObject;
+
+    return $TemplateObject->TemplateListForQueueAllLanguages(
+        QueueID => $Param{QueueID},
+    ) || [];
+}
+
+sub _ResponseTemplateData {
+    my ( $Self, %Param ) = @_;
+
+    my $QueueID    = $Param{QueueID} || 0;
+    my $TemplateID = $Param{ResponseTemplateID} || 0;
+    my $TemplateObject = $Self->_ResponseTemplateObject();
+    my $TemplateLanguage = $TemplateObject ? $TemplateObject->LanguageClean(
+        $Param{ResponseTemplateLanguage} || $Param{Language},
+    ) : ( $Param{Language} || 'en' );
+    my $Template;
+
+    if (
+        $TemplateObject
+        && $Self->_QueueCreateAccessCheck(
+            QueueID => $QueueID,
+            User    => $Param{User},
+        )
+    ) {
+        $Template = $TemplateObject->TemplateForQueueGet(
+            TemplateID => $TemplateID,
+            QueueID    => $QueueID,
+            Language   => $TemplateLanguage,
+        );
+    }
+
+    my @Attachments;
+    if ($Template) {
+        @Attachments = map {
+            {
+                id           => 0 + ( $_->{id} || 0 ),
+                filename     => $_->{filename} || 'attachment.bin',
+                content_type => $_->{content_type} || 'application/octet-stream',
+                content_size => 0 + ( $_->{content_size} || 0 ),
+                size_display => $_->{size_display} || '',
+            }
+        } @{ $Template->{attachments} || [] };
+    }
+
+    my $BodyTemplate = $Template ? $Self->_QueueTemplateHTML(
+        QueueID        => $QueueID,
+        User           => $Param{User},
+        CustomerUserID => $Param{CustomerUserID},
+        OwnerUserID    => $Param{OwnerUserID},
+        Title          => $Param{Title},
+        StateID        => $Param{StateID},
+        PriorityID     => $Param{PriorityID},
+        PendingUntil   => $Param{PendingUntil},
+        Language       => $TemplateLanguage,
+    ) : '';
+
+    return {
+        success     => $Template ? 1 : 0,
+        content     => $Template ? ( $Template->{content} || '' ) : '',
+        body_template => $BodyTemplate,
+        language    => $Template ? $TemplateLanguage : '',
+        attachments => \@Attachments,
+        error       => $Template ? '' : 'TicketResponseTemplateLoadFailed',
     };
 }
 
@@ -1174,7 +1338,7 @@ sub _QueueTemplateHTML {
         push @Parts, '<div class="qisutu-mail-salutation">' . $Salutation . '</div>';
     }
 
-    push @Parts, '<p><br></p><p><br></p>';
+    push @Parts, '<div class="qisutu-response-template-slot"><p><br></p><p><br></p></div>';
 
     if ($Signature) {
         $Signature = $Self->_SystemSignatureBlockToBreaks( HTML => $Signature );
@@ -1304,6 +1468,36 @@ sub _AttachmentTooLargeMessage {
     $Template =~ s{\{\{MaxSize\}\}}{$MaxSizeMB . ' MB'}ge;
 
     return $Template;
+}
+
+sub _ResponseTemplateObject {
+    my ($Self) = @_;
+
+    return if !$Self->{DB};
+
+    return QisutuResponseTemplate->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+    );
+}
+
+sub _RequestIDList {
+    my ( $Self, %Param ) = @_;
+
+    my $Value = $Param{Value};
+    my @Raw = ref $Value eq 'ARRAY'
+        ? @{$Value}
+        : defined $Value && $Value ne '' ? ($Value) : ();
+    my %Seen;
+
+    return [
+        grep {
+            defined $_
+                && $_ =~ m{\A\d+\z}
+                && $_ > 0
+                && !$Seen{$_}++
+        } @Raw
+    ];
 }
 
 sub _EmailRecipientsParse {

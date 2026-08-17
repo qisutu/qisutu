@@ -100,9 +100,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
     [% IF IsPublicForm %]
     <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% Translate.AdminTicketFormEmbed %]</h2></div>
-        <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormPublicURL %]</label><input type="text" value="[% PublicURL %]" readonly></div>
-        <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormIframeCode %]</label><textarea rows="4" readonly>[% EmbedCode %]</textarea></div>
-        <a class="qisutu-button qisutu-button-secondary" href="[% PublicURL %]" target="_blank" rel="noopener">[% Translate.AdminTicketFormPreview %]</a>
+        [% FOREACH PublicLanguageLink IN PublicLanguageLinks %]
+        <div class="qisutu-admin-form-block">
+            <h3>[% Translate.AdminTranslationLanguage %]: [% PublicLanguageLink.language %]</h3>
+            <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormPublicURL %]</label><input type="text" value="[% PublicLanguageLink.url %]" readonly></div>
+            <div class="qisutu-form-field"><label>[% Translate.AdminTicketFormIframeCode %]</label><textarea rows="4" readonly>[% PublicLanguageLink.iframe_code %]</textarea></div>
+            <a class="qisutu-button qisutu-button-secondary" href="[% PublicLanguageLink.url %]" target="_blank" rel="noopener">[% Translate.AdminTicketFormPreview %]</a>
+        </div>
+        [% END %]
     </section>
     [% END %]
 
@@ -124,9 +129,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <div class="qisutu-ticket-form-options [% FieldOptionsClass %]" data-qisutu-ticket-form-options>
                 <h3>[% Translate.AdminTicketFormOptions %]</h3>
                 <p class="qisutu-form-hint">[% Translate.AdminTicketFormOptionsHint %]</p>
-                <div class="qisutu-ticket-form-option-list" data-qisutu-ticket-form-option-list data-option-placeholder="[% Translate.AdminTicketFormOptionValue %]" data-remove-label="[% Translate.AdminDelete %]"></div>
+                <div class="qisutu-ticket-form-option-list" data-qisutu-ticket-form-option-list data-option-placeholder="[% Translate.AdminTicketFormOptionValue %]" data-remove-label="[% Translate.AdminDelete %]">[% RAW.FieldOptionRowsHTML %]</div>
                 <button class="qisutu-button qisutu-button-secondary qisutu-ticket-form-option-add" type="button" data-qisutu-ticket-form-option-add>+ [% Translate.AdminTicketFormOptionAdd %]</button>
-                <textarea id="qisutu-ticket-form-options-text" class="qisutu-hidden" name="OptionsText" data-qisutu-ticket-form-options-input tabindex="-1" aria-hidden="true">[% FieldOptionsText %]</textarea>
+                <input type="hidden" name="OptionRowCount" value="[% FieldOptionRowCount %]" data-qisutu-ticket-form-option-count>
+                <input type="hidden" name="OptionTranslationsProvided" value="1">
             </div>
             <div class="qisutu-admin-form-block"><h3>[% Translate.AdminTranslations %]</h3>[% RAW.FieldTranslationsHTML %]</div>
             <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% IF ShowFieldEdit %][% Translate.AdminSave %][% ELSE %][% Translate.AdminCreate %][% END %]</button>[% IF ShowFieldEdit %]<a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminTicketForms&amp;Action=Edit&amp;FormID=[% FormID %]">[% Translate.AdminCancel %]</a>[% END %]</div>
@@ -181,4 +187,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     </section>
     [% END %]
 </section>
-<script src="[% StaticBase %]/js/qisutu-ticket-forms-admin.js?v=2026071803"></script>
+<template id="qisutu-ticket-form-option-row-template">
+    <div class="qisutu-ticket-form-option-row" data-qisutu-ticket-form-option-row data-option-index="" data-option-new="1">
+        <input type="hidden" value="" data-qisutu-ticket-form-option-key>
+        <input type="text" class="qisutu-ticket-form-option-value" value="" data-qisutu-ticket-form-option-value>
+        <button class="qisutu-button qisutu-button-danger qisutu-ticket-form-option-remove" type="button" data-qisutu-ticket-form-option-remove>[% Translate.AdminDelete %]</button>
+    </div>
+</template>
+<script src="[% StaticBase %]/js/qisutu-ticket-forms-admin.js?v=2026081501"></script>

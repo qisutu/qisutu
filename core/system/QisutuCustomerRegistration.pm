@@ -152,7 +152,8 @@ sub RequestCreate {
     }
 
     my $RequestID = $Self->{DB}->LastInsertID('customer_registration_request') || 0;
-    my $RegistrationURL = $BaseURL . '/index.pl?Step=CustomerRegistrationPassword&Token=' . $Token;
+    my $RegistrationURL = $BaseURL . '/index.pl?Step=CustomerRegistrationPassword&Token=' . $Token
+        . '&Language=' . $Language;
     my $Mail = $Self->_RegistrationMailBuild(
         Firstname       => $Firstname,
         Lastname        => $Lastname,

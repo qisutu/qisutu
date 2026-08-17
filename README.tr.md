@@ -35,13 +35,13 @@ Proje sitesi: https://qisutu.de
 
 Qisutu; ajan ve müşteri portalları, e-posta işleme, dizin girişi, otomasyon,
 bilgi bankası, CMDB, raporlar ve REST API içeren bağımsız bir sistemdir. Qisutu
-1.0.1 üretim için onaylanmış kararlı sürümdür ve geliştirme aşamasında değildir.
+1.0.2 üretim için onaylanmış kararlı sürümdür ve geliştirme aşamasında değildir.
 Arayüzler ve veritabanı yapıları düzenli bakımda gelişmeye devam eder; gerekli
 değişiklikler entegre güncelleyici ve kalıcı veri geçişleriyle sağlanır.
 
 ## Diller
 
-Qisutu 1.0.1 on bir tam arayüz dili içerir: Almanca (`de`), İngilizce (`en`),
+Qisutu 1.0.2 on bir tam arayüz dili içerir: Almanca (`de`), İngilizce (`en`),
 Fransızca (`fr`), İtalyanca (`it`), Brezilya Portekizcesi (`pt-BR`), Avrupa
 Portekizcesi (`pt-PT`), İspanyolca (`es`), Felemenkçe (`nl`), Lehçe (`pl`),
 Çekçe (`cs`) ve Türkçe (`tr`).
@@ -50,9 +50,9 @@ Portekizcesi (`pt-PT`), İspanyolca (`es`), Felemenkçe (`nl`), Lehçe (`pl`),
 
 `/opt` altında root olarak çalıştırın:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.1.tar.gz
-    tar xzf qisutu-1.0.1.tar.gz
-    mv qisutu-1.0.1 qisutu
+    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
+    tar xzf qisutu-1.0.2.tar.gz
+    mv qisutu-1.0.2 qisutu
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
     chown qisutu:www-data -R qisutu
@@ -78,15 +78,15 @@ veritabanı parolasını `core/config/QisutuConfig.pm` içine yazar. Ayrıntıla
 
 `/opt` altında root olarak çalıştırın:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.1.tar.gz
-    tar xzf qisutu-1.0.1.tar.gz
-    chown qisutu:www-data -R /opt/qisutu-1.0.1
-    cd /opt/qisutu-1.0.1
+    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
+    tar xzf qisutu-1.0.2.tar.gz
+    chown qisutu:www-data -R /opt/qisutu-1.0.2
+    cd /opt/qisutu-1.0.2
     chmod +x update.sh
     ./update.sh
     cd /opt
-    rm -R qisutu-1.0.1
-    rm qisutu-1.0.1.tar.gz
+    rm -R qisutu-1.0.2
+    rm qisutu-1.0.2.tar.gz
 
 Güncelleyici örneği `var/install/instance.conf` ile tanır, yalnızca onun daemon
 ve posta alımını durdurur, örnek/Apache/systemd yapılandırmasını ezmez. İstenirse

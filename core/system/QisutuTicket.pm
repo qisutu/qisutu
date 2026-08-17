@@ -1338,6 +1338,7 @@ sub TicketCreateFromEmail {
     $Self->_AgentNotificationSend(
         NotificationType => 'ticket_new_in_my_queues',
         TicketID         => $TicketID,
+        ArticleID        => $ArticleID,
         ChangedByUserID  => $ChangedByUserID,
     );
 
@@ -1521,6 +1522,7 @@ sub _TicketReplyCreateFromEmail {
         $Self->_AgentNotificationSend(
             NotificationType => 'customer_reply_in_my_queues',
             TicketID         => $TicketID,
+            ArticleID        => $ArticleID,
             ChangedByUserID  => $ChangedByUserID,
         );
 
@@ -1543,6 +1545,7 @@ sub _TicketReplyCreateFromEmail {
         $Self->_AgentNotificationSend(
             NotificationType => 'ticket_state_changed',
             TicketID         => $TicketID,
+            ArticleID        => $ArticleID,
             ChangedByUserID  => $ChangedByUserID,
         );
     }
@@ -1554,6 +1557,7 @@ sub _TicketReplyCreateFromEmail {
         $Self->_AgentNotificationSend(
             NotificationType => 'ticket_assigned_to_me',
             TicketID         => $TicketID,
+            ArticleID        => $ArticleID,
             ChangedByUserID  => $ChangedByUserID,
         );
     }
@@ -2157,6 +2161,7 @@ sub TicketCreateFromCustomer {
     $Self->_AgentNotificationSend(
         NotificationType => 'ticket_new_in_my_queues',
         TicketID         => $TicketID,
+        ArticleID        => $ArticleID,
         ChangedByUserID  => $UserID,
     );
 
@@ -2751,6 +2756,7 @@ sub TicketCreateFromAgent {
     $Self->_AgentNotificationSend(
         NotificationType => 'ticket_new_in_my_queues',
         TicketID         => $TicketID,
+        ArticleID        => $ArticleID,
         ChangedByUserID  => $UserID,
     );
 
@@ -4050,6 +4056,7 @@ sub ArticleCreate {
         $Self->_AgentNotificationSend(
             NotificationType => 'customer_reply_in_my_queues',
             TicketID         => $TicketID,
+            ArticleID        => $ArticleID,
             ChangedByUserID  => $ChangedByUserID,
         );
     }

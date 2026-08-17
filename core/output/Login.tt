@@ -34,12 +34,32 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     </div>
                 </div>
 
+                <form class="qisutu-login-language" method="get" action="[% FormAction %]">
+                    <input type="hidden" name="Step" value="LocalLogin">
+                    <div class="qisutu-login-language-control">
+                        <select id="qisutu-login-language" name="Language" aria-label="[% Translate.PreferencesLanguage %]" onchange="this.form.submit()">
+                            [% FOREACH LoginLanguage IN LoginLanguages %]
+                            <option value="[% LoginLanguage.code %]"[% RAW.LoginLanguage.selected %]>[% LoginLanguage.label %]</option>
+                            [% END %]
+                        </select>
+                        <span class="qisutu-login-language-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <circle cx="12" cy="12" r="9"></circle>
+                                <path d="M3 12h18M12 3c2.4 2.5 3.7 5.5 3.7 9S14.4 18.5 12 21M12 3C9.6 5.5 8.3 8.5 8.3 12s1.3 6.5 3.7 9"></path>
+                            </svg>
+                        </span>
+                    </div>
+                </form>
+
+                [% IF ErrorMessage %]
                 <div class="qisutu-login-message" role="alert">
                     [% ErrorMessage %]
                 </div>
+                [% END %]
 
                 <form class="qisutu-login-form" method="post" action="[% FormAction %]" autocomplete="on">
                     <input type="hidden" name="Step" value="Login">
+                    <input type="hidden" name="Language" value="[% Language %]">
 
                     <fieldset class="qisutu-login-type">
                         <legend>[% Translate.LoginAccountType %]</legend>
@@ -91,8 +111,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     [% END %]
 
                     <div class="qisutu-login-links qisutu-login-links-stack">
-                        <a class="qisutu-login-link" href="index.pl?Step=PasswordForgot">[% Translate.PasswordForgotLink %]</a>
-                        <a class="qisutu-login-link" href="index.pl?Step=CustomerRegistration">[% Translate.CustomerRegistrationLink %]</a>
+                        <a class="qisutu-login-link" href="[% PasswordForgotURL %]">[% Translate.PasswordForgotLink %]</a>
+                        <a class="qisutu-login-link" href="[% CustomerRegistrationURL %]">[% Translate.CustomerRegistrationLink %]</a>
                     </div>
                 </form>
             </div>

@@ -22,7 +22,7 @@ SPDX-FileCopyrightText: 2026 Franziska Steps
 SPDX-License-Identifier: AGPL-3.0-or-later
 %]
 
-            <section class="qisutu-dashboard" aria-labelledby="qisutu-admin-response-template-title">
+            <section class="qisutu-dashboard qisutu-admin-response-templates" aria-labelledby="qisutu-admin-response-template-title">
                 <div class="qisutu-dashboard-header">
                     <div>
                         <h1 id="qisutu-admin-response-template-title">[% ProgramTitle %]</h1>
@@ -71,7 +71,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     </div>
 
                     <div class="qisutu-table-wrap">
-                        <table class="qisutu-table qisutu-table-compact">
+                        <table class="qisutu-table qisutu-table-compact qisutu-response-template-list-table">
                             <thead>
                                 <tr>
                                     <th>[% Translate.AdminName %]</th>
@@ -89,7 +89,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 <tr>
                                     <td><a class="qisutu-table-link" href="index.pl?Page=AdminResponseTemplates;Action=Edit;TemplateID=[% Template.id %];TemplateLanguage=[% CurrentLanguage %]">[% Template.name %]</a></td>
                                     <td>[% Template.description %]</td>
-                                    <td>[% Template.content_preview %]</td>
+                                    <td class="qisutu-response-template-preview">[% Template.content_preview %]</td>
                                     <td>
                                         <a class="qisutu-table-link" href="index.pl?Page=AdminResponseTemplates;Action=TemplateQueue;TemplateID=[% Template.id %];TemplateLanguage=[% CurrentLanguage %]">[% Template.queue_names %]</a>
                                     </td>

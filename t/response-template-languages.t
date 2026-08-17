@@ -82,6 +82,27 @@ use QisutuResponseTemplate;
     sub SelectAll {
         my ( $Self, $SQL, @Bind ) = @_;
 
+        if ( $SQL =~ m{INNER JOIN\s+response_template_translation\s+rtt}si ) {
+            return [
+                {
+                    id               => 7,
+                    language         => 'de',
+                    name             => 'Standardantwort',
+                    description      => 'Deutsch',
+                    sort_order       => 100,
+                    attachment_count => 0,
+                },
+                {
+                    id               => 7,
+                    language         => 'en',
+                    name             => 'Standard reply',
+                    description      => 'English',
+                    sort_order       => 100,
+                    attachment_count => 0,
+                },
+            ];
+        }
+
         return [] if $SQL =~ m{FROM\s+response_template_attachment}si;
         return [];
     }
@@ -148,6 +169,13 @@ my $French = $Object->TemplateForQueueGet(
 is( $French->{name}, 'Réponse standard', 'runtime loading selects the agent language' );
 is( $French->{content}, '<p>Bonjour</p>', 'runtime loading returns the localized template body' );
 
+my $RuntimeLanguages = $Object->TemplateListForQueueAllLanguages(
+    QueueID => 3,
+);
+is( scalar @{$RuntimeLanguages}, 2, 'runtime selection returns every non-empty language version assigned to the queue' );
+is( $RuntimeLanguages->[0]->{selection_label}, 'DE – Standardantwort', 'the German response version has an explicit language label' );
+is( $RuntimeLanguages->[1]->{selection_label}, 'EN – Standard reply', 'the English response version has an explicit language label' );
+
 my ($RuntimeSelect) = grep {
     $_->{SQL} =~ m{INNER JOIN\s+response_template_queue}si
 } @{ $DB->{SelectRow} };
@@ -167,18 +195,40 @@ like(
 my $AdminTemplate = _Read( File::Spec->catfile( $Root, 'core', 'output', 'AdminResponseTemplates.tt' ) );
 like( $AdminTemplate, qr{name="TemplateLanguage"}, 'response-template administration offers a language selector' );
 like( $AdminTemplate, qr{qisutu-localized-content[.]js}, 'language changes are applied immediately' );
+like( $AdminTemplate, qr{qisutu-response-template-list-table}, 'the response-template overview uses its width-limited table layout' );
+like( $AdminTemplate, qr{qisutu-response-template-preview}, 'the response-template text preview has a dedicated wrapping cell' );
+
+my $CSS = _Read( File::Spec->catfile( $Root, 'var', 'static', 'css', 'qisutu-response-templates.css' ) );
+like(
+    $CSS,
+    qr{[.]qisutu-response-template-list-table\s*\{\s*table-layout:\s*fixed;}s,
+    'the response-template list cannot grow beyond its table container',
+);
+like(
+    $CSS,
+    qr{[.]qisutu-response-template-list-table th,\s*[.]qisutu-response-template-list-table td\s*\{.*?white-space:\s*normal;.*?overflow-wrap:\s*anywhere;}s,
+    'response-template table content wraps instead of widening the page',
+);
 
 my $AgentZoom = _Read( File::Spec->catfile( $Root, 'core', 'module', 'AgentTicketZoom.pm' ) );
 like(
     $AgentZoom,
-    qr{TemplateListForQueue\s*[(].*?Language\s*=>\s*\$Language}ms,
-    'the response-template list uses the active agent language',
+    qr{TemplateListForQueueAllLanguages\s*[(]},
+    'ticket zoom lists every available response-template language independently of the agent language',
 );
 like(
     $AgentZoom,
-    qr{TemplateForQueueGet\s*[(].*?Language\s*=>\s*\$Language}ms,
-    'inserting a response template uses the active agent language',
+    qr{ResponseTemplateLanguage.*?TemplateForQueueGet\s*[(].*?Language\s*=>\s*\$TemplateLanguage}ms,
+    'ticket zoom loads the explicitly selected response-template language',
 );
+
+my $AgentZoomTemplate = _Read( File::Spec->catfile( $Root, 'core', 'output', 'AgentTicketZoom.tt' ) );
+like( $AgentZoomTemplate, qr{name="ResponseTemplateLanguage"}, 'ticket zoom submits the selected response language' );
+like( $AgentZoomTemplate, qr{data-response-template-language}, 'ticket zoom labels every response-template option with its language' );
+
+my $AgentZoomJavaScript = _Read( File::Spec->catfile( $Root, 'var', 'static', 'js', 'qisutu-ticket-zoom.js' ) );
+like( $AgentZoomJavaScript, qr{ResponseTemplateLanguage}, 'ticket zoom requests the explicitly selected response language' );
+like( $AgentZoomJavaScript, qr{data[.]body_template}, 'ticket zoom replaces salutation, signature and quote header with the selected language version' );
 
 done_testing();
 

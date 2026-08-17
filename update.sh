@@ -33,6 +33,7 @@ Verwendung:
 
 Optionen:
   --yes       Rückfragen überspringen und eine Datenbanksicherung erstellen
+  --reinstall Dieselbe Qisutu-Version erneut aus dem Updatepaket installieren
   --help      Diese Hilfe anzeigen
 
 Das Updatepaket ist das Verzeichnis, in dem dieses update.sh liegt.
@@ -1103,11 +1104,16 @@ fi
 
 TARGET_ARGUMENT=""
 ASSUME_YES=0
+REINSTALL=0
 
 while (( $# > 0 )); do
     case "$1" in
         --yes)
             ASSUME_YES=1
+            shift
+            ;;
+        --reinstall)
+            REINSTALL=1
             shift
             ;;
         --help|-h)
@@ -1248,8 +1254,11 @@ fi
 if version_gt "$CURRENT_PROGRAM_VERSION" "$RELEASE_VERSION"; then
     fail "Die installierte Version $CURRENT_PROGRAM_VERSION ist neuer als dieses Updatepaket $RELEASE_VERSION."
 fi
-if [[ "$CURRENT_PROGRAM_VERSION" == "$RELEASE_VERSION" && ! -f "$UPDATE_LOCK_FILE" ]]; then
-    fail "Qisutu $RELEASE_VERSION ist bereits vollständig installiert."
+if (( REINSTALL == 1 )) && [[ "$CURRENT_PROGRAM_VERSION" != "$RELEASE_VERSION" ]]; then
+    fail "--reinstall ist nur zulässig, wenn installierte Version und Updatepaket dieselbe Version enthalten."
+fi
+if [[ "$CURRENT_PROGRAM_VERSION" == "$RELEASE_VERSION" && ! -f "$UPDATE_LOCK_FILE" ]] && (( REINSTALL == 0 )); then
+    fail "Qisutu $RELEASE_VERSION ist bereits vollständig installiert. Verwende --reinstall, um diese Version erneut zu installieren."
 fi
 
 printf '\nAusgewählte Qisutu-Instanz\n'
@@ -1263,6 +1272,8 @@ printf '  Installiert:       %s\n' "$CURRENT_PROGRAM_VERSION"
 printf '  Update auf:        %s\n' "$RELEASE_VERSION"
 if (( UPDATE_LOCK_PREEXISTED == 1 )); then
     printf '  Zustand:           Fortsetzung eines nicht abgeschlossenen Updates\n'
+elif (( REINSTALL == 1 )); then
+    printf '  Zustand:           Erneute Installation derselben Version\n'
 fi
 printf '\n'
 

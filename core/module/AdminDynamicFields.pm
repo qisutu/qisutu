@@ -59,6 +59,7 @@ sub Run {
             IsRequired      => $Request->{IsRequired},
             SortOrder       => $Request->{SortOrder},
             Options         => $Self->_OptionsFromRequest( Request => $Request ),
+            OptionTranslations => $Self->_OptionTranslationsFromRequest( Request => $Request ),
             ShowEmptyValue  => $Request->{ShowEmptyValue},
             DefaultValues   => $Self->_RequestValueList( $Request->{DefaultOption} ),
             ChangedByUserID => $User->{user_account_id},
@@ -78,6 +79,7 @@ sub Run {
             Active          => $Request->{Active},
             SortOrder       => $Request->{SortOrder},
             Options         => $Self->_OptionsFromRequest( Request => $Request ),
+            OptionTranslations => $Self->_OptionTranslationsFromRequest( Request => $Request ),
             ShowEmptyValue  => $Request->{ShowEmptyValue},
             DefaultValues   => $Self->_RequestValueList( $Request->{DefaultOption} ),
             ChangedByUserID => $User->{user_account_id},
@@ -164,6 +166,7 @@ sub Run {
     my $Field;
     my $FieldTranslation = {};
     my $FieldOptions     = [];
+    my $FieldOptionTranslations = {};
 
     if ( $DynamicField && ( $Action eq 'FieldEdit' || $Action eq 'FieldQueue' ) ) {
         $Field = $DynamicField->FieldGet( FieldID => $Request->{FieldID} );
@@ -173,6 +176,18 @@ sub Run {
         elsif ( $Action eq 'FieldEdit' ) {
             $FieldTranslation = $DynamicField->TranslationList( FieldID => $Field->{id} );
             $FieldOptions     = $DynamicField->OptionList( FieldID => $Field->{id} );
+            $FieldOptionTranslations = $DynamicField->OptionTranslationList( FieldID => $Field->{id} );
+
+            my $BaseLanguage = $Self->{Config}->{Language}->{Default} || 'de';
+            $BaseLanguage =~ s{[^A-Za-z0-9_-]}{}g;
+            if (
+                $BaseLanguage
+                && !exists $FieldTranslation->{$BaseLanguage}
+                && defined $Field->{label}
+                && $Field->{label} ne ''
+            ) {
+                $FieldTranslation->{$BaseLanguage} = $Field->{label};
+            }
         }
     }
 
@@ -190,23 +205,18 @@ sub Run {
     my $CreateSubmitted = $Step eq 'DynamicFieldCreate' && $Action eq 'FieldCreate' ? 1 : 0;
     my $EditSubmitted   = $Step eq 'DynamicFieldUpdate' && $Action eq 'FieldEdit' ? 1 : 0;
 
-    my $CreateTranslationRows = $Self->_TranslationRows(
-        Value    => $CreateSubmitted ? $Self->_LabelByLanguageFromRequest( Request => $Request ) : {},
-        MinRows  => 1,
-        Language => $Language,
-    );
-    my $EditTranslationRows = $Self->_TranslationRows(
-        Value    => $EditSubmitted ? $Self->_LabelByLanguageFromRequest( Request => $Request ) : $FieldTranslation,
-        MinRows  => 1,
-        Language => $Language,
-    );
-
     my $CreateFieldType = $Request->{FieldType} || 'text';
     my $EditFieldType   = $EditSubmitted
         ? ( $Request->{FieldType} || 'text' )
         : ( $Field ? ( $Field->{field_type} || 'text' ) : 'text' );
     my $CreateOptions = $CreateSubmitted ? $Self->_OptionsFromRequest( Request => $Request ) : [];
     my $EditOptions   = $EditSubmitted ? $Self->_OptionsFromRequest( Request => $Request ) : $FieldOptions;
+    my $CreateOptionTranslations = $CreateSubmitted
+        ? $Self->_OptionTranslationsFromRequest( Request => $Request )
+        : {};
+    my $EditOptionTranslations = $EditSubmitted
+        ? $Self->_OptionTranslationsFromRequest( Request => $Request )
+        : $FieldOptionTranslations;
     my $CreateDefaults = $CreateSubmitted ? $Self->_RequestValueList( $Request->{DefaultOption} ) : [];
     my $EditDefaults   = $EditSubmitted
         ? $Self->_RequestValueList( $Request->{DefaultOption} )
@@ -224,6 +234,20 @@ sub Run {
         FieldType     => $EditFieldType,
         MinRows       => 1,
         Language      => $Language,
+    );
+    my $CreateTranslationRows = $Self->_TranslationRows(
+        Value              => $CreateSubmitted ? $Self->_LabelByLanguageFromRequest( Request => $Request ) : {},
+        Options            => $CreateOptions,
+        OptionTranslations => $CreateOptionTranslations,
+        MinRows            => 1,
+        Language           => $Language,
+    );
+    my $EditTranslationRows = $Self->_TranslationRows(
+        Value              => $EditSubmitted ? $Self->_LabelByLanguageFromRequest( Request => $Request ) : $FieldTranslation,
+        Options            => $EditOptions,
+        OptionTranslations => $EditOptionTranslations,
+        MinRows            => 1,
+        Language           => $Language,
     );
 
     my $FieldQueueOptionsHTML = '';
@@ -465,7 +489,7 @@ sub _OptionRowHTML {
         . '</div>'
         . '<div class="qisutu-form-field">'
         . '<label>' . $Self->_Escape( $Self->_Text( 'AdminDynamicFieldOptionValue', 'Value', $Language ) ) . '</label>'
-        . '<input type="text" name="OptionValue_' . $Index . '" value="' . $Self->_Escape($OptionValue) . '">'
+        . '<input type="text" name="OptionValue_' . $Index . '" value="' . $Self->_Escape($OptionValue) . '" data-qisutu-option-value>'
         . '</div>'
         . '<div class="qisutu-form-field">'
         . '<label>' . $Self->_Escape( $Self->_Text( 'AdminSortOrder', 'Sort order', $Language ) ) . '</label>'
@@ -485,9 +509,14 @@ sub _TranslationRows {
     my ( $Self, %Param ) = @_;
 
     my $Value    = $Param{Value} || {};
+    my $Options  = ref $Param{Options} eq 'ARRAY' ? $Param{Options} : [];
+    my $OptionTranslations = ref $Param{OptionTranslations} eq 'HASH'
+        ? $Param{OptionTranslations}
+        : {};
     my $MinRows  = $Param{MinRows} || 1;
     my $Language = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
-    my @Codes    = sort keys %{$Value};
+    my %Code     = map { $_ => 1 } ( keys %{$Value}, keys %{$OptionTranslations} );
+    my @Codes    = sort keys %Code;
     my $HTML     = '';
     my $Index    = 0;
 
@@ -501,6 +530,8 @@ sub _TranslationRows {
             Index      => $Index,
             Language   => $Code,
             Label      => $Value->{$Code} || '',
+            Options    => $Options,
+            OptionTranslations => $OptionTranslations->{$Code} || {},
             UILanguage => $Language,
         );
     }
@@ -511,6 +542,8 @@ sub _TranslationRows {
             Index      => $Index,
             Language   => '',
             Label      => '',
+            Options    => $Options,
+            OptionTranslations => {},
             UILanguage => $Language,
         );
     }
@@ -524,9 +557,13 @@ sub _TranslationRowHTML {
     my $Index      = $Param{Index} || 1;
     my $Language   = $Param{Language} || '';
     my $Label      = $Param{Label} || '';
+    my $Options    = ref $Param{Options} eq 'ARRAY' ? $Param{Options} : [];
+    my $OptionTranslations = ref $Param{OptionTranslations} eq 'HASH'
+        ? $Param{OptionTranslations}
+        : {};
     my $UILanguage = $Param{UILanguage} || 'en';
 
-    return '<div class="qisutu-translation-row" data-qisutu-translation-row>'
+    return '<div class="qisutu-translation-row" data-qisutu-translation-row data-qisutu-translation-index="' . $Index . '">'
         . '<div class="qisutu-form-field">'
         . '<label>' . $Self->_Escape( $Self->_Text( 'AdminTranslationLanguage', 'Language', $UILanguage ) ) . '</label>'
         . '<select name="TranslationLanguage_' . $Index . '">'
@@ -538,7 +575,55 @@ sub _TranslationRowHTML {
         . '</div>'
         . '<button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-translation-remove>'
         . $Self->_Escape( $Self->_Text( 'AdminRemove', 'Remove', $UILanguage ) )
-        . '</button></div>';
+        . '</button>'
+        . $Self->_OptionTranslationFieldsHTML(
+            TranslationIndex => $Index,
+            Options          => $Options,
+            Values           => $OptionTranslations,
+            UILanguage       => $UILanguage,
+        )
+        . '</div>';
+}
+
+sub _OptionTranslationFieldsHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $TranslationIndex = $Param{TranslationIndex} || 1;
+    my $Options = ref $Param{Options} eq 'ARRAY' ? $Param{Options} : [];
+    my $Values  = ref $Param{Values} eq 'HASH' ? $Param{Values} : {};
+    my $UILanguage = $Param{UILanguage} || 'en';
+    my $Rows = '';
+    my $OptionIndex = 0;
+
+    for my $Option ( @{$Options} ) {
+        next if ref $Option ne 'HASH';
+        $OptionIndex++;
+        my $OptionKey = defined $Option->{option_key} ? $Option->{option_key} : '';
+        my $OptionLabel = $Option->{option_value} || $OptionKey;
+        next if $OptionKey eq '' && $OptionLabel eq '';
+
+        $Rows .= '<div class="qisutu-dynamic-option-translation-row" data-qisutu-option-translation-row data-qisutu-option-index="' . $OptionIndex . '">'
+            . '<label data-qisutu-option-translation-label>' . $Self->_Escape($OptionLabel) . '</label>'
+            . '<input type="text" name="OptionTranslation_' . $TranslationIndex . '_' . $OptionIndex . '" value="'
+            . $Self->_Escape( $Values->{$OptionKey} || '' ) . '" maxlength="255" data-qisutu-option-translation-value>'
+            . '</div>';
+    }
+
+    my $Hidden = $Rows eq '' ? ' qisutu-hidden' : '';
+
+    return '<div class="qisutu-dynamic-option-translations' . $Hidden . '" data-qisutu-option-translation-fields>'
+        . '<strong>' . $Self->_Escape( $Self->_Text(
+            'AdminDynamicFieldOptionTranslations',
+            'Translations of possible values',
+            $UILanguage,
+        ) ) . '</strong>'
+        . '<span class="qisutu-form-hint">' . $Self->_Escape( $Self->_Text(
+            'AdminDynamicFieldOptionTranslationsHint',
+            'If no translation is entered, the original display value is used.',
+            $UILanguage,
+        ) ) . '</span>'
+        . '<div class="qisutu-dynamic-option-translation-rows" data-qisutu-option-translation-rows>' . $Rows . '</div>'
+        . '</div>';
 }
 
 sub _LabelByLanguageFromRequest {
@@ -566,6 +651,48 @@ sub _LabelByLanguageFromRequest {
     }
 
     return \%Label;
+}
+
+sub _OptionTranslationsFromRequest {
+    my ( $Self, %Param ) = @_;
+
+    my $Request = $Param{Request} || {};
+    my $TranslationRowCount = $Request->{TranslationRowCount} || 0;
+    my $OptionRowCount = $Request->{OptionRowCount} || 0;
+    my %Translation;
+
+    $TranslationRowCount = 0 if $TranslationRowCount !~ m{\A\d+\z};
+    $OptionRowCount = 0 if $OptionRowCount !~ m{\A\d+\z};
+
+    if ( !$TranslationRowCount || !$OptionRowCount ) {
+        for my $Key ( keys %{$Request} ) {
+            if ( $Key =~ m{\ATranslationLanguage_(\d+)\z} && $1 > $TranslationRowCount ) {
+                $TranslationRowCount = $1;
+            }
+            if ( $Key =~ m{\AOptionKey_(\d+)\z} && $1 > $OptionRowCount ) {
+                $OptionRowCount = $1;
+            }
+        }
+    }
+
+    for my $TranslationIndex ( 1 .. $TranslationRowCount ) {
+        my $Language = $Request->{ 'TranslationLanguage_' . $TranslationIndex } || '';
+        $Language =~ s{[^A-Za-z0-9_-]}{}g;
+        next if !$Language;
+
+        for my $OptionIndex ( 1 .. $OptionRowCount ) {
+            my $OptionKey = defined $Request->{ 'OptionKey_' . $OptionIndex }
+                ? $Request->{ 'OptionKey_' . $OptionIndex }
+                : '';
+            my $Value = defined $Request->{ 'OptionTranslation_' . $TranslationIndex . '_' . $OptionIndex }
+                ? $Request->{ 'OptionTranslation_' . $TranslationIndex . '_' . $OptionIndex }
+                : '';
+            next if $OptionKey eq '' || $Value eq '';
+            $Translation{$Language}->{$OptionKey} = $Value;
+        }
+    }
+
+    return \%Translation;
 }
 
 sub _TranslationLanguageOptions {

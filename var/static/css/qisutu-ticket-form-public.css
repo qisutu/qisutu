@@ -35,6 +35,10 @@ body { margin: 0; background: #f4f7f9; color: #1f2933; }
 
 .qisutu-public-form-shell { max-width: 820px; margin: 0 auto; padding: 32px 18px; }
 .qisutu-public-form-card { background: #fff; border: 1px solid #d5e0e6; border-radius: 12px; box-shadow: 0 12px 34px rgba(25, 58, 72, .09); padding: 30px; }
+.qisutu-public-form-languages { display: flex; flex-wrap: wrap; gap: 7px; justify-content: flex-end; margin: 0 0 18px; }
+.qisutu-public-form-languages a { border: 1px solid #bdcbd3; border-radius: 6px; color: #40576a; font-size: 12px; font-weight: 800; padding: 5px 8px; text-decoration: none; }
+.qisutu-public-form-languages a:hover { border-color: #00728c; color: #00586d; }
+.qisutu-public-form-languages .qisutu-public-form-language-active { border-color: #006078; background: #006078; color: #fff; }
 .qisutu-public-form-header { margin-bottom: 24px; }
 .qisutu-public-form-brand { display: inline-block; margin-bottom: 12px; color: #006078; font-size: 14px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .qisutu-public-form-header h1, .qisutu-public-form-state h1 { margin: 0 0 10px; color: #172230; font-size: clamp(24px, 4vw, 34px); }

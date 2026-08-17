@@ -303,6 +303,7 @@ sub Run {
         Template => 'AdminResponseTemplates.tt',
         Data     => {
             PageTitle          => 'Translate:AdminResponseTemplatesTitle',
+            PageCSS            => 'qisutu-response-templates.css?v=2026081601',
             ProgramTitle       => 'Translate:AdminResponseTemplatesTitle',
             ProgramDescription => 'Translate:AdminResponseTemplatesDescription',
             FormAction         => 'index.pl',

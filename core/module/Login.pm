@@ -26,6 +26,8 @@ use strict;
 use warnings;
 use utf8;
 
+use File::Spec;
+
 use QisutuPasswordReset;
 use QisutuCustomerRegistration;
 use QisutuTwoFactor;
@@ -88,6 +90,12 @@ sub Run {
 
     my $Step = $Param{Step} || '';
 
+    $Self->{PublicLanguage} = $Self->_LanguageClean( $Param{Language} )
+        || $Self->_LanguageClean( $Param{LoginLanguageCookie} )
+        || $Self->_BrowserLanguage( $Param{BrowserLanguage} )
+        || 'en';
+    $Self->{PublicLanguageSecureCookie} = $Param{SecureCookie} ? 1 : 0;
+
     if ( $Step eq 'Login' ) {
         return $Self->_LoginSubmit(%Param);
     }
@@ -143,15 +151,26 @@ sub _LoginShow {
     my ( $Self, %Param ) = @_;
 
     my $AccountType = $Param{AccountType} || 'agent';
-    my $Providers = $Self->{ExternalAuth}
+    my $ProviderSource = $Self->{ExternalAuth}
         ? $Self->{ExternalAuth}->ProviderList( AccountType => 'agent' )
         : [];
+    my $Language = $Self->_PublicLanguage();
+    my $Providers = [ map {
+        my %Provider = %{$_};
+        if ( $Provider{begin_url} ) {
+            $Provider{begin_url} .= ';Language=' . $Language;
+        }
+        \%Provider;
+    } @{$ProviderSource} ];
     my @AutoRedirect = grep { $_->{auto_redirect} } @{$Providers};
     if ( !$Param{ErrorMessage}
         && ( $Param{Step} || '' ) ne 'LocalLogin'
         && $AccountType eq 'agent'
         && @AutoRedirect == 1 ) {
-        return $Self->{Output}->Redirect( Location => $AutoRedirect[0]->{begin_url} );
+        return $Self->{Output}->Redirect(
+            Location => $AutoRedirect[0]->{begin_url},
+            Cookie   => $Self->_PublicLanguageCookie(),
+        );
     }
     my $ShowLocalAgentLogin = !grep { !$_->{allow_local_login} } @{$Providers};
     $AccountType = 'customer' if !$ShowLocalAgentLogin && $AccountType eq 'agent';
@@ -181,7 +200,10 @@ sub _ExternalAuthBegin {
             FormAction   => $Param{FormAction} || 'index.pl',
         );
     }
-    return $Self->{Output}->Redirect( Location => $URL );
+    return $Self->{Output}->Redirect(
+        Location => $URL,
+        Cookie   => $Self->_PublicLanguageCookie(),
+    );
 }
 
 sub _ExternalAuthCallback {
@@ -516,7 +538,7 @@ sub _CustomerRegistrationShow {
 sub _CustomerRegistrationSubmit {
     my ( $Self, %Param ) = @_;
 
-    my $Language = $Self->_DefaultLanguage();
+    my $Language = $Self->_PublicLanguage();
     my $Result = $Self->{CustomerRegistration}->RequestCreate(
         Firstname => $Param{Firstname} || '',
         Lastname  => $Param{Lastname} || '',
@@ -664,6 +686,7 @@ sub _RenderPublicPage {
         Body    => $Body,
         Cookie  => $Param{Cookie} || '',
         Headers => [
+            'Set-Cookie: ' . $Self->_PublicLanguageCookie(),
             'Cache-Control: no-store, no-cache, must-revalidate, max-age=0',
             'Pragma: no-cache',
             'Expires: 0',
@@ -677,13 +700,18 @@ sub _TemplateData {
     my ( $Self, %Param ) = @_;
 
     my $AccountType = $Param{AccountType} || 'agent';
+    my $Language    = $Self->_LanguageClean( $Param{Language} ) || $Self->_PublicLanguage();
 
     return {
-        Language        => $Self->_DefaultLanguage(),
+        Language        => $Language,
+        LoginLanguages  => $Self->_LoginLanguageList( Selected => $Language ),
+        LoginURL        => 'index.pl?Language=' . $Language,
+        PasswordForgotURL => 'index.pl?Step=PasswordForgot;Language=' . $Language,
+        CustomerRegistrationURL => 'index.pl?Step=CustomerRegistration;Language=' . $Language,
         Robots          => 'noindex, nofollow',
         PageTitle       => $Param{PageTitle} || 'Translate:PageLoginTitle',
         StaticBase      => $Self->{Config}->{Paths}->{StaticURL} || '/static',
-        PageCSS         => 'qisutu-login.css?v=2026072103',
+        PageCSS         => 'qisutu-login.css?v=2026081602',
         BodyClass       => 'qisutu-login-page',
         SystemName      => $Self->{Config}->{System}->{Name} || 'Qisutu',
         ErrorMessage    => $Param{ErrorMessage} || '',
@@ -716,33 +744,104 @@ sub _TemplateData {
     };
 }
 
-sub _DefaultLanguage {
+sub _PublicLanguage {
     my ($Self) = @_;
 
-    my $Language = $Self->{Config}->{Language}->{Default} || 'en';
+    return $Self->_LanguageClean( $Self->{PublicLanguage} ) || 'en';
+}
 
-    my $Loaded = eval {
-        require QisutuSystemSetting;
-        1;
-    };
+sub _LanguageClean {
+    my ( $Self, $Language ) = @_;
 
-    if ( $Loaded && $Self->{DB} ) {
-        my $SettingObject = QisutuSystemSetting->new(
-            Config => $Self->{Config},
-            DB     => $Self->{DB},
-        );
+    return '' if !defined $Language || ref $Language;
 
-        my $ConfiguredLanguage = $SettingObject->Get(
-            Key     => 'system.default_language',
-            Default => $Language,
-        );
+    $Language =~ s{\A\s+|\s+\z}{}g;
+    $Language =~ tr{_}{-};
+    return '' if $Language !~ m{\A[A-Za-z]{2,3}(?:-[A-Za-z]{2})?\z};
 
-        if ( $ConfiguredLanguage && $ConfiguredLanguage =~ m{\A[A-Za-z0-9_-]+\z} ) {
-            $Language = $ConfiguredLanguage;
+    if ( $Language =~ m{\A([A-Za-z]{2,3})-([A-Za-z]{2})\z} ) {
+        $Language = lc($1) . '-' . uc($2);
+    }
+    else {
+        $Language = lc $Language;
+    }
+
+    my $LanguagePath = $Self->{Config}->{Paths}->{Language} || '';
+    return '' if !$LanguagePath;
+
+    my $File = File::Spec->catfile( $LanguagePath, "$Language.pm" );
+    return '' if !-f $File || -l $File;
+
+    return $Language;
+}
+
+sub _BrowserLanguage {
+    my ( $Self, $Header ) = @_;
+
+    return '' if !defined $Header || ref $Header;
+
+    for my $Part ( split /,/, $Header ) {
+        my ($Language) = split /;/, $Part, 2;
+        $Language =~ s{\A\s+|\s+\z}{}g;
+        next if !$Language || $Language eq '*';
+
+        my $Clean = $Self->_LanguageClean($Language);
+        return $Clean if $Clean;
+
+        if ( $Language =~ m{\A([A-Za-z]{2,3})[-_]} ) {
+            $Clean = $Self->_LanguageClean($1);
+            return $Clean if $Clean;
         }
     }
 
-    return $Language || 'en';
+    return '';
+}
+
+sub _LoginLanguageList {
+    my ( $Self, %Param ) = @_;
+
+    my $Selected = $Self->_LanguageClean( $Param{Selected} ) || $Self->_PublicLanguage();
+    my @Known = (
+        [ de      => 'Deutsch' ],
+        [ en      => 'English' ],
+        [ fr      => 'Français' ],
+        [ it      => 'Italiano' ],
+        [ 'pt-BR' => 'Português (Brasil)' ],
+        [ 'pt-PT' => 'Português (Portugal)' ],
+        [ es      => 'Español' ],
+        [ nl      => 'Nederlands' ],
+        [ pl      => 'Polski' ],
+        [ cs      => 'Čeština' ],
+        [ tr      => 'Türkçe' ],
+    );
+
+    my @Language;
+    for my $Entry (@Known) {
+        my ( $Code, $Label ) = @{$Entry};
+        next if !$Self->_LanguageClean($Code);
+
+        push @Language, {
+            code     => $Code,
+            label    => $Label,
+            selected => $Code eq $Selected ? ' selected' : '',
+        };
+    }
+
+    return \@Language;
+}
+
+sub _PublicLanguageCookie {
+    my ($Self) = @_;
+
+    return $Self->{Output}->CookieCreate(
+        Name     => 'QisutuPublicLanguage',
+        Value    => $Self->_PublicLanguage(),
+        MaxAge   => 31536000,
+        Path     => '/',
+        SameSite => 'Lax',
+        Secure   => $Self->{PublicLanguageSecureCookie} ? 1 : 0,
+        HttpOnly => 1,
+    );
 }
 
 sub Error {

@@ -51,8 +51,7 @@ find(
                 || $Relative =~ m{^var/static/js/qisutu-[^/]+\.js$}
                 || $Relative =~ m{^var/static/css/qisutu[^/]*\.css$}
                 || $Relative =~ m{^(?:README(?:\.[A-Za-z-]+)?|INSTALL|MODULES|THIRD_PARTY_NOTICES)\.md$}
-                || $Relative eq '.gitignore'
-                || $Relative eq '.project';
+                || $Relative eq '.gitignore';
 
             push @Files, [ $Relative, $File::Find::name ] if $IsQisutuFile;
         },

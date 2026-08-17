@@ -413,7 +413,14 @@ sub FieldList {
     my $Rows = $Self->{DB}->SelectAll(
         'SELECT
             ff.*,
-            COALESCE(current_translation.label, default_translation.label, ff.field_key) AS label,
+            COALESCE(
+                dynamic_current_translation.label,
+                dynamic_default_translation.label,
+                dynamic_field.label,
+                current_translation.label,
+                default_translation.label,
+                ff.field_key
+            ) AS label,
             COALESCE(current_translation.help_text, default_translation.help_text, "") AS help_text,
             COALESCE(current_translation.placeholder, default_translation.placeholder, "") AS placeholder
          FROM ticket_form_field ff
@@ -423,9 +430,19 @@ sub FieldList {
          LEFT JOIN ticket_form_field_translation default_translation
             ON default_translation.form_field_id = ff.id
            AND default_translation.language = ?
+         LEFT JOIN ticket_dynamic_field dynamic_field
+            ON dynamic_field.id = ff.dynamic_field_id
+         LEFT JOIN ticket_dynamic_field_translation dynamic_current_translation
+            ON dynamic_current_translation.field_id = ff.dynamic_field_id
+           AND dynamic_current_translation.language = ?
+         LEFT JOIN ticket_dynamic_field_translation dynamic_default_translation
+            ON dynamic_default_translation.field_id = ff.dynamic_field_id
+           AND dynamic_default_translation.language = ?
          WHERE ff.form_id = ?
          ' . $Where . '
          ORDER BY ff.sort_order ASC, ff.id ASC',
+        $Language,
+        $DefaultLanguage,
         $Language,
         $DefaultLanguage,
         $FormID,
@@ -462,7 +479,52 @@ sub FieldTranslationList {
          ORDER BY language ASC',
         $FieldID,
     ) || [];
-    return { map { ( $_->{language} || '' ) => $_ } @{$Rows} };
+
+    my $Translations = { map { ( $_->{language} || '' ) => $_ } @{$Rows} };
+    my $Field = $Self->FieldGet( FieldID => $FieldID );
+    return $Translations if !$Field || !$Field->{dynamic_field_id};
+
+    my $Dynamic = QisutuDynamicField->new(
+        Config => $Self->{Config},
+        DB     => $Self->{DB},
+        Output => $Self->{Output},
+    );
+    my $DynamicTranslations = $Dynamic->TranslationList(
+        FieldID => $Field->{dynamic_field_id},
+    );
+    if ( $Dynamic->Error() ) {
+        $Self->{LastError} = $Dynamic->Error();
+        return {};
+    }
+
+    # The dynamic field is the single source of truth for its translated
+    # display name. Help text and placeholders remain form-specific.
+    for my $Language ( keys %{$Translations} ) {
+        $Translations->{$Language}->{label} = '';
+    }
+    for my $Language ( keys %{ $DynamicTranslations || {} } ) {
+        $Translations->{$Language} ||= {
+            language    => $Language,
+            help_text   => '',
+            placeholder => '',
+        };
+        $Translations->{$Language}->{label} = $DynamicTranslations->{$Language};
+    }
+
+    my $DefaultLanguage = $Self->_LanguageClean( $Self->{Config}->{Language}->{Default} || 'en' );
+    if ( !$Self->_Trim( $Translations->{$DefaultLanguage}->{label} ) ) {
+        my $DynamicField = $Dynamic->FieldGet( FieldID => $Field->{dynamic_field_id} );
+        if ( $DynamicField && $Self->_Trim( $DynamicField->{label} ) ) {
+            $Translations->{$DefaultLanguage} ||= {
+                language    => $DefaultLanguage,
+                help_text   => '',
+                placeholder => '',
+            };
+            $Translations->{$DefaultLanguage}->{label} = $DynamicField->{label};
+        }
+    }
+
+    return $Translations;
 }
 
 sub FieldCreate {
@@ -499,6 +561,7 @@ sub FieldCreate {
         IsRequired      => 0,
         SortOrder       => $Data->{SortOrder},
         Options         => $Data->{Options},
+        OptionTranslations => $Data->{OptionTranslations},
         ShowEmptyValue  => 1,
         DefaultValues   => [],
         ChangedByUserID => $UserID,
@@ -583,6 +646,28 @@ sub FieldUpdate {
         my $Dynamic = QisutuDynamicField->new(
             Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output},
         );
+        my $OptionTranslations = $Data->{OptionTranslations};
+        if ( !$Data->{OptionTranslationsProvided} ) {
+            my $ExistingTranslations = $Dynamic->OptionTranslationList(
+                FieldID => $Field->{dynamic_field_id},
+            );
+            if ( $Dynamic->Error() ) {
+                $Self->{LastError} = $Dynamic->Error();
+                return;
+            }
+
+            my %AllowedOption = map {
+                ( $_->{option_key} || '' ) => 1
+            } @{ $Data->{Options} || [] };
+            my %Preserved;
+            for my $Language ( keys %{ $ExistingTranslations || {} } ) {
+                for my $OptionKey ( keys %{ $ExistingTranslations->{$Language} || {} } ) {
+                    next if !$AllowedOption{$OptionKey};
+                    $Preserved{$Language}->{$OptionKey} = $ExistingTranslations->{$Language}->{$OptionKey};
+                }
+            }
+            $OptionTranslations = \%Preserved;
+        }
         if ( !$Dynamic->FieldUpdate(
             FieldID         => $Field->{dynamic_field_id},
             LabelByLanguage => \%LabelByLanguage,
@@ -591,6 +676,7 @@ sub FieldUpdate {
             Active          => $Data->{Active},
             SortOrder       => $Data->{SortOrder},
             Options         => $Data->{Options},
+            OptionTranslations => $OptionTranslations,
             ShowEmptyValue  => 1,
             DefaultValues   => [],
             ChangedByUserID => $UserID,
@@ -695,7 +781,7 @@ sub FieldsHTML {
         elsif ( $Type eq 'dropdown' || $Type eq 'multiselect' ) {
             my @Selected = ref $Raw eq 'ARRAY' ? @{$Raw} : grep { $_ ne '' } split /\r?\n/, ( defined $Raw ? $Raw : '' );
             my %Selected = map { $_ => 1 } @Selected;
-            my $Options = $Self->_FieldOptionList($Field);
+            my $Options = $Self->_FieldOptionList( $Field, Language => $Language );
             my $Multiple = $Type eq 'multiselect' ? ' multiple size="5"' : '';
             $HTML .= '<select id="' . $ID . '" name="' . $Name . '"' . $Multiple . $Required . '>';
             if ( $Type eq 'dropdown' ) {
@@ -1001,6 +1087,7 @@ sub SubmissionCreate {
     $TicketObject->_AgentNotificationSend(
         NotificationType => 'ticket_new_in_my_queues',
         TicketID         => $TicketID,
+        ArticleID        => $ArticleID,
         ChangedByUserID  => $CreatedByUserID,
     );
 
@@ -1128,7 +1215,7 @@ sub _SubmissionValidate {
                 $Self->_SubmissionFieldError( Key => 'TicketFormFieldInvalid', Field => $Field, Language => $Language );
                 return;
             }
-            my $Options = $Self->_FieldOptionList($Field);
+            my $Options = $Self->_FieldOptionList( $Field, Language => $Language );
             my %Label = map { ( $_->{option_key} || '' ) => ( $_->{option_value} || $_->{option_key} || '' ) } @{$Options};
             for my $Selected (@Selected) {
                 if ( !exists $Label{$Selected} ) {
@@ -1446,6 +1533,8 @@ sub _FieldDataValidate {
         Active        => exists $Param{Active} ? ( $Param{Active} ? 1 : 0 ) : 1,
         SortOrder     => 0 + $SortOrder,
         Options       => ref $Param{Options} eq 'ARRAY' ? $Param{Options} : [],
+        OptionTranslations => ref $Param{OptionTranslations} eq 'HASH' ? $Param{OptionTranslations} : {},
+        OptionTranslationsProvided => $Param{OptionTranslationsProvided} ? 1 : 0,
         Translations  => \%Clean,
     };
 }
@@ -1571,10 +1660,13 @@ sub _CoreFieldsEnsure {
 }
 
 sub _FieldOptionList {
-    my ( $Self, $Field ) = @_;
+    my ( $Self, $Field, %Param ) = @_;
     return [] if !$Field->{dynamic_field_id};
     my $Dynamic = QisutuDynamicField->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
-    return $Dynamic->OptionList( FieldID => $Field->{dynamic_field_id} ) || [];
+    return $Dynamic->OptionList(
+        FieldID => $Field->{dynamic_field_id},
+        Language => $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en',
+    ) || [];
 }
 
 sub _FormVersionIncrement {

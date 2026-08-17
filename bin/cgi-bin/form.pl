@@ -102,6 +102,25 @@ sub main {
         return;
     }
 
+    my $FormTranslations = $FormObject->FormTranslationList( FormID => $Form->{id} );
+    my $DefaultLanguage = _LanguageClean( $Config->{Language}->{Default} ) || 'en';
+    my @FormLanguages = grep {
+        my $Row = $FormTranslations->{$_};
+        ref $Row eq 'HASH' && defined $Row->{title} && $Row->{title} ne '';
+    } keys %{$FormTranslations};
+    @FormLanguages = sort {
+        ( $a eq $DefaultLanguage ? 0 : 1 ) <=> ( $b eq $DefaultLanguage ? 0 : 1 )
+            || $a cmp $b
+    } @FormLanguages;
+    my $LanguageLinks = [ map {
+        {
+            code          => uc($_),
+            url           => 'form.pl?Form=' . $Slug . '&Language=' . $_,
+            active_class  => $_ eq $Language ? 'qisutu-public-form-language-active' : '',
+            aria_current  => $_ eq $Language ? 'aria-current="page"' : '',
+        }
+    } @FormLanguages ];
+
     my $Success = 0;
     my $TicketNumber = '';
     my $Confirmation = '';
@@ -153,6 +172,8 @@ sub main {
         Template => 'PublicTicketForm.tt',
         Data     => {
             Language          => $Language,
+            LanguageLinks     => $LanguageLinks,
+            HasLanguageLinks  => @{$LanguageLinks} > 1 ? 1 : 0,
             StaticBase        => $Config->{Paths}->{StaticURL} || '/qisutu/static',
             SystemName        => $Config->{System}->{Name} || 'Qisutu',
             PublicFormTitle   => $Form->{title},

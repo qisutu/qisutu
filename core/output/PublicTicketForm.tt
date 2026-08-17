@@ -30,7 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     <title>[% PublicFormTitle %] – [% SystemName %]</title>
     <link rel="icon" type="image/x-icon" sizes="32x32" href="[% StaticBase %]/img/favicon.ico?v=2026072101">
     <link rel="apple-touch-icon" sizes="120x120" href="[% StaticBase %]/img/apple-touch-icon.png?v=2026072101">
-    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu-ticket-form-public.css?v=2026071701">
+    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu-ticket-form-public.css?v=2026081501">
 </head>
 <body>
     <main class="qisutu-public-form-shell">
@@ -40,6 +40,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 <h1>[% Translate.PublicTicketFormNotFound %]</h1>
             </div>
             [% ELSE %]
+                [% IF HasLanguageLinks %]
+                <nav class="qisutu-public-form-languages" aria-label="[% Translate.AdminTranslationLanguage %]">
+                    [% FOREACH LanguageLink IN LanguageLinks %]
+                    <a href="[% LanguageLink.url %]" class="[% LanguageLink.active_class %]" [% RAW.LanguageLink.aria_current %]>[% LanguageLink.code %]</a>
+                    [% END %]
+                </nav>
+                [% END %]
                 [% IF Success %]
                 <div class="qisutu-public-form-state qisutu-public-form-success">
                     <div class="qisutu-public-form-mark" aria-hidden="true">✓</div>

@@ -1,0 +1,60 @@
+/*
+ * Qisutu - Open Source Ticket System
+ * Copyright (C) 2026 Franziska Steps
+ * Qisutu - Kim-KI, https://qisutu.de
+ *
+ * This file is part of Qisutu.
+ *
+ * Qisutu is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Qisutu is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-FileCopyrightText: 2026 Franziska Steps
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+.qisutu-admin-response-templates,
+.qisutu-admin-response-templates .qisutu-panel,
+.qisutu-admin-response-templates .qisutu-table-wrap {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.qisutu-response-template-list-table {
+    table-layout: fixed;
+}
+
+.qisutu-response-template-list-table th,
+.qisutu-response-template-list-table td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.qisutu-response-template-list-table th:nth-child(1) { width: 14%; }
+.qisutu-response-template-list-table th:nth-child(2) { width: 12%; }
+.qisutu-response-template-list-table th:nth-child(3) { width: 32%; }
+.qisutu-response-template-list-table th:nth-child(4) { width: 11%; }
+.qisutu-response-template-list-table th:nth-child(5) { width: 8%; }
+.qisutu-response-template-list-table th:nth-child(6) { width: 6%; }
+.qisutu-response-template-list-table th:nth-child(7) { width: 8%; }
+.qisutu-response-template-list-table th:nth-child(8) { width: 9%; }
+
+.qisutu-response-template-preview {
+    line-height: 1.45;
+}
+
+.qisutu-response-template-list-table .qisutu-inline-form .qisutu-button {
+    max-width: 100%;
+    padding-right: 7px;
+    padding-left: 7px;
+}

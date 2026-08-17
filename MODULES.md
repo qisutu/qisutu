@@ -72,7 +72,7 @@ Generatoren oder Bauwerkzeuge für Zusatzmodule aus.
 
 ## Versionierte interne Zusatzmodul-API
 
-Qisutu 1.0.1 stellt die interne Zusatzmodul-API `1.0` bereit. Alle neuen
+Qisutu 1.0.2 stellt die interne Zusatzmodul-API `1.0` bereit. Alle neuen
 Erweiterungspunkte sind ergänzend; vorhandene Manifeste ohne `addon_api`
 bleiben gültig. Ein neues Modul kann seine Anforderungen ausdrücklich nennen:
 
@@ -157,7 +157,7 @@ Ticket- oder E-Mail-Aktion. `sync` ist nur für sehr kurze, rein lokale Handler
 vorgesehen und wird ebenfalls gegen Fehler des Moduls abgeschirmt.
 
 Der Handler wird mit `Event`, `Source`, `Payload` und `API` aufgerufen und gibt
-bei Erfolg einen wahren Wert oder einen Hash zurück. Qisutu 1.0.1 veröffentlicht:
+bei Erfolg einen wahren Wert oder einen Hash zurück. Qisutu 1.0.2 veröffentlicht:
 
 - `ticket.created`, `article.created`
 - `ticket.state_changed`, `ticket.priority_changed`, `ticket.queue_changed`

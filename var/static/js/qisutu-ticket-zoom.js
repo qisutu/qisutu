@@ -98,12 +98,14 @@
         var dynamicFields = document.querySelector('[data-qisutu-ticket-article-dynamic-fields]');
         var responseTemplateField = document.querySelector('[data-qisutu-response-template-field]');
         var responseTemplateSelect = document.querySelector('[data-qisutu-response-template-select]');
+        var responseTemplateLanguage = document.querySelector('[data-qisutu-response-template-language]');
         var responseTemplateError = document.querySelector('[data-qisutu-response-template-error]');
         var responseTemplateHidden = document.querySelector('[data-qisutu-response-template-hidden-inputs]');
         var responseTemplateAttachmentWrap = document.querySelector('[data-qisutu-response-template-attachment-wrap]');
         var responseTemplateAttachmentList = document.querySelector('[data-qisutu-response-template-attachment-list]');
         var responseTemplateAttachments = [];
         var responseTemplateRequestSerial = 0;
+        var activeReplyBodyTemplate = body ? (body.value || '') : '';
 
         if (!form || !modeInput) {
             return;
@@ -179,15 +181,14 @@
             responseTemplateSelect.disabled = !(show && hasTemplates);
         }
 
-        function responseTemplateSlotSet(content) {
-            var current = editorGetData();
+        function responseTemplateBodyBuild(baseTemplate, content) {
             var parser = new DOMParser();
-            var documentObject = parser.parseFromString('<div id="qisutu-response-template-root">' + current + '</div>', 'text/html');
+            var documentObject = parser.parseFromString('<div id="qisutu-response-template-root">' + (baseTemplate || '') + '</div>', 'text/html');
             var root = documentObject.getElementById('qisutu-response-template-root');
             var slot;
 
             if (!root) {
-                return;
+                return baseTemplate || '';
             }
 
             slot = root.querySelector('.qisutu-response-template-slot');
@@ -213,7 +214,20 @@
             }
 
             slot.innerHTML = content || '<p><br></p><p><br></p>';
-            editorSetData(root.innerHTML);
+            return root.innerHTML;
+        }
+
+        function responseTemplateSlotSet(content) {
+            editorSetData(responseTemplateBodyBuild(editorGetData(), content));
+        }
+
+        function responseTemplateSelectedLanguage() {
+            if (!responseTemplateSelect || responseTemplateSelect.selectedIndex < 0) {
+                return '';
+            }
+
+            var option = responseTemplateSelect.options[responseTemplateSelect.selectedIndex];
+            return option ? (option.getAttribute('data-response-template-language') || '') : '';
         }
 
         function responseTemplateHiddenRead() {
@@ -303,6 +317,9 @@
             if (responseTemplateSelect) {
                 responseTemplateSelect.value = '';
             }
+            if (responseTemplateLanguage) {
+                responseTemplateLanguage.value = '';
+            }
 
             responseTemplateAttachmentsRender();
 
@@ -313,6 +330,8 @@
 
         function responseTemplateLoad(templateID, insertContent, preserveSubmittedSelection) {
             var ticketID = responseTemplateSelect ? (responseTemplateSelect.getAttribute('data-qisutu-ticket-id') || '') : '';
+            var selectedLanguage = responseTemplateSelectedLanguage();
+            var replyArticleID = replyArticleIDInput ? (replyArticleIDInput.value || '') : '';
             var serial = ++responseTemplateRequestSerial;
             var submitted = preserveSubmittedSelection ? responseTemplateHiddenRead() : { ids: [], explicit: false };
 
@@ -327,7 +346,14 @@
                 return;
             }
 
-            fetch('index.pl?Page=AgentTicketZoom&Step=ResponseTemplateGet&TicketID=' + encodeURIComponent(ticketID) + '&ResponseTemplateID=' + encodeURIComponent(templateID), {
+            if (responseTemplateLanguage) {
+                responseTemplateLanguage.value = selectedLanguage;
+            }
+
+            fetch('index.pl?Page=AgentTicketZoom&Step=ResponseTemplateGet&TicketID=' + encodeURIComponent(ticketID)
+                + '&ResponseTemplateID=' + encodeURIComponent(templateID)
+                + '&ResponseTemplateLanguage=' + encodeURIComponent(selectedLanguage)
+                + '&ReplyArticleID=' + encodeURIComponent(replyArticleID), {
                 credentials: 'same-origin',
                 headers: {
                     'Accept': 'application/json'
@@ -347,7 +373,10 @@
                 }
 
                 if (insertContent) {
-                    responseTemplateSlotSet(data.content || '');
+                    editorSetData(responseTemplateBodyBuild(
+                        data.body_template || editorGetData(),
+                        data.content || ''
+                    ));
                 }
 
                 responseTemplateAttachments = Array.isArray(data.attachments) ? data.attachments.slice() : [];
@@ -392,6 +421,7 @@
                 subject.value = '';
             }
 
+            activeReplyBodyTemplate = '';
             editorSetData('');
             emailFieldsToggle(false);
 
@@ -448,7 +478,8 @@
                 subject.value = button.getAttribute('data-qisutu-reply-subject') || '';
             }
 
-            editorSetData(template ? template.value : '');
+            activeReplyBodyTemplate = template ? template.value : '';
+            editorSetData(activeReplyBodyTemplate);
             responseTemplateReset(false);
             responseTemplateFieldToggle(true);
             emailFieldsToggle(true);
@@ -513,6 +544,7 @@
                 subject.value = button.getAttribute('data-qisutu-forward-subject') || '';
             }
 
+            activeReplyBodyTemplate = '';
             editorSetData(template ? template.value : '');
             emailFieldsToggle(true);
 
@@ -549,7 +581,10 @@
                     responseTemplateAttachments = [];
                     responseTemplateAttachmentsRender();
                     responseTemplateErrorToggle(false);
-                    responseTemplateSlotSet('');
+                    if (responseTemplateLanguage) {
+                        responseTemplateLanguage.value = '';
+                    }
+                    editorSetData(activeReplyBodyTemplate || responseTemplateBodyBuild(editorGetData(), ''));
                     return;
                 }
 
@@ -562,6 +597,10 @@
         responseTemplateFieldToggle(modeInput.value === 'email');
 
         if (modeInput.value === 'email' && responseTemplateSelect && responseTemplateSelect.value) {
+            activeReplyBodyTemplate = responseTemplateBodyBuild(editorGetData(), '');
+            if (responseTemplateLanguage) {
+                responseTemplateLanguage.value = responseTemplateSelectedLanguage();
+            }
             responseTemplateLoad(responseTemplateSelect.value, false, true);
         }
         else {

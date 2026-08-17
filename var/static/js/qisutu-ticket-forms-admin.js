@@ -25,112 +25,120 @@
 (function () {
     'use strict';
 
-    function OptionTextParse(Line) {
-        var Separator = Line.indexOf('|');
-
-        if (Separator < 0) {
-            return {
-                Key: '',
-                Value: Line.trim(),
-                ExplicitKey: false
-            };
-        }
-
-        return {
-            Key: Line.substring(0, Separator).trim(),
-            Value: Line.substring(Separator + 1).trim(),
-            ExplicitKey: true
-        };
-    }
-
-    function OptionRowsSync(Options) {
-        var Input = Options.querySelector('[data-qisutu-ticket-form-options-input]');
+    function OptionDescriptors(Options) {
         var Rows = Options.querySelectorAll('[data-qisutu-ticket-form-option-row]');
-        var Lines = [];
-
-        if (!Input) {
-            return;
-        }
+        var Descriptors = [];
 
         Rows.forEach(function (Row) {
             var ValueInput = Row.querySelector('[data-qisutu-ticket-form-option-value]');
+            var KeyInput = Row.querySelector('[data-qisutu-ticket-form-option-key]');
             var Value = ValueInput ? ValueInput.value.trim() : '';
-            var Key = Row.dataset.optionKey || '';
+            var Index = Row.dataset.optionIndex || '';
 
-            if (!Value) {
+            if (Row.dataset.optionNew === '1' && KeyInput) {
+                KeyInput.value = Value;
+            }
+            if (!Value || !Index) {
                 return;
             }
 
-            if (Row.dataset.optionExplicitKey === '1' && Key) {
-                Lines.push(Key + '|' + Value);
-            }
-            else {
-                Lines.push(Value);
-            }
+            Descriptors.push({ Index: Index, Label: Value });
         });
 
-        Input.value = Lines.join('\n');
+        return Descriptors;
     }
 
-    function OptionRowAdd(Options, Line, FocusInput) {
+    function OptionTranslationsSync(Options) {
+        var Form = Options.closest('form');
+        var FieldType = Form ? Form.querySelector('[data-qisutu-ticket-form-field-type]') : null;
+        var IsSelection = FieldType && (FieldType.value === 'dropdown' || FieldType.value === 'multiselect');
+        var Descriptors = OptionDescriptors(Options);
+
+        if (!Form) {
+            return;
+        }
+
+        Form.querySelectorAll('[data-qisutu-ticket-form-option-translation-fields]').forEach(function (Container) {
+            var Language = Container.dataset.language || '';
+            var Rows = Container.querySelector('[data-qisutu-ticket-form-option-translation-rows]');
+            var Existing = {};
+
+            if (!Language || !Rows) {
+                return;
+            }
+
+            Rows.querySelectorAll('[data-qisutu-ticket-form-option-translation-row]').forEach(function (Row) {
+                var Index = Row.dataset.optionIndex || '';
+                var Input = Row.querySelector('[data-qisutu-ticket-form-option-translation-value]');
+                if (Index && Input) {
+                    Existing[Index] = Input.value || '';
+                }
+            });
+
+            Rows.replaceChildren();
+            Descriptors.forEach(function (Descriptor) {
+                var Row = document.createElement('div');
+                var Label = document.createElement('label');
+                var Input = document.createElement('input');
+
+                Row.className = 'qisutu-dynamic-option-translation-row';
+                Row.dataset.qisutuTicketFormOptionTranslationRow = '1';
+                Row.dataset.optionIndex = Descriptor.Index;
+                Label.textContent = Descriptor.Label;
+                Label.dataset.qisutuTicketFormOptionTranslationLabel = '1';
+                Input.type = 'text';
+                Input.name = 'OptionTranslation_' + Language + '_' + Descriptor.Index;
+                Input.maxLength = 255;
+                Input.value = Existing[Descriptor.Index] || '';
+                Input.dataset.qisutuTicketFormOptionTranslationValue = '1';
+                Row.appendChild(Label);
+                Row.appendChild(Input);
+                Rows.appendChild(Row);
+            });
+
+            Container.classList.toggle('qisutu-hidden', !IsSelection || !Descriptors.length);
+        });
+    }
+
+    function OptionRowsSync(Options) {
+        OptionDescriptors(Options);
+        OptionTranslationsSync(Options);
+    }
+
+    function OptionRowAdd(Options, FocusInput) {
         var List = Options.querySelector('[data-qisutu-ticket-form-option-list]');
-        var Parsed = OptionTextParse(Line || '');
+        var Count = Options.querySelector('[data-qisutu-ticket-form-option-count]');
+        var Template = document.getElementById('qisutu-ticket-form-option-row-template');
+        var Index;
+        var Fragment;
         var Row;
+        var KeyInput;
         var ValueInput;
         var RemoveButton;
 
-        if (!List) {
+        if (!List || !Count || !Template) {
             return;
         }
 
-        Row = document.createElement('div');
-        Row.className = 'qisutu-ticket-form-option-row';
-        Row.dataset.qisutuTicketFormOptionRow = '1';
-        Row.dataset.optionKey = Parsed.Key;
-        Row.dataset.optionExplicitKey = Parsed.ExplicitKey ? '1' : '0';
-
-        ValueInput = document.createElement('input');
-        ValueInput.type = 'text';
-        ValueInput.className = 'qisutu-ticket-form-option-value';
-        ValueInput.value = Parsed.Value;
+        Index = parseInt(Count.value || '0', 10) + 1;
+        Fragment = Template.content.cloneNode(true);
+        Row = Fragment.querySelector('[data-qisutu-ticket-form-option-row]');
+        KeyInput = Fragment.querySelector('[data-qisutu-ticket-form-option-key]');
+        ValueInput = Fragment.querySelector('[data-qisutu-ticket-form-option-value]');
+        RemoveButton = Fragment.querySelector('[data-qisutu-ticket-form-option-remove]');
+        Row.dataset.optionIndex = String(Index);
+        Row.dataset.optionNew = '1';
+        KeyInput.name = 'OptionKey_' + Index;
+        ValueInput.name = 'OptionValue_' + Index;
         ValueInput.placeholder = List.dataset.optionPlaceholder || '';
         ValueInput.setAttribute('aria-label', List.dataset.optionPlaceholder || 'Option');
-        ValueInput.dataset.qisutuTicketFormOptionValue = '1';
-
-        RemoveButton = document.createElement('button');
-        RemoveButton.type = 'button';
-        RemoveButton.className = 'qisutu-button qisutu-button-danger qisutu-ticket-form-option-remove';
         RemoveButton.textContent = List.dataset.removeLabel || 'Remove';
-        RemoveButton.dataset.qisutuTicketFormOptionRemove = '1';
-
-        Row.appendChild(ValueInput);
-        Row.appendChild(RemoveButton);
-        List.appendChild(Row);
+        Count.value = String(Index);
+        List.appendChild(Fragment);
+        OptionRowsSync(Options);
 
         if (FocusInput) {
             ValueInput.focus();
-        }
-    }
-
-    function OptionRowsInitialize(Options) {
-        var Input = Options.querySelector('[data-qisutu-ticket-form-options-input]');
-        var Lines;
-
-        if (!Input || Options.dataset.optionRowsInitialized === '1') {
-            return;
-        }
-
-        Options.dataset.optionRowsInitialized = '1';
-        Lines = Input.value.split(/\r?\n/).filter(function (Line) {
-            return Line.trim() !== '';
-        });
-
-        Lines.forEach(function (Line) {
-            OptionRowAdd(Options, Line, false);
-        });
-
-        if (!Lines.length) {
-            OptionRowAdd(Options, '', false);
         }
     }
 
@@ -143,7 +151,6 @@
             return;
         }
 
-        OptionRowsInitialize(Options);
         Options.classList.toggle('qisutu-hidden', !IsSelection);
         Options.querySelectorAll('[data-qisutu-ticket-form-option-value]').forEach(function (Input) {
             Input.required = IsSelection;
@@ -396,7 +403,7 @@
 
         if (AddButton) {
             Options = AddButton.closest('[data-qisutu-ticket-form-options]');
-            OptionRowAdd(Options, '', true);
+            OptionRowAdd(Options, true);
             SelectionOptionsUpdate(Options.closest('form').querySelector('[data-qisutu-ticket-form-field-type]'));
             return;
         }
@@ -409,7 +416,7 @@
         RemoveButton.closest('[data-qisutu-ticket-form-option-row]').remove();
         List = Options.querySelector('[data-qisutu-ticket-form-option-list]');
         if (!List.querySelector('[data-qisutu-ticket-form-option-row]')) {
-            OptionRowAdd(Options, '', true);
+            OptionRowAdd(Options, true);
         }
         SelectionOptionsUpdate(Options.closest('form').querySelector('[data-qisutu-ticket-form-field-type]'));
     });

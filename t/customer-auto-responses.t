@@ -59,6 +59,7 @@ for my $Language ( @{ QisutuCustomerAutoResponseTemplates->Languages() } ) {
 my %Placeholder = map { ( $_->{placeholder} || '' ) => 1 } @{ QisutuCustomerAutoResponse->PlaceholderList() };
 ok( $Placeholder{'{{CustomerUser.Firstname}}'}, 'customer-user placeholders are offered' );
 ok( $Placeholder{'{{Ticket.LinkHTML}}'}, 'customer ticket link placeholder is offered' );
+ok( $Placeholder{'{{Ticket.ArticleBody[15]}}'}, 'customer notification settings offer the configurable article-line placeholder' );
 ok( $Placeholder{'{{Incoming.Subject}}'}, 'incoming-mail placeholders are offered for rejection responses' );
 ok( !$Placeholder{'{{Agent.FullName}}'}, 'irrelevant agent-recipient placeholders are not offered' );
 
@@ -105,8 +106,8 @@ ok( !$Placeholder{'{{Agent.FullName}}'}, 'irrelevant agent-recipient placeholder
                 body_html     => $Type eq 'incoming_email_rejected'
                     ? '<p>{{Incoming.FromName}}: {{Incoming.Subject}}</p>'
                     : ( $Language eq 'pt-BR'
-                        ? '<p>Olá {{CustomerUser.Firstname}}</p><p>{{Ticket.LinkHTML}}</p>'
-                        : '<p>Hallo {{CustomerUser.Firstname}}</p><p>{{Ticket.LinkHTML}}</p>' ),
+                        ? '<p>Olá {{CustomerUser.Firstname}}</p><p>{{Ticket.LinkHTML}}</p><p>{{Ticket.ArticleBody[15]}}</p>'
+                        : '<p>Hallo {{CustomerUser.Firstname}}</p><p>{{Ticket.LinkHTML}}</p><p>{{Ticket.ArticleBody[15]}}</p>' ),
                 active        => 1,
             };
         }
@@ -138,6 +139,17 @@ ok( !$Placeholder{'{{Agent.FullName}}'}, 'irrelevant agent-recipient placeholder
                 customer_user_lastname    => 'Kundin',
                 system_email_name         => 'Qisutu Support',
                 system_email              => 'support@example.test',
+            };
+        }
+
+        if ( $SQL =~ m{FROM\s+ticket_article}si ) {
+            return {
+                id             => 7,
+                ticket_id      => 42,
+                article_number => 1,
+                sender_type    => 'customer',
+                content_type   => 'text/plain',
+                body           => join( "\n", map { "Customer line $_" } 1 .. 20 ),
             };
         }
 
@@ -218,6 +230,9 @@ my @Sent;
     like( $Sent[0]->{Body}, qr{Olá Klara}, 'customer placeholder is rendered in the recipient language' );
     like( $Sent[0]->{Body}, qr{Page=CustomerTicketZoom&amp;TicketID=42}, 'ticket link points to the customer portal' );
     unlike( $Sent[0]->{Body}, qr{Page=AgentTicketZoom}, 'customer email never exposes an agent ticket link' );
+    like( $Sent[0]->{Body}, qr{Customer line 15}, 'a customer notification includes the configured first fifteen article lines' );
+    unlike( $Sent[0]->{Body}, qr{Customer line 16}, 'a customer notification excludes article lines after the configured limit' );
+    unlike( $Sent[0]->{Body}, qr{<p><div}, 'the CKEditor paragraph wrapper does not produce invalid nested article-block HTML' );
 
     ok(
         !$Response->Send(
@@ -279,8 +294,8 @@ like( $AdminTemplate, qr{PlaceholderList}, 'the edit view presents its placehold
 like( $AdminTemplate, qr{name="ResponseLanguage"}, 'the administration view offers a language selector' );
 
 my $Release = _Read( File::Spec->catfile( $Root, 'release.conf' ) );
-like( $Release, qr{^version=1[.]0[.]1$}m, 'automatic responses are included in release 1.0.1' );
-like( $Release, qr{^database_version=1[.]0[.]1$}m, 'automatic responses are included in the official database baseline' );
+like( $Release, qr{^version=1[.]0[.]2$}m, 'automatic responses are included in release 1.0.2' );
+like( $Release, qr{^database_version=1[.]0[.]2$}m, 'automatic responses are included in database version 1.0.2' );
 
 my $Schema = _Read( File::Spec->catfile( $Root, 'install', 'sql', 'schema.sql' ) );
 like( $Schema, qr{CREATE TABLE `customer_auto_response_template`}, 'fresh installations create automatic-response templates' );

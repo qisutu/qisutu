@@ -61,6 +61,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                 <form class="qisutu-login-form" method="post" action="[% FormAction %]" autocomplete="off">
                     <input type="hidden" name="Step" value="TwoFactorVerify">
+                    <input type="hidden" name="Language" value="[% Language %]">
                     <input type="hidden" name="ChallengeToken" value="[% ChallengeToken %]">
                     <input type="hidden" name="TwoFactorMode" value="[% TwoFactorMode %]">
                     <input type="hidden" name="TwoFactorSecret" value="[% TwoFactorSecret %]">

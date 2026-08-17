@@ -245,7 +245,10 @@ sub Options {
 
     for my $Field ( @{$DynamicFields} ) {
         next if ( $Field->{field_type} || '' ) !~ m{\A(?:dropdown|multiselect)\z};
-        $Field->{options} = $DynamicObject->OptionList( FieldID => $Field->{id} ) || [];
+        $Field->{options} = $DynamicObject->OptionList(
+            FieldID => $Field->{id},
+            Language => $Language,
+        ) || [];
     }
 
     if ( $DynamicObject->Error() ) {

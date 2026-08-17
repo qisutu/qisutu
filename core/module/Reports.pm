@@ -42,7 +42,7 @@ sub Run {
     my $Object=QisutuReportBuilder->new(Config=>$Self->{Config},DB=>$Self->{DB});my$Step=$Request->{Step}||'';my$Action=$Request->{Action}||'';my$UserID=$User->{user_account_id}||0;
 
     if($Step eq'OptionSearch'){
-        my$Rows=$Object->OptionSearch(User=>$User,Source=>$Request->{Source},Field=>$Request->{Field},Search=>$Request->{Search});
+        my$Rows=$Object->OptionSearch(User=>$User,Source=>$Request->{Source},Field=>$Request->{Field},Search=>$Request->{Search},Language=>$Language);
         return$Self->_JSONResponse({success=>JSON::PP::true,items=>$Rows});
     }
 

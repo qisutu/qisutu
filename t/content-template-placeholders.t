@@ -215,6 +215,7 @@ like( $CreateHTML, qr{Hallo Klara Kundin}, 'ticket creation inserts a resolved s
 like( $CreateHTML, qr{Ada Agentin [|] Support::Posteingang}, 'ticket creation inserts a resolved signature into the editor template' );
 like( $CreateHTML, qr{\{\{Ticket[.]Number\}\}}, 'ticket creation preserves the not-yet-created ticket number' );
 like( $CreateHTML, qr{\{\{Ticket[.]LinkHTML\}\}}, 'ticket creation preserves the not-yet-created ticket link' );
+like( $CreateHTML, qr{class="qisutu-response-template-slot"}, 'ticket creation reserves the editor position for a response template' );
 
 my $ZoomModule = AgentTicketZoom->new( Config => $Config, DB => $DB );
 my $ZoomHTML = $ZoomModule->_QueueReplyTemplate(

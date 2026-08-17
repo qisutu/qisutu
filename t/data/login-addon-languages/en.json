@@ -1,0 +1,5 @@
+{
+  "TestAgentEntraButton": "Sign in as an agent with Microsoft Entra ID",
+  "TestCustomerEntraButton": "Sign in as a contact with Microsoft Entra ID",
+  "TestEntraError": "The Microsoft Entra ID sign-in failed."
+}

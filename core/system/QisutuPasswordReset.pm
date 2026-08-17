@@ -146,8 +146,9 @@ sub RequestCreate {
     }
 
     my $TokenID = $Self->{DB}->LastInsertID('password_reset_token') || 0;
-    my $ResetURL = $BaseURL . '/index.pl?Step=PasswordReset&Token=' . $Token;
     my $Language = $Self->_UserLanguage( UserAccountID => $User->{id} );
+    my $ResetURL = $BaseURL . '/index.pl?Step=PasswordReset&Token=' . $Token
+        . '&Language=' . $Language;
     my $Mail      = $Self->_ResetMailBuild(
         User      => $User,
         Language  => $Language,

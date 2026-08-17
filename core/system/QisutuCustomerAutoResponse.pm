@@ -236,10 +236,24 @@ sub Send {
         return 0;
     }
 
+    my $Article;
+    if (
+        $TicketID
+        && $Self->_ArticleBodyPlaceholderPresent(
+            ( $Template->{subject} || '' ) . "\n" . ( $Template->{body_html} || '' )
+        )
+    ) {
+        $Article = $Self->_TicketArticleDataGet(
+            TicketID  => $TicketID,
+            ArticleID => $Param{ArticleID},
+        );
+    }
+
     my $Placeholder = $Self->_PlaceholderBuild(
         Ticket          => $Ticket,
         TicketLinkPage  => 'CustomerTicketZoom',
         Language        => $Language,
+        Article         => $Article,
     );
     $Placeholder->{'Incoming.Subject'}   = $Param{IncomingSubject} || '';
     $Placeholder->{'Incoming.FromName'}  = $Param{IncomingFromName} || $RecipientName;
@@ -465,6 +479,7 @@ sub PlaceholderList {
         { placeholder => '{{Ticket.Priority}}',        description => 'Priorität des Tickets' },
         { placeholder => '{{Ticket.Link}}',            description => 'URL zum Ticket im Kundenportal' },
         { placeholder => '{{Ticket.LinkHTML}}',        description => 'Klickbarer Ticket-Link zum Kundenportal' },
+        { placeholder => '{{Ticket.ArticleBody[15]}}', description => 'Die ersten 15 Textzeilen des Ticketartikels; die Zahl ist frei wählbar' },
         { placeholder => '{{Customer.Name}}',          description => 'Kundenname' },
         { placeholder => '{{Customer.Number}}',        description => 'Kundennummer' },
         { placeholder => '{{CustomerUser.FullName}}',  description => 'Name des Ansprechpartners' },

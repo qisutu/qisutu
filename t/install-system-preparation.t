@@ -111,6 +111,16 @@ my $Update = do { local $/; <$UpdateFH> };
 close $UpdateFH;
 like(
     $Update,
+    qr{--reinstall\)\s+REINSTALL=1}s,
+    'the updater provides an explicit same-version reinstall option',
+);
+like(
+    $Update,
+    qr{CURRENT_PROGRAM_VERSION.*?RELEASE_VERSION.*?REINSTALL == 0.*?Verwende --reinstall}s,
+    'the updater only permits a completed same-version installation when reinstall was requested',
+);
+like(
+    $Update,
     qr{TARGET_OWNER="\$QISUTU_RUNTIME_USER"\s+TARGET_GROUP="\$APACHE_GROUP"},
     'updates restore the runtime user and shared web-server group as installation owners',
 );

@@ -27,6 +27,7 @@ use warnings;
 use utf8;
 
 use JSON::PP qw(encode_json);
+use QisutuDynamicField;
 use QisutuTicketForm;
 
 sub new {
@@ -189,17 +190,26 @@ sub Run {
     my $FieldTranslations = $FieldSubmitted
         ? $Self->_FieldTranslationsFromRequest($Request)
         : ( $Field ? $Object->FieldTranslationList( FieldID => $Field->{id} ) : $Self->_DefaultFieldTranslations($Language) );
-    my $OptionsText = $FieldSubmitted
-        ? ( $Request->{OptionsText} || '' )
-        : $Self->_OptionsText( Field => $Field );
+    my $FieldOptions = $FieldSubmitted
+        ? $Self->_OptionsFromRequest( Request => $Request )
+        : $Self->_FieldOptions( Field => $Field );
+    my $FieldOptionTranslations = $FieldSubmitted
+        ? $Self->_OptionTranslationsFromRequest( Request => $Request )
+        : $Self->_FieldOptionTranslations( Field => $Field );
+    my $FieldOptionRows = $Self->_FieldOptionRows(
+        Options  => $FieldOptions,
+        MinRows => 1,
+        Language => $Language,
+    );
 
     my $Error = $Object->Error();
     my $Notice = $Self->_StatusNotice( Status => $Status, Language => $Language );
-    my $PublicURL = $Form ? $Self->_PublicURL( Slug => $Form->{slug} ) : '';
-    my $EmbedCode = $PublicURL
-        ? '<iframe src="' . $PublicURL . '" title="' . ( $Form->{title} || $Form->{internal_name} )
-            . '" width="100%" height="720" loading="lazy"></iframe>'
-        : '';
+    my $PublicLanguageLinks = $Form && ( $Form->{form_type} || '' ) eq 'public'
+        ? $Self->_PublicLanguageLinks(
+            Slug         => $Form->{slug},
+            Translations => $FormTranslations,
+        )
+        : [];
 
     return {
         Template => 'AdminTicketForms.tt',
@@ -252,8 +262,7 @@ sub Run {
             SelectedCustomerCount => scalar @{$SelectedCustomerIDs},
             CustomerSearchURL     => 'index.pl?Page=AdminTicketForms&Step=CustomerSearch',
             FormFieldsHTML      => $Self->_FormFieldsAdminHTML( Fields => $FieldList, Form => $Form, Language => $Language ),
-            PublicURL           => $PublicURL,
-            EmbedCode           => $EmbedCode,
+            PublicLanguageLinks => $PublicLanguageLinks,
             IsPublicForm        => $EditorFormType eq 'public' ? 1 : 0,
             IsCustomerForm      => $EditorFormType eq 'customer' ? 1 : 0,
             FieldID             => $Field ? $Field->{id} : '',
@@ -265,8 +274,14 @@ sub Run {
             FieldActiveChecked  => !exists $FieldValues->{active} || $FieldValues->{active} ? 'checked' : '',
             FieldDefaultValue   => $FieldValues->{default_value} || '',
             FieldSortOrder      => defined $FieldValues->{sort_order} ? $FieldValues->{sort_order} : 1000,
-            FieldTranslationsHTML => $Self->_FieldTranslationsHTML( Translations => $FieldTranslations, Language => $Language ),
-            FieldOptionsText    => $OptionsText,
+            FieldTranslationsHTML => $Self->_FieldTranslationsHTML(
+                Translations      => $FieldTranslations,
+                Options           => $FieldOptions,
+                OptionTranslations => $FieldOptionTranslations,
+                Language          => $Language,
+            ),
+            FieldOptionRowsHTML => $FieldOptionRows->{HTML},
+            FieldOptionRowCount => $FieldOptionRows->{Count},
             FieldOptionsClass   => ( $FieldValues->{field_type} || 'text' ) =~ m{\A(?:dropdown|multiselect)\z} ? '' : 'qisutu-hidden',
             FieldIsCore         => $Field && !$Field->{dynamic_field_id} ? 1 : 0,
         },
@@ -309,7 +324,9 @@ sub _FieldParameters {
     return {
         FieldKey     => $R->{FieldKey}, FieldType => $R->{FieldType}, IsRequired => $R->{IsRequired},
         Active       => $R->{Active}, DefaultValue => $R->{DefaultValue}, SortOrder => $R->{SortOrder},
-        Options      => $Self->_OptionsFromText( $R->{OptionsText} ),
+        Options      => $Self->_OptionsFromRequest( Request => $R ),
+        OptionTranslations => $Self->_OptionTranslationsFromRequest( Request => $R ),
+        OptionTranslationsProvided => $R->{OptionTranslationsProvided} ? 1 : 0,
         Translations => $Self->_FieldTranslationsFromRequest($R),
     };
 }
@@ -491,6 +508,10 @@ sub _FormTranslationsHTML {
 sub _FieldTranslationsHTML {
     my ( $Self, %Param ) = @_;
     my $Value = $Param{Translations} || {};
+    my $Options = ref $Param{Options} eq 'ARRAY' ? $Param{Options} : [];
+    my $OptionTranslations = ref $Param{OptionTranslations} eq 'HASH'
+        ? $Param{OptionTranslations}
+        : {};
     my $HTML = '';
     for my $Code ( @{ $Self->_LanguageList() } ) {
         my $Row = $Value->{$Code} || {};
@@ -499,9 +520,47 @@ sub _FieldTranslationsHTML {
             . $Self->_Input( Label => $Self->_T('AdminTicketFormFieldLabel', $Param{Language}), Name => 'FieldLabel_' . $Code, Value => $Row->{label}, Required => $Code eq ( $Self->{Config}->{Language}->{Default} || 'de' ) )
             . $Self->_Input( Label => $Self->_T('AdminTicketFormFieldPlaceholder', $Param{Language}), Name => 'FieldPlaceholder_' . $Code, Value => $Row->{placeholder} )
             . $Self->_Textarea( Label => $Self->_T('AdminTicketFormFieldHelp', $Param{Language}), Name => 'FieldHelp_' . $Code, Value => $Row->{help_text}, Rows => 2 )
-            . '</div></details>';
+            . '</div>'
+            . $Self->_FieldOptionTranslationFieldsHTML(
+                Code    => $Code,
+                Options => $Options,
+                Values  => $OptionTranslations->{$Code} || {},
+                Language => $Param{Language},
+            )
+            . '</details>';
     }
     return $HTML;
+}
+
+sub _FieldOptionTranslationFieldsHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Code    = $Param{Code} || '';
+    my $Options = ref $Param{Options} eq 'ARRAY' ? $Param{Options} : [];
+    my $Values  = ref $Param{Values} eq 'HASH' ? $Param{Values} : {};
+    my $Rows    = '';
+    my $Index   = 0;
+
+    for my $Option ( @{$Options} ) {
+        next if ref $Option ne 'HASH';
+        $Index++;
+        my $OptionKey   = defined $Option->{option_key} ? $Option->{option_key} : '';
+        my $OptionLabel = $Option->{option_value} || $OptionKey;
+        next if $OptionKey eq '' && $OptionLabel eq '';
+
+        $Rows .= '<div class="qisutu-dynamic-option-translation-row" data-qisutu-ticket-form-option-translation-row data-option-index="' . $Index . '">'
+            . '<label data-qisutu-ticket-form-option-translation-label>' . $Self->_E($OptionLabel) . '</label>'
+            . '<input type="text" name="OptionTranslation_' . $Self->_E($Code) . '_' . $Index . '" value="'
+            . $Self->_E( $Values->{$OptionKey} || '' ) . '" maxlength="255" data-qisutu-ticket-form-option-translation-value>'
+            . '</div>';
+    }
+
+    return '<div class="qisutu-dynamic-option-translations' . ( $Rows eq '' ? ' qisutu-hidden' : '' )
+        . '" data-qisutu-ticket-form-option-translation-fields data-language="' . $Self->_E($Code) . '">'
+        . '<strong>' . $Self->_E( $Self->_T('AdminDynamicFieldOptionTranslations', $Param{Language}) ) . '</strong>'
+        . '<span class="qisutu-form-hint">' . $Self->_E( $Self->_T('AdminDynamicFieldOptionTranslationsHint', $Param{Language}) ) . '</span>'
+        . '<div class="qisutu-dynamic-option-translation-rows" data-qisutu-ticket-form-option-translation-rows>' . $Rows . '</div>'
+        . '</div>';
 }
 
 sub _FormFieldsAdminHTML {
@@ -553,15 +612,27 @@ sub _FieldTypeOptions {
     return join '', map { '<option value="' . $_ . '"' . ( $_ eq $Param{Selected} ? ' selected' : '' ) . '>' . $Self->_E($_) . '</option>' } @Type;
 }
 
-sub _OptionsFromText {
-    my ( $Self, $Text ) = @_;
+sub _OptionsFromRequest {
+    my ( $Self, %Param ) = @_;
+
+    my $Request = $Param{Request} || {};
+    my $RowCount = $Request->{OptionRowCount} || 0;
     my @Options;
     my $Sort = 0;
-    for my $Line ( split /\r?\n/, ( defined $Text ? $Text : '' ) ) {
-        next if $Line !~ /\S/;
-        my ( $Key, $Value ) = split /\|/, $Line, 2;
-        $Key   = $Self->_Trim($Key);
-        $Value = $Self->_Trim( defined $Value ? $Value : $Key );
+
+    $RowCount = 0 if $RowCount !~ m{\A\d+\z};
+    if ( !$RowCount ) {
+        for my $Name ( keys %{$Request} ) {
+            if ( $Name =~ m{\AOptionValue_(\d+)\z} && $1 > $RowCount ) {
+                $RowCount = $1;
+            }
+        }
+    }
+
+    for my $Index ( 1 .. $RowCount ) {
+        my $Value = $Self->_Trim( $Request->{ 'OptionValue_' . $Index } );
+        my $Key   = $Self->_Trim( $Request->{ 'OptionKey_' . $Index } );
+        $Key = $Value if !$Key;
         next if !$Key || !$Value;
         $Sort += 100;
         push @Options, { option_key => $Key, option_value => $Value, sort_order => $Sort };
@@ -569,12 +640,99 @@ sub _OptionsFromText {
     return \@Options;
 }
 
-sub _OptionsText {
+sub _OptionTranslationsFromRequest {
+    my ( $Self, %Param ) = @_;
+
+    my $Request = $Param{Request} || {};
+    my $RowCount = $Request->{OptionRowCount} || 0;
+    my %Translation;
+
+    $RowCount = 0 if $RowCount !~ m{\A\d+\z};
+    for my $Code ( @{ $Self->_LanguageList() } ) {
+        for my $Index ( 1 .. $RowCount ) {
+            my $OptionValue = $Self->_Trim( $Request->{ 'OptionValue_' . $Index } );
+            my $OptionKey   = $Self->_Trim( $Request->{ 'OptionKey_' . $Index } );
+            my $Value       = $Self->_Trim( $Request->{ 'OptionTranslation_' . $Code . '_' . $Index } );
+            $OptionKey = $OptionValue if !$OptionKey;
+            next if !$OptionKey || !$Value;
+            $Translation{$Code}->{$OptionKey} = $Value;
+        }
+    }
+
+    return \%Translation;
+}
+
+sub _FieldOptions {
     my ( $Self, %Param ) = @_;
     my $Field = $Param{Field} || {};
-    return '' if !$Field->{dynamic_field_id};
-    my $Rows = $Self->{DB}->SelectAll('SELECT option_key, option_value FROM ticket_dynamic_field_option WHERE field_id = ? ORDER BY sort_order ASC, id ASC', $Field->{dynamic_field_id}) || [];
-    return join "\n", map { ( $_->{option_key} || '' ) . '|' . ( $_->{option_value} || '' ) } @{$Rows};
+    return [] if !$Field->{dynamic_field_id};
+
+    my $Dynamic = QisutuDynamicField->new(
+        Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output},
+    );
+    return $Dynamic->OptionList( FieldID => $Field->{dynamic_field_id} ) || [];
+}
+
+sub _FieldOptionTranslations {
+    my ( $Self, %Param ) = @_;
+    my $Field = $Param{Field} || {};
+    return {} if !$Field->{dynamic_field_id};
+
+    my $Dynamic = QisutuDynamicField->new(
+        Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output},
+    );
+    return $Dynamic->OptionTranslationList( FieldID => $Field->{dynamic_field_id} ) || {};
+}
+
+sub _FieldOptionRows {
+    my ( $Self, %Param ) = @_;
+
+    my $Options = ref $Param{Options} eq 'ARRAY' ? $Param{Options} : [];
+    my $MinRows = $Param{MinRows} || 1;
+    my $Language = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
+    my $HTML    = '';
+    my $Index   = 0;
+
+    for my $Option ( @{$Options} ) {
+        next if ref $Option ne 'HASH';
+        $Index++;
+        $HTML .= $Self->_FieldOptionRowHTML(
+            Index       => $Index,
+            OptionKey   => $Option->{option_key},
+            OptionValue => $Option->{option_value},
+            Language    => $Language,
+        );
+    }
+
+    while ( $Index < $MinRows ) {
+        $Index++;
+        $HTML .= $Self->_FieldOptionRowHTML(
+            Index       => $Index,
+            OptionKey   => '',
+            OptionValue => '',
+            Language    => $Language,
+        );
+    }
+
+    return { HTML => $HTML, Count => $Index };
+}
+
+sub _FieldOptionRowHTML {
+    my ( $Self, %Param ) = @_;
+
+    my $Index       = $Param{Index} || 1;
+    my $OptionKey   = defined $Param{OptionKey} ? $Param{OptionKey} : '';
+    my $OptionValue = defined $Param{OptionValue} ? $Param{OptionValue} : '';
+    my $Language    = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
+
+    return '<div class="qisutu-ticket-form-option-row" data-qisutu-ticket-form-option-row data-option-index="' . $Index
+        . '" data-option-new="' . ( $OptionKey eq '' ? '1' : '0' ) . '">'
+        . '<input type="hidden" name="OptionKey_' . $Index . '" value="' . $Self->_E($OptionKey) . '" data-qisutu-ticket-form-option-key>'
+        . '<input type="text" class="qisutu-ticket-form-option-value" name="OptionValue_' . $Index . '" value="'
+        . $Self->_E($OptionValue) . '" placeholder="' . $Self->_E( $Self->_T('AdminTicketFormOptionValue', $Language) ) . '" data-qisutu-ticket-form-option-value>'
+        . '<button class="qisutu-button qisutu-button-danger qisutu-ticket-form-option-remove" type="button" data-qisutu-ticket-form-option-remove>'
+        . $Self->_E( $Self->_T('AdminDelete', $Language) )
+        . '</button></div>';
 }
 
 sub _PublicURL {
@@ -582,7 +740,38 @@ sub _PublicURL {
     my $Base = $Self->{Config}->{System}->{BaseURL} || '';
     $Base =~ s{/index\.pl\z}{};
     $Base =~ s{/\z}{};
-    return ( $Base ? $Base . '/' : '' ) . 'form.pl?Form=' . ( $Param{Slug} || '' );
+    my $URL = ( $Base ? $Base . '/' : '' ) . 'form.pl?Form=' . ( $Param{Slug} || '' );
+    $URL .= '&Language=' . $Param{Language} if $Param{Language};
+    return $URL;
+}
+
+sub _PublicLanguageLinks {
+    my ( $Self, %Param ) = @_;
+
+    my $Translations = ref $Param{Translations} eq 'HASH' ? $Param{Translations} : {};
+    my $Default = $Self->{Config}->{Language}->{Default} || 'en';
+    my @Codes = grep {
+        my $Row = $Translations->{$_};
+        ref $Row eq 'HASH' && $Self->_Trim( $Row->{title} ) ne '';
+    } keys %{$Translations};
+    @Codes = sort { ( $a eq $Default ? 0 : 1 ) <=> ( $b eq $Default ? 0 : 1 ) || $a cmp $b } @Codes;
+
+    my @Links;
+    for my $Code (@Codes) {
+        my $Title = $Translations->{$Code}->{title} || '';
+        my $URL = $Self->_PublicURL( Slug => $Param{Slug}, Language => $Code );
+        my $EmbedURL = $Self->_E($URL);
+        my $EmbedTitle = $Self->_E($Title);
+        push @Links, {
+            language    => uc($Code),
+            language_code => $Code,
+            url         => $URL,
+            iframe_code => '<iframe src="' . $EmbedURL . '" title="' . $EmbedTitle
+                . '" width="100%" height="720" loading="lazy"></iframe>',
+        };
+    }
+
+    return \@Links;
 }
 
 sub _StatusNotice {

@@ -253,6 +253,54 @@ sub TemplateListForQueue {
     return $Rows;
 }
 
+sub TemplateListForQueueAllLanguages {
+    my ( $Self, %Param ) = @_;
+
+    $Self->SchemaEnsure() || return [];
+
+    my $QueueID = $Param{QueueID} || 0;
+    return [] if $QueueID !~ m{\A\d+\z} || !$QueueID;
+
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT
+            rt.id,
+            rtt.language,
+            rtt.name,
+            rtt.description,
+            rt.sort_order,
+            COUNT(DISTINCT rta.id) AS attachment_count
+         FROM response_template rt
+         INNER JOIN response_template_translation rtt
+            ON rtt.template_id = rt.id
+         INNER JOIN response_template_queue rtq
+            ON rtq.template_id = rt.id
+           AND rtq.queue_id = ?
+         LEFT JOIN response_template_attachment rta
+            ON rta.template_id = rt.id
+         WHERE rt.active = 1
+           AND NULLIF(TRIM(rtt.content), "") IS NOT NULL
+         GROUP BY
+            rt.id, rtt.language, rtt.name, rtt.description, rt.sort_order
+         ORDER BY rt.sort_order ASC, rt.id ASC, rtt.language ASC',
+        $QueueID,
+    );
+
+    if ( !defined $Rows ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Response-template languages could not be loaded';
+        return [];
+    }
+
+    my %LanguageLabel = map { $_->{code} => $_->{label} } @{ $Self->LanguageList() };
+    for my $Row ( @{$Rows} ) {
+        my $Language = $Self->LanguageClean( $Row->{language} );
+        $Row->{language} = $Language;
+        $Row->{language_label} = $LanguageLabel{$Language} || uc($Language);
+        $Row->{selection_label} = uc($Language) . ' – ' . ( $Row->{name} || '' );
+    }
+
+    return $Rows;
+}
+
 sub TemplateGet {
     my ( $Self, %Param ) = @_;
 

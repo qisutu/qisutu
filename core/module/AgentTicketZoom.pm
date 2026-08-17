@@ -268,6 +268,9 @@ sub Run {
         ) : undef;
         my $TemplateID = $Request->{ResponseTemplateID} || 0;
         my $TemplateObject = $Self->_ResponseTemplateObject();
+        my $TemplateLanguage = $TemplateObject ? $TemplateObject->LanguageClean(
+            $Request->{ResponseTemplateLanguage} || $Language,
+        ) : $Language;
         my $Template;
 
         if (
@@ -282,7 +285,7 @@ sub Run {
             $Template = $TemplateObject->TemplateForQueueGet(
                 TemplateID => $TemplateID,
                 QueueID    => $AccessibleTicket->{queue_id},
-                Language   => $Language,
+                Language   => $TemplateLanguage,
             );
         }
 
@@ -299,10 +302,41 @@ sub Run {
             } @{ $Template->{attachments} || [] };
         }
 
+        my $BodyTemplate = '';
+        if ($Template) {
+            my $QueueReplyTemplate = $Self->_QueueReplyTemplate(
+                TicketID => $TicketID,
+                User     => $User,
+                Language => $TemplateLanguage,
+            );
+            my $ReplyArticleID = $Request->{ReplyArticleID} || 0;
+            my $ReplyArticle;
+
+            if ( $ReplyArticleID =~ m{\A\d+\z} && $ReplyArticleID ) {
+                my $ReplyArticles = $TicketObject->ArticleList(
+                    TicketID => $TicketID,
+                    User     => $User,
+                    Language => $TemplateLanguage,
+                ) || [];
+                ($ReplyArticle) = grep {
+                    ( $_->{id} || 0 ) == $ReplyArticleID
+                } @{$ReplyArticles};
+            }
+
+            $BodyTemplate = $ReplyArticle ? $Self->_ArticleReplyBodyTemplate(
+                Ticket             => $AccessibleTicket,
+                Article            => $ReplyArticle,
+                QueueReplyTemplate => $QueueReplyTemplate,
+                Language           => $TemplateLanguage,
+            ) : $QueueReplyTemplate;
+        }
+
         return $Self->_JSONResponse(
             Data => {
                 success     => $Template ? 1 : 0,
                 content     => $Template ? ( $Template->{content} || '' ) : '',
+                body_template => $BodyTemplate,
+                language    => $Template ? $TemplateLanguage : '',
                 attachments => \@Attachments,
                 error       => $Template ? '' : 'TicketResponseTemplateLoadFailed',
             },
@@ -563,11 +597,14 @@ sub Run {
 
         if ( !$ArticleCreateError && $ArticleMode eq 'email' && ( $Request->{ResponseTemplateID} || 0 ) ) {
             my $TemplateObject = $Self->_ResponseTemplateObject();
+            my $TemplateLanguage = $TemplateObject ? $TemplateObject->LanguageClean(
+                $Request->{ResponseTemplateLanguage} || $Language,
+            ) : $Language;
             my $AttachmentIDs  = $Self->_RequestIDList( Value => $Request->{ResponseTemplateAttachmentID} );
             my $TemplateAttachments = $TemplateObject ? $TemplateObject->AttachmentsForArticle(
                 TemplateID   => $Request->{ResponseTemplateID},
                 QueueID      => $TicketForSubmit->{queue_id},
-                Language     => $Language,
+                Language     => $TemplateLanguage,
                 AttachmentIDs => $AttachmentIDs,
                 UseSelection => $Request->{ResponseTemplateAttachmentSelection} ? 1 : 0,
             ) : undef;
@@ -954,13 +991,19 @@ sub Run {
         Language => $Language,
     );
     my $ResponseTemplateObject = $Self->_ResponseTemplateObject();
-    my $ResponseTemplateList = $ResponseTemplateObject ? $ResponseTemplateObject->TemplateListForQueue(
+    my $ResponseTemplateList = $ResponseTemplateObject ? $ResponseTemplateObject->TemplateListForQueueAllLanguages(
         QueueID => $Ticket->{queue_id},
-        Language => $Language,
     ) : [];
     my $SelectedResponseTemplateID = $ArticleCreateError ? ( $Request->{ResponseTemplateID} || 0 ) : 0;
+    my $SelectedResponseTemplateLanguage = $ArticleCreateError
+        ? ( $Request->{ResponseTemplateLanguage} || '' )
+        : '';
     for my $ResponseTemplate ( @{$ResponseTemplateList} ) {
-        $ResponseTemplate->{selected} = ( $ResponseTemplate->{id} || 0 ) == $SelectedResponseTemplateID ? 'selected' : '';
+        $ResponseTemplate->{selected}
+            = ( $ResponseTemplate->{id} || 0 ) == $SelectedResponseTemplateID
+                && ( $ResponseTemplate->{language} || '' ) eq $SelectedResponseTemplateLanguage
+            ? 'selected'
+            : '';
     }
 
     for my $Article ( @{$Articles} ) {
@@ -1279,6 +1322,8 @@ sub Run {
             TicketResponseTemplateCount => scalar @{$ResponseTemplateList},
             HasTicketResponseTemplates => @{$ResponseTemplateList} ? 1 : 0,
             TicketSelectedResponseTemplateID => $ArticleCreateError ? ( $Request->{ResponseTemplateID} || 0 ) : 0,
+            TicketSelectedResponseTemplateLanguage => $SelectedResponseTemplateLanguage,
+            SubmittedReplyArticleID => $ArticleCreateError ? ( $Request->{ReplyArticleID} || 0 ) : 0,
             SubmittedResponseTemplateAttachmentIDs => $ArticleCreateError ? $Self->_RequestIDList( Value => $Request->{ResponseTemplateAttachmentID} ) : [],
             SubmittedResponseTemplateAttachmentSelection => $ArticleCreateError && $Request->{ResponseTemplateAttachmentSelection} ? 1 : 0,
             ResponseTemplateFieldClass => $ArticleCreateError && ( $Request->{ArticleMode} || '' ) eq 'email' && @{$ResponseTemplateList} ? '' : 'qisutu-hidden',
