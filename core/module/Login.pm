@@ -178,6 +178,7 @@ sub _LoginShow {
         Template => 'Login.tt',
         Data     => $Self->_TemplateData(
             PageTitle    => 'Translate:PageLoginTitle',
+            Robots       => 'index, follow',
             ErrorMessage => $Param{ErrorMessage} || '',
             LoginValue   => $Param{LoginValue}   || '',
             AccountType  => $AccountType,
@@ -670,11 +671,13 @@ sub _PasswordResetInvalid {
 sub _RenderPublicPage {
     my ( $Self, %Param ) = @_;
 
+    my $Data = $Param{Data} || {};
+
     my $Body = $Self->{Output}->Render(
         Template => $Param{Template},
         Header   => 'LoginHeader.tt',
         Footer   => 'LoginFooter.tt',
-        Data     => $Param{Data} || {},
+        Data     => $Data,
     );
 
     if ( !defined $Body ) {
@@ -682,17 +685,22 @@ sub _RenderPublicPage {
         return;
     }
 
+    my @Headers = (
+        'Set-Cookie: ' . $Self->_PublicLanguageCookie(),
+        'Cache-Control: no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma: no-cache',
+        'Expires: 0',
+        'Referrer-Policy: no-referrer',
+    );
+
+    if ( ( $Data->{Robots} || '' ) ne 'index, follow' ) {
+        push @Headers, 'X-Robots-Tag: noindex, nofollow';
+    }
+
     return $Self->{Output}->Response(
         Body    => $Body,
         Cookie  => $Param{Cookie} || '',
-        Headers => [
-            'Set-Cookie: ' . $Self->_PublicLanguageCookie(),
-            'Cache-Control: no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma: no-cache',
-            'Expires: 0',
-            'Referrer-Policy: no-referrer',
-            'X-Robots-Tag: noindex, nofollow',
-        ],
+        Headers => \@Headers,
     );
 }
 
@@ -708,7 +716,7 @@ sub _TemplateData {
         LoginURL        => 'index.pl?Language=' . $Language,
         PasswordForgotURL => 'index.pl?Step=PasswordForgot;Language=' . $Language,
         CustomerRegistrationURL => 'index.pl?Step=CustomerRegistration;Language=' . $Language,
-        Robots          => 'noindex, nofollow',
+        Robots          => $Param{Robots} || 'noindex, nofollow',
         PageTitle       => $Param{PageTitle} || 'Translate:PageLoginTitle',
         StaticBase      => $Self->{Config}->{Paths}->{StaticURL} || '/static',
         PageCSS         => 'qisutu-login.css?v=2026081602',
