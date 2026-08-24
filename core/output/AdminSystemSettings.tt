@@ -99,7 +99,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminSystemSettings">[% Translate.AdminBackToList %]</a>
                     </div>
 
-                    <form class="qisutu-admin-form qisutu-admin-form-wide qisutu-system-settings-edit-form" method="post" action="[% FormAction %]">
+                    <form class="qisutu-admin-form qisutu-admin-form-wide qisutu-system-settings-edit-form" method="post" action="[% FormAction %]" enctype="multipart/form-data">
                         <input type="hidden" name="Page" value="AdminSystemSettings">
                         <input type="hidden" name="Step" value="SystemSettingUpdate">
                         <input type="hidden" name="Action" value="Edit">

@@ -26,6 +26,8 @@ use strict;
 use warnings;
 use utf8;
 
+use File::Spec;
+
 use QisutuAgentNotificationTemplates;
 use QisutuHTML;
 use QisutuMail;
@@ -1337,10 +1339,11 @@ sub _MailHTMLBuild {
         $LogoSRC = $Self->_LogoURL();
     }
 
+    my $BrandName = $Self->_MailBrandName();
     my $LogoHTML = '';
     if ($LogoSRC) {
         $LogoHTML = '<td style="width:34px;padding:0 10px 0 0;vertical-align:middle;">'
-            . '<img src="' . $Self->_Escape($LogoSRC) . '" alt="Qisutu" style="height:28px;max-height:28px;width:auto;display:block;border:0;outline:none;text-decoration:none;">'
+            . '<img src="' . $Self->_Escape($LogoSRC) . '" alt="" width="28" height="28" style="width:28px;height:28px;max-width:28px;max-height:28px;display:block;border:0;outline:none;text-decoration:none;">'
             . '</td>';
     }
 
@@ -1350,7 +1353,7 @@ sub _MailHTMLBuild {
         . '<tr><td style="background:#015068;padding:12px 18px;">'
         . '<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><tr>'
         . $LogoHTML
-        . '<td style="vertical-align:middle;color:#ffffff;font-size:20px;font-weight:bold;line-height:28px;">Qisutu</td>'
+        . '<td style="vertical-align:middle;color:#ffffff;font-size:20px;font-weight:bold;line-height:28px;">' . $Self->_Escape($BrandName) . '</td>'
         . '</tr></table>'
         . '</td></tr>'
         . '<tr><td style="padding:24px 28px;font-size:15px;line-height:1.55;">'
@@ -1368,8 +1371,8 @@ sub _MailInlineImages {
         {
             ContentID => 'qisutu-logo',
             Path      => $LogoPath,
-            Filename  => 'logo.png',
-            MimeType  => 'image/png',
+            Filename  => $Self->{MailBrandLogoFilename} || 'email-logo.png',
+            MimeType  => $Self->{MailBrandLogoMimeType} || 'image/png',
         },
     ];
 }
@@ -1379,15 +1382,26 @@ sub _LogoFilePath {
 
     my @Path;
 
+    my $BrandLogo = $Self->_SystemSettingGet( Key => 'mail.brand_logo', Default => '' );
+    if ( $BrandLogo && $BrandLogo =~ m{\A(email-logo-custom\.(?:png|jpg|gif))\|(image/(?:png|jpeg|gif))\z} ) {
+        my ( $Filename, $MimeType ) = ( $1, $2 );
+        my $CustomPath = File::Spec->catfile( $Self->{Config}->{RootPath} || '', 'var', 'data', $Filename );
+        if ( -f $CustomPath && -r $CustomPath ) {
+            $Self->{MailBrandLogoFilename} = $Filename;
+            $Self->{MailBrandLogoMimeType} = $MimeType;
+            return $CustomPath;
+        }
+    }
+
     if ( $Self->{Config}->{Paths}->{Static} ) {
-        push @Path, $Self->{Config}->{Paths}->{Static} . '/img/logo.png';
+        push @Path, $Self->{Config}->{Paths}->{Static} . '/img/email-logo.png';
     }
 
     if ( $Self->{Config}->{RootPath} ) {
-        push @Path, $Self->{Config}->{RootPath} . '/var/static/img/logo.png';
+        push @Path, $Self->{Config}->{RootPath} . '/var/static/img/email-logo.png';
     }
 
-    push @Path, '/opt/qisutu/var/static/img/logo.png';
+    push @Path, '/opt/qisutu/var/static/img/email-logo.png';
 
     my %Seen;
     for my $Path (@Path) {
@@ -1396,6 +1410,35 @@ sub _LogoFilePath {
     }
 
     return '';
+}
+
+sub _MailBrandName {
+    my ($Self) = @_;
+
+    my $Name = $Self->_SystemSettingGet( Key => 'mail.brand_name', Default => 'Qisutu' );
+    $Name = 'Qisutu' if !defined $Name || $Name !~ m{\S};
+    $Name =~ s{\A\s+|\s+\z}{}g;
+    return substr( $Name, 0, 120 );
+}
+
+sub _SystemSettingGet {
+    my ( $Self, %Param ) = @_;
+
+    my $Default = defined $Param{Default} ? $Param{Default} : '';
+    return $Default if !$Self->{DB};
+
+    my $Value = eval {
+        require QisutuSystemSetting;
+        QisutuSystemSetting->new(
+            Config => $Self->{Config},
+            DB     => $Self->{DB},
+        )->Get(
+            Key     => $Param{Key},
+            Default => $Default,
+        );
+    };
+
+    return $@ ? $Default : $Value;
 }
 
 sub _LogoURL {

@@ -819,8 +819,8 @@ sub _MailInlineImages {
         {
             ContentID => 'qisutu-logo',
             Path      => $LogoPath,
-            Filename  => 'logo.png',
-            MimeType  => 'image/png',
+            Filename  => $Self->{MailBrandLogoFilename} || 'email-logo.png',
+            MimeType  => $Self->{MailBrandLogoMimeType} || 'image/png',
         },
     ];
 }
@@ -830,12 +830,25 @@ sub _LogoFilePath {
 
     my @Paths;
 
+    my $BrandLogo = QisutuSystemSetting->new( Config => $Self->{Config}, DB => $Self->{DB} )->Get(
+        Key => 'mail.brand_logo', Default => '',
+    );
+    if ( $BrandLogo && $BrandLogo =~ m{\A(email-logo-custom\.(?:png|jpg|gif))\|(image/(?:png|jpeg|gif))\z} ) {
+        my ( $Filename, $MimeType ) = ( $1, $2 );
+        my $CustomPath = File::Spec->catfile( $Self->{Config}->{RootPath} || '', 'var', 'data', $Filename );
+        if ( -f $CustomPath && -r $CustomPath ) {
+            $Self->{MailBrandLogoFilename} = $Filename;
+            $Self->{MailBrandLogoMimeType} = $MimeType;
+            return $CustomPath;
+        }
+    }
+
     if ( $Self->{Config}->{Paths}->{Static} ) {
-        push @Paths, $Self->{Config}->{Paths}->{Static} . '/img/logo.png';
+        push @Paths, $Self->{Config}->{Paths}->{Static} . '/img/email-logo.png';
     }
 
     if ( $Self->{Config}->{RootPath} ) {
-        push @Paths, $Self->{Config}->{RootPath} . '/var/static/img/logo.png';
+        push @Paths, $Self->{Config}->{RootPath} . '/var/static/img/email-logo.png';
     }
 
     my %Seen;
@@ -850,7 +863,10 @@ sub _LogoFilePath {
 sub _SystemName {
     my ($Self) = @_;
 
-    return $Self->{Config}->{System}->{Name} || 'Qisutu';
+    my $Name = QisutuSystemSetting->new( Config => $Self->{Config}, DB => $Self->{DB} )->Get(
+        Key => 'mail.brand_name', Default => 'Qisutu',
+    );
+    return $Name || 'Qisutu';
 }
 
 sub _Trim {

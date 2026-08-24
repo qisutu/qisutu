@@ -26,6 +26,9 @@ use strict;
 use warnings;
 use utf8;
 
+use File::Path qw(make_path);
+use File::Spec;
+
 sub new {
     my ( $Class, %Param ) = @_;
 
@@ -72,14 +75,31 @@ sub Run {
         else {
             my $Value;
 
-            if ( ( $Setting->{type} || '' ) eq 'boolean' ) {
+            if ( ( $Setting->{type} || '' ) eq 'image' ) {
+                my ( $ImageValue, $ImageError ) = $Self->_ImageUploadSave(
+                    Request => $Request,
+                );
+
+                if ($ImageError) {
+                    $Error  = $ImageError;
+                    $Action = 'Edit';
+                }
+                elsif ($ImageValue) {
+                    $Value = $ImageValue;
+                }
+                else {
+                    $Error  = 'Bitte wählen Sie eine PNG-, JPEG- oder GIF-Datei aus.';
+                    $Action = 'Edit';
+                }
+            }
+            elsif ( ( $Setting->{type} || '' ) eq 'boolean' ) {
                 $Value = exists $Request->{SettingValue} && $Request->{SettingValue} ? 1 : 0;
             }
             else {
                 $Value = exists $Request->{SettingValue} ? $Request->{SettingValue} : '';
             }
 
-            if (
+            if ( !$Error &&
                 $SettingObject->Set(
                     Key             => $SettingKey,
                     Value           => $Value,
@@ -92,7 +112,7 @@ sub Run {
                 };
             }
 
-            $Error  = $SettingObject->Error() || 'System setting could not be saved';
+            $Error  = $SettingObject->Error() || 'System setting could not be saved' if !$Error;
             $Action = 'Edit';
         }
     }
@@ -308,6 +328,16 @@ sub _InputHTML {
             . '</span></label>';
     }
 
+    if ( $Type eq 'image' ) {
+        my $Current = $Value
+            ? '<p><strong>Aktuelles eigenes Logo:</strong> ' . $Self->_Escape($Value) . '</p>'
+            : '<p>Aktuell wird das mitgelieferte kleine Qisutu-Logo verwendet.</p>';
+
+        return $Current
+            . '<input type="file" name="SettingImage" accept="image/png,image/jpeg,image/gif" required>'
+            . '<p class="qisutu-form-hint">Das Logo wird in E-Mails auf 28 × 28 Pixel begrenzt.</p>';
+    }
+
     my $InputType = $Type eq 'integer' ? 'number' : 'text';
     my $Attributes = '';
 
@@ -382,6 +412,65 @@ sub _ValueTranslate {
     }
 
     return $Value;
+}
+
+sub _ImageUploadSave {
+    my ( $Self, %Param ) = @_;
+
+    my $Request = $Param{Request} || {};
+    my $Uploads = $Request->{__Uploads} || {};
+    my $List    = $Uploads->{SettingImage};
+    my $Upload  = ref $List eq 'ARRAY' ? $List->[0] : undef;
+
+    return ( '', '' ) if !$Upload;
+
+    my $Content = defined $Upload->{Content} ? $Upload->{Content} : '';
+    return ( '', 'Die ausgewählte Logodatei ist leer.' ) if $Content eq '';
+    return ( '', 'Die Logodatei darf höchstens 2 MB groß sein.' ) if length($Content) > 2 * 1024 * 1024;
+
+    my ( $Extension, $MimeType );
+    if ( substr( $Content, 0, 8 ) eq "\x89PNG\r\n\x1a\n" ) {
+        ( $Extension, $MimeType ) = ( 'png', 'image/png' );
+    }
+    elsif ( substr( $Content, 0, 3 ) eq "\xff\xd8\xff" ) {
+        ( $Extension, $MimeType ) = ( 'jpg', 'image/jpeg' );
+    }
+    elsif ( substr( $Content, 0, 6 ) eq 'GIF87a' || substr( $Content, 0, 6 ) eq 'GIF89a' ) {
+        ( $Extension, $MimeType ) = ( 'gif', 'image/gif' );
+    }
+    else {
+        return ( '', 'Die Datei ist kein gültiges PNG-, JPEG- oder GIF-Bild.' );
+    }
+
+    my $RootPath = $Self->{Config}->{RootPath} || '';
+    return ( '', 'Das Qisutu-Verzeichnis konnte nicht ermittelt werden.' ) if !$RootPath;
+
+    my $Directory = File::Spec->catdir( $RootPath, 'var', 'data' );
+    if ( !-d $Directory && !eval { make_path($Directory); 1 } ) {
+        return ( '', 'Das Verzeichnis für das E-Mail-Logo konnte nicht angelegt werden.' );
+    }
+
+    my $Filename = 'email-logo-custom.' . $Extension;
+    my $Path     = File::Spec->catfile( $Directory, $Filename );
+
+    my $FileHandle;
+    if ( !open $FileHandle, '>:raw', $Path ) {
+        return ( '', 'Das E-Mail-Logo konnte nicht gespeichert werden.' );
+    }
+    print {$FileHandle} $Content;
+    if ( !close $FileHandle ) {
+        return ( '', 'Das E-Mail-Logo konnte nicht vollständig gespeichert werden.' );
+    }
+
+    chmod 0644, $Path;
+
+    for my $OldExtension (qw(png jpg gif)) {
+        next if $OldExtension eq $Extension;
+        my $OldPath = File::Spec->catfile( $Directory, 'email-logo-custom.' . $OldExtension );
+        unlink $OldPath if -f $OldPath;
+    }
+
+    return ( $Filename . '|' . $MimeType, '' );
 }
 
 sub _Translate {

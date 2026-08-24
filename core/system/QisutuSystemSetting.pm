@@ -128,7 +128,7 @@ sub DefinitionList {
         next if exists $Definition->{Active} && !$Definition->{Active};
 
         my $Type = lc( $Definition->{Type} || $Definition->{type} || 'text' );
-        $Type = 'text' if $Type !~ m{\A(?:text|textarea|select|boolean|integer)\z};
+        $Type = 'text' if $Type !~ m{\A(?:text|textarea|select|boolean|integer|image)\z};
 
         my $Default = exists $Definition->{Default} ? $Definition->{Default} : $Definition->{default};
         $Default = '' if !defined $Default;
