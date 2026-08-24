@@ -37,17 +37,17 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 <section class="qisutu-panel">
                     <div class="qisutu-panel-header">
                         <div>
-                            <h2>Datenbankverbindung</h2>
-                            <span class="qisutu-panel-subtitle">Wird aus core/config/QisutuConfig.pm gelesen</span>
+                            <h2>[% Translate.AdminSystemSettingsDatabaseConnection %]</h2>
+                            <span class="qisutu-panel-subtitle">[% Translate.AdminSystemSettingsDatabaseSource %]</span>
                         </div>
                     </div>
                     <div class="qisutu-table-wrap">
                         <table class="qisutu-table qisutu-table-compact">
                             <tbody>
-                                <tr><th>Server</th><td>[% DatabaseHost %]:[% DatabasePort %]</td></tr>
-                                <tr><th>Datenbankname</th><td>[% DatabaseName %]</td></tr>
-                                <tr><th>Datenbankbenutzer</th><td>[% DatabaseUser %]</td></tr>
-                                <tr><th>Datenbankpasswort</th><td><code>[% DatabasePassword %]</code></td></tr>
+                                <tr><th>[% Translate.AdminSystemSettingsDatabaseServer %]</th><td>[% DatabaseHost %]:[% DatabasePort %]</td></tr>
+                                <tr><th>[% Translate.AdminSystemSettingsDatabaseName %]</th><td>[% DatabaseName %]</td></tr>
+                                <tr><th>[% Translate.AdminSystemSettingsDatabaseUser %]</th><td>[% DatabaseUser %]</td></tr>
+                                <tr><th>[% Translate.AdminSystemSettingsDatabasePassword %]</th><td><code>[% DatabasePassword %]</code></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -55,10 +55,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <input type="hidden" name="Page" value="AdminSystemSettings">
                         [% IF ShowDatabasePassword %]
                         <input type="hidden" name="Step" value="DatabasePasswordHide">
-                        <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-secondary" type="submit">Passwort ausblenden</button></div>
+                        <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-secondary" type="submit">[% Translate.AdminSystemSettingsPasswordHide %]</button></div>
                         [% ELSE %]
                         <input type="hidden" name="Step" value="DatabasePasswordShow">
-                        <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-secondary" type="submit">Passwort anzeigen</button></div>
+                        <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-secondary" type="submit">[% Translate.AdminSystemSettingsPasswordShow %]</button></div>
                         [% END %]
                     </form>
                 </section>

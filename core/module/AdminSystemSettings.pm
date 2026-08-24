@@ -88,7 +88,7 @@ sub Run {
                     $Value = $ImageValue;
                 }
                 else {
-                    $Error  = 'Bitte wählen Sie eine PNG-, JPEG- oder GIF-Datei aus.';
+                    $Error  = 'Translate:SystemSettingMailBrandLogoSelect';
                     $Action = 'Edit';
                 }
             }
@@ -330,12 +330,12 @@ sub _InputHTML {
 
     if ( $Type eq 'image' ) {
         my $Current = $Value
-            ? '<p><strong>Aktuelles eigenes Logo:</strong> ' . $Self->_Escape($Value) . '</p>'
-            : '<p>Aktuell wird das mitgelieferte kleine Qisutu-Logo verwendet.</p>';
+            ? '<p><strong>' . $Self->_Escape( $Self->_Translate( Key => 'SystemSettingMailBrandLogoCurrent', Language => $Language ) ) . ':</strong> ' . $Self->_Escape($Value) . '</p>'
+            : '<p>' . $Self->_Escape( $Self->_Translate( Key => 'SystemSettingMailBrandLogoDefault', Language => $Language ) ) . '</p>';
 
         return $Current
             . '<input type="file" name="SettingImage" accept="image/png,image/jpeg,image/gif" required>'
-            . '<p class="qisutu-form-hint">Das Logo wird in E-Mails auf 28 × 28 Pixel begrenzt.</p>';
+            . '<p class="qisutu-form-hint">' . $Self->_Escape( $Self->_Translate( Key => 'SystemSettingMailBrandLogoHint', Language => $Language ) ) . '</p>';
     }
 
     my $InputType = $Type eq 'integer' ? 'number' : 'text';
@@ -425,8 +425,8 @@ sub _ImageUploadSave {
     return ( '', '' ) if !$Upload;
 
     my $Content = defined $Upload->{Content} ? $Upload->{Content} : '';
-    return ( '', 'Die ausgewählte Logodatei ist leer.' ) if $Content eq '';
-    return ( '', 'Die Logodatei darf höchstens 2 MB groß sein.' ) if length($Content) > 2 * 1024 * 1024;
+    return ( '', 'Translate:SystemSettingMailBrandLogoEmpty' ) if $Content eq '';
+    return ( '', 'Translate:SystemSettingMailBrandLogoTooLarge' ) if length($Content) > 2 * 1024 * 1024;
 
     my ( $Extension, $MimeType );
     if ( substr( $Content, 0, 8 ) eq "\x89PNG\r\n\x1a\n" ) {
@@ -439,15 +439,15 @@ sub _ImageUploadSave {
         ( $Extension, $MimeType ) = ( 'gif', 'image/gif' );
     }
     else {
-        return ( '', 'Die Datei ist kein gültiges PNG-, JPEG- oder GIF-Bild.' );
+        return ( '', 'Translate:SystemSettingMailBrandLogoInvalid' );
     }
 
     my $RootPath = $Self->{Config}->{RootPath} || '';
-    return ( '', 'Das Qisutu-Verzeichnis konnte nicht ermittelt werden.' ) if !$RootPath;
+    return ( '', 'Translate:SystemSettingMailBrandRootMissing' ) if !$RootPath;
 
     my $Directory = File::Spec->catdir( $RootPath, 'var', 'data' );
     if ( !-d $Directory && !eval { make_path($Directory); 1 } ) {
-        return ( '', 'Das Verzeichnis für das E-Mail-Logo konnte nicht angelegt werden.' );
+        return ( '', 'Translate:SystemSettingMailBrandDirectoryFailed' );
     }
 
     my $Filename = 'email-logo-custom.' . $Extension;
@@ -455,11 +455,11 @@ sub _ImageUploadSave {
 
     my $FileHandle;
     if ( !open $FileHandle, '>:raw', $Path ) {
-        return ( '', 'Das E-Mail-Logo konnte nicht gespeichert werden.' );
+        return ( '', 'Translate:SystemSettingMailBrandLogoSaveFailed' );
     }
     print {$FileHandle} $Content;
     if ( !close $FileHandle ) {
-        return ( '', 'Das E-Mail-Logo konnte nicht vollständig gespeichert werden.' );
+        return ( '', 'Translate:SystemSettingMailBrandLogoWriteFailed' );
     }
 
     chmod 0644, $Path;
