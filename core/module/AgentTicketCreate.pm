@@ -1335,14 +1335,15 @@ sub _QueueTemplateHTML {
 
     if ($Salutation) {
         $Salutation = $Self->_SystemSignatureBlockToBreaks( HTML => $Salutation );
-        push @Parts, '<div class="qisutu-mail-salutation">' . $Salutation . '</div>';
+        $Salutation =~ s{(?:\s*<br\s*/?>\s*)+\z}{}i;
+        push @Parts, '<div class="qisutu-mail-salutation" contenteditable="false">' . $Salutation . '</div>';
     }
 
     push @Parts, '<div class="qisutu-response-template-slot"><p><br></p><p><br></p></div>';
 
     if ($Signature) {
         $Signature = $Self->_SystemSignatureBlockToBreaks( HTML => $Signature );
-        push @Parts, '<div class="qisutu-mail-signature" style="margin-top: 10px; padding-top: 6px; border-top: 1px dashed #cbd5df; color: #5d6b7c; font-size: 13px; line-height: 1.25;">'
+        push @Parts, '<div class="qisutu-mail-signature" contenteditable="false" style="margin-top: 10px; padding-top: 6px; border-top: 1px dashed #cbd5df; color: #5d6b7c; font-size: 13px; line-height: 1.25;">'
             . $Signature
             . '</div>';
     }
