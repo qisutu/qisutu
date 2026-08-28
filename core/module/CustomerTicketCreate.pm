@@ -54,6 +54,9 @@ sub Run {
     my $CMDBObject   = QisutuCMDB->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
     my $CreateError  = '';
     my $QueueList    = [];
+    my $AttachmentMaxSizeMB    = $Self->_AttachmentMaxSizeMB();
+    my $AttachmentMaxSizeBytes = $AttachmentMaxSizeMB * 1024 * 1024;
+    my $StandardTicketWithForms = $Self->_CustomerStandardTicketWithForms();
 
     if ($TicketObject) {
         $QueueList = $TicketObject->CustomerQueueList( User => $User );
@@ -69,19 +72,35 @@ sub Run {
 
     my %AllowedForm = map { ( $_->{id} || 0 ) => $_ } @{$Forms};
     my $SelectedFormID = $Request->{FormID} || 0;
-    $SelectedFormID = $Forms->[0]->{id} if @{$Forms} == 1 && !$SelectedFormID;
+    $SelectedFormID = $Forms->[0]->{id}
+        if @{$Forms} == 1 && !$SelectedFormID && !$StandardTicketWithForms;
     my $SelectedForm = $AllowedForm{$SelectedFormID};
 
     if ( $FormObject && ( $Request->{Step} || '' ) eq 'CustomerTicketFormSubmit' ) {
         if ($SelectedForm) {
-            my $Created = $FormObject->SubmissionCreate(
-                Context   => 'customer',
-                FormID    => $SelectedForm->{id},
-                User      => $User,
-                Request   => $Request,
-                Language  => $Language,
-                UserAgent => $ENV{HTTP_USER_AGENT} || '',
+            my $UploadResult = $Self->_UploadedAttachments(
+                Request      => $Request,
+                MaxSizeBytes => $AttachmentMaxSizeBytes,
             );
+            if ( @{ $UploadResult->{Oversized} || [] } ) {
+                $CreateError = $Self->_AttachmentTooLargeMessage(
+                    Attachment => $UploadResult->{Oversized}->[0],
+                    MaxSizeMB  => $AttachmentMaxSizeMB,
+                    Language   => $Language,
+                );
+            }
+            my $Created;
+            if ( !$CreateError ) {
+                $Created = $FormObject->SubmissionCreate(
+                    Context     => 'customer',
+                    FormID      => $SelectedForm->{id},
+                    User        => $User,
+                    Request     => $Request,
+                    Language    => $Language,
+                    UserAgent   => $ENV{HTTP_USER_AGENT} || '',
+                    Attachments => $UploadResult->{Attachments},
+                );
+            }
             if ( $Created && $Created->{TicketID} ) {
                 if ( $Request->{CMDBCIID} ) {
                     $CMDBObject->TicketLinkAdd(
@@ -95,23 +114,38 @@ sub Run {
                     Redirect => 'index.pl?Page=CustomerTicketZoom&TicketID=' . $Created->{TicketID},
                 };
             }
-            $CreateError = $FormObject->Error() || 'Translate:TicketCreateFailed';
+            $CreateError ||= $FormObject->Error() || 'Translate:TicketCreateFailed';
         }
         else {
             $CreateError = 'Translate:TicketFormUnavailable';
         }
     }
 
-    # Keep the established ticket form available until an administrator creates
-    # the first individual customer form.
-    if ( !@{$Forms} && $TicketObject && ( $Request->{Step} || '' ) eq 'CustomerTicketCreate' ) {
-        my $TicketID = $TicketObject->TicketCreateFromCustomer(
-            User        => $User,
-            QueueID     => $Request->{QueueID},
-            Title       => $Request->{Title},
-            Body        => $Request->{Body},
-            ContentType => 'text/html',
+    if ( $TicketObject && ( $Request->{Step} || '' ) eq 'CustomerTicketCreate'
+        && ( !@{$Forms} || $StandardTicketWithForms )
+    ) {
+        my $UploadResult = $Self->_UploadedAttachments(
+            Request      => $Request,
+            MaxSizeBytes => $AttachmentMaxSizeBytes,
         );
+        my $TicketID;
+        if ( @{ $UploadResult->{Oversized} || [] } ) {
+            $CreateError = $Self->_AttachmentTooLargeMessage(
+                Attachment => $UploadResult->{Oversized}->[0],
+                MaxSizeMB  => $AttachmentMaxSizeMB,
+                Language   => $Language,
+            );
+        }
+        else {
+            $TicketID = $TicketObject->TicketCreateFromCustomer(
+                User        => $User,
+                QueueID     => $Request->{QueueID},
+                Title       => $Request->{Title},
+                Body        => $Request->{Body},
+                ContentType => 'text/html',
+                Attachments => $UploadResult->{Attachments},
+            );
+        }
 
         if ($TicketID) {
             if ( $Request->{CMDBCIID} ) {
@@ -127,7 +161,7 @@ sub Run {
             };
         }
 
-        $CreateError = $TicketObject->Error() || 'Translate:TicketCreateFailed';
+        $CreateError ||= $TicketObject->Error() || 'Translate:TicketCreateFailed';
     }
 
     my @FormCards;
@@ -163,8 +197,8 @@ sub Run {
             TicketListURL      => 'index.pl?Page=CustomerTicketList',
             QueueOptionsHTML   => $Self->_QueueOptionsHTML( QueueList => $QueueList ),
             HasQueueOptions    => scalar @{$QueueList} ? 1 : 0,
-            ShowLegacyForm     => @{$Forms} ? 0 : 1,
-            ShowFormSelection  => @{$Forms} > 1 && !$SelectedForm ? 1 : 0,
+            ShowLegacyForm     => !$SelectedForm && ( !@{$Forms} || $StandardTicketWithForms ) ? 1 : 0,
+            ShowFormSelection  => @{$Forms} && !$SelectedForm ? 1 : 0,
             ShowConfiguredForm => $SelectedForm ? 1 : 0,
             TicketForms        => \@FormCards,
             FormID             => $SelectedForm ? $SelectedForm->{id} : '',
@@ -177,6 +211,8 @@ sub Run {
             FormSelectionURL   => 'index.pl?Page=CustomerTicketCreate',
             CreateError        => $CreateError,
             CreateErrorClass   => $CreateError ? '' : 'qisutu-hidden',
+            AttachmentMaxSizeMB => $AttachmentMaxSizeMB,
+            AttachmentMaxSizeBytes => $AttachmentMaxSizeBytes,
             FormAction         => 'index.pl',
         },
     };
@@ -211,6 +247,84 @@ sub _Escape {
     $Value =~ s{"}{&quot;}g;
 
     return $Value;
+}
+
+sub _UploadedAttachments {
+    my ( $Self, %Param ) = @_;
+
+    my $Request      = $Param{Request} || {};
+    my $MaxSizeBytes = $Param{MaxSizeBytes} || 0;
+    my $Uploads      = $Request->{__Uploads} || {};
+    my $RawList      = ref $Uploads->{TicketAttachment} eq 'ARRAY'
+        ? $Uploads->{TicketAttachment}
+        : ref $Uploads->{'TicketAttachment[]'} eq 'ARRAY'
+            ? $Uploads->{'TicketAttachment[]'}
+            : [];
+    my ( @Attachments, @Oversized );
+
+    for my $Upload ( @{$RawList} ) {
+        next if ref $Upload ne 'HASH';
+        my $Filename = $Upload->{Filename} || '';
+        $Filename =~ s{\\}{/}g;
+        $Filename =~ s{\A.*/}{}g;
+        $Filename =~ s{[\r\n\x00]}{}g;
+        $Filename =~ s{\A\s+|\s+\z}{}g;
+        next if !$Filename || !defined $Upload->{Content};
+        my $ContentSize = $Upload->{ContentSize};
+        $ContentSize = length $Upload->{Content}
+            if !defined $ContentSize || $ContentSize !~ m{\A\d+\z};
+        my $Attachment = {
+            Filename           => $Filename,
+            ContentType        => $Upload->{ContentType} || 'application/octet-stream',
+            Content            => $Upload->{Content},
+            ContentSize        => $ContentSize,
+            ContentDisposition => 'attachment',
+        };
+        if ( $MaxSizeBytes && $ContentSize > $MaxSizeBytes ) {
+            push @Oversized, $Attachment;
+        }
+        else {
+            push @Attachments, $Attachment;
+        }
+    }
+    return { Attachments => \@Attachments, Oversized => \@Oversized };
+}
+
+sub _AttachmentMaxSizeMB {
+    my ($Self) = @_;
+    my $Value = 25;
+    if ( $Self->{DB} && eval { require QisutuSystemSetting; 1 } ) {
+        $Value = QisutuSystemSetting->new(
+            Config => $Self->{Config}, DB => $Self->{DB},
+        )->AttachmentMaxSizeMB();
+    }
+    return $Value;
+}
+
+sub _CustomerStandardTicketWithForms {
+    my ($Self) = @_;
+
+    return 0 if !$Self->{DB} || !eval { require QisutuSystemSetting; 1 };
+    return QisutuSystemSetting->new(
+        Config => $Self->{Config}, DB => $Self->{DB},
+    )->CustomerStandardTicketWithForms();
+}
+
+sub _AttachmentTooLargeMessage {
+    my ( $Self, %Param ) = @_;
+    my $Filename = $Param{Attachment}->{Filename} || 'attachment';
+    my $MaxSizeMB = $Param{MaxSizeMB} || 25;
+    my $Language = $Param{Language} || 'en';
+    my $Template = $Self->{Output}->Translate(
+        Key => 'TicketArticleAttachmentTooLargeServer', Language => $Language,
+    ) || '';
+    $Template ||= $Language eq 'de'
+        ? 'Der Anhang „{{Filename}}“ überschreitet die erlaubte Maximalgröße von {{MaxSize}}. Bitte wenden Sie sich an den Administrator.'
+        : 'The attachment “{{Filename}}” exceeds the permitted maximum size of {{MaxSize}}. Please contact the administrator.';
+    $Template =~ s{\{\{Filename\}\}}{$Filename}g;
+    my $MaxSize = $MaxSizeMB . ' MB';
+    $Template =~ s{\{\{MaxSize\}\}}{$MaxSize}g;
+    return $Template;
 }
 
 sub _TicketObject {

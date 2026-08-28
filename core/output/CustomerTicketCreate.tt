@@ -58,11 +58,19 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <h2>[% TicketFormTitle %]</h2>
                         <p>[% TicketFormDescription %]</p>
                     </div>
-                    <form class="qisutu-admin-form qisutu-admin-form-wide qisutu-ticket-form" method="post" action="[% FormAction %]">
+                    <form class="qisutu-admin-form qisutu-admin-form-wide qisutu-ticket-form" method="post" action="[% FormAction %]" enctype="multipart/form-data">
                         <input type="hidden" name="Page" value="CustomerTicketCreate">
                         <input type="hidden" name="Step" value="CustomerTicketFormSubmit">
                         <input type="hidden" name="FormID" value="[% FormID %]">
                         [% RAW.TicketFormFieldsHTML %]
+                        <div class="qisutu-form-field qisutu-ticket-reply-attachments">
+                            <label for="qisutu-customer-form-attachments">[% Translate.TicketArticleAttachments %]</label>
+                            <input id="qisutu-customer-form-attachments" type="file" name="TicketAttachment" multiple data-qisutu-attachment-input data-qisutu-attachment-max-bytes="[% AttachmentMaxSizeBytes %]" data-qisutu-attachment-max-label="[% AttachmentMaxSizeMB %] MB">
+                            <div class="qisutu-ticket-reply-attachment-list" data-qisutu-attachment-list data-qisutu-attachment-remove-label="[% Translate.TicketArticleAttachmentRemove %]">
+                                <p class="qisutu-form-hint" data-qisutu-attachment-empty>[% Translate.TicketArticleAttachmentsEmpty %]</p>
+                            </div>
+                            <span class="qisutu-form-hint">[% Translate.TicketArticleAttachmentLimitHelp %] [% AttachmentMaxSizeMB %] MB</span>
+                        </div>
                         [% RAW.CMDBSelectionHTML %]
                         <div class="qisutu-form-actions">
                             <button class="qisutu-button qisutu-button-primary" type="submit">[% TicketFormSubmitLabel %]</button>
@@ -73,7 +81,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                     [% IF ShowLegacyForm %]
                     [% IF HasQueueOptions %]
-                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+                    <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]" enctype="multipart/form-data">
                         <input type="hidden" name="Page" value="CustomerTicketCreate">
                         <input type="hidden" name="Step" value="CustomerTicketCreate">
 
@@ -95,6 +103,15 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <textarea id="qisutu-customer-ticket-body" class="qisutu-richtext" name="Body" rows="8"></textarea>
                         </div>
 
+                        <div class="qisutu-form-field qisutu-ticket-reply-attachments">
+                            <label for="qisutu-customer-ticket-attachments">[% Translate.TicketArticleAttachments %]</label>
+                            <input id="qisutu-customer-ticket-attachments" type="file" name="TicketAttachment" multiple data-qisutu-attachment-input data-qisutu-attachment-max-bytes="[% AttachmentMaxSizeBytes %]" data-qisutu-attachment-max-label="[% AttachmentMaxSizeMB %] MB">
+                            <div class="qisutu-ticket-reply-attachment-list" data-qisutu-attachment-list data-qisutu-attachment-remove-label="[% Translate.TicketArticleAttachmentRemove %]">
+                                <p class="qisutu-form-hint" data-qisutu-attachment-empty>[% Translate.TicketArticleAttachmentsEmpty %]</p>
+                            </div>
+                            <span class="qisutu-form-hint">[% Translate.TicketArticleAttachmentLimitHelp %] [% AttachmentMaxSizeMB %] MB</span>
+                        </div>
+
                         [% RAW.CMDBSelectionHTML %]
 
                         <div class="qisutu-form-actions">
@@ -110,8 +127,17 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     [% END %]
                 </section>
             </section>
+            <div class="qisutu-attachment-limit-overlay" data-qisutu-attachment-limit-overlay hidden>
+                <div class="qisutu-attachment-limit-dialog" role="alertdialog" aria-modal="true" aria-labelledby="qisutu-customer-ticket-attachment-limit-title">
+                    <h3 id="qisutu-customer-ticket-attachment-limit-title">[% Translate.TicketArticleAttachmentTooLargeTitle %]</h3>
+                    <p data-qisutu-attachment-limit-message data-qisutu-message-template="[% Translate.TicketArticleAttachmentTooLargeMessage %]"></p>
+                    <p>[% Translate.TicketArticleAttachmentTooLargeAdmin %]</p>
+                    <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="button" data-qisutu-attachment-limit-close>[% Translate.TicketArticleAttachmentDialogOK %]</button></div>
+                </div>
+            </div>
             <script>
                 window.QISUTU_STATIC_BASE = '[% StaticBase %]';
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
+            <script src="[% StaticBase %]/js/qisutu-customer-ticket-create.js?v=2026082801"></script>

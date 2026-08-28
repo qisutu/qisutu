@@ -1100,6 +1100,9 @@ use utf8;
     SystemSettingTicketHookDescription => 'Identifier for ticket numbers in e-mail subjects, e.g. Qisutu for [Qisutu#202607080001].',
     SystemSettingAttachmentMaxSize           => 'Attachment size limit',
     SystemSettingAttachmentMaxSizeDescription => 'Maximum permitted size per attachment for incoming e-mail, outgoing e-mail and ticket articles. The value is specified in MB.',
+    TicketCustomerPortalSettingsGroup => 'Customer portal',
+    SystemSettingCustomerStandardTicketWithForms => 'Standard ticket in addition to forms',
+    SystemSettingCustomerStandardTicketWithFormsDescription => 'Allows customers to create a standard ticket even when ticket forms are available to them.',
 
     AdminDynamicFieldsTitle                 => 'Dynamic fields',
     AdminDynamicFieldsDescription           => 'Manage dynamic ticket fields and assign them to queues.',

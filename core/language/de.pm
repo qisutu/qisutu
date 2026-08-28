@@ -1100,6 +1100,9 @@ use utf8;
     SystemSettingTicketHookDescription => 'Kennung für Ticketnummern im E-Mail-Betreff, z. B. Qisutu für [Qisutu#202607080001].',
     SystemSettingAttachmentMaxSize           => 'Größenbegrenzung für Anhänge',
     SystemSettingAttachmentMaxSizeDescription => 'Maximal zulässige Größe pro Anhang bei E-Mail-Eingang, E-Mail-Versand und Ticket-Artikeln. Die Angabe erfolgt in MB.',
+    TicketCustomerPortalSettingsGroup => 'Kundenportal',
+    SystemSettingCustomerStandardTicketWithForms => 'Standard-Ticket zusätzlich zu Formularen',
+    SystemSettingCustomerStandardTicketWithFormsDescription => 'Erlaubt Kunden, auch dann ein Standard-Ticket zu erstellen, wenn für sie Ticketformulare verfügbar sind.',
 
     AdminDynamicFieldsTitle                 => 'Dynamische Felder',
     AdminDynamicFieldsDescription           => 'Dynamische Ticketfelder verwalten und Queues zuordnen.',

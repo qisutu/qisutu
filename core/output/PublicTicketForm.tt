@@ -30,7 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     <title>[% PublicFormTitle %] – [% SystemName %]</title>
     <link rel="icon" type="image/x-icon" sizes="32x32" href="[% StaticBase %]/img/favicon.ico?v=2026072101">
     <link rel="apple-touch-icon" sizes="120x120" href="[% StaticBase %]/img/apple-touch-icon.png?v=2026072101">
-    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu-ticket-form-public.css?v=2026081501">
+    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu-ticket-form-public.css?v=2026082802">
 </head>
 <body>
     <main class="qisutu-public-form-shell">
@@ -61,7 +61,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     <p>[% PublicFormDescription %]</p>
                 </header>
                 <div class="qisutu-form-error [% FormErrorClass %]">[% FormError %]</div>
-                <form class="qisutu-public-form" method="post" action="[% FormAction %]">
+                <form class="qisutu-public-form" method="post" action="[% FormAction %]" enctype="multipart/form-data">
                     <input type="hidden" name="Step" value="PublicTicketFormSubmit">
                     <input type="hidden" name="FormID" value="[% FormID %]">
                     <input type="hidden" name="FormStartedAt" value="[% FormStartedAt %]">
@@ -69,6 +69,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <label>Website<input type="text" name="Website" tabindex="-1" autocomplete="off"></label>
                     </div>
                     [% RAW.PublicFormFieldsHTML %]
+                    <div class="qisutu-form-field qisutu-public-form-attachments">
+                        <label for="qisutu-public-ticket-attachments">[% Translate.TicketArticleAttachments %]</label>
+                        <input id="qisutu-public-ticket-attachments" type="file" name="TicketAttachment" multiple data-qisutu-attachment-input data-qisutu-attachment-max-bytes="[% AttachmentMaxSizeBytes %]" data-qisutu-attachment-max-label="[% AttachmentMaxSizeMB %] MB">
+                        <div class="qisutu-ticket-reply-attachment-list" data-qisutu-attachment-list data-qisutu-attachment-remove-label="[% Translate.TicketArticleAttachmentRemove %]">
+                            <p class="qisutu-form-hint" data-qisutu-attachment-empty>[% Translate.TicketArticleAttachmentsEmpty %]</p>
+                        </div>
+                        <span class="qisutu-form-hint">[% Translate.TicketArticleAttachmentLimitHelp %] [% AttachmentMaxSizeMB %] MB</span>
+                    </div>
                     <div class="qisutu-public-form-actions">
                         <button type="submit">[% PublicFormSubmitLabel %]</button>
                     </div>
@@ -78,5 +86,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             [% END %]
         </section>
     </main>
+    <div class="qisutu-attachment-limit-overlay" data-qisutu-attachment-limit-overlay hidden>
+        <div class="qisutu-attachment-limit-dialog" role="alertdialog" aria-modal="true" aria-labelledby="qisutu-public-ticket-attachment-limit-title">
+            <h3 id="qisutu-public-ticket-attachment-limit-title">[% Translate.TicketArticleAttachmentTooLargeTitle %]</h3>
+            <p data-qisutu-attachment-limit-message data-qisutu-message-template="[% Translate.TicketArticleAttachmentTooLargeMessage %]"></p>
+            <p>[% Translate.TicketArticleAttachmentTooLargeAdmin %]</p>
+            <button type="button" data-qisutu-attachment-limit-close>[% Translate.TicketArticleAttachmentDialogOK %]</button>
+        </div>
+    </div>
+    <script src="[% StaticBase %]/js/qisutu-customer-ticket-create.js?v=2026082802"></script>
 </body>
 </html>

@@ -750,6 +750,7 @@ sub FieldsHTML {
 
     my $Form     = $Param{Form} || {};
     my $Request  = $Param{Request} || {};
+    my $Attachments = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
     my $Language = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
     my $Fields   = $Self->FieldList( FormID => $Form->{id}, Language => $Language );
     return '' if $Self->Error();
@@ -840,6 +841,7 @@ sub SubmissionCreate {
     my $Context  = $Param{Context} || '';
     my $User     = $Param{User} || {};
     my $Request  = $Param{Request} || {};
+    my $Attachments = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
     my $Language = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
     my $Form = $Self->FormGet( FormID => $Param{FormID}, Language => $Language );
     if ( !$Form || !$Form->{active} ) {
@@ -1003,6 +1005,7 @@ sub SubmissionCreate {
         SkipNotification      => 1,
         CreatedByUserID => $CreatedByUserID,
         ChangedByUserID => $CreatedByUserID,
+        Attachments     => $Attachments,
     );
     if ( !$ArticleID ) {
         $Self->{LastError} = $TicketObject->Error() || 'Translate:TicketCreateFailed';

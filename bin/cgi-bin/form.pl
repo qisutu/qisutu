@@ -60,7 +60,7 @@ sub main {
         require QisutuConfig;
         require QisutuDB;
         require QisutuOutput;
-        require QisutuSecurity;
+        require QisutuSystemSetting;
         require QisutuTicketForm;
         1;
     };
@@ -72,13 +72,14 @@ sub main {
     my $Config = QisutuConfig::Load();
     $Language ||= _LanguageClean( $Config->{Language}->{Default} ) || 'en';
     my $Output = QisutuOutput->new( Config => $Config );
-    my $Security = QisutuSecurity->new( Config => $Config );
     my $DB = QisutuDB->new( Config => $Config );
     my $FormObject = QisutuTicketForm->new(
         Config => $Config,
         DB     => $DB,
         Output => $Output,
     );
+    my $SettingObject = QisutuSystemSetting->new( Config => $Config, DB => $DB );
+    my $AttachmentMaxSizeMB = $SettingObject->AttachmentMaxSizeMB();
 
     my $Slug = ref $Request->{Form} ? '' : ( $Request->{Form} || '' );
     my $Form = $FormObject->FormGet( Slug => $Slug, Language => $Language );
@@ -129,19 +130,6 @@ sub main {
     if ( ( $ENV{REQUEST_METHOD} || '' ) eq 'POST'
         && ( $Request->{Step} || '' ) eq 'PublicTicketFormSubmit'
     ) {
-        if ( !$Security->PublicCSRFTokenVerify(
-            Token   => $Request->{CSRFToken} || '',
-            Purpose => 'public-ticket-form:' . $Slug,
-        ) ) {
-            print _HTMLResponse(
-                Output         => $Output,
-                Status         => '403 Forbidden',
-                Body           => 'Die Anfrage konnte aus Sicherheitsgründen nicht verarbeitet werden. Bitte laden Sie das Formular neu.',
-                FrameAncestors => $FormObject->PublicFrameAncestors( AllowedOrigins => $Form->{allowed_origins} ),
-            );
-            return;
-        }
-
         my $Created = $FormObject->SubmissionCreate(
             Context   => 'public',
             FormID    => $Form->{id},
@@ -149,6 +137,7 @@ sub main {
             Language  => $Language,
             IPAddress => $ENV{REMOTE_ADDR} || '',
             UserAgent => $ENV{HTTP_USER_AGENT} || '',
+            Attachments => _UploadedAttachments( Request => $Request ),
         );
         if ($Created) {
             $Success      = 1;
@@ -189,9 +178,8 @@ sub main {
             ConfirmationText  => $Confirmation,
             TicketNumber      => $TicketNumber,
             HasTicketNumber   => $TicketNumber ? 1 : 0,
-            CSRFToken          => $Security->PublicCSRFTokenCreate(
-                Purpose => 'public-ticket-form:' . $Slug,
-            ),
+            AttachmentMaxSizeMB => $AttachmentMaxSizeMB,
+            AttachmentMaxSizeBytes => $AttachmentMaxSizeMB * 1024 * 1024,
         },
     );
 
@@ -211,17 +199,168 @@ sub _RequestParams {
     if ( ( $ENV{REQUEST_METHOD} || '' ) eq 'POST' ) {
         my $Length = $ENV{CONTENT_LENGTH} || 0;
         $Length = 0 if $Length !~ m{\A\d+\z};
-        if ( $Length > 524_288 ) {
-            return \%Param;
-        }
         my $Body = '';
         if ($Length) {
             binmode STDIN;
             read STDIN, $Body, $Length;
         }
-        _ParamParse( Target => \%Param, Source => $Body );
+        my $ContentType = $ENV{CONTENT_TYPE} || $ENV{HTTP_CONTENT_TYPE} || '';
+        if ( $ContentType =~ m{multipart/form-data}i ) {
+            _MultipartParse(
+                Target      => \%Param,
+                Source      => $Body,
+                ContentType => $ContentType,
+            );
+        }
+        else {
+            _ParamParse( Target => \%Param, Source => $Body );
+        }
     }
     return \%Param;
+}
+
+sub _UploadedAttachments {
+    my (%Param) = @_;
+    my $Uploads = ( $Param{Request} || {} )->{__Uploads} || {};
+    my $RawList = ref $Uploads->{TicketAttachment} eq 'ARRAY'
+        ? $Uploads->{TicketAttachment}
+        : ref $Uploads->{'TicketAttachment[]'} eq 'ARRAY'
+            ? $Uploads->{'TicketAttachment[]'}
+            : [];
+    my @Attachments;
+    for my $Upload ( @{$RawList} ) {
+        next if ref $Upload ne 'HASH' || !defined $Upload->{Content};
+        my $Filename = $Upload->{Filename} || '';
+        $Filename =~ s{\\}{/}g;
+        $Filename =~ s{\A.*/}{}g;
+        $Filename =~ s{[\r\n\x00]}{}g;
+        $Filename =~ s{\A\s+|\s+\z}{}g;
+        next if !$Filename;
+        push @Attachments, {
+            Filename           => $Filename,
+            ContentType        => $Upload->{ContentType} || 'application/octet-stream',
+            Content            => $Upload->{Content},
+            ContentSize        => $Upload->{ContentSize} || length( $Upload->{Content} ),
+            ContentDisposition => 'attachment',
+        };
+    }
+    return \@Attachments;
+}
+
+sub _MultipartParse {
+    my (%Param) = @_;
+    my $Target = $Param{Target};
+    my $Source = defined $Param{Source} ? $Param{Source} : '';
+    my $ContentType = $Param{ContentType} || '';
+    return if !$Target || $Source eq '';
+
+    my $Boundary = $ContentType =~ m{boundary="([^"]+)"}i ? $1
+        : $ContentType =~ m{boundary=([^;\s]+)}i ? $1 : '';
+    return if !$Boundary;
+
+    my ( %Parsed, %Uploads );
+    for my $Part ( split /\Q--$Boundary\E/, $Source ) {
+        next if !defined $Part;
+        $Part =~ s{\A\r?\n}{};
+        $Part =~ s{\r?\n\z}{};
+        next if $Part eq '' || $Part =~ m{\A--\s*\z};
+        my ( $HeaderText, $Content ) = split /\r?\n\r?\n/, $Part, 2;
+        next if !defined $HeaderText || !defined $Content;
+        $Content =~ s{\r?\n\z}{};
+        my %Header = _MultipartHeadersParse($HeaderText);
+        my $Disposition = $Header{'content-disposition'} || '';
+        next if $Disposition !~ m{\bform-data\b}i;
+        my $Name = _MultipartHeaderParameter( Header => $Disposition, Name => 'name' );
+        next if !$Name;
+        my $Filename = _MultipartHeaderParameter( Header => $Disposition, Name => 'filename*' )
+            || _MultipartHeaderParameter( Header => $Disposition, Name => 'filename' );
+        if ($Filename) {
+            push @{ $Uploads{$Name} ||= [] }, {
+                Filename => $Filename,
+                ContentType => $Header{'content-type'} || 'application/octet-stream',
+                Content => $Content,
+                ContentSize => length($Content),
+                ContentDisposition => 'attachment',
+            };
+            next;
+        }
+        _ParamValueStore(
+            Target => \%Parsed,
+            Key    => $Name,
+            Value  => eval { decode( 'UTF-8', $Content, 1 ) } || $Content,
+        );
+    }
+    $Target->{$_} = $Parsed{$_} for keys %Parsed;
+    for my $Name ( keys %Uploads ) {
+        push @{ $Target->{__Uploads}->{$Name} ||= [] }, @{ $Uploads{$Name} };
+    }
+    return 1;
+}
+
+sub _MultipartHeadersParse {
+    my ($HeaderText) = @_;
+    my ( %Header, $Current );
+    for my $Line ( split /\r?\n/, $HeaderText || '' ) {
+        if ( $Line =~ m{\A[ \t]+} && $Current ) {
+            $Header{$Current} .= ' ' . $Line;
+            next;
+        }
+        my ( $Name, $Value ) = split /:/, $Line, 2;
+        next if !defined $Name || !defined $Value;
+        $Name =~ s{\A\s+|\s+\z}{}g;
+        $Value =~ s{\A\s+|\s+\z}{}g;
+        $Current = lc $Name;
+        $Header{$Current} = $Value;
+    }
+    return %Header;
+}
+
+sub _MultipartHeaderParameter {
+    my (%Param) = @_;
+    my $Header = $Param{Header} || '';
+    my $Name = lc( $Param{Name} || '' );
+    for my $Part ( split /;/, $Header ) {
+        my ( $Key, $Value ) = split /=/, $Part, 2;
+        next if !defined $Key || !defined $Value;
+        $Key =~ s{\A\s+|\s+\z}{}g;
+        next if lc($Key) ne $Name;
+        $Value =~ s{\A\s+|\s+\z}{}g;
+        if ( $Value =~ m{\A"(.*)"\z}s ) {
+            $Value = $1;
+            $Value =~ s{\\"}{"}g;
+            $Value =~ s{\\\\}{\\}g;
+        }
+        if ( $Name =~ m{\*\z} && $Value =~ m{\A([^']*)'[^']*'(.*)\z}s ) {
+            my $Charset = $1 || 'UTF-8';
+            my $Encoded = $2 || '';
+            $Encoded =~ s{%([0-9A-Fa-f]{2})}{chr hex $1}eg;
+            $Value = eval { decode( $Charset, $Encoded, 1 ) } || $Encoded;
+        }
+        else {
+            $Value = eval { decode( 'UTF-8', $Value, 1 ) } || $Value;
+        }
+        $Value =~ s{[\x00\r\n]}{}g;
+        $Value =~ s{\A\s+|\s+\z}{}g;
+        return $Value;
+    }
+    return '';
+}
+
+sub _ParamValueStore {
+    my (%Param) = @_;
+    my $Target = $Param{Target};
+    my $Key = $Param{Key};
+    return if !$Target || !defined $Key || $Key eq '';
+    if ( !exists $Target->{$Key} ) {
+        $Target->{$Key} = $Param{Value};
+    }
+    elsif ( ref $Target->{$Key} eq 'ARRAY' ) {
+        push @{ $Target->{$Key} }, $Param{Value};
+    }
+    else {
+        $Target->{$Key} = [ $Target->{$Key}, $Param{Value} ];
+    }
+    return 1;
 }
 
 sub _ParamParse {

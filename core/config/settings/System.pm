@@ -130,6 +130,17 @@
         Active       => 1,
     },
     {
+        Key          => 'ticket.customer_standard_create_with_forms',
+        Module       => 'Ticket',
+        Group        => 'Translate:TicketCustomerPortalSettingsGroup',
+        Name         => 'Translate:SystemSettingCustomerStandardTicketWithForms',
+        Description  => 'Translate:SystemSettingCustomerStandardTicketWithFormsDescription',
+        Type         => 'boolean',
+        Default      => 0,
+        SortOrder    => 100,
+        Active       => 1,
+    },
+    {
         Key          => 'time_accounting.default_billable',
         Module       => 'TimeAccounting',
         Group        => 'Translate:TimeAccountingTitle',

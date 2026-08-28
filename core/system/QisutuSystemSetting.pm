@@ -351,6 +351,15 @@ sub AttachmentMaxSizeBytes {
     return $Self->AttachmentMaxSizeMB() * 1024 * 1024;
 }
 
+sub CustomerStandardTicketWithForms {
+    my ($Self) = @_;
+
+    return $Self->Get(
+        Key     => 'ticket.customer_standard_create_with_forms',
+        Default => 0,
+    ) ? 1 : 0;
+}
+
 sub PlaceholderHash {
     my ($Self) = @_;
 
