@@ -75,6 +75,8 @@ sub Run {
     $SelectedFormID = $Forms->[0]->{id}
         if @{$Forms} == 1 && !$SelectedFormID && !$StandardTicketWithForms;
     my $SelectedForm = $AllowedForm{$SelectedFormID};
+    my $StandardTicketSelected = ( $Request->{StandardTicket} || '' ) eq '1'
+        && ( !@{$Forms} || $StandardTicketWithForms ) ? 1 : 0;
 
     if ( $FormObject && ( $Request->{Step} || '' ) eq 'CustomerTicketFormSubmit' ) {
         if ($SelectedForm) {
@@ -197,9 +199,12 @@ sub Run {
             TicketListURL      => 'index.pl?Page=CustomerTicketList',
             QueueOptionsHTML   => $Self->_QueueOptionsHTML( QueueList => $QueueList ),
             HasQueueOptions    => scalar @{$QueueList} ? 1 : 0,
-            ShowLegacyForm     => !$SelectedForm && ( !@{$Forms} || $StandardTicketWithForms ) ? 1 : 0,
-            ShowFormSelection  => @{$Forms} && !$SelectedForm ? 1 : 0,
+            ShowLegacyForm     => !$SelectedForm && ( !@{$Forms} || $StandardTicketSelected ) ? 1 : 0,
+            ShowFormSelection  => @{$Forms} && !$SelectedForm && !$StandardTicketSelected ? 1 : 0,
             ShowConfiguredForm => $SelectedForm ? 1 : 0,
+            ShowStandardTicketCard => @{$Forms} && $StandardTicketWithForms ? 1 : 0,
+            StandardTicketURL  => 'index.pl?Page=CustomerTicketCreate&StandardTicket=1',
+            ShowStandardBackToSelection => @{$Forms} && $StandardTicketSelected ? 1 : 0,
             TicketForms        => \@FormCards,
             FormID             => $SelectedForm ? $SelectedForm->{id} : '',
             TicketFormTitle    => $SelectedForm ? $SelectedForm->{title} : '',

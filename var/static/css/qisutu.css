@@ -7275,6 +7275,10 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
+.qisutu-standard-ticket-card-grid {
+    margin-bottom: 1rem;
+}
+
 .qisutu-ticket-form-card {
     align-items: flex-start;
     background: var(--qisutu-surface-soft, #f6f8f9);

@@ -1103,6 +1103,9 @@ use utf8;
     TicketCustomerPortalSettingsGroup => 'Kundenportal',
     SystemSettingCustomerStandardTicketWithForms => 'Standard-Ticket zusätzlich zu Formularen',
     SystemSettingCustomerStandardTicketWithFormsDescription => 'Erlaubt Kunden, auch dann ein Standard-Ticket zu erstellen, wenn für sie Ticketformulare verfügbar sind.',
+    CustomerStandardTicketTitle => 'Standard-Ticket',
+    CustomerStandardTicketDescription => 'Erstellen Sie ein Ticket ohne vorgegebenes Formular.',
+    CustomerStandardTicketOpen => 'Standard-Ticket erstellen',
 
     AdminDynamicFieldsTitle                 => 'Dynamische Felder',
     AdminDynamicFieldsDescription           => 'Dynamische Ticketfelder verwalten und Queues zuordnen.',

@@ -1103,6 +1103,9 @@ use utf8;
     TicketCustomerPortalSettingsGroup => 'Customer portal',
     SystemSettingCustomerStandardTicketWithForms => 'Standard ticket in addition to forms',
     SystemSettingCustomerStandardTicketWithFormsDescription => 'Allows customers to create a standard ticket even when ticket forms are available to them.',
+    CustomerStandardTicketTitle => 'Standard ticket',
+    CustomerStandardTicketDescription => 'Create a ticket without a predefined form.',
+    CustomerStandardTicketOpen => 'Create standard ticket',
 
     AdminDynamicFieldsTitle                 => 'Dynamic fields',
     AdminDynamicFieldsDescription           => 'Manage dynamic ticket fields and assign them to queues.',

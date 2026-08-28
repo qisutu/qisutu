@@ -39,6 +39,17 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <h2>[% Translate.TicketFormsSelectTitle %]</h2>
                         <p>[% Translate.TicketFormsSelectDescription %]</p>
                     </div>
+                    [% IF ShowStandardTicketCard %]
+                    <div class="qisutu-ticket-form-card-grid qisutu-standard-ticket-card-grid">
+                        <article class="qisutu-ticket-form-card">
+                            <div>
+                                <h3>[% Translate.CustomerStandardTicketTitle %]</h3>
+                                <p>[% Translate.CustomerStandardTicketDescription %]</p>
+                            </div>
+                            <a class="qisutu-button qisutu-button-primary" href="[% StandardTicketURL %]">[% Translate.CustomerStandardTicketOpen %]</a>
+                        </article>
+                    </div>
+                    [% END %]
                     <div class="qisutu-ticket-form-card-grid">
                         [% FOREACH TicketForm IN TicketForms %]
                         <article class="qisutu-ticket-form-card">
@@ -84,6 +95,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]" enctype="multipart/form-data">
                         <input type="hidden" name="Page" value="CustomerTicketCreate">
                         <input type="hidden" name="Step" value="CustomerTicketCreate">
+                        <input type="hidden" name="StandardTicket" value="1">
 
                         <div class="qisutu-admin-form-columns">
                             <div class="qisutu-form-field">
@@ -116,13 +128,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                         <div class="qisutu-form-actions">
                             <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketCreateSubmit %]</button>
+                            [% IF ShowStandardBackToSelection %]
+                            <a class="qisutu-button qisutu-button-secondary" href="[% FormSelectionURL %]">[% Translate.AdminBackToList %]</a>
+                            [% END %]
                         </div>
                     </form>
-                    [% ELSE %]
-                    <div class="qisutu-empty">
-                        <strong>[% Translate.TicketListEmptyTitle %]</strong>
-                        <p>[% Translate.TicketListEmptyText %]</p>
-                    </div>
                     [% END %]
                     [% END %]
                 </section>

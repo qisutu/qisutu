@@ -2015,19 +2015,6 @@ sub TicketCreateFromCustomer {
         return;
     }
 
-    if ( $Self->{Permission} ) {
-        my $Allowed = $Self->{Permission}->QueueAccessCheck(
-            UserID     => $User->{user_account_id},
-            QueueID    => $QueueID,
-            Permission => 'ticket.create',
-        );
-
-        if (!$Allowed) {
-            $Self->{LastError} = 'Queue access denied';
-            return;
-        }
-    }
-
     $Title =~ s{\A\s+}{};
     $Title =~ s{\s+\z}{};
     $Body  =~ s{\A\s+}{};
@@ -2954,23 +2941,11 @@ sub _TicketHook {
 sub CustomerQueueList {
     my ( $Self, %Param ) = @_;
 
-    my $User      = $Param{User} || {};
-    my $QueueRule = $Self->_CustomerQueueRuleHash(
-        User       => $User,
-        Permission => 'ticket.create',
-    );
-    my @QueueIDs = sort { $a <=> $b } keys %{$QueueRule};
-
-    return [] if !@QueueIDs;
-
-    my $Placeholder = join ', ', map {'?'} @QueueIDs;
     my $Rows = $Self->{DB}->SelectAll(
         'SELECT id, name, full_name
          FROM ticket_queue
          WHERE active = 1
-            AND id IN (' . $Placeholder . ')
          ORDER BY sort_order ASC, full_name ASC, name ASC, id ASC',
-        @QueueIDs,
     );
 
     if (!$Rows) {
