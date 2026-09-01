@@ -85,6 +85,14 @@ sub Run {
 
         return { Redirect => 'index.pl?Page=AdminAgents' } if !$Admin->Error();
     }
+    elsif ( $Admin && $Step eq 'AgentActivate' ) {
+        $Admin->AgentActivate(
+            UserAccountID   => $Request->{UserAccountID},
+            ChangedByUserID => $User->{user_account_id},
+        );
+
+        return { Redirect => 'index.pl?Page=AdminAgents' } if !$Admin->Error();
+    }
     elsif ( $Admin && $Step eq 'AgentTwoFactorReset' ) {
         my $TwoFactor = $Self->_TwoFactorObject();
         if ($TwoFactor) {
@@ -190,6 +198,9 @@ sub Run {
         $AgentEntry->{authentication_label} = $AuthenticationType eq 'ldap'
             ? $AuthenticationLDAPLabel
             : ( $AuthenticationType eq 'external' ? $AuthenticationExternalLabel : $AuthenticationLocalLabel );
+        $AgentEntry->{action_step} = $AgentEntry->{is_active} ? 'AgentDeactivate' : 'AgentActivate';
+        $AgentEntry->{action_label} = $AgentEntry->{is_active} ? 'Translate:AdminDeactivate' : 'Translate:AdminActivate';
+        $AgentEntry->{action_button_class} = $AgentEntry->{is_active} ? 'qisutu-button-danger' : 'qisutu-button-primary';
     }
 
     if ( $Admin && $Action eq 'Edit' ) {

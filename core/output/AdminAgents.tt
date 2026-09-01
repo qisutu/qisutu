@@ -71,9 +71,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <td>
                                         <form class="qisutu-inline-form" method="post" action="[% FormAction %]">
                                             <input type="hidden" name="Page" value="AdminAgents">
-                                            <input type="hidden" name="Step" value="AgentDeactivate">
+                                            <input type="hidden" name="Step" value="[% Agent.action_step %]">
                                             <input type="hidden" name="UserAccountID" value="[% Agent.id %]">
-                                            <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AdminDeactivate %]</button>
+                                            <button class="qisutu-button [% Agent.action_button_class %] qisutu-button-small" type="submit">[% Agent.action_label %]</button>
                                         </form>
                                     </td>
                                 </tr>

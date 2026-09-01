@@ -46,6 +46,10 @@ use QisutuReportPDF;
     sub SelectAll {
         my ( $Self, $SQL, @Bind ) = @_;
         push @{ $Self->{Calls} }, [ SelectAll=>$SQL,@Bind ];
+        return [
+            { id=>2, name=>'support', description=>'Support' },
+            { id=>5, name=>'service-desk', description=>'Service Desk' },
+        ] if $SQL =~ m{FROM user_group ug};
         return [] if $SQL =~ m{FROM ticket_dynamic_field f};
         return [ { group_key=>'2026-07',group_label=>'2026-07',metric_1=>2 } ] if $SQL =~ m{AS group_key};
         if ( $SQL =~ m{\bAS field_1\b} ) {
@@ -73,6 +77,20 @@ my $Catalog = $Builder->Catalog();
 is_deeply( [ map { $_->{key} } @{ $Catalog->{sources} } ], [qw(tickets articles time)], 'three report data sources are available' );
 ok( grep( { $_->{key} eq 'sla_compliance' } @{ $Catalog->{sources}->[0]->{metrics} } ), 'ticket SLA metric is available' );
 ok( grep( { $_->{key} eq 'total_minutes' } @{ $Catalog->{sources}->[2]->{metrics} } ), 'time accounting metric is available' );
+
+my $Groups = $Builder->GroupList( UserID=>7 );
+is_deeply(
+    $Groups,
+    [
+        { id=>2, name=>'support', description=>'Support' },
+        { id=>5, name=>'service-desk', description=>'Service Desk' },
+    ],
+    'sharing selection receives all active agent groups',
+);
+my ($GroupCall) = grep { $_->[1] =~ m{FROM user_group ug} } @{ $DB->{Calls} };
+like( $GroupCall->[1], qr{ug\.active=1 AND ug\.group_type=\?}, 'group selection is limited to active agent groups' );
+unlike( $GroupCall->[1], qr{user_group_member}, 'group selection is not restricted to current memberships' );
+is( $GroupCall->[2], 'agent', 'agent group type is bound safely' );
 
 my $Config = $Builder->DefaultConfiguration();
 $Config->{filters} = [ { field=>'title',operator=>'contains',values=>['alpha%_" OR 1=1 --'] } ];

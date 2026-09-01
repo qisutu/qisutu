@@ -357,8 +357,7 @@ sub ReportDeactivate {
 
 sub GroupList {
     my($Self,%Param)=@_;my$UserID=$Self->_ID($Param{UserID});return[]if!$UserID;
-    my$Admin=$Self->{Permission}->UserIsAdmin(UserID=>$UserID)?1:0;
-    return$Self->{DB}->SelectAll('SELECT DISTINCT ug.id,ug.name,ug.description FROM user_group ug LEFT JOIN user_group_member ugm ON ugm.user_group_id=ug.id AND ugm.user_account_id=? AND ugm.active=1 WHERE ug.active=1 AND (?=1 OR ugm.id IS NOT NULL) ORDER BY ug.name,ug.id',$UserID,$Admin)||[];
+    return$Self->{DB}->SelectAll('SELECT ug.id,ug.name,ug.title AS description FROM user_group ug WHERE ug.active=1 AND ug.group_type=? ORDER BY ug.sort_order,ug.name,ug.id','agent')||[];
 }
 
 sub OptionSearch {

@@ -1828,6 +1828,30 @@ sub AgentDeactivate {
     return 1;
 }
 
+sub AgentActivate {
+    my ( $Self, %Param ) = @_;
+
+    my $UserAccountID = $Param{UserAccountID} || 0;
+
+    return if $UserAccountID !~ m{\A\d+\z} || !$UserAccountID;
+
+    my $Result = $Self->{DB}->Do(
+        'UPDATE user_account
+         SET is_active = 1
+         WHERE id = ?
+            AND account_type = "agent"
+            AND is_system_user = 0',
+        $UserAccountID,
+    );
+
+    if ( !$Result ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Agent could not be activated';
+        return;
+    }
+
+    return 1;
+}
+
 sub UserGroupAdd {
     my ( $Self, %Param ) = @_;
 

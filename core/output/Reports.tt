@@ -80,11 +80,35 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <div class="qisutu-panel-header"><div><h2>[% Translate.ReportBasicData %]</h2><p>[% Translate.ReportBasicDataHint %]</p></div></div>
                         <div class="qisutu-form-grid">
                             <label><span>[% Translate.ReportName %] *</span><input type="text" name="Name" maxlength="190" value="[% ReportName %]" required></label>
-                            <label><span>[% Translate.ReportVisibility %]</span><select name="Visibility" data-report-visibility><option value="private" [% VisibilityPrivateSelected %]>[% Translate.ReportVisibilityPrivate %]</option><option value="shared" [% VisibilitySharedSelected %]>[% Translate.ReportVisibilityShared %]</option></select></label>
+                            <div class="qisutu-report-sharing-field">
+                                <span>[% Translate.ReportVisibility %]</span>
+                                <div class="qisutu-report-sharing-control" data-report-sharing>
+                                    <select class="qisutu-hidden" name="Visibility" data-report-visibility>
+                                        <option value="private" [% VisibilityPrivateSelected %]>[% Translate.ReportVisibilityPrivate %]</option>
+                                        <option value="shared" [% VisibilitySharedSelected %]>[% Translate.ReportVisibilityShared %]</option>
+                                    </select>
+                                    <select class="qisutu-hidden" name="GroupID" multiple data-report-group-values>
+                                        [% FOREACH Group IN GroupOptions %]<option value="[% Group.id %]" [% Group.selected %]>[% Group.name %]</option>[% END %]
+                                    </select>
+                                    <button class="qisutu-report-sharing-toggle" type="button" data-report-sharing-toggle
+                                        data-private-label="[% Translate.ReportVisibilityPrivate %]" data-shared-label="[% Translate.ReportVisibilityShared %]"
+                                        aria-expanded="false" aria-haspopup="listbox">
+                                        <span data-report-sharing-summary>[% Translate.ReportVisibilityPrivate %]</span>
+                                        <span class="qisutu-report-sharing-chevron" aria-hidden="true">▾</span>
+                                    </button>
+                                    <div class="qisutu-report-sharing-menu qisutu-hidden" data-report-sharing-menu role="listbox" aria-multiselectable="true">
+                                        <button class="qisutu-report-sharing-private" type="button" data-report-sharing-private role="option" aria-selected="false">[% Translate.ReportVisibilityPrivate %]</button>
+                                        <span class="qisutu-report-sharing-menu-label">[% Translate.ReportShareGroups %]</span>
+                                        [% FOREACH Group IN GroupOptions %]
+                                        <button class="qisutu-report-sharing-group" type="button" data-report-group-option data-group-id="[% Group.id %]" role="option" aria-selected="false">
+                                            <strong class="qisutu-report-sharing-group-name">[% Group.name %]</strong>
+                                            <small>[% Group.description %]</small>
+                                        </button>
+                                        [% END %]
+                                    </div>
+                                </div>
+                            </div>
                             <label class="qisutu-form-grid-wide"><span>[% Translate.ReportDescription %]</span><textarea name="Description" rows="2">[% ReportDescription %]</textarea></label>
-                            <label class="qisutu-form-grid-wide" data-report-groups><span>[% Translate.ReportShareGroups %]</span><select name="GroupID" multiple size="4">
-                                [% FOREACH Group IN GroupOptions %]<option value="[% Group.id %]" [% Group.selected %]>[% Group.name %] — [% Group.description %]</option>[% END %]
-                            </select><small>[% Translate.ReportShareGroupsHint %]</small></label>
                         </div>
                     </section>
 
@@ -153,6 +177,6 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 <script type="application/json" data-report-catalog>[% RAW.CatalogJSON %]</script>
                 <script type="application/json" data-report-configuration>[% RAW.ConfigurationJSON %]</script>
                 <script src="[% StaticBase %]/js/chartjs/chart.umd.min.js?v=4.5.1"></script>
-                <script src="[% StaticBase %]/js/qisutu-reports.js?v=2026071801"></script>
+                <script src="[% StaticBase %]/js/qisutu-reports.js?v=2026090102"></script>
                 [% END %]
             </section>

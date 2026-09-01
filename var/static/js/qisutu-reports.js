@@ -57,7 +57,13 @@
     var columnsWrap = form.querySelector('[data-report-columns]');
     var configInput = form.querySelector('[data-report-configuration-input]');
     var visibilitySelect = form.querySelector('[data-report-visibility]');
-    var groupsWrap = form.querySelector('[data-report-groups]');
+    var sharingRoot = form.querySelector('[data-report-sharing]');
+    var sharingToggle = form.querySelector('[data-report-sharing-toggle]');
+    var sharingSummary = form.querySelector('[data-report-sharing-summary]');
+    var sharingMenu = form.querySelector('[data-report-sharing-menu]');
+    var sharingPrivate = form.querySelector('[data-report-sharing-private]');
+    var groupValueSelect = form.querySelector('[data-report-group-values]');
+    var sharingGroupOptions = form.querySelectorAll('[data-report-group-option]');
     var previewButton = form.querySelector('[data-report-preview]');
     var loading = form.querySelector('[data-report-loading]');
     var previewContent = form.querySelector('[data-report-preview-content]');
@@ -210,7 +216,7 @@
         configInput.value = JSON.stringify(state);
     }
 
-    function renderAll() { normalizeState(); renderSource(); renderFilters(); renderAnalysis(); toggleGroups(); sync(); }
+    function renderAll() { normalizeState(); renderSource(); renderFilters(); renderAnalysis(); sharingRender(); sync(); }
 
     sourceSelect.addEventListener('change', function () { var item = byKey(catalog.sources, sourceSelect.value); if (item) { state = defaultsForSource(item); renderAll(); } });
     filterLogic.addEventListener('change', sync); groupSelect.addEventListener('change', function () { state.group_by = groupSelect.value; sync(); });
@@ -218,8 +224,67 @@
     form.querySelector('[data-report-add-filter]').addEventListener('click', function () { var first = source().fields.find(function (item) { return item.type === 'date'; }) || source().fields[0]; if (!first) { return; } state.filters.push({ field: first.key, operator: first.type === 'date' ? 'between' : (first.operators || ['eq'])[0], values: [], value_labels: [] }); renderFilters(); sync(); });
     form.addEventListener('submit', sync);
 
-    function toggleGroups() { groupsWrap.classList.toggle('qisutu-hidden', visibilitySelect.value !== 'shared'); }
-    visibilitySelect.addEventListener('change', toggleGroups);
+    function sharingMenuSet(open) {
+        sharingMenu.classList.toggle('qisutu-hidden', !open);
+        sharingToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function sharingRender() {
+        var selectedNames = [];
+        var selectedByID = {};
+        Array.prototype.forEach.call(groupValueSelect.options, function (option) {
+            if (option.selected) { selectedByID[String(option.value)] = true; }
+        });
+        sharingGroupOptions.forEach(function (button) {
+            var selected = !!selectedByID[String(button.dataset.groupId)];
+            button.setAttribute('aria-selected', selected ? 'true' : 'false');
+            if (selected) {
+                var name = button.querySelector('.qisutu-report-sharing-group-name');
+                if (name) { selectedNames.push(name.textContent.trim()); }
+            }
+        });
+        var shared = visibilitySelect.value === 'shared';
+        sharingPrivate.classList.toggle('is-selected', !shared);
+        sharingPrivate.setAttribute('aria-selected', shared ? 'false' : 'true');
+        var summary = shared
+            ? (selectedNames.length ? selectedNames.join(', ') : sharingToggle.dataset.sharedLabel)
+            : sharingToggle.dataset.privateLabel;
+        sharingSummary.textContent = summary;
+        sharingToggle.title = summary;
+    }
+
+    function sharingSetPrivate() {
+        visibilitySelect.value = 'private';
+        Array.prototype.forEach.call(groupValueSelect.options, function (option) { option.selected = false; });
+        sharingRender();
+        sharingMenuSet(false);
+    }
+
+    function sharingGroupToggle(button) {
+        var groupID = String(button.dataset.groupId);
+        Array.prototype.forEach.call(groupValueSelect.options, function (option) {
+            if (String(option.value) === groupID) { option.selected = !option.selected; }
+        });
+        visibilitySelect.value = 'shared';
+        sharingRender();
+    }
+
+    sharingToggle.addEventListener('click', function () {
+        sharingMenuSet(sharingMenu.classList.contains('qisutu-hidden'));
+    });
+    sharingPrivate.addEventListener('click', sharingSetPrivate);
+    sharingGroupOptions.forEach(function (button) {
+        button.addEventListener('click', function () { sharingGroupToggle(button); });
+    });
+    document.addEventListener('click', function (event) {
+        if (!sharingRoot.contains(event.target)) { sharingMenuSet(false); }
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !sharingMenu.classList.contains('qisutu-hidden')) {
+            sharingMenuSet(false);
+            sharingToggle.focus();
+        }
+    });
 
     function openOptionModal(entry, multiple) {
         modal.dataset.multiple = multiple ? '1' : '0'; modal.dataset.field = entry.key; modalTitle.textContent = entry.label; modalSearch.value = '';

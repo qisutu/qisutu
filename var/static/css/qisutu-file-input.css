@@ -1,0 +1,91 @@
+/*
+ * Qisutu - Open Source Ticket System
+ * Copyright (C) 2026 Franziska Steps
+ * Qisutu - Kim-KI, https://qisutu.de
+ *
+ * This file is part of Qisutu.
+ *
+ * Qisutu is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Qisutu is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-FileCopyrightText: 2026 Franziska Steps
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+.qisutu-file-input {
+    position: relative;
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    align-items: stretch;
+    overflow: hidden;
+    border: 1px solid var(--qisutu-border, #cbd8e2);
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--qisutu-text, #1f2937);
+}
+
+.qisutu-file-input:hover {
+    border-color: #9fb3c2;
+}
+
+.qisutu-file-input:focus-within {
+    border-color: var(--qisutu-primary, #00617a);
+    outline: 3px solid rgba(0, 97, 122, 0.12);
+}
+
+.qisutu-file-input > input[type="file"] {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.qisutu-file-input > input[type="file"]:disabled {
+    cursor: not-allowed;
+}
+
+.qisutu-file-input-choose,
+.qisutu-file-input-summary {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    padding: 9px 12px;
+    line-height: 1.35;
+}
+
+.qisutu-file-input-choose {
+    flex: 0 0 auto;
+    border-right: 1px solid var(--qisutu-border, #cbd8e2);
+    background: #f4f7f9;
+    color: var(--qisutu-primary, #00617a);
+    font-weight: 700;
+}
+
+.qisutu-file-input-summary {
+    flex: 1 1 auto;
+    overflow: hidden;
+    color: #647387;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qisutu-file-input-has-files .qisutu-file-input-summary {
+    color: var(--qisutu-text, #1f2937);
+}

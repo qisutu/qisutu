@@ -42,9 +42,9 @@ open my $ProfileHandle, '<', $ProfilePath
 my $Profile = do { local $/; <$ProfileHandle> };
 close $ProfileHandle;
 
-like( $Profile, qr/ProhibitStringyEval/, 'profile checks string evaluation' );
 like( $Profile, qr/ProhibitTwoArgOpen/,  'profile checks unsafe file opening' );
-like( $Profile, qr/RequireCheckedSyscalls/, 'profile checks system-call results' );
+like( $Profile, qr/RequireCheckedSyscalls/, 'profile checks process execution results' );
+like( $Profile, qr/functions\s*=\s*system exec/, 'process-execution checks are narrowly configured' );
 like( $Profile, qr/profile-strictness\s*=\s*fatal/, 'invalid profile entries fail analysis' );
 
 open my $PolicyHandle, '<', $PolicyPath

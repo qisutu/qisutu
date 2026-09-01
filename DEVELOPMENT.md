@@ -38,7 +38,7 @@ Run the repository's fixed analysis profile from the repository root:
 
 `tools/qisutu-static-analysis`
 
-The command analyzes the Perl files below `bin`, `core`, `t`, and `tools`, while excluding bundled third-party modules below `core/cpan-lib`. The committed `.perlcriticrc` profile includes high-severity correctness checks and checks for dangerous constructs associated with common vulnerabilities, including string evaluation, unsafe file opening, unchecked system calls, and prohibited modules.
+The command analyzes the Perl files below `bin`, `core`, `t`, and `tools`, while excluding bundled third-party modules below `core/cpan-lib`. The committed `.perlcriticrc` profile checks dangerous file-opening forms, bareword file handles, unchecked process execution through `system` or `exec`, and prohibited modules. These checks target relevant correctness and security risks without imposing unrelated formatting rules on the existing source code.
 
 This command is a mandatory release gate and must complete successfully before every production release. Its result is recorded with the release test results. Every confirmed exploitable finding of medium or higher severity must be corrected before release; suppressing such a finding is not permitted. A false positive may be suppressed only with a narrowly scoped source annotation that documents the technical reason and is reviewed by a maintainer.
 

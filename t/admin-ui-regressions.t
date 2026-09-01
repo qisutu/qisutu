@@ -57,6 +57,20 @@ my $Head = content( 'core', 'output', 'Head.tt' );
 my $Footer = content( 'core', 'output', 'Footer.tt' );
 like( $Head, qr{css/qisutu[.]css[?]v=\[% SystemVersion %\]}, 'the main stylesheet cache follows the installed Qisutu version' );
 like( $Footer, qr{js/qisutu-sidebar[.]js[?]v=\[% SystemVersion %\]}, 'the sidebar script cache follows the installed Qisutu version' );
+like( $Head, qr{data-qisutu-file-choose-label="\[% Translate[.]FileInputChoose %\]"}, 'the standard layout exposes the translated file-selection label' );
+like( $Head, qr{css/qisutu-file-input[.]css}, 'the standard layout loads the shared file-input styling' );
+like( $Footer, qr{js/qisutu-file-input[.]js}, 'the standard layout loads the shared file-input behaviour' );
+
+my $PublicTicketForm = content( 'core', 'output', 'PublicTicketForm.tt' );
+like( $PublicTicketForm, qr{data-qisutu-file-empty-label="\[% Translate[.]FileInputEmpty %\]"}, 'the public ticket form exposes the translated empty-file label' );
+like( $PublicTicketForm, qr{js/qisutu-file-input[.]js}, 'the standalone public form loads the shared file-input behaviour' );
+
+my $FileInputJS = content( 'var', 'static', 'js', 'qisutu-file-input.js' );
+my $FileInputCSS = content( 'var', 'static', 'css', 'qisutu-file-input.css' );
+like( $FileInputJS, qr{querySelectorAll\('input\[type="file"\]'\)}, 'all existing file inputs are enhanced centrally' );
+like( $FileInputJS, qr{new MutationObserver}, 'dynamically inserted file inputs are enhanced as well' );
+like( $FileInputJS, qr{file[.]name}, 'selected file names replace the translated empty state' );
+like( $FileInputCSS, qr!input\[type="file"\][^}]+opacity:\s*0!s, 'native browser file-input text is visually replaced' );
 
 my $Sidebar = content( 'var', 'static', 'js', 'qisutu-sidebar.js' );
 like( $Sidebar, qr{qisutu[.]sidebar[.]scrollTop}, 'the navigation scroll position has its own session key' );
@@ -73,6 +87,8 @@ like( $QueueCSS, qr![.]qisutu-admin-radio-group label\s*\{[^}]*display:\s*flex!s
 
 my $AgentTemplate = content( 'core', 'output', 'AdminAgents.tt' );
 like( $AgentTemplate, qr{qisutu-admin-agent-list-table}, 'the agent overview uses its bounded table layout' );
+like( $AgentTemplate, qr{name="Step" value="\[% Agent[.]action_step %\]"}, 'the agent action is selected for each list entry' );
+like( $AgentTemplate, qr{\[% Agent[.]action_label %\]}, 'the agent list renders the prepared activate or deactivate label' );
 like( $QueueCSS, qr![.]qisutu-admin-agent-list-table\s*\{[^}]*table-layout:\s*fixed!s, 'the agent table cannot widen the complete workspace' );
 like( $QueueCSS, qr![.]qisutu-admin-agent-list-table th,\s*[.]qisutu-admin-agent-list-table td\s*\{[^}]*overflow-wrap:\s*anywhere!s, 'long group lists wrap inside the agent table' );
 like( $QueueCSS, qr![.]qisutu-ticket-form-fields select\[multiple\]\s*\{[^}]*height:\s*auto[^}]*min-height:\s*132px!s, 'customer-form multiselects retain their visible multi-row height' );
@@ -82,6 +98,8 @@ like( $TicketListTemplate, qr{name="Step" value="TicketListDefaultViewSave"}, 't
 
 for my $Language (qw(de en fr it nl pl pt-BR pt-PT es cs tr)) {
     my $LanguageContent = content( 'core', 'language', $Language . '.pm' );
+    like( $LanguageContent, qr{FileInputChoose\s*=>}, "the file-selection action is translated in $Language" );
+    like( $LanguageContent, qr{FileInputEmpty\s*=>}, "the empty file-selection state is translated in $Language" );
     like( $LanguageContent, qr{TicketListSaveDefaultView\s*=>}, "the default-view button is translated in $Language" );
     like( $LanguageContent, qr{TicketChecklistDetails\s*=>}, "the checklist details button is translated in $Language" );
     like( $LanguageContent, qr{TicketChecklistDetailsTitle\s*=>}, "the checklist details title is translated in $Language" );

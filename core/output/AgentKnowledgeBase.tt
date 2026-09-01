@@ -40,8 +40,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         </form>
     </section>
     <section class="qisutu-panel"><div class="qisutu-panel-header"><div><h2>[% Translate.KnowledgeArticles %]</h2><span class="qisutu-panel-subtitle">[% ArticleCount %] [% Translate.AdminEntries %]</span></div></div>
-        [% IF HasArticles %]<div class="qisutu-table-wrap"><table class="qisutu-table"><thead><tr><th>[% Translate.KnowledgeArticleNumber %]</th><th>[% Translate.KnowledgeArticleTitle %]</th><th>[% Translate.KnowledgeCategory %]</th><th>[% Translate.KnowledgeLanguage %]</th><th>[% Translate.KnowledgeVisibility %]</th><th>[% Translate.KnowledgeUsage %]</th></tr></thead><tbody>
-        [% FOREACH Article IN Articles %]<tr><td><a class="qisutu-table-link" href="[% Article.url %]">[% Article.article_number %]</a></td><td><a class="qisutu-table-link" href="[% Article.url %]">[% Article.title %]</a><small>[% Article.summary %]</small></td><td>[% Article.category_name %]</td><td>[% Article.language %]</td><td>[% Article.visibility_label %]</td><td>[% Article.usage_count %]</td></tr>[% END %]
+        [% IF HasArticles %]<div class="qisutu-table-wrap"><table class="qisutu-table qisutu-knowledge-table"><thead><tr><th>[% Translate.KnowledgeArticleNumber %]</th><th>[% Translate.KnowledgeArticleTitle %]</th><th>[% Translate.KnowledgeCategory %]</th><th>[% Translate.KnowledgeLanguage %]</th><th>[% Translate.KnowledgeVisibility %]</th><th>[% Translate.KnowledgeUsage %]</th></tr></thead><tbody>
+        [% FOREACH Article IN Articles %]<tr><td><a class="qisutu-table-link" href="[% Article.url %]">[% Article.article_number %]</a></td><td><a class="qisutu-table-link" href="[% Article.url %]">[% Article.title %]</a><small class="qisutu-knowledge-table-summary">[% Article.summary %]</small></td><td>[% Article.category_name %]</td><td>[% Article.language %]</td><td>[% Article.visibility_label %]</td><td>[% Article.usage_count %]</td></tr>[% END %]
         </tbody></table></div>[% ELSE %]<div class="qisutu-empty"><strong>[% Translate.KnowledgeNoArticles %]</strong><p>[% Translate.KnowledgeNoArticlesHelp %]</p></div>[% END %]
     </section>
     [% END %]

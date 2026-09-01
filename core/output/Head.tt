@@ -33,7 +33,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
     <link rel="icon" type="image/x-icon" sizes="32x32" href="[% StaticBase %]/img/favicon.ico?v=2026072101">
     <link rel="apple-touch-icon" sizes="120x120" href="[% StaticBase %]/img/apple-touch-icon.png?v=2026072101">
-    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu.css?v=[% SystemVersion %]">
+    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu.css?v=[% SystemVersion %]-2026090102">
+    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu-file-input.css?v=[% SystemVersion %]-2026090101">
     <link rel="stylesheet" href="[% StaticBase %]/css/ckeditor5/ckeditor5.css">
     <link rel="stylesheet" href="[% StaticBase %]/css/[% PageCSS %]">
     [% IF ThemeCSS %]
@@ -53,4 +54,4 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         }());
     </script>
 </head>
-<body class="[% BodyClass %]">
+<body class="[% BodyClass %]" data-qisutu-file-choose-label="[% Translate.FileInputChoose %]" data-qisutu-file-empty-label="[% Translate.FileInputEmpty %]">
