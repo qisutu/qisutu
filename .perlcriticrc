@@ -1,0 +1,18 @@
+severity = 5
+only = 1
+profile-strictness = fatal
+verbose = %f:%l:%c: %m [%p]\n
+# Keep the release gate focused on high-severity correctness and security
+# findings. Style-only policies are intentionally not part of this profile.
+[BuiltinFunctions::ProhibitStringyEval]
+severity = 5
+[InputOutput::ProhibitBarewordFileHandles]
+severity = 5
+[InputOutput::ProhibitTwoArgOpen]
+severity = 5
+[InputOutput::RequireCheckedOpen]
+severity = 5
+[InputOutput::RequireCheckedSyscalls]
+severity = 5
+[Modules::ProhibitEvilModules]
+severity = 5

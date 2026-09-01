@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Qisutu - Open Source Ticket System
+# Copyright (C) 2026 Franziska Steps
+# Qisutu - Kim-KI, https://qisutu.de
+#
+# This file is part of Qisutu.
+#
+# Qisutu is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Qisutu is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-FileCopyrightText: 2026 Franziska Steps
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+set -euo pipefail
+
+project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$project_root"
+
+if ! command -v perlcritic >/dev/null 2>&1; then
+    echo "Perl::Critic is required. Install it with: cpan Perl::Critic" >&2
+    exit 2
+fi
+
+mapfile -d '' source_files < <(
+    find bin core t tools \
+        -path 'core/cpan-lib' -prune -o \
+        -type f \( -name '*.pl' -o -name '*.pm' -o -name '*.t' \) \
+        -print0
+)
+
+if (( ${#source_files[@]} == 0 )); then
+    echo "No first-party Perl source files found." >&2
+    exit 2
+fi
+
+printf '%s\0' "${source_files[@]}" |
+    xargs -0 perlcritic --profile "$project_root/.perlcriticrc"
+
+echo "Perl::Critic passed for ${#source_files[@]} first-party Perl files."
+

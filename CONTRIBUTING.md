@@ -16,12 +16,12 @@ Thank you for your interest in contributing to Qisutu. Contributions that improv
 3. Make one coherent change per pull request.
 4. Preserve UTF-8 encoding and the existing directory and naming conventions.
 5. Add or update tests and documentation when the change affects behavior.
-6. Run the tests relevant to the changed code and describe the results in the pull request.
+6. Run the tests relevant to the changed code and run `tools/qisutu-static-analysis` for Perl changes. Describe the results in the pull request.
 7. Open a pull request against `main` and explain the problem, the solution, and any compatibility or migration effects.
 
 Pull requests must not contain credentials, personal data, generated installation secrets, customer information, or unrelated formatting changes. They should remain compatible with the supported installation and update process unless the proposed incompatibility has been discussed and accepted in advance.
 
-The complete test command, warning policy, and policy requiring tests for major new functionality are documented in `DEVELOPMENT.md`.
+The complete test command, static-analysis release gate, warning policy, and policy requiring tests for major new functionality are documented in `DEVELOPMENT.md`.
 
 ## Code and documentation expectations
 

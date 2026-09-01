@@ -28,8 +28,26 @@ Production Perl files use `strict` and `warnings`. Changed Perl files must keep 
 
 Warnings produced by the test suite or syntax checks must be investigated and corrected. Warning suppression must be limited to a documented, unavoidable case and must not hide unrelated warnings.
 
-## Release analysis
+## Static analysis release gate
 
-Before a major production release, maintainers review the changed Perl code with a FLOSS static analysis tool in addition to Perl's syntax, `strict`, and `warnings` checks. Confirmed exploitable findings of medium or higher severity must be corrected before release. Web-facing changes are also tested against malformed input, missing permissions, and unsuccessful authentication; confirmed medium or higher severity findings from dynamic testing are corrected before release.
+Qisutu uses the FLOSS static-analysis tool Perl::Critic for all first-party Perl source files. Install Perl::Critic with your operating-system package manager or with:
 
-The exact tool and command used for a release must be recorded with the internal release test results because the applicable checks depend on the changed languages and components.
+`cpan Perl::Critic`
+
+Run the repository's fixed analysis profile from the repository root:
+
+`tools/qisutu-static-analysis`
+
+The command analyzes the Perl files below `bin`, `core`, `t`, and `tools`, while excluding bundled third-party modules below `core/cpan-lib`. The committed `.perlcriticrc` profile includes high-severity correctness checks and checks for dangerous constructs associated with common vulnerabilities, including string evaluation, unsafe file opening, unchecked system calls, and prohibited modules.
+
+This command is a mandatory release gate and must complete successfully before every production release. Its result is recorded with the release test results. Every confirmed exploitable finding of medium or higher severity must be corrected before release; suppressing such a finding is not permitted. A false positive may be suppressed only with a narrowly scoped source annotation that documents the technical reason and is reviewed by a maintainer.
+
+Web-facing changes are additionally tested against malformed input, missing permissions, and unsuccessful authentication. Confirmed medium or higher severity findings from dynamic testing must also be corrected before release.
+
+## Release checklist
+
+Before publishing a production release, maintainers must complete and record all of the following:
+
+1. `prove -Icore/system -Icore/config -Icore/cpan-lib -r t`
+2. `tools/qisutu-static-analysis`
+3. Review of test and analysis output; no confirmed medium or higher severity exploitable finding may remain open.
