@@ -1,5 +1,5 @@
 1abcb169f60a9408f7e95f6dd609b118b583e8d0ba2dcd697345fee9022c3690  ./.gitignore
-3d99943240587da21f2b83a653b51c4862580067fc0088601d08cd4164a941a0  ./.project
+c969cdaf3e1feda4e55ed55e96824624234665aa5b7497285ab3abd6b8d7110a  ./.project
 6b1901bb9c7fbb0a5a91c756f3ec099e6f6e8958f0fa7801c34df3b222682c91  ./COPYRIGHT
 b49cd30009945a1567830aed6d970e95bc977587a6e4ad706faf4c6e41082851  ./INSTALL.md
 0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0  ./LICENSE
@@ -25,7 +25,7 @@ d729993f3752839d09335b9ca716cb129cb90f8846ffda6eadb0c4f32f5446ec  ./bin/cgi-bin/
 24ed25bb5117a5ce0554242ff7a033e597cb7035e8f3926d7e1e6b5abd550ebe  ./bin/qisutu-mail-fetch.pl
 de27a81eea66927cd8faf5c730f75d9e0d9b35f6b9ae9e3cffb3e99273ceeaeb  ./bin/qisutu-search-index-rebuild.pl
 c184d1aa8d14693beb3bbdde526a5a179d40f1658f09eaaf4154a37bac34b053  ./bin/qisutu-ticket-escalation-check.pl
-b17e3eff5873c5270df3c454fb08b8bd37e24ea1d057e8a9d1dfde1c9d5d4349  ./core/config/QisutuConfig.pm
+ce04e85bd3b776f0172c06edba4942de1665706e8e5b148c533345578aba074f  ./core/config/QisutuConfig.pm
 1712bfc18855690ec1abfaaeebef8d45e6625be086b07ac555cb2b07e8e0f6bc  ./core/config/programs/Admin.pm
 58c9574ede5ac07988460aefefd3db2200975eb472937fda4c5f783cbc831172  ./core/config/programs/AdminAPI.pm
 5bf13a09b2d76516de06d92be13ef43bc4ac02bfba1743b4b29bfe17853f0e4f  ./core/config/programs/AdminAddons.pm
@@ -111,7 +111,7 @@ a2a2fdcc0891212acdb6861f46f0af7afc6541a104a033e4bfe31e588bc1aa0a  ./core/languag
 9948f0b59b3b09b4b86894ec0e90a5130ea2e64c28dca6c0d5b6163167d6eb72  ./core/language/installer/pt-BR.pm
 ce476f66ce78ed8675694308260f140da0f760cfee168369eb45078036f07bad  ./core/language/installer/pt-PT.pm
 d502b930ab599fc356f88c5cb701fd81927573e3acbaf03dff7081f15a8c964e  ./core/language/installer/tr.pm
-4067733e3dc156c117da1ed3fea360bc1f61046fca0a38147f2d750c0ba05114  ./core/language/it.pm
+9769c59072f38d1e10e76f20b74938b76b12d3f9c696df1900ea73ed9e6ae05f  ./core/language/it.pm
 88822121dc716390559a92dfb0781a41f627b48c7397390c2a7fa28755a6376b  ./core/language/nl.pm
 a20b0fd65b1278bd0e1947a74a8ffe006aebd40a897e408badf9419f6a71441a  ./core/language/pl.pm
 1e1eb2b2791ceb233bb120549167c97310a82a81398fd748b408e49a629c1641  ./core/language/pt-BR.pm
@@ -315,14 +315,14 @@ e062e9217f5d63415dcdf40f076c9ff52ea3f932ab3cf5478b92dc3cd464a65d  ./core/system/
 9f080ff5d28ee938c137110a97321410b41dc9a8d48f26e44780e4d62903c4b6  ./install/sql/schema.sql
 607dcaa3f1cdc12e6d7ebe1278198df4c73522da6806857ccc2ce3041ae5750c  ./install/update/QisutuSchemaSync.pl
 069828869bbfc2566914655216bb749480f014e4fa32b041cdfd3890c332c193  ./install/update/database/README.txt
-09352254f8cd10cf159040497e4ac3f03dbed25d2a4a327aee459c33788745af  ./release.conf
+f0fca8fb2c670abb63133648898897a0c982cc8907c3f65e19bce2805d77deee  ./release.conf
 5b51069adf483ca5001dd2a4ad304142397e26107858278eda148f8fed94754d  ./release.remove
 26430b4befa3134f3ef8dc5284e88653577ebecaa2ed64fcdaa9c745e5a45c73  ./scriptfiles/qisutu-apache.conf
 27f3e4a3e03c98ad95a1b792718baad93d61acb172d0cb5a26f9e5e0268b6d92  ./scriptfiles/qisutu-daemon.service
 5cdd9621602680c4bfca3b9c69f173fceb6ad374b89d94a5a58933923e6f0490  ./scriptfiles/qisutu-install-complete.path
 ce4d2ca7ff54d811764afe5b463164e05019a08ac9af875870e0e1e652fb61ef  ./scriptfiles/qisutu-install-complete.service
 c5d5617cd2c3a018c915651e6915691c9de25f25a76a8d1d073c646af2aecda7  ./t/addon-api.t
-5365e69d5cbf609ecb85b815e659d4aaea2c308ba27ad51b63680362a515dfbf  ./t/addon-framework.t
+3c341eff1841528eeee87422321e346f26279f10b8984592872c00ec1ebf2058  ./t/addon-framework.t
 3e2cd1773ab203783ea5112e1fa9a4491bb19a76363325920f48b0641e1ee0a6  ./t/admin-ui-regressions.t
 21c5b212af77d4159446d6e03c8c25b5a2ad56b7f923d9b816490898726ea621  ./t/agent-notification-languages.t
 de1d3fdf2af6071c04c9e7bf8b02d082388eca37bb3a87b31c080e15fc48fa43  ./t/agent-themes.t
@@ -332,7 +332,7 @@ a8bf5a1c2305ff423b71e3a21b4e177b9363feaed641bd30a6efacbe56db0a2a  ./t/agent-tick
 8765ece8a095bb803c6f88d2115aca994ec39035e6300789be5f7263bd227fff  ./t/cmdb-navigation-access.t
 99927854447e5f6efb5e3e662955ddf12a49e8abd9a6d17a60531f552f6ac470  ./t/communication-log.t
 fd8c5af24a94fba853b344ddba2478b2e8bc284ac149934ad3dcdeb652254013  ./t/content-template-placeholders.t
-714a91d69a8a70314794cc973cf329885195909ae3fc12276f2b12f579217a50  ./t/customer-auto-responses.t
+c7d974f09546df7cb860a356fef36aea8e2107d772d3cbb06ee38b2da99b1041  ./t/customer-auto-responses.t
 1debe251ee76db5a22350ee19d7c4e9a12498dac3c5a0fd429b2309227ded31a  ./t/customer-field-types.t
 a5a8ef5d6da199e547efd08380de82a407dbd53ecbb6e6bcec11837c29e33f0f  ./t/daemon-mail-fetch.t
 d6f34dd538c1abcf19023666e689d9199e69978264bcfeb2d95cfab6b2fe1652  ./t/data/login-addon-languages/en.json
@@ -348,7 +348,7 @@ e4d8b9686054d436af866423b86749e0722bda1f328537d11ea60f01c80e91c9  ./t/initial-da
 c1b25f249d0e496eb441a9e781b0c9600e887943d0b31ce060562bd63ff62167  ./t/knowledge-base-integration.t
 13972a9e09b032834cb7c873c7db69e5ac8186cb035a771b63537cd0fc1a3625  ./t/knowledge-base.t
 a0dcfd8e229108774672a127e4dfc1a8bbbf97c5358a88b1bc3eac085da58e30  ./t/languages.t
-7bb36d4e31eefa6ee4266885e7423e80c9231f015f00bd644e15f0685f877451  ./t/ldap-authentication.t
+457edeb1e0e1f35a731d0632a94737569e042f20f4503b9e108e37cc320f3122  ./t/ldap-authentication.t
 3f2e4292f7805c3865a44619f6dad3ca1e2c337e222b51c695af17cc1a06432e  ./t/ldap-customer-authentication.t
 0cb11a24426c2daa5d6bba775d16fe6ba3e2c4bf86e7330e8e63ef504677e4bf  ./t/license-headers.t
 60bf2c90828caf1d975e4ca7c59791276c0beaffcae0602178b16e0474fb61bf  ./t/localized-salutations-signatures.t
@@ -358,7 +358,7 @@ a7f1f99bab9e542ec61e13c02a13e5ef96db6d7be38d38bdc35d9a1c87bd2049  ./t/mail-crypt
 773f6d6ff6a96453572351de0465990d009c190ffbf52cfb39714b467fe1c1fe  ./t/master-data-import.t
 0746a9c7af07b4a390a5fd65e4dac92723ddc5111c46f2d62bc5cf87a9542ea0  ./t/postmaster-filter-ui.t
 febb07a9a6b58d978bb67a1ab8f50b32d68f588a39b14a107d63bb0761ced793  ./t/queue-closed-ticket-follow-up.t
-882d57f19cd6fd5a46db4c90823e6c7979d256c769e944d39b95c09f9da5b2ea  ./t/release-package-integrity.t
+4184250acd53619c3a567572e6eba4309ea8ab84031cefbc7dc67abc2dd11f36  ./t/release-package-integrity.t
 f35a4d0137b75500ec8de76b76bb88af49e588ec34496bae3aed7f0976c1ed26  ./t/reports.t
 f7801336e261e167975f90de43d9c78ce56786627a1480cf77e3e16a19a498b4  ./t/response-template-languages.t
 3716108911db1e646616a6280ef131c29fb89878664a8ea76c78c139b3e1a7e3  ./t/rest-api.t

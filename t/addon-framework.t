@@ -276,7 +276,7 @@ my $Insert = _ReadRaw( File::Spec->catfile( $Root, 'install', 'sql', 'insert.sql
 like( $Insert, qr{admin[.]addon[.]manage}, 'fresh installations grant the dedicated add-on management permission to administrators' );
 like( $Schema, qr{CREATE TABLE IF NOT EXISTS `addon_event_queue`}, 'fresh installations create the persistent add-on event queue' );
 my $Release = _ReadRaw( File::Spec->catfile( $Root, 'release.conf' ) );
-like( $Release, qr{^version=1[.]0[.]2$}m, 'the versioned add-on API is included in release 1.0.2' );
+like( $Release, qr{^version=1[.]0[.]3$}m, 'the versioned add-on API is included in release 1.0.3' );
 like( $Release, qr{^database_version=1[.]0[.]2$}m, 'the add-on schema is included in database version 1.0.2' );
 opendir my $BinDirectory, File::Spec->catdir( $Root, 'bin' ) or die "Cannot inspect bin directory: $!";
 my @ModuleBuilder = grep { m{addon.*build}i } readdir $BinDirectory;
