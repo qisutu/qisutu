@@ -414,6 +414,16 @@ Webinstaller trägt Host, Port, Datenbankname, Benutzer und das zufällig erzeug
 Passwort dort automatisch ein. Die Datei wird durch restriktive Dateirechte
 geschützt.
 
+## Projektdokumentation
+
+- `INSTALL.md` – Installation, parallele Instanzen und Updates
+- `MODULES.md` – Zusatzmodul-Format und interne Zusatzmodul-API
+- `API.md` – vollständige Referenz der externen REST-API
+- `DEVELOPMENT.md` – Tests, Warnungen und Entwicklungsrichtlinien
+- `CONTRIBUTING.md` – Fehlerberichte und Beiträge
+- `SECURITY.md` – vertrauliche Meldung von Sicherheitslücken
+- `CHANGELOG.md` – Versionshinweise und Auswirkungen von Updates
+
 ## Lizenz
 
 Qisutu ist unter der GNU Affero General Public License, Version 3 oder einer

@@ -387,6 +387,16 @@ The database connection is stored directly in `core/config/QisutuConfig.pm`.
 The web installer automatically enters the host, port, database name, user, and
 randomly generated password. Restrictive file permissions protect the file.
 
+## Project documentation
+
+- `INSTALL.md` – installation, parallel instances, and updates
+- `MODULES.md` – add-on format and internal add-on API
+- `API.md` – complete external REST API reference
+- `DEVELOPMENT.md` – tests, warnings, and development policy
+- `CONTRIBUTING.md` – bug reports and contributions
+- `SECURITY.md` – private vulnerability reporting
+- `CHANGELOG.md` – release notes and upgrade impact
+
 ## License
 
 Qisutu is licensed under the GNU Affero General Public License, version 3 or any

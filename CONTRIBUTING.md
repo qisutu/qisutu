@@ -21,6 +21,8 @@ Thank you for your interest in contributing to Qisutu. Contributions that improv
 
 Pull requests must not contain credentials, personal data, generated installation secrets, customer information, or unrelated formatting changes. They should remain compatible with the supported installation and update process unless the proposed incompatibility has been discussed and accepted in advance.
 
+The complete test command, warning policy, and policy requiring tests for major new functionality are documented in `DEVELOPMENT.md`.
+
 ## Code and documentation expectations
 
 - Follow the style and structure of the surrounding Perl, JavaScript, CSS, SQL, and Template Toolkit code.
