@@ -35,7 +35,7 @@ Project website: https://qisutu.de
 
 Qisutu is an independently installable open-source ticket system with an agent
 and customer portal, email processing, directory authentication, automation,
-knowledge base, CMDB, reports, and REST API. Qisutu 1.0.2 is a stable release
+knowledge base, CMDB, reports, and REST API. Qisutu 1.0.3 is a stable release
 approved for production use. Qisutu is therefore no longer in the development
 phase. Interfaces and database structures continue to evolve as part of regular
 release maintenance; required changes are delivered through the integrated
@@ -43,7 +43,7 @@ updater and permanently maintained data migrations.
 
 ## Languages
 
-Qisutu 1.0.2 includes eleven complete interface languages: German (`de`),
+Qisutu 1.0.3 includes eleven complete interface languages: German (`de`),
 English (`en`), French (`fr`), Italian (`it`), Brazilian Portuguese (`pt-BR`),
 European Portuguese (`pt-PT`), Spanish (`es`), Dutch (`nl`), Polish (`pl`),
 Czech (`cs`), and Turkish (`tr`).
@@ -52,9 +52,9 @@ Czech (`cs`), and Turkish (`tr`).
 
 Run the following commands as root in `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
-    tar xzf qisutu-1.0.2.tar.gz
-    mv qisutu-1.0.2 qisutu
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
+    mv qisutu-1.0.3 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -98,18 +98,18 @@ available in `INSTALL.md`.
 
 Run the following commands as root in `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
-    tar xzf qisutu-1.0.2.tar.gz
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-1.0.2
+    chown qisutu:www-data -R /opt/qisutu-1.0.3
 
-    cd /opt/qisutu-1.0.2
+    cd /opt/qisutu-1.0.3
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-1.0.2
-    rm qisutu-1.0.2.tar.gz
+    rm -R qisutu-1.0.3
+    rm qisutu-1.0.3.tar.gz
 
 The updater identifies the instance through `var/install/instance.conf`, stops
 only its daemon, and locks only its mail retrieval. It copies all managed
@@ -137,7 +137,7 @@ file operations are performed by the Qisutu daemon, separately from the web
 process. Each add-on provides its own administration links and configuration
 screens; secrets can be stored in encrypted form.
 
-With Qisutu 1.0.2, the core also provides the versioned internal add-on API 1.0.
+The Qisutu core also provides the versioned internal add-on API 1.0.
 It includes reusable module services, core events delivered persistently by the
 daemon, isolated REST routes with their own API permissions, and controlled UI
 insertion points. Existing modules without an API declaration remain

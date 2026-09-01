@@ -35,14 +35,14 @@ Strona projektu: https://qisutu.de
 
 Qisutu jest samodzielnie instalowanym systemem z portalami agentów i klientów,
 obsługą poczty, logowaniem katalogowym, automatyzacją, bazą wiedzy, CMDB,
-raportami i REST API. Qisutu 1.0.2 jest stabilnym wydaniem do pracy produkcyjnej
+raportami i REST API. Qisutu 1.0.3 jest stabilnym wydaniem do pracy produkcyjnej
 i nie znajduje się już w fazie rozwoju. Interfejsy oraz struktury bazy są nadal
 rozwijane w ramach regularnego utrzymania; zmiany dostarcza zintegrowany
 aktualizator i stale utrzymywane migracje danych.
 
 ## Języki
 
-Qisutu 1.0.2 zawiera jedenaście pełnych języków interfejsu: niemiecki (`de`),
+Qisutu 1.0.3 zawiera jedenaście pełnych języków interfejsu: niemiecki (`de`),
 angielski (`en`), francuski (`fr`), włoski (`it`), portugalski brazylijski
 (`pt-BR`), portugalski europejski (`pt-PT`), hiszpański (`es`), niderlandzki
 (`nl`), polski (`pl`), czeski (`cs`) i turecki (`tr`).
@@ -51,9 +51,9 @@ angielski (`en`), francuski (`fr`), włoski (`it`), portugalski brazylijski
 
 Jako root w `/opt` wykonaj:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
-    tar xzf qisutu-1.0.2.tar.gz
-    mv qisutu-1.0.2 qisutu
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
+    mv qisutu-1.0.3 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -86,18 +86,18 @@ znajdują się w `INSTALL.md`.
 
 Jako root w `/opt` wykonaj:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
-    tar xzf qisutu-1.0.2.tar.gz
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-1.0.2
+    chown qisutu:www-data -R /opt/qisutu-1.0.3
 
-    cd /opt/qisutu-1.0.2
+    cd /opt/qisutu-1.0.3
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-1.0.2
-    rm qisutu-1.0.2.tar.gz
+    rm -R qisutu-1.0.3
+    rm qisutu-1.0.3.tar.gz
 
 Aktualizator rozpoznaje instancję przez `var/install/instance.conf`, zatrzymuje
 tylko jej daemon i blokuje tylko jej pobieranie poczty. Kopiuje pliki zarządzane
@@ -121,7 +121,7 @@ Od wersji 0.0.78 Qisutu ma menedżer zwykłych ZIP-ów z czytelnym plikiem
 panelu, a daemon wykonuje operacje na plikach niezależnie od procesu WWW. Moduł
 może dostarczać własne odnośniki i ekrany oraz szyfrować sekrety.
 
-Qisutu 1.0.2 udostępnia też wewnętrzne API 1.0: usługi wielokrotnego użytku,
+Rdzeń Qisutu udostępnia też wewnętrzne API 1.0: usługi wielokrotnego użytku,
 trwale dostarczane zdarzenia rdzenia, izolowane trasy REST z własnymi prawami i
 kontrolowane punkty UI. Starsze moduły zachowują zgodność. Moduł może deklarować
 wersję API i funkcje; w razie potrzeby Qisutu żąda zwykłej aktualizacji rdzenia,

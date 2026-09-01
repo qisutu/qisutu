@@ -35,13 +35,13 @@ Web projektu: https://qisutu.de
 
 Qisutu je samostatně instalovatelný systém s portály agentů a zákazníků,
 zpracováním e-mailů, adresářovým přihlášením, automatizací, znalostní bází,
-CMDB, reporty a REST API. Qisutu 1.0.2 je stabilní produkční vydání a již není
+CMDB, reporty a REST API. Qisutu 1.0.3 je stabilní produkční vydání a již není
 ve vývojové fázi. Rozhraní a databáze se dále vyvíjejí v běžné údržbě; změny
 dodává integrovaný aktualizátor a trvale udržované migrace.
 
 ## Jazyky
 
-Qisutu 1.0.2 obsahuje jedenáct úplných jazyků: němčinu (`de`), angličtinu (`en`),
+Qisutu 1.0.3 obsahuje jedenáct úplných jazyků: němčinu (`de`), angličtinu (`en`),
 francouzštinu (`fr`), italštinu (`it`), brazilskou portugalštinu (`pt-BR`),
 evropskou portugalštinu (`pt-PT`), španělštinu (`es`), nizozemštinu (`nl`),
 polštinu (`pl`), češtinu (`cs`) a turečtinu (`tr`).
@@ -50,9 +50,9 @@ polštinu (`pl`), češtinu (`cs`) a turečtinu (`tr`).
 
 Jako root v `/opt` spusťte:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
-    tar xzf qisutu-1.0.2.tar.gz
-    mv qisutu-1.0.2 qisutu
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
+    mv qisutu-1.0.3 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -78,15 +78,15 @@ databázi. Instalátor vytvoří tabulky z `install/sql/schema.sql`, data z
 
 Jako root v `/opt` spusťte:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
-    tar xzf qisutu-1.0.2.tar.gz
-    chown qisutu:www-data -R /opt/qisutu-1.0.2
-    cd /opt/qisutu-1.0.2
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
+    chown qisutu:www-data -R /opt/qisutu-1.0.3
+    cd /opt/qisutu-1.0.3
     chmod +x update.sh
     ./update.sh
     cd /opt
-    rm -R qisutu-1.0.2
-    rm qisutu-1.0.2.tar.gz
+    rm -R qisutu-1.0.3
+    rm qisutu-1.0.3.tar.gz
 
 Aktualizátor rozpozná instanci podle `var/install/instance.conf`, zastaví jen
 její daemon a poštu a nepřepíše konfiguraci instance, Apache ani systemd.

@@ -35,14 +35,14 @@ Projectwebsite: https://qisutu.de
 
 Qisutu is zelfstandig installeerbaar en bevat een agent- en klantportaal,
 e-mailverwerking, directoryaanmelding, automatisering, kennisbank, CMDB,
-rapporten en REST-API. Qisutu 1.0.2 is een stabiele productieversie en bevindt
+rapporten en REST-API. Qisutu 1.0.3 is een stabiele productieversie en bevindt
 zich niet meer in de ontwikkelfase. Interfaces en databasestructuren blijven in
 het normale releaseonderhoud evolueren; noodzakelijke wijzigingen worden via de
 geïntegreerde updater en blijvend onderhouden datamigraties geleverd.
 
 ## Talen
 
-Qisutu 1.0.2 bevat elf volledige interfacetalen: Duits (`de`), Engels (`en`),
+Qisutu 1.0.3 bevat elf volledige interfacetalen: Duits (`de`), Engels (`en`),
 Frans (`fr`), Italiaans (`it`), Braziliaans Portugees (`pt-BR`), Europees
 Portugees (`pt-PT`), Spaans (`es`), Nederlands (`nl`), Pools (`pl`), Tsjechisch
 (`cs`) en Turks (`tr`).
@@ -51,9 +51,9 @@ Portugees (`pt-PT`), Spaans (`es`), Nederlands (`nl`), Pools (`pl`), Tsjechisch
 
 Voer als root in `/opt` uit:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
-    tar xzf qisutu-1.0.2.tar.gz
-    mv qisutu-1.0.2 qisutu
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
+    mv qisutu-1.0.3 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -87,18 +87,18 @@ Details en een voorbeeld met twee instanties staan in `INSTALL.md`.
 
 Voer als root in `/opt` uit:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.2.tar.gz
-    tar xzf qisutu-1.0.2.tar.gz
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-1.0.2
+    chown qisutu:www-data -R /opt/qisutu-1.0.3
 
-    cd /opt/qisutu-1.0.2
+    cd /opt/qisutu-1.0.3
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-1.0.2
-    rm qisutu-1.0.2.tar.gz
+    rm -R qisutu-1.0.3
+    rm qisutu-1.0.3.tar.gz
 
 De updater herkent de instantie via `var/install/instance.conf`, stopt alleen
 haar daemon en blokkeert alleen haar e-mailophaling. Beheerde bestanden worden
@@ -123,7 +123,7 @@ verwijderen modules in het beheer; de daemon voert bestandsbewerkingen apart van
 het webproces uit. Een module kan eigen links en schermen leveren en geheimen
 versleuteld opslaan.
 
-Qisutu 1.0.2 levert ook interne API 1.0: herbruikbare services, duurzaam door de
+De Qisutu-kern levert ook interne API 1.0: herbruikbare services, duurzaam door de
 daemon afgeleverde kernevents, geïsoleerde REST-routes met eigen rechten en
 gecontroleerde UI-invoegpunten. Bestaande modules blijven compatibel. Een module
 kan API-versie en functies declareren; indien nodig vraagt Qisutu een normale
