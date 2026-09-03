@@ -72,7 +72,7 @@ sub Load {
 
         System => {
             Name       => 'Qisutu',
-            Version    => '1.0.3',
+            Version    => '2.0.1',
             InstanceID => 'qisutu',
             WebPath    => '/qisutu',
             BaseURL    => $ENV{QISUTU_BASE_URL} || '',

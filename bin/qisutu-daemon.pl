@@ -51,6 +51,8 @@ sub main {
     require QisutuAddonRuntime;
     require QisutuAddonManager;
     require QisutuAddonEvent;
+    require QisutuReportScheduler;
+    require QisutuSystemSetting;
 
     my $Once = 0;
     my $SleepSeconds = 3;
@@ -111,8 +113,11 @@ sub main {
             . ( $AddonManager->Error() || 'unknown error' ) . "\n";
     }
     my $AddonEvent = QisutuAddonEvent->new( Config => $Config, DB => $DB );
+    my $ReportScheduler = QisutuReportScheduler->new( Config => $Config, DB => $DB );
     my $LastEscalationCheck = 0;
     my $LastMailFetch = 0;
+    my $LastMailFetchIntervalCheck = 0;
+    my $LastReportScheduleCheck = 0;
     my $LastAddonEventCleanup = 0;
 
     _Log("Automation and mail daemon started as $Worker");
@@ -123,9 +128,21 @@ sub main {
             last;
         }
 
+        if ( time - $LastMailFetchIntervalCheck >= 15 ) {
+            $MailFetchInterval = _MailFetchIntervalGet( Config => $Config, DB => $DB );
+            $LastMailFetchIntervalCheck = time;
+        }
+
         if ( time - $LastMailFetch >= $MailFetchInterval ) {
             $LastMailFetch = time;
             _MailFetchRun( QisutuHome => $QisutuHome );
+        }
+
+        if ( time - $LastReportScheduleCheck >= 30 ) {
+            my $ReportRuns = $ReportScheduler->ProcessDue( Limit => 20 );
+            _Log( 'ERROR: report delivery: ' . $ReportScheduler->Error() )
+                if !defined $ReportRuns || $ReportScheduler->Error();
+            $LastReportScheduleCheck = time;
         }
 
         my $AddonOperation = $AddonManager->OperationProcessNext( Worker => $Worker );
@@ -212,6 +229,22 @@ sub main {
     $DB->Disconnect();
     _Log('Automation and mail daemon stopped');
     return;
+}
+
+sub _MailFetchIntervalGet {
+    my (%Param) = @_;
+
+    my $Minutes = QisutuSystemSetting->new(
+        Config => $Param{Config},
+        DB     => $Param{DB},
+    )->Get(
+        Key     => 'mail.fetch_interval_minutes',
+        Default => 5,
+    );
+    my %Allowed = map { $_ => 1 } qw(1 2 5 10 15 30);
+    $Minutes = 5 if !defined $Minutes || !$Allowed{$Minutes};
+
+    return 60 * $Minutes;
 }
 
 sub _MailFetchRun {

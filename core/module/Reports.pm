@@ -30,6 +30,7 @@ use JSON::PP ();
 use POSIX qw(strftime);
 use QisutuReportBuilder;
 use QisutuReportPDF;
+use QisutuReportScheduler;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -39,7 +40,7 @@ sub new {
 sub Run {
     my ( $Self, %Param ) = @_;
     my $Request=$Param{Request}||{};my$User=$Param{User}||{};my$Language=$Request->{Language}||$Self->{Config}->{Language}->{Default}||'en';
-    my $Object=QisutuReportBuilder->new(Config=>$Self->{Config},DB=>$Self->{DB});my$Step=$Request->{Step}||'';my$Action=$Request->{Action}||'';my$UserID=$User->{user_account_id}||0;
+    my $Object=QisutuReportBuilder->new(Config=>$Self->{Config},DB=>$Self->{DB});my$Scheduler=QisutuReportScheduler->new(Config=>$Self->{Config},DB=>$Self->{DB});my$Step=$Request->{Step}||'';my$Action=$Request->{Action}||'';my$UserID=$User->{user_account_id}||0;
 
     if($Step eq'OptionSearch'){
         my$Rows=$Object->OptionSearch(User=>$User,Source=>$Request->{Source},Field=>$Request->{Field},Search=>$Request->{Search},Language=>$Language);
@@ -59,7 +60,18 @@ sub Run {
     if($Step eq'Save'){
         my@Groups=ref$Request->{GroupID}eq'ARRAY'?@{$Request->{GroupID}}:defined$Request->{GroupID}?($Request->{GroupID}):();
         my$ID=$Object->ReportSave(ReportID=>$ReportID,UserID=>$UserID,Name=>$Request->{Name},Description=>$Request->{Description},Visibility=>$Request->{Visibility},GroupIDs=>\@Groups,Configuration=>$Configuration);
-        return{Redirect=>'index.pl?Page=Reports;Action=Edit;ReportID='.$ID.';Notice=saved'}if$ID;
+        if($ID){
+            my@AgentIDs=ref$Request->{ScheduleAgentID}eq'ARRAY'?@{$Request->{ScheduleAgentID}}:defined$Request->{ScheduleAgentID}?($Request->{ScheduleAgentID}):();
+            my@Formats=grep{$Request->{'ScheduleFormat_'.$_}}qw(pdf csv_analysis csv_detail);
+            my$ScheduleOK=$Scheduler->ScheduleSave(
+                ReportID=>$ID,UserID=>$UserID,Active=>$Request->{ScheduleActive},Frequency=>$Request->{ScheduleFrequency},
+                SendTime=>$Request->{ScheduleSendTime},Weekday=>$Request->{ScheduleWeekday},Monthday=>$Request->{ScheduleMonthday},
+                PeriodType=>$Request->{SchedulePeriodType},PeriodField=>$Request->{SchedulePeriodField},RollingDays=>$Request->{ScheduleRollingDays},
+                AgentIDs=>\@AgentIDs,AdditionalEmails=>$Request->{ScheduleAdditionalEmails},Formats=>\@Formats,
+            );
+            return{Redirect=>'index.pl?Page=Reports;Action=Edit;ReportID='.$ID.';Notice=saved'}if$ScheduleOK;
+            $Object->{LastError}=$Scheduler->Error();$ReportID=$ID;$Report=$Object->ReportGet(ReportID=>$ID,UserID=>$UserID);$Action='Edit';
+        }
         $Report||={id=>$ReportID,name=>$Request->{Name},description=>$Request->{Description},visibility=>$Request->{Visibility},configuration=>$Configuration,is_editable=>1,group_ids=>\@Groups};$Action='Edit';
     }
     elsif($Step eq'Copy'){
@@ -84,6 +96,9 @@ sub Run {
     $Report||={id=>0,name=>'',description=>'',visibility=>'private',configuration=>$Configuration,is_editable=>1,group_ids=>[]};
     my$Catalog=$Self->_CatalogTranslate(Catalog=>$Object->Catalog(),Language=>$Language);my$Groups=$Object->GroupList(UserID=>$UserID);my%Selected=map{$_=>1}@{$Report->{group_ids}||[]};for my$Group(@{$Groups}){$Group->{selected}=$Selected{$Group->{id}}?'selected':'';}
     my$CanEdit=$Report->{is_editable}?1:0;my$ConfigJSON=$Self->_JSONForHTML($Configuration);my$CatalogJSON=$Self->_JSONForHTML($Catalog);
+    my$Schedule=$Step eq'Save'&&$Scheduler->Error()?$Self->_ScheduleFromRequest($Request):$Scheduler->ScheduleGet(ReportID=>$Report->{id});
+    my%ScheduleFormats=map{$_=>1}@{$Schedule->{format_list}||[]};my%ScheduleAgents=map{$_=>1}@{$Schedule->{agent_ids}||[]};
+    my$Agents=$Scheduler->AgentList();for my$Agent(@{$Agents}){$Agent->{selected}=$ScheduleAgents{$Agent->{id}}?'selected':'';$Agent->{label}=($Agent->{display_name}||$Agent->{login}||'').' <'.($Agent->{email}||'').'>';}
     return{Template=>'Reports.tt',Data=>{
         PageTitle=>'Translate:NavigationReports',ProgramTitle=>$Report->{name}||'Translate:ReportCreateTitle',ProgramDescription=>'Translate:ReportDesignerDescription',
         IsReportList=>0,IsReportDesigner=>1,ReportID=>$Report->{id}||0,ReportName=>$Report->{name}||'',ReportDescription=>$Report->{description}||'',
@@ -98,7 +113,27 @@ sub Run {
         JSDeleteConfirm=>$Self->_T('ReportDeleteConfirm',$Language),JSMetricValue=>$Self->_T('ReportMetricValue',$Language),JSDetailLimited=>$Self->_T('ReportDetailLimited',$Language),
         JSMetricLimit=>$Self->_T('ReportMetricLimit',$Language),JSColumnLimit=>$Self->_T('ReportColumnLimit',$Language),JSRemove=>$Self->_T('Remove',$Language),
         DeleteConfirm=>$Self->_T('ReportDeleteConfirm',$Language),
+        ScheduleActiveChecked=>$Schedule->{active}?'checked':'',ScheduleFrequencyDailySelected=>($Schedule->{frequency}||'daily')eq'daily'?'selected':'',
+        ScheduleFrequencyWeeklySelected=>($Schedule->{frequency}||'')eq'weekly'?'selected':'',ScheduleFrequencyMonthlySelected=>($Schedule->{frequency}||'')eq'monthly'?'selected':'',
+        ScheduleSendTime=>substr($Schedule->{send_time}||'08:00',0,5),ScheduleWeekday=>$Schedule->{weekday}||1,ScheduleMonthday=>$Schedule->{monthday}||1,
+        ScheduleWeekday1Selected=>($Schedule->{weekday}||1)==1?'selected':'',ScheduleWeekday2Selected=>($Schedule->{weekday}||1)==2?'selected':'',
+        ScheduleWeekday3Selected=>($Schedule->{weekday}||1)==3?'selected':'',ScheduleWeekday4Selected=>($Schedule->{weekday}||1)==4?'selected':'',
+        ScheduleWeekday5Selected=>($Schedule->{weekday}||1)==5?'selected':'',ScheduleWeekday6Selected=>($Schedule->{weekday}||1)==6?'selected':'',ScheduleWeekday7Selected=>($Schedule->{weekday}||1)==7?'selected':'',
+        SchedulePeriodFixedSelected=>($Schedule->{period_type}||'')eq'fixed'?'selected':'',SchedulePeriodPreviousDaySelected=>($Schedule->{period_type}||'')eq'previous_day'?'selected':'',
+        SchedulePeriodPreviousWeekSelected=>($Schedule->{period_type}||'')eq'previous_week'?'selected':'',SchedulePeriodPreviousMonthSelected=>($Schedule->{period_type}||'previous_month')eq'previous_month'?'selected':'',
+        SchedulePeriodRollingSelected=>($Schedule->{period_type}||'')eq'rolling_days'?'selected':'',SchedulePeriodField=>$Schedule->{period_field}||'created_at',ScheduleRollingDays=>$Schedule->{rolling_days}||30,
+        ScheduleAgents=>$Agents,ScheduleAdditionalEmails=>$Schedule->{additional_emails}||'',ScheduleFormatPDFChecked=>$ScheduleFormats{pdf}?'checked':'',
+        ScheduleFormatCSVAnalysisChecked=>$ScheduleFormats{csv_analysis}?'checked':'',ScheduleFormatCSVDetailChecked=>$ScheduleFormats{csv_detail}?'checked':'',
+        ScheduleNextRun=>$Schedule->{next_run_at}||'-',ScheduleLastRun=>$Schedule->{last_run_at}||'-',ScheduleLastStatus=>$Schedule->{last_status}||'-',ScheduleLastError=>$Schedule->{last_error}||'',
     }};
+}
+
+sub _ScheduleFromRequest {
+    my($Self,$R)=@_;my@AgentIDs=ref$R->{ScheduleAgentID}eq'ARRAY'?@{$R->{ScheduleAgentID}}:defined$R->{ScheduleAgentID}?($R->{ScheduleAgentID}):();
+    my@Formats=grep{$R->{'ScheduleFormat_'.$_}}qw(pdf csv_analysis csv_detail);
+    return{active=>$R->{ScheduleActive}?1:0,frequency=>$R->{ScheduleFrequency}||'daily',send_time=>$R->{ScheduleSendTime}||'08:00',weekday=>$R->{ScheduleWeekday}||1,
+        monthday=>$R->{ScheduleMonthday}||1,period_type=>$R->{SchedulePeriodType}||'previous_month',period_field=>$R->{SchedulePeriodField}||'created_at',rolling_days=>$R->{ScheduleRollingDays}||30,
+        agent_ids=>\@AgentIDs,additional_emails=>$R->{ScheduleAdditionalEmails}||'',format_list=>\@Formats,next_run_at=>'',last_run_at=>'',last_status=>'',last_error=>''};
 }
 
 sub _Configuration { my($Self,%Param)=@_;my$JSON=$Param{Request}->{ConfigurationJSON}||'';if($JSON){my$C=eval{JSON::PP->new->decode($JSON)};return$C if ref$C eq'HASH';}return$Param{Report}->{configuration}if$Param{Report}&&ref$Param{Report}->{configuration}eq'HASH';return$Param{Object}->DefaultConfiguration(); }

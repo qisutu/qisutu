@@ -119,6 +119,25 @@ unlike( $AggregateCall->[1], qr{OR 1=1}, 'filter input is not interpolated into 
 ok( grep( { defined $_ && $_ eq '%alpha\%\_" OR 1=1 --%' } @{$AggregateCall}[2..$#{$AggregateCall}] ), 'filter input is escaped and bound separately' );
 ok( grep( { $_->[0] =~ m{INSERT INTO report_execution_log} } @{ $DB->{Do} } ), 'report execution is audited' );
 
+my $AnyConfig = {
+    %{$Config}, filter_logic => 'any',
+    filters => [
+        { field => 'title', operator => 'contains', values => ['alpha'] },
+        { field => 'title', operator => 'contains', values => ['beta'] },
+    ],
+};
+$Builder->Execute(
+    Configuration => $AnyConfig, User => { user_account_id => 7 }, DetailLimit => 20,
+    MandatoryFilters => [ { field => 'created_at', operator => 'between', values => [ '2026-08-01', '2026-08-31' ] } ],
+);
+my ($MandatoryCall) = reverse grep { $_->[1] =~ m{AS group_key} } @{ $DB->{Calls} };
+like( $MandatoryCall->[1], qr{\bOR\b.+AND \(1=1 AND}s, 'a scheduled period remains mandatory even when report filters use OR logic' );
+is_deeply(
+    [ @{$MandatoryCall}[2 .. $#{$MandatoryCall}] ],
+    [ '%alpha%', '%beta%', '2026-08-01', '2026-08-31' ],
+    'mandatory scheduled-period values remain separately bound',
+);
+
 my $TimeConfig = {
     source=>'time',filter_logic=>'all',filters=>[],group_by=>'work_month',metrics=>['total_minutes'],
     chart_type=>'bar',sort=>'label_asc',limit=>25,columns=>['ticket_number','duration_minutes'],

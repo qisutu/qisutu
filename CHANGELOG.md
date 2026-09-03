@@ -2,6 +2,22 @@
 
 This file records human-readable changes and upgrade impact for published Qisutu releases. Publicly known vulnerabilities fixed in a release are listed with their CVE or other public identifier. If no such vulnerability is listed, none was publicly known with an assigned identifier when that release was prepared.
 
+## 2.0.1
+
+Qisutu 2.0.1 introduces direct collaboration between agents. The new internal chat shows which agents are online using a ten-minute activity window and refreshes the agent state every ten minutes. Its launcher is integrated into a stable lower sidebar action area and is positioned immediately before Kim when that add-on is installed. If Kim is absent, the internal-chat and Microsoft Teams launchers remain grouped in that same row directly above the user area instead of being distributed across the navigation or page. Agents can exchange direct messages, see unread messages, retain their conversation history, and explicitly delete the currently selected conversation.
+
+Ticket collaboration is integrated with the chat. The ticket detail view shows which agents currently have the ticket open and lets an agent address any of them directly. If no other agent has the ticket open, an online colleague can be invited from the same presence row; Qisutu opens the direct chat and sends the ticket link together with an invitation message. Tickets can also be handed over directly in the chat. Qisutu verifies that the recipient may edit the ticket queue, changes the owner, creates a handover event in the conversation, and records an internal ticket note naming the sender and recipient.
+
+Reports can now be delivered automatically by e-mail on a daily, weekly, or monthly schedule. A schedule can use the report's fixed filters or dynamically select the previous day, previous week, previous month, or a configurable number of completed days. Several active agents and arbitrary additional e-mail addresses can be combined as recipients. PDF, analysis CSV, and detail CSV attachments can be selected independently, while a delivery log records the result and prevents duplicate scheduled runs.
+
+Customer and public ticket forms can optionally be linked to an active process template from the KimProcesses add-on. The selector is only displayed while KimProcesses is installed, active, and enabled. After a successful form submission, Qisutu starts the selected process automatically. If the process cannot be started or its first step fails, the ticket and its normal confirmation remain intact and Qisutu records the process name and error as an internal note.
+
+Administrators can configure the e-mail retrieval interval in the system settings to 1, 2, 5, 10, 15, or 30 minutes. The running daemon reloads this setting automatically, so changing the interval does not require a service restart.
+
+Upgrade impact: use the included `update.sh` process described in `INSTALL.md`. The database version is 2.0.1. The schema synchronization adds the internal-chat, ticket-presence, report-scheduling, recipient, and delivery-log structures as well as the optional process-template reference on ticket forms without deleting existing data. The versioned internal add-on API remains at version 1.0.
+
+No publicly known Qisutu runtime vulnerability with a CVE or comparable public identifier was fixed in this release.
+
 ## 1.0.3
 
 Qisutu 1.0.3 is a stable maintenance and quality release. Customer and public ticket forms now accept multiple attachments, enforce the configured maximum attachment size, and provide localized selection and error messages. Administrators can optionally keep standard customer ticket creation available alongside configured customer forms. Customer queue selection has also been corrected so that customers can choose from the active target queues.

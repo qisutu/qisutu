@@ -20,7 +20,21 @@
 # SPDX-FileCopyrightText: 2026 Franziska Steps
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-product=Qisutu
-version=2.0.1
-minimum_program_version=1.0.1
-database_version=2.0.1
+{
+    Name            => 'AgentInternalChat',
+    Module          => 'AgentInternalChat',
+    Title           => 'InternalChatTitle',
+    Description     => 'InternalChatDescription',
+    Icon            => '',
+    URL             => 'index.pl?Page=AgentInternalChat',
+    Type            => 'ProgramOnly',
+    Parent          => '',
+    Order           => 0,
+    VisibleFor      => [ 'agent' ],
+    AccessType      => 'agent',
+    AccessTypes     => [ 'agent' ],
+    PermissionGroup => '',
+    PermissionMode  => '',
+    Permission      => '',
+    Active          => 1,
+}

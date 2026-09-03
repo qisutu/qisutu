@@ -306,6 +306,7 @@ sub _BaseData {
         ActiveTheme        => $ThemeData->{Key} || 'default',
         SystemName         => $Self->{Config}->{System}->{Name} || 'Qisutu',
         SystemVersion      => $Self->{Config}->{System}->{Version} || '',
+        UserIsAgent        => ( ( $User->{account_type} || '' ) eq 'agent' ? 1 : 0 ),
         UserDisplayName    => $Name,
         UserInitials       => $Self->_Initials( Name => $Name ),
         UserHasPreferences => ( ( $User->{account_type} || '' ) =~ m{\A(?:agent|customer)\z} ? 1 : 0 ),

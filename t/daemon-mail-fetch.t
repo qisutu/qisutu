@@ -38,7 +38,17 @@ close $DaemonFH;
 like(
     $Daemon,
     qr{my \$MailFetchInterval = 300;},
-    'the daemon schedules mail retrieval every five minutes',
+    'the daemon starts with the five-minute default',
+);
+like(
+    $Daemon,
+    qr{mail[.]fetch_interval_minutes},
+    'the daemon reads the configurable mail-retrieval interval',
+);
+like(
+    $Daemon,
+    qr{time - \$LastMailFetchIntervalCheck >= 15},
+    'interval changes are reloaded without restarting the daemon',
 );
 like(
     $Daemon,

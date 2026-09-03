@@ -218,7 +218,16 @@ sub Execute {
     my $UserID = $Self->_ID( $User->{user_account_id} );
     if (!$UserID) { $Self->{LastError}='Translate:ReportErrorPermission'; return; }
     my $Source = $Self->_Definitions()->{ $Config->{source} };
-    my $Where = $Self->_WhereBuild( Source=>$Source, Configuration=>$Config, User=>$User ) || return;
+    my $MandatoryConfiguration;
+    if ( ref $Param{MandatoryFilters} eq 'ARRAY' && @{ $Param{MandatoryFilters} } ) {
+        $MandatoryConfiguration = $Self->ConfigurationValidate( Configuration => {
+            %{$Config}, filter_logic => 'all', filters => $Param{MandatoryFilters},
+        } ) || return;
+    }
+    my $Where = $Self->_WhereBuild(
+        Source=>$Source, Configuration=>$Config, User=>$User,
+        MandatoryConfiguration=>$MandatoryConfiguration,
+    ) || return;
     my $Group = $Source->{groups}->{ $Config->{group_by} };
     my @Metrics = map { $Source->{metrics}->{$_} } @{ $Config->{metrics} };
 
@@ -399,6 +408,7 @@ sub _WhereBuild {
         elsif($Op eq'lte'){push@FilterSQL,$SQL.($Field->{type}eq'date'?' < DATE_ADD(?, INTERVAL 1 DAY)':' <= ?');push@Bind,$Values[0];}
     }
     my$SQL='1=1';if(@FilterSQL){$SQL.=' AND ('.join($Config->{filter_logic}eq'any'?' OR ':' AND ',map{'('.$_.')'}@FilterSQL).')';}
+    if($Param{MandatoryConfiguration}){my$Mandatory=$Self->_WhereBuild(Source=>$Source,Configuration=>$Param{MandatoryConfiguration},User=>$User);return if!$Mandatory;$SQL.=' AND ('.$Mandatory->{sql}.')';push@Bind,@{$Mandatory->{bind}};}
     $SQL.=' AND tc.id IS NULL' if$Source->{key}eq'time';return{sql=>$SQL,bind=>\@Bind};
 }
 

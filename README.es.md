@@ -35,7 +35,7 @@ Sitio del proyecto: https://qisutu.de
 
 Qisutu es un sistema open source instalable de forma independiente, con portales
 de agentes y clientes, procesamiento de correo, autenticación por directorio,
-automatización, base de conocimientos, CMDB, informes y API REST. Qisutu 1.0.3
+automatización, base de conocimientos, CMDB, informes y API REST. Qisutu 2.0.1
 es una versión estable aprobada para producción y ya no está en fase de
 desarrollo. Las interfaces y estructuras de base de datos siguen evolucionando
 con el mantenimiento regular; los cambios necesarios se distribuyen mediante
@@ -43,7 +43,7 @@ el actualizador integrado y migraciones de datos mantenidas permanentemente.
 
 ## Idiomas
 
-Qisutu 1.0.3 incluye once idiomas completos: alemán (`de`), inglés (`en`),
+Qisutu 2.0.1 incluye once idiomas completos: alemán (`de`), inglés (`en`),
 francés (`fr`), italiano (`it`), portugués brasileño (`pt-BR`), portugués
 europeo (`pt-PT`), español (`es`), neerlandés (`nl`), polaco (`pl`), checo
 (`cs`) y turco (`tr`).
@@ -52,9 +52,9 @@ europeo (`pt-PT`), español (`es`), neerlandés (`nl`), polaco (`pl`), checo
 
 Ejecute como root en `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
-    tar xzf qisutu-1.0.3.tar.gz
-    mv qisutu-1.0.3 qisutu
+    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
+    tar xzf qisutu-2.0.1.tar.gz
+    mv qisutu-2.0.1 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -90,18 +90,18 @@ instancias están en `INSTALL.md`.
 
 Ejecute como root en `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
-    tar xzf qisutu-1.0.3.tar.gz
+    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
+    tar xzf qisutu-2.0.1.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-1.0.3
+    chown qisutu:www-data -R /opt/qisutu-2.0.1
 
-    cd /opt/qisutu-1.0.3
+    cd /opt/qisutu-2.0.1
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-1.0.3
-    rm qisutu-1.0.3.tar.gz
+    rm -R qisutu-2.0.1
+    rm qisutu-2.0.1.tar.gz
 
 El actualizador identifica la instancia mediante `var/install/instance.conf`,
 detiene solo su daemon y bloquea únicamente su recogida de correo. Copia los
@@ -154,8 +154,9 @@ La administración reúne las cuentas entrantes en `Recogida de correo` y ofrece
 Microsoft y Google redirigen al proveedor después de guardar. Qisutu valida el
 retorno OAuth2 con un valor de estado de un solo uso, guarda los tokens y prueba
 IMAP. La cuenta solo se activa tras la prueba; los tokens caducados se renuevan
-automáticamente. El daemon de la instancia recoge los buzones cada cinco
-minutos, sin cron adicional para `qisutu-mail-fetch.pl`.
+automáticamente. En la configuración del sistema, el intervalo de recogida se
+puede establecer en 1, 2, 5, 10, 15 o 30 minutos y se aplica sin reiniciar, sin
+cron adicional para `qisutu-mail-fetch.pl`.
 
 Una cuenta inactiva se prueba antes de reactivarla y solo puede eliminarse tras
 desactivarla. Se borran credenciales y tokens, pero se conservan los registros

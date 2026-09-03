@@ -1,0 +1,627 @@
+/*
+ * Qisutu - Open Source Ticket System
+ * Copyright (C) 2026 Franziska Steps
+ * Qisutu - Kim-KI, https://qisutu.de
+ *
+ * This file is part of Qisutu.
+ *
+ * Qisutu is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Qisutu is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-FileCopyrightText: 2026 Franziska Steps
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+.qisutu-internal-chat-root {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 190;
+    width: 0;
+    height: 0;
+}
+
+.qisutu-sidebar-collaboration {
+    position: static;
+    width: 100%;
+    flex: 0 0 auto;
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 7px 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.qisutu-sidebar-collaboration[hidden] {
+    display: none;
+}
+
+.qisutu-internal-chat-launcher {
+    position: relative;
+    min-width: 74px;
+    height: 38px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.86);
+    border-radius: 20px;
+    background: #ff6964;
+    color: #ffffff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.16);
+}
+
+.qisutu-internal-chat-launcher:hover,
+.qisutu-internal-chat-launcher:focus-visible {
+    background: #f25550;
+    box-shadow: 0 5px 15px rgba(15, 23, 42, 0.22);
+}
+
+.qisutu-internal-chat-launcher:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.qisutu-internal-chat-launcher-icon {
+    font-size: 15px;
+}
+
+.qisutu-internal-chat-badge {
+    position: absolute;
+    top: -6px;
+    right: -5px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--qisutu-primary);
+    border-radius: 10px;
+    background: #ffffff;
+    color: #b42318;
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.qisutu-internal-chat-badge[hidden] {
+    display: none;
+}
+
+.qisutu-internal-chat-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 190;
+    background: rgba(15, 23, 42, 0.28);
+}
+
+.qisutu-internal-chat-backdrop[hidden],
+.qisutu-internal-chat-drawer[hidden] {
+    display: none;
+}
+
+.qisutu-internal-chat-drawer {
+    position: fixed;
+    top: 16px;
+    bottom: 16px;
+    left: 264px;
+    z-index: 200;
+    width: min(720px, calc(100vw - 296px));
+    min-width: 560px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #cfdbe3;
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--qisutu-text);
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.34);
+}
+
+html.qisutu-sidebar-collapsed .qisutu-internal-chat-drawer {
+    left: 84px;
+    width: min(720px, calc(100vw - 116px));
+}
+
+.qisutu-internal-chat-header {
+    flex: 0 0 auto;
+    min-height: 64px;
+    padding: 13px 16px 13px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid #dbe5eb;
+    background: #f7fafb;
+}
+
+.qisutu-internal-chat-header h2,
+.qisutu-internal-chat-conversation-header h3 {
+    margin: 0;
+}
+
+.qisutu-internal-chat-header p,
+.qisutu-internal-chat-conversation-header p {
+    margin: 2px 0 0;
+    color: var(--qisutu-muted);
+    font-size: 12px;
+}
+
+.qisutu-internal-chat-close {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #ced9e1;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #334155;
+    cursor: pointer;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.qisutu-internal-chat-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.qisutu-internal-chat-agents {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #dbe5eb;
+    background: #f8fafb;
+}
+
+.qisutu-internal-chat-agent-filter {
+    margin: 12px;
+    width: calc(100% - 24px);
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid #cbd7df;
+    border-radius: 7px;
+    background: #ffffff;
+    font: inherit;
+}
+
+.qisutu-internal-chat-agent-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 8px 10px;
+}
+
+.qisutu-internal-chat-agent {
+    width: 100%;
+    min-height: 52px;
+    padding: 7px 8px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #243447;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.qisutu-internal-chat-agent:hover,
+.qisutu-internal-chat-agent-active {
+    background: #e8f2f5;
+}
+
+.qisutu-internal-chat-agent-avatar,
+.qisutu-ticket-presence-avatar {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #dcebf0;
+    color: var(--qisutu-primary);
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.qisutu-internal-chat-online-dot {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 11px;
+    height: 11px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: #94a3b8;
+}
+
+.qisutu-internal-chat-online-dot-online {
+    background: #22a06b;
+}
+
+.qisutu-internal-chat-agent-name {
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qisutu-internal-chat-agent-state {
+    color: #708090;
+    font-size: 11px;
+}
+
+.qisutu-internal-chat-agent-unread {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #d92d20;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.qisutu-internal-chat-agent-unread[hidden] {
+    display: none;
+}
+
+.qisutu-internal-chat-conversation {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.qisutu-internal-chat-conversation-header {
+    flex: 0 0 auto;
+    min-height: 58px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid #e2e8ed;
+}
+
+.qisutu-internal-chat-conversation-heading {
+    min-width: 0;
+}
+
+.qisutu-internal-chat-delete {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    border: 1px solid #d84242;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #b42323;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.qisutu-internal-chat-delete:hover,
+.qisutu-internal-chat-delete:focus-visible {
+    background: #fff0f0;
+}
+
+.qisutu-internal-chat-delete:disabled {
+    cursor: wait;
+    opacity: 0.55;
+}
+
+.qisutu-internal-chat-delete[hidden] {
+    display: none;
+}
+
+.qisutu-internal-chat-empty {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: #718096;
+    text-align: center;
+}
+
+.qisutu-internal-chat-messages {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    background: #f4f7f9;
+}
+
+.qisutu-internal-chat-message {
+    max-width: 82%;
+    align-self: flex-start;
+}
+
+.qisutu-internal-chat-message-outgoing {
+    align-self: flex-end;
+}
+
+.qisutu-internal-chat-message-bubble {
+    padding: 9px 11px;
+    border: 1px solid #d6e0e6;
+    border-radius: 10px 10px 10px 3px;
+    background: #ffffff;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.qisutu-internal-chat-message-outgoing .qisutu-internal-chat-message-bubble {
+    border-color: #b9d8e2;
+    border-radius: 10px 10px 3px 10px;
+    background: #dff0f5;
+}
+
+.qisutu-internal-chat-message-meta {
+    margin-top: 3px;
+    color: #7a8896;
+    font-size: 10px;
+}
+
+.qisutu-internal-chat-message-outgoing .qisutu-internal-chat-message-meta {
+    text-align: right;
+}
+
+.qisutu-internal-chat-ticket-card {
+    margin-top: 7px;
+    padding: 8px 9px;
+    display: block;
+    border: 1px solid #c9d9e2;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.78);
+    color: var(--qisutu-primary);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.qisutu-internal-chat-ticket-card small {
+    display: block;
+    margin-bottom: 2px;
+    color: #5f7080;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+.qisutu-internal-chat-ticket-context {
+    flex: 0 0 auto;
+    margin: 10px 12px 0;
+    padding: 9px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid #c9dbe3;
+    border-radius: 8px;
+    background: #f1f8fa;
+}
+
+.qisutu-internal-chat-ticket-context[hidden] {
+    display: none;
+}
+
+.qisutu-internal-chat-ticket-context-text {
+    min-width: 0;
+    overflow: hidden;
+    color: #34495e;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qisutu-internal-chat-ticket-context-text strong {
+    color: var(--qisutu-primary);
+}
+
+.qisutu-internal-chat-transfer-status {
+    flex: 0 0 auto;
+    min-height: 0;
+    margin: 6px 12px 0;
+    color: #18794e;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.qisutu-internal-chat-form {
+    flex: 0 0 auto;
+    padding: 10px 12px 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
+    border-top: 1px solid #dbe5eb;
+    background: #ffffff;
+}
+
+.qisutu-internal-chat-form textarea {
+    min-height: 42px;
+    max-height: 120px;
+    resize: vertical;
+}
+
+.qisutu-internal-chat-form[hidden] {
+    display: none;
+}
+
+.qisutu-ticket-presence {
+    margin: 0 0 14px;
+    padding: 11px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid #cfe0e6;
+    border-radius: 8px;
+    background: #f3f9fb;
+}
+
+.qisutu-ticket-presence-title {
+    flex: 0 0 auto;
+    color: #334b5c;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.qisutu-ticket-presence-list {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.qisutu-ticket-presence-agent {
+    min-height: 34px;
+    padding: 3px 4px 3px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #c8d9e1;
+    border-radius: 18px;
+    background: #ffffff;
+}
+
+.qisutu-ticket-presence-agent .qisutu-ticket-presence-avatar {
+    width: 25px;
+    height: 25px;
+    font-size: 9px;
+}
+
+.qisutu-ticket-presence-agent-name {
+    color: #294357;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.qisutu-ticket-presence-chat,
+.qisutu-ticket-presence-invite {
+    min-height: 26px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 13px;
+    background: var(--qisutu-primary);
+    color: #ffffff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.qisutu-ticket-presence-invite {
+    min-height: 30px;
+    padding: 0 11px;
+}
+
+.qisutu-ticket-presence-chat:hover,
+.qisutu-ticket-presence-chat:focus-visible,
+.qisutu-ticket-presence-invite:hover,
+.qisutu-ticket-presence-invite:focus-visible {
+    background: var(--qisutu-primary-hover);
+}
+
+.qisutu-ticket-presence-empty {
+    color: #6d7c88;
+    font-size: 12px;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-sidebar-collaboration {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 7px 4px;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-internal-chat-launcher {
+    width: 40px;
+    min-width: 40px;
+    padding: 0;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-internal-chat-launcher-label {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    .qisutu-sidebar-collaboration {
+        position: static;
+        flex: 0 0 auto;
+        min-height: 52px;
+        padding: 7px 12px;
+    }
+
+    .qisutu-internal-chat-drawer,
+    html.qisutu-sidebar-collapsed .qisutu-internal-chat-drawer {
+        inset: 0;
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        border-radius: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .qisutu-internal-chat-content {
+        grid-template-columns: 128px minmax(0, 1fr);
+    }
+
+    .qisutu-internal-chat-agent {
+        grid-template-columns: 30px minmax(0, 1fr);
+    }
+
+    .qisutu-internal-chat-agent-avatar {
+        width: 30px;
+        height: 30px;
+    }
+
+    .qisutu-internal-chat-agent-unread {
+        position: absolute;
+    }
+
+    .qisutu-internal-chat-ticket-context {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .qisutu-ticket-presence {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
