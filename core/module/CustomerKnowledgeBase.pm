@@ -58,6 +58,8 @@ sub Run {
                 ArticleSummary     => $Article ? $Article->{summary} : '',
                 ArticleCategory    => $Article ? $Article->{category_name} : '',
                 ArticleContent     => $Article ? $Article->{content} : '',
+                ArticleAttachments => $Article ? ( $Article->{attachments} || [] ) : [],
+                HasArticleAttachments => $Article && $Article->{has_attachments} ? 1 : 0,
             },
         };
     }

@@ -94,6 +94,12 @@ my $ArticleID = $Object->ArticleSave(
     Status          => 'draft',
     CustomerIDs     => [ 7 ],
     QueueIDs        => [ 2 ],
+    Attachments     => [ {
+        Filename    => '../printer-guide.pdf',
+        ContentType => 'application/pdf',
+        Content     => 'pdf-bytes',
+        ContentSize => 9,
+    } ],
     ChangedByUserID => 9,
 );
 
@@ -111,5 +117,8 @@ my ($ArticleInsert) = grep { $_->[0] =~ /INSERT INTO knowledge_article\s/ } @{ $
 unlike( join( ' ', @{$ArticleInsert} ), qr/<script/i, 'article HTML is sanitized before storage' );
 like( join( ' ', @{$ArticleInsert} ), qr/published/, 'article is always stored as published technical data' );
 like( join( ' ', @{$ArticleInsert} ), qr/all/, 'article is always stored without a customer restriction' );
+my ($AttachmentInsert) = grep { $_->[0] =~ /INSERT INTO knowledge_article_attachment/ } @{ $DB->{calls} };
+ok( $AttachmentInsert, 'an uploaded FAQ attachment is stored in the article transaction' );
+is( $AttachmentInsert->[2], 'printer-guide.pdf', 'FAQ attachment filenames are reduced to their basename' );
 
 done_testing();

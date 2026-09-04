@@ -59,10 +59,12 @@ sub ServiceList {
             s.description,
             s.active,
             s.sort_order,
-            COUNT(DISTINCT sl.id) AS sla_count
+            COUNT(DISTINCT sl.id) AS sla_count,
+            COUNT(DISTINCT sci.ci_id) AS ci_count
          FROM service s
          LEFT JOIN service parent ON parent.id = s.parent_id
-         LEFT JOIN sla sl ON sl.service_id = s.id AND sl.active = 1';
+         LEFT JOIN sla sl ON sl.service_id = s.id AND sl.active = 1
+         LEFT JOIN service_cmdb_ci sci ON sci.service_id = s.id';
 
     if (@Where) {
         $SQL .= ' WHERE ' . join( ' AND ', @Where );
@@ -259,6 +261,204 @@ sub ServiceDeactivate {
 
     if ( !$Result ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminServiceUpdateFailed';
+        return;
+    }
+
+    return 1;
+}
+
+sub ServiceCIList {
+    my ( $Self, %Param ) = @_;
+
+    my $ServiceID = $Self->_ID( $Param{ServiceID} );
+    return [] if !$ServiceID;
+
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT
+            ci.id,
+            ci.ci_number,
+            ci.name,
+            ci.status,
+            ci.active,
+            cit.name AS type_name,
+            sci.created_by_user_id,
+            sci.created_at
+         FROM service_cmdb_ci sci
+         INNER JOIN cmdb_ci ci ON ci.id = sci.ci_id
+         INNER JOIN cmdb_ci_type cit ON cit.id = ci.type_id
+         WHERE sci.service_id = ?
+         ORDER BY ci.name ASC, ci.ci_number ASC, ci.id ASC',
+        $ServiceID,
+    );
+
+    if ( !$Rows ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminServiceCILoadFailed';
+        return [];
+    }
+
+    return $Rows;
+}
+
+sub CIServiceList {
+    my ( $Self, %Param ) = @_;
+
+    my $CIID = $Self->_ID( $Param{CIID} );
+    return [] if !$CIID;
+
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT
+            s.id,
+            s.full_name,
+            s.description,
+            s.active,
+            s.sort_order,
+            sci.created_by_user_id,
+            sci.created_at
+         FROM service_cmdb_ci sci
+         INNER JOIN service s ON s.id = sci.service_id
+         WHERE sci.ci_id = ?
+         ORDER BY s.sort_order ASC, s.full_name ASC, s.id ASC',
+        $CIID,
+    );
+
+    if ( !$Rows ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminServiceCILoadFailed';
+        return [];
+    }
+
+    return $Rows;
+}
+
+sub ServiceCILinkAdd {
+    my ( $Self, %Param ) = @_;
+
+    my $ServiceID = $Self->_ID( $Param{ServiceID} );
+    my $CIID      = $Self->_ID( $Param{CIID} );
+    my $User      = ref $Param{User} eq 'HASH' ? $Param{User} : {};
+    my $UserID    = $Self->_ID( $Param{ChangedByUserID} || $User->{user_account_id} ) || 1;
+
+    my $Service = $ServiceID ? $Self->{DB}->SelectRow(
+        'SELECT id, full_name FROM service WHERE id = ? LIMIT 1',
+        $ServiceID,
+    ) : undef;
+    my $CI = $CIID ? $Self->{DB}->SelectRow(
+        'SELECT id, ci_number, name FROM cmdb_ci WHERE id = ? AND active = 1 LIMIT 1',
+        $CIID,
+    ) : undef;
+
+    if ( !$Service || !$CI ) {
+        $Self->{LastError} = 'Translate:AdminServiceCIInvalid';
+        return;
+    }
+
+    my $Existing = $Self->{DB}->SelectRow(
+        'SELECT service_id FROM service_cmdb_ci WHERE service_id = ? AND ci_id = ? LIMIT 1',
+        $ServiceID,
+        $CIID,
+    );
+    return 1 if $Existing;
+
+    if ( !$Self->{DB}->BeginWork() ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminServiceCILinkFailed';
+        return;
+    }
+
+    my $OK = $Self->{DB}->Do(
+        'INSERT INTO service_cmdb_ci (service_id, ci_id, created_by_user_id, created_at)
+         VALUES (?, ?, ?, NOW())',
+        $ServiceID,
+        $CIID,
+        $UserID,
+    );
+    if ( !$OK ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminServiceCILinkFailed';
+        $Self->{DB}->Rollback();
+        return;
+    }
+
+    $OK = $Self->_ServiceCIHistoryAdd(
+        CI             => $CI,
+        Service        => $Service,
+        EventType      => 'service_linked',
+        ChangedByUserID=> $UserID,
+        User           => $User,
+    );
+    if ( !$OK ) {
+        $Self->{DB}->Rollback();
+        return;
+    }
+
+    if ( !$Self->{DB}->Commit() ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminServiceCILinkFailed';
+        $Self->{DB}->Rollback();
+        return;
+    }
+
+    return 1;
+}
+
+sub ServiceCILinkRemove {
+    my ( $Self, %Param ) = @_;
+
+    my $ServiceID = $Self->_ID( $Param{ServiceID} );
+    my $CIID      = $Self->_ID( $Param{CIID} );
+    my $User      = ref $Param{User} eq 'HASH' ? $Param{User} : {};
+    my $UserID    = $Self->_ID( $Param{ChangedByUserID} || $User->{user_account_id} ) || 1;
+
+    my $Link = $ServiceID && $CIID ? $Self->{DB}->SelectRow(
+        'SELECT s.id AS service_id, s.full_name, ci.id AS ci_id, ci.ci_number, ci.name
+         FROM service_cmdb_ci sci
+         INNER JOIN service s ON s.id = sci.service_id
+         INNER JOIN cmdb_ci ci ON ci.id = sci.ci_id
+         WHERE sci.service_id = ? AND sci.ci_id = ?
+         LIMIT 1',
+        $ServiceID,
+        $CIID,
+    ) : undef;
+
+    if ( !$Link ) {
+        $Self->{LastError} = 'Translate:AdminServiceCIInvalid';
+        return;
+    }
+
+    if ( !$Self->{DB}->BeginWork() ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminServiceCIUnlinkFailed';
+        return;
+    }
+
+    my $OK = $Self->{DB}->Do(
+        'DELETE FROM service_cmdb_ci WHERE service_id = ? AND ci_id = ?',
+        $ServiceID,
+        $CIID,
+    );
+    if ( !$OK ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminServiceCIUnlinkFailed';
+        $Self->{DB}->Rollback();
+        return;
+    }
+
+    $OK = $Self->_ServiceCIHistoryAdd(
+        CI => {
+            id        => $Link->{ci_id},
+            ci_number => $Link->{ci_number},
+            name      => $Link->{name},
+        },
+        Service => {
+            id        => $Link->{service_id},
+            full_name => $Link->{full_name},
+        },
+        EventType       => 'service_unlinked',
+        ChangedByUserID => $UserID,
+        User            => $User,
+    );
+    if ( !$OK ) {
+        $Self->{DB}->Rollback();
+        return;
+    }
+
+    if ( !$Self->{DB}->Commit() ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:AdminServiceCIUnlinkFailed';
+        $Self->{DB}->Rollback();
         return;
     }
 
@@ -1085,6 +1285,85 @@ sub _ServiceDescendantNamesRefresh {
     }
 
     return 1;
+}
+
+sub _ServiceCIHistoryAdd {
+    my ( $Self, %Param ) = @_;
+
+    my $CI      = $Param{CI} || {};
+    my $Service = $Param{Service} || {};
+    my $CIID    = $Self->_ID( $CI->{id} );
+    my $UserID  = $Self->_ID( $Param{ChangedByUserID} ) || 1;
+    return if !$CIID || !$Service->{id};
+
+    my $EventType = $Param{EventType} || '';
+    my ( $OldValue, $NewValue );
+    if ( $EventType eq 'service_linked' ) {
+        $NewValue = $Service->{full_name} || $Service->{id};
+    }
+    elsif ( $EventType eq 'service_unlinked' ) {
+        $OldValue = $Service->{full_name} || $Service->{id};
+    }
+    else {
+        return;
+    }
+
+    my $Actor = $Self->_ActorDisplayName(
+        User   => $Param{User},
+        UserID => $UserID,
+    );
+
+    my $OK = $Self->{DB}->Do(
+        'INSERT INTO cmdb_ci_history (
+            ci_id, event_type, field_key, field_label, old_value, new_value,
+            details, actor_user_id, actor_name, source, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+        $CIID,
+        $EventType,
+        'service_id',
+        'Service',
+        $OldValue,
+        $NewValue,
+        'Service-ID: ' . $Service->{id},
+        $UserID,
+        $Actor,
+        'application',
+    );
+
+    if ( !$OK ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:CMDBHistorySaveFailed';
+        return;
+    }
+
+    return 1;
+}
+
+sub _ActorDisplayName {
+    my ( $Self, %Param ) = @_;
+
+    my $User = ref $Param{User} eq 'HASH' ? $Param{User} : {};
+    my $Name = join ' ', grep { defined $_ && $_ ne '' } (
+        $User->{firstname},
+        $User->{lastname},
+    );
+    return $Name if $Name;
+    return $User->{login} if $User->{login};
+    return $User->{email} if $User->{email};
+
+    my $UserID = $Self->_ID( $Param{UserID} );
+    if ($UserID) {
+        my $Row = $Self->{DB}->SelectRow(
+            'SELECT login, email, firstname, lastname FROM user_account WHERE id = ? LIMIT 1',
+            $UserID,
+        ) || {};
+        $Name = join ' ', grep { defined $_ && $_ ne '' } (
+            $Row->{firstname},
+            $Row->{lastname},
+        );
+        return $Name || $Row->{login} || $Row->{email} || 'System';
+    }
+
+    return 'System';
 }
 
 sub _UpdateMode {

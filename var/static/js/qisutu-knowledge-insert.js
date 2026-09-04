@@ -112,12 +112,20 @@
         var previewTitle = root.querySelector('[data-qisutu-knowledge-preview-title]');
         var previewMeta = root.querySelector('[data-qisutu-knowledge-preview-meta]');
         var previewContent = root.querySelector('[data-qisutu-knowledge-preview-content]');
-        var insertButtons = root.querySelectorAll('[data-qisutu-knowledge-insert-mode]');
+        var previewAttachments = root.querySelector('[data-qisutu-knowledge-preview-attachments]');
+        var includeText = root.querySelector('[data-qisutu-knowledge-include-text]');
+        var textMode = root.querySelector('[data-qisutu-knowledge-text-mode]');
+        var includeAttachments = root.querySelector('[data-qisutu-knowledge-include-attachments]');
+        var applyButton = root.querySelector('[data-qisutu-knowledge-apply]');
+        var form = root.closest('form');
+        var hiddenInputs = form ? form.querySelector('[data-qisutu-knowledge-hidden-inputs]') : null;
+        var selectedAttachmentWrap = form ? form.querySelector('[data-qisutu-knowledge-selected-attachment-wrap]') : null;
+        var selectedAttachmentList = form ? form.querySelector('[data-qisutu-knowledge-selected-attachment-list]') : null;
         var selectedArticle = null;
         var searchTimer = null;
         var searchSequence = 0;
 
-        if (!openButton || !overlay || !search || !results) {
+        if (!openButton || !overlay || !search || !results || !includeText || !textMode || !includeAttachments || !applyButton) {
             return;
         }
 
@@ -133,11 +141,120 @@
             openButton.focus();
         }
 
-        function setInsertEnabled(enabled, hasLink) {
-            insertButtons.forEach(function (button) {
-                var linkMode = button.dataset.qisutuKnowledgeInsertMode === 'link';
-                button.disabled = !enabled || (linkMode && !hasLink);
+        function updateApplyState() {
+            var hasAttachments = Boolean(selectedArticle && Array.isArray(selectedArticle.attachments) && selectedArticle.attachments.length);
+            var selectionMade = includeText.checked || (includeAttachments.checked && hasAttachments);
+            applyButton.disabled = !selectedArticle || !selectedArticle.can_insert || !selectionMade;
+            textMode.disabled = !selectedArticle || !selectedArticle.can_insert || !includeText.checked;
+        }
+
+        function setInsertEnabled(enabled, hasLink, hasAttachments) {
+            includeText.disabled = !enabled;
+            includeAttachments.disabled = !enabled || !hasAttachments;
+            if (!hasAttachments) {
+                includeAttachments.checked = false;
+            }
+            var linkOption = textMode.querySelector('option[value="link"]');
+            if (linkOption) {
+                linkOption.disabled = !hasLink;
+            }
+            if (!hasLink && textMode.value === 'link') {
+                textMode.value = 'solution';
+            }
+            updateApplyState();
+        }
+
+        function renderPreviewAttachments(attachments) {
+            if (!previewAttachments) {
+                return;
+            }
+            previewAttachments.innerHTML = '';
+            if (!Array.isArray(attachments) || !attachments.length) {
+                previewAttachments.hidden = true;
+                return;
+            }
+
+            var list = document.createElement('ul');
+            attachments.forEach(function (attachment) {
+                var item = document.createElement('li');
+                item.textContent = (attachment.filename || '') + (attachment.size_display ? ' · ' + attachment.size_display : '');
+                list.appendChild(item);
             });
+            previewAttachments.appendChild(list);
+            previewAttachments.hidden = false;
+        }
+
+        function selectedAttachmentUpdate() {
+            if (!selectedAttachmentWrap || !selectedAttachmentList) {
+                return;
+            }
+            selectedAttachmentWrap.classList.toggle(
+                'qisutu-hidden',
+                !selectedAttachmentList.querySelector('[data-qisutu-knowledge-selected-attachment]')
+            );
+        }
+
+        function removeSelectedAttachment(id) {
+            if (hiddenInputs) {
+                hiddenInputs.querySelectorAll('input[name="KnowledgeAttachmentID"]').forEach(function (input) {
+                    if (String(input.value) === String(id)) {
+                        input.remove();
+                    }
+                });
+            }
+            if (selectedAttachmentList) {
+                selectedAttachmentList.querySelectorAll('[data-qisutu-knowledge-selected-attachment]').forEach(function (item) {
+                    if (String(item.dataset.qisutuKnowledgeSelectedAttachment) === String(id)) {
+                        item.remove();
+                    }
+                });
+            }
+            selectedAttachmentUpdate();
+        }
+
+        function bindSelectedAttachmentRemove(button) {
+            if (button.dataset.qisutuKnowledgeRemoveBound === '1') {
+                return;
+            }
+            button.dataset.qisutuKnowledgeRemoveBound = '1';
+            button.addEventListener('click', function () {
+                removeSelectedAttachment(button.dataset.qisutuKnowledgeAttachmentRemove || '');
+            });
+        }
+
+        function addSelectedAttachment(attachment) {
+            if (!hiddenInputs || !selectedAttachmentList || !attachment || !attachment.id) {
+                return;
+            }
+            var exists = Array.prototype.some.call(
+                hiddenInputs.querySelectorAll('input[name="KnowledgeAttachmentID"]'),
+                function (input) { return String(input.value) === String(attachment.id); }
+            );
+            if (exists) {
+                return;
+            }
+
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'KnowledgeAttachmentID';
+            input.value = attachment.id;
+            hiddenInputs.appendChild(input);
+
+            var item = document.createElement('div');
+            var description = document.createElement('span');
+            var remove = document.createElement('button');
+            item.className = 'qisutu-knowledge-selected-attachment';
+            item.dataset.qisutuKnowledgeSelectedAttachment = attachment.id;
+            description.textContent = (attachment.filename || '') + (attachment.size_display ? ' · ' + attachment.size_display : '');
+            remove.type = 'button';
+            remove.className = 'qisutu-button qisutu-button-secondary qisutu-button-small';
+            remove.dataset.qisutuKnowledgeAttachmentRemove = attachment.id;
+            remove.textContent = selectedAttachmentList.dataset.qisutuKnowledgeAttachmentRemoveLabel || 'Remove';
+            item.appendChild(description);
+            item.appendChild(remove);
+            selectedAttachmentList.appendChild(item);
+            bindSelectedAttachmentRemove(remove);
+            selectedAttachmentUpdate();
         }
 
         function showArticle(article) {
@@ -147,7 +264,15 @@
             previewMeta.textContent = [article.article_number, article.visibility]
                 .filter(Boolean).join(' · ');
             previewContent.innerHTML = article.content || '';
-            setInsertEnabled(Boolean(article.can_insert), Boolean(article.portal_url));
+            renderPreviewAttachments(article.attachments || []);
+            includeText.checked = true;
+            includeAttachments.checked = false;
+            textMode.value = 'solution';
+            setInsertEnabled(
+                Boolean(article.can_insert),
+                Boolean(article.portal_url),
+                Boolean(Array.isArray(article.attachments) && article.attachments.length)
+            );
             setStatus(article.can_insert ? '' : root.dataset.notAllowedText || '', !article.can_insert);
         }
 
@@ -155,7 +280,7 @@
             var params = parameters(root);
             params.ArticleID = id;
             setStatus(root.dataset.loadingText || '', false);
-            setInsertEnabled(false, false);
+            setInsertEnabled(false, false, false);
 
             requestJSON(root.dataset.articleUrl, params).then(function (data) {
                 if (!data.success || !data.article) {
@@ -165,6 +290,7 @@
             }).catch(function () {
                 selectedArticle = null;
                 preview.hidden = true;
+                renderPreviewAttachments([]);
                 setStatus(root.dataset.errorText || '', true);
             });
         }
@@ -232,7 +358,8 @@
             }
             selectedArticle = null;
             preview.hidden = true;
-            setInsertEnabled(false, false);
+            renderPreviewAttachments([]);
+            setInsertEnabled(false, false, false);
             overlay.hidden = false;
             overlay.setAttribute('aria-hidden', 'false');
             document.body.classList.add('qisutu-overlay-open');
@@ -261,13 +388,28 @@
             }
         });
 
-        insertButtons.forEach(function (button) {
-            button.addEventListener('click', function () {
-                var mode = button.dataset.qisutuKnowledgeInsertMode;
-                var html = '';
-                if (!selectedArticle || !selectedArticle.can_insert) {
-                    return;
-                }
+        includeText.addEventListener('change', updateApplyState);
+        includeAttachments.addEventListener('change', updateApplyState);
+        textMode.addEventListener('change', updateApplyState);
+
+        if (selectedAttachmentList) {
+            selectedAttachmentList.querySelectorAll('[data-qisutu-knowledge-attachment-remove]').forEach(bindSelectedAttachmentRemove);
+            selectedAttachmentUpdate();
+        }
+
+        applyButton.addEventListener('click', function () {
+            var mode = includeText.checked ? textMode.value : 'attachments';
+            var html = '';
+            var attachSelected = includeAttachments.checked
+                && selectedArticle
+                && Array.isArray(selectedArticle.attachments)
+                && selectedArticle.attachments.length;
+            if (!selectedArticle || !selectedArticle.can_insert || (!includeText.checked && !attachSelected)) {
+                setStatus(root.dataset.selectContentText || root.dataset.errorText || '', true);
+                return;
+            }
+
+            if (includeText.checked) {
                 if (mode === 'title_solution') {
                     html = '<h3>' + safeHTMLText(selectedArticle.title) + '</h3>' + (selectedArticle.content || '');
                 }
@@ -281,37 +423,40 @@
                     setStatus(root.dataset.errorText || '', true);
                     return;
                 }
+            }
 
-                if ((root.dataset.context || '') === 'ticket_create') {
-                    var form = root.closest('form');
-                    if (form) {
-                        var usageInput = document.createElement('input');
-                        usageInput.type = 'hidden';
-                        usageInput.name = 'KnowledgeUsage';
-                        usageInput.value = selectedArticle.id + '|' + mode;
-                        form.appendChild(usageInput);
-                    }
+            if (attachSelected) {
+                selectedArticle.attachments.forEach(addSelectedAttachment);
+            }
+
+            if ((root.dataset.context || '') === 'ticket_create') {
+                if (form) {
+                    var usageInput = document.createElement('input');
+                    usageInput.type = 'hidden';
+                    usageInput.name = 'KnowledgeUsage';
+                    usageInput.value = selectedArticle.id + '|' + mode;
+                    form.appendChild(usageInput);
                 }
-                else {
-                    requestJSON(root.dataset.usageUrl, {}, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-                        },
-                        body: new URLSearchParams({
-                            Page: 'AgentKnowledgeBase',
-                            Step: 'UsageRecord',
-                            CSRFToken: (document.querySelector('input[name="CSRFToken"]') || {}).value || '',
-                            ArticleID: selectedArticle.id,
-                            TicketID: root.dataset.ticketId || '0',
-                            Context: context(root),
-                            InsertMode: mode
-                        }).toString()
-                    }).catch(function () {});
-                }
-                close();
-            });
+            }
+            else {
+                requestJSON(root.dataset.usageUrl, {}, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    body: new URLSearchParams({
+                        Page: 'AgentKnowledgeBase',
+                        Step: 'UsageRecord',
+                        CSRFToken: (document.querySelector('input[name="CSRFToken"]') || {}).value || '',
+                        ArticleID: selectedArticle.id,
+                        TicketID: root.dataset.ticketId || '0',
+                        Context: context(root),
+                        InsertMode: mode
+                    }).toString()
+                }).catch(function () {});
+            }
+            close();
         });
 
         document.addEventListener('keydown', function (event) {

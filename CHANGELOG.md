@@ -14,7 +14,11 @@ Customer and public ticket forms can optionally be linked to an active process t
 
 Administrators can configure the e-mail retrieval interval in the system settings to 1, 2, 5, 10, 15, or 30 minutes. The running daemon reloads this setting automatically, so changing the interval does not require a service restart.
 
-Upgrade impact: use the included `update.sh` process described in `INSTALL.md`. The database version is 2.0.1. The schema synchronization adds the internal-chat, ticket-presence, report-scheduling, recipient, and delivery-log structures as well as the optional process-template reference on ticket forms without deleting existing data. The versioned internal add-on API remains at version 1.0.
+Services can now be linked directly to configuration items in the CMDB. The service administration shows assigned configuration items and supports adding or removing them through the CMDB search, while each configuration item displays all associated services. Every assignment and removal is recorded in the immutable configuration-item history. The new many-to-many relationship also provides the technical foundation for deriving affected services from configuration items in ITSM incidents, major incidents and changes, and for considering those services in impact displays and change-conflict detection.
+
+FAQ articles in the knowledge base can now contain multiple attachments. Agents can add, review, download, retain, or remove these files while maintaining an article, and customer-visible FAQ attachments are also available through the protected customer portal download. When using a FAQ in either a new ticket or an existing ticket, agents choose independently whether to insert the FAQ text, attach the FAQ files, or do both. The selected FAQ files become normal ticket-article and e-mail attachments, remain removable before submission, and are checked again on the server for visibility, validity, and the configured attachment-size limit.
+
+Upgrade impact: use the included `update.sh` process described in `INSTALL.md`. The database version is 2.0.1. The schema synchronization adds the internal-chat, ticket-presence, report-scheduling, recipient, delivery-log, service-to-configuration-item, and FAQ-attachment structures as well as the optional process-template reference on ticket forms without deleting existing data. The versioned internal add-on API remains at version 1.0.
 
 No publicly known Qisutu runtime vulnerability with a CVE or comparable public identifier was fixed in this release.
 

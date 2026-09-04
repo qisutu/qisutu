@@ -182,6 +182,8 @@ sub Run {
     my $TimeAccountingInput;
     my $RecipientEmail        = '';
     my $RecipientName         = '';
+    my $KnowledgeAttachmentIDs = $Self->_RequestIDList( Value => $Request->{KnowledgeAttachmentID} );
+    my $SelectedKnowledgeAttachments = [];
 
     if ($IsSubmit) {
         $TimeAccountingInput = $TimeAccountingObject->InputParse( Request => $Request );
@@ -225,6 +227,21 @@ sub Run {
                 MaxSizeMB  => $AttachmentMaxSizeMB,
                 Language   => $Language,
             );
+        }
+
+        if ( !$CreateError && @{$KnowledgeAttachmentIDs} ) {
+            my $KnowledgeAttachments = $KnowledgeObject->AttachmentsForTicket(
+                AttachmentIDs => $KnowledgeAttachmentIDs,
+                CustomerSafe  => 1,
+            );
+            if ( !defined $KnowledgeAttachments ) {
+                $CreateError = $KnowledgeObject->Error() || 'Translate:KnowledgeAttachmentLoadFailed';
+                $KnowledgeAttachmentIDs = [];
+            }
+            else {
+                push @{$Attachments}, @{$KnowledgeAttachments};
+                $SelectedKnowledgeAttachments = $KnowledgeAttachments;
+            }
         }
 
         if ( !$CreateError && ( $Request->{ResponseTemplateID} || 0 ) ) {
@@ -350,7 +367,7 @@ sub Run {
                         ? ( $Request->{KnowledgeUsage} )
                         : ();
                 for my $Usage (@KnowledgeUsage) {
-                    next if !defined $Usage || $Usage !~ m{\A(\d+)\|(solution|title_solution|link)\z};
+                    next if !defined $Usage || $Usage !~ m{\A(\d+)\|(solution|title_solution|link|attachments)\z};
                     $KnowledgeObject->UsageRecord(
                         ArticleID => $1,
                         TicketID  => $TicketID,
@@ -433,6 +450,19 @@ sub Run {
         IDPrefix => 'qisutu-agent-ticket-create-time-accounting',
     );
 
+    if ( $CreateError && @{$KnowledgeAttachmentIDs} && !@{$SelectedKnowledgeAttachments} ) {
+        my $KnowledgeAttachments = $KnowledgeObject->AttachmentsForTicket(
+            AttachmentIDs => $KnowledgeAttachmentIDs,
+            CustomerSafe  => 1,
+        );
+        if ( defined $KnowledgeAttachments ) {
+            $SelectedKnowledgeAttachments = $KnowledgeAttachments;
+        }
+        else {
+            $KnowledgeAttachmentIDs = [];
+        }
+    }
+
     return {
         Template => 'AgentTicketCreate.tt',
         Data     => {
@@ -487,6 +517,9 @@ sub Run {
                 : [],
             SubmittedResponseTemplateAttachmentSelection => $CreateError
                 && $Request->{ResponseTemplateAttachmentSelection} ? 1 : 0,
+            SubmittedKnowledgeAttachmentIDs => $CreateError ? $KnowledgeAttachmentIDs : [],
+            SubmittedKnowledgeAttachments => $CreateError ? $SelectedKnowledgeAttachments : [],
+            HasSubmittedKnowledgeAttachments => $CreateError && @{$SelectedKnowledgeAttachments} ? 1 : 0,
             ResponseTemplateFieldClass => @{$ResponseTemplateList} ? '' : 'qisutu-hidden',
         },
     };

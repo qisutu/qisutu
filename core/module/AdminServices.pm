@@ -77,6 +77,40 @@ sub Run {
         );
         return { Redirect => 'index.pl?Page=AdminServices' } if $OK && !$ServiceObject->Error();
     }
+    elsif ( $Step eq 'ServiceCILink' ) {
+        my $ServiceID = $Request->{ServiceID};
+        my $CIID      = $Request->{CMDBCIID};
+
+        if ( !$CIID && $Request->{CMDBCINumber} ) {
+            my $CI = $Self->{DB}->SelectRow(
+                'SELECT id FROM cmdb_ci WHERE ci_number = ? LIMIT 1',
+                $Request->{CMDBCINumber},
+            );
+            $CIID = $CI->{id} if $CI;
+        }
+
+        my $OK = $ServiceObject->ServiceCILinkAdd(
+            ServiceID       => $ServiceID,
+            CIID            => $CIID,
+            ChangedByUserID => $User->{user_account_id},
+            User            => $User,
+        );
+        return {
+            Redirect => 'index.pl?Page=AdminServices;Action=Edit;ServiceID=' . ( $ServiceID || 0 ) . ';Status=ci_linked'
+        } if $OK && !$ServiceObject->Error();
+    }
+    elsif ( $Step eq 'ServiceCIUnlink' ) {
+        my $ServiceID = $Request->{ServiceID};
+        my $OK = $ServiceObject->ServiceCILinkRemove(
+            ServiceID       => $ServiceID,
+            CIID            => $Request->{CMDBCIID},
+            ChangedByUserID => $User->{user_account_id},
+            User            => $User,
+        );
+        return {
+            Redirect => 'index.pl?Page=AdminServices;Action=Edit;ServiceID=' . ( $ServiceID || 0 ) . ';Status=ci_unlinked'
+        } if $OK && !$ServiceObject->Error();
+    }
 
     my $Action = $Request->{Action} || 'List';
     my $ServiceList = $ServiceObject->ServiceList();
@@ -87,11 +121,24 @@ sub Run {
         $Action = 'List' if !$Service;
     }
 
+    my $ServiceCIs = $Service
+        ? $ServiceObject->ServiceCIList( ServiceID => $Service->{id} )
+        : [];
+
+    for my $CI ( @{$ServiceCIs} ) {
+        $CI->{active_label} = $CI->{active} ? 'Translate:AdminActiveYes' : 'Translate:AdminActiveNo';
+    }
+
     for my $Row ( @{$ServiceList} ) {
         $Row->{active_label} = $Row->{active} ? 'Translate:AdminActiveYes' : 'Translate:AdminActiveNo';
     }
 
     my $Error = $ServiceObject->Error() || '';
+    my %NoticeKey = (
+        ci_linked   => 'Translate:AdminServiceCILinked',
+        ci_unlinked => 'Translate:AdminServiceCIUnlinked',
+    );
+    my $Notice = $NoticeKey{ $Request->{Status} || '' } || '';
 
     return {
         Template => 'AdminServices.tt',
@@ -106,8 +153,12 @@ sub Run {
             ShowBackToList     => $Action eq 'List' ? 0 : 1,
             ServiceList        => $ServiceList,
             ServiceCount       => scalar @{$ServiceList},
+            ServiceCIs         => $ServiceCIs,
+            ServiceCICount     => scalar @{$ServiceCIs},
             ErrorMessage       => $Error,
             ErrorClass         => $Error ? '' : 'qisutu-hidden',
+            NoticeMessage      => $Notice,
+            NoticeClass        => $Notice ? '' : 'qisutu-hidden',
             ServiceID          => $Service ? $Service->{id} : '',
             ServiceName        => $Service ? $Service->{name} : '',
             ServiceFullName    => $Service ? $Service->{full_name} : '',

@@ -29,6 +29,7 @@ use utf8;
 use Encode qw(decode encode);
 use JSON::PP qw(encode_json);
 use QisutuCMDB;
+use QisutuService;
 use QisutuTicket;
 
 sub new {
@@ -95,6 +96,7 @@ sub Run {
     for my$Item(@{$List->{Items}}){$Item->{status_label}=$Item->{status_label}||$Item->{status}||'-';$Item->{active_label}=$Self->_T($Item->{active}?'AdminActiveYes':'AdminActiveNo',$Language);$Item->{customer_display}=$Item->{customer_name}||'-';}
     my$FieldsHTML=$Type?$Object->CIFieldsFormHTML(TypeID=>$TypeID,CI=>$CI||{},Language=>$Language,ReadOnly=>$Action eq'View'?1:0):'';
     my$Relations=$CI?$Object->RelationList(CIID=>$CIID):[];my$Tickets=$CI&&$AdminMode?$Self->_TicketRows($CIID):[];my$History=$CI&&$AdminMode?$Object->HistoryList(CIID=>$CIID):[];
+    my$Services=$CI&&$AdminMode?QisutuService->new(Config=>$Self->{Config},DB=>$Self->{DB})->CIServiceList(CIID=>$CIID):[];
     for my$Relation(@{$Relations}){
         my$RelatedDisplay='<strong>'.$Self->_E($Relation->{related_ci_number}||'').'</strong> '.$Self->_E($Relation->{related_ci_name}||'');
         $Relation->{related_display_html}=$AdminMode
@@ -104,6 +106,13 @@ sub Run {
         if($Permission->{Change}){$Relation->{remove_html}='<form method="post" action="index.pl"><input type="hidden" name="Page" value="'.$Self->_E($ProgramPage).'"><input type="hidden" name="Step" value="RelationRemove"><input type="hidden" name="CIID" value="'.int($CIID).'"><input type="hidden" name="RelationID" value="'.int($Relation->{id}||0).'"><button class="qisutu-button-link qisutu-button-danger-text" type="submit">'.$Self->_E($Self->_T('AdminRemove',$Language)).'</button></form>';}
     }
     for my$H(@{$History}){$H->{event_label}=$Self->_T('CMDBHistory_'.$H->{event_type},$Language);$H->{actor_display}=$H->{actor_name}||$Self->_T('TicketHistorySystem',$Language);$H->{change_display}=$Self->_HistoryChange($H);$H->{ticket_url}=$H->{related_ticket_id}?'index.pl?Page=AgentTicketZoom;TicketID='.$H->{related_ticket_id}:'';$H->{ticket_link_html}=$H->{ticket_url}?'<a href="'.$Self->_E($H->{ticket_url}).'">'.$Self->_E($Self->_T('CMDBOpenTicket',$Language)).'</a>':'';}
+    for my$Service(@{$Services}){
+        my$Name=$Self->_E($Service->{full_name}||'');
+        $Service->{display_html}=$Permission->{Admin}
+            ?'<a class="qisutu-table-link" href="index.pl?Page=AdminServices;Action=Edit;ServiceID='.int($Service->{id}||0).'">'.$Name.'</a>'
+            :'<strong>'.$Name.'</strong>';
+        $Service->{active_label}=$Self->_T($Service->{active}?'AdminActiveYes':'AdminActiveNo',$Language);
+    }
     my$Notice=$Self->_Notice($R,$Language);
     my$CustomerUsers=$CI&&$CI->{customer_id}?$Object->CustomerUserItems(CustomerID=>$CI->{customer_id}):[];
 
@@ -115,8 +124,8 @@ sub Run {
         Search=>$R->{Search}||'',IncludeInactiveChecked=>$R->{IncludeInactive}?'checked':'',SelectedTypeID=>$TypeID,HasSelectedType=>$Type?1:0,
         CIID=>$CIID,CINumber=>$CI?$CI->{ci_number}:'',CIName=>$CI?$CI->{name}:($R->{Name}||''),CIStatus=>$CI?$CI->{status}:($R->{Status}||''),CIStatusDisplay=>$CI?($CI->{status_label}||$CI->{status}||'-'):'-',CITypeName=>$CI?$CI->{type_name}:($Type?$Type->{name}:''),CITypeIcon=>$CI?$CI->{type_icon}:($Type?$Type->{icon}:'CI'),CIExternalID=>$CI?$CI->{external_id}:($R->{ExternalID}||''),CISource=>$CI?$CI->{source}:($R->{Source}||'manual'),CIActiveChecked=>!$CI||$CI->{active}?'checked':'',CICustomerVisibleChecked=>$CI&&$CI->{customer_visible}?'checked':'',
         CustomerID=>$CI?$CI->{customer_id}:($R->{CustomerID}||''),CustomerName=>$CI?$CI->{customer_name}:($R->{CustomerName}||''),CustomerUserOptionsHTML=>$Self->_CustomerUserOptions($CustomerUsers,$CI?$CI->{customer_user_id}:$R->{CustomerUserID},$Language),CIFieldsHTML=>$FieldsHTML,CIDisplayHTML=>$CI?$Object->CIDisplayHTML(CI=>$CI,Language=>$Language):'',
-        Relations=>$Relations,RelationTypes=>$Object->RelationTypeList(),RelationTypeOptionsHTML=>$Self->_RelationTypeOptions($Object->RelationTypeList()),Tickets=>$Tickets,History=>$History,HasRelations=>@{$Relations}?1:0,HasTickets=>@{$Tickets}?1:0,HasHistory=>@{$History}?1:0,
-        TicketCount=>scalar@{$Tickets},RelationCount=>scalar@{$Relations},HistoryCount=>scalar@{$History},ErrorMessage=>$Object->Error(),ErrorClass=>$Object->Error()?'':'qisutu-hidden',NoticeMessage=>$Notice,NoticeClass=>$Notice?'qisutu-form-success':'qisutu-hidden',
+        Relations=>$Relations,RelationTypes=>$Object->RelationTypeList(),RelationTypeOptionsHTML=>$Self->_RelationTypeOptions($Object->RelationTypeList()),Tickets=>$Tickets,History=>$History,Services=>$Services,HasRelations=>@{$Relations}?1:0,HasTickets=>@{$Tickets}?1:0,HasHistory=>@{$History}?1:0,HasServices=>@{$Services}?1:0,
+        TicketCount=>scalar@{$Tickets},RelationCount=>scalar@{$Relations},HistoryCount=>scalar@{$History},ServiceCount=>scalar@{$Services},ErrorMessage=>$Object->Error(),ErrorClass=>$Object->Error()?'':'qisutu-hidden',NoticeMessage=>$Notice,NoticeClass=>$Notice?'qisutu-form-success':'qisutu-hidden',
         ImportCreated=>$R->{Created}||0,ImportUpdated=>$R->{Updated}||0,ImportFailed=>$R->{Failed}||0,
     }};
 }

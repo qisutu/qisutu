@@ -42,8 +42,10 @@ for my $File (
         core/config/programs/KnowledgeBase.pm
         core/config/programs/AgentKnowledgeBase.pm
         core/config/programs/CustomerKnowledgeBase.pm
+        core/config/programs/KnowledgeAttachmentDownload.pm
         core/module/AgentKnowledgeBase.pm
         core/module/CustomerKnowledgeBase.pm
+        core/module/KnowledgeAttachmentDownload.pm
         core/output/AgentKnowledgeBase.tt
         core/output/CustomerKnowledgeBase.tt
         core/system/QisutuKnowledgeBase.pm
@@ -60,12 +62,16 @@ my $InsertRuntimeJS = $InsertJS;
 $InsertRuntimeJS =~ s{\A/\*.*?\*/\s*}{}s;
 like( $RichTextJS, qr/editor\.model\.insertContent\(modelFragment, editor\.model\.document\.selection\)/, 'CKEditor insertion uses the current cursor selection' );
 like( $InsertJS, qr/CustomerSafe/, 'insertion search sends customer-safety context' );
-like( $InsertJS, qr/data-qisutu-knowledge-insert-mode/, 'multiple insertion modes are wired' );
+like( $InsertJS, qr/data-qisutu-knowledge-text-mode/, 'multiple text insertion modes are wired' );
+like( $InsertJS, qr/KnowledgeAttachmentID/, 'FAQ attachment selections are submitted with the ticket form' );
+like( $InsertJS, qr/includeText.*includeAttachments/s, 'FAQ text and attachments are selected independently' );
 unlike( $InsertRuntimeJS, qr{https?://}i, 'knowledge insertion has no external runtime dependency' );
 
 my $System = content('core/system/QisutuKnowledgeBase.pm');
 like( $System, qr/visibility.*customer/s, 'customer visibility is checked in the backend' );
 like( $System, qr/knowledge_article_revision/, 'revisions are persisted' );
+like( $System, qr/sub AttachmentsForTicket/, 'FAQ attachments can be converted to ticket attachments' );
+like( $System, qr/sub AttachmentGet/, 'FAQ attachment downloads are authorized by the backend' );
 unlike( $System, qr/GroupPermission(?:List|Set)/, 'FAQ group permissions are not part of the model' );
 
 my $AgentModule = content('core/module/AgentKnowledgeBase.pm');
@@ -77,6 +83,15 @@ like(
     qr{\[% IF ErrorMessage %\]<div class="qisutu-form-error \[% ErrorClass %\]">\[% ErrorMessage %\]</div>\[% END %\]},
     'the agent FAQ error bar is rendered only when an error message exists',
 );
+like( $AgentTemplate, qr/enctype="multipart\/form-data"/, 'the FAQ editor accepts file uploads' );
+like( $AgentTemplate, qr/name="KnowledgeAttachment"/, 'the FAQ editor provides a multiple attachment input' );
+
+for my $TicketTemplate (qw(core/output/AgentTicketCreate.tt core/output/AgentTicketZoom.tt)) {
+    my $Template = content($TicketTemplate);
+    like( $Template, qr/data-qisutu-knowledge-include-text/, "$TicketTemplate offers a separate FAQ text selection" );
+    like( $Template, qr/data-qisutu-knowledge-include-attachments/, "$TicketTemplate offers a separate FAQ attachment selection" );
+    like( $Template, qr/name="KnowledgeAttachmentID"/, "$TicketTemplate preserves selected FAQ attachment IDs" );
+}
 
 my $RemovalList = content('release.remove');
 unlike( $RemovalList, qr{^\s*[.]/}m, 'the first official release needs no update removal entries' );
@@ -86,7 +101,7 @@ ok( !-e File::Spec->catfile( $Root, 'core', 'module', 'AdminKnowledgeBase.pm' ),
 my $Schema = content('install/sql/schema.sql');
 for my $Table (qw(
     knowledge_category knowledge_category_translation knowledge_article knowledge_article_revision
-    knowledge_article_customer knowledge_article_queue knowledge_article_usage
+    knowledge_article_attachment knowledge_article_customer knowledge_article_queue knowledge_article_usage
 )) {
     like( $Schema, qr/CREATE TABLE IF NOT EXISTS `\Q$Table\E`/, "$Table is part of the 1.0.2 fresh-install schema" );
 }
@@ -97,6 +112,9 @@ for my $Language (qw(de en fr it pt-BR pt-PT es nl pl cs tr)) {
     my $Translations = content("core/language/$Language.pm");
     like( $Translations, qr/^\s*KnowledgeBaseNavigation\s*=>/m, "$Language contains knowledge base translations" );
     like( $Translations, qr/^\s*KnowledgeInsertSolution\s*=>/m, "$Language contains editor insertion translations" );
+    like( $Translations, qr/^\s*KnowledgeInsertIncludeText\s*=>/m, "$Language contains the FAQ text selection translation" );
+    like( $Translations, qr/^\s*KnowledgeInsertIncludeAttachments\s*=>/m, "$Language contains the FAQ attachment selection translation" );
+    like( $Translations, qr/^\s*KnowledgeAttachmentLoadFailed\s*=>/m, "$Language contains FAQ attachment error translations" );
 }
 
 done_testing();

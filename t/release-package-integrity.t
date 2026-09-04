@@ -190,6 +190,8 @@ like( $CurrentReleaseNotes, qr{handed over directly}i, 'CHANGELOG beschreibt die
 like( $CurrentReleaseNotes, qr{delivered automatically by e-mail}i, 'CHANGELOG beschreibt den automatischen Reportversand' );
 like( $CurrentReleaseNotes, qr{KimProcesses}i, 'CHANGELOG beschreibt die Prozessverknüpfung für Formulare' );
 like( $CurrentReleaseNotes, qr{retrieval interval}i, 'CHANGELOG beschreibt das einstellbare E-Mail-Abrufintervall' );
+like( $CurrentReleaseNotes, qr{linked directly to configuration items}i, 'CHANGELOG beschreibt die Service-CI-Zuordnung' );
+like( $CurrentReleaseNotes, qr{FAQ articles.*multiple attachments}i, 'CHANGELOG beschreibt FAQ-Anhänge und ihre Ticketübernahme' );
 
 my $MigrationRoot = File::Spec->catdir( $Root, 'install', 'update', 'database' );
 opendir my $MigrationDH, $MigrationRoot or die "Cannot inspect $MigrationRoot: $!";

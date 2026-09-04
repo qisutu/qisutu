@@ -40,6 +40,8 @@ sub Run {
     my $Step     = $Request->{Step} || '';
     my $Action   = $Request->{Action} || 'List';
     my $Error    = '';
+    my $AttachmentMaxSizeMB    = $Self->_AttachmentMaxSizeMB();
+    my $AttachmentMaxSizeBytes = $AttachmentMaxSizeMB * 1024 * 1024;
 
     if ( $Step eq 'SearchJSON' ) {
         return $Self->_JSON({
@@ -102,19 +104,35 @@ sub Run {
         $Action = 'Categories';
     }
     elsif ( $Step eq 'ArticleSave' ) {
-        my $ID = $Object->ArticleSave(
-            ArticleID       => $Request->{ArticleID},
-            CategoryID      => $Request->{CategoryID},
-            Language        => $Request->{ArticleLanguage},
-            Title           => $Request->{Title},
-            Summary         => $Request->{Summary},
-            Keywords        => $Request->{Keywords},
-            Content         => $Request->{Content},
-            Visibility      => $Request->{Visibility},
-            ChangedByUserID => $User->{user_account_id},
+        my $UploadResult = $Self->_UploadedAttachments(
+            Request      => $Request,
+            MaxSizeBytes => $AttachmentMaxSizeBytes,
         );
-        return { Redirect => 'index.pl?Page=AgentKnowledgeBase;Action=View;ArticleID=' . $ID } if $ID;
-        $Error = $Object->Error() || 'Translate:KnowledgeArticleSaveFailed';
+
+        if ( @{ $UploadResult->{Oversized} || [] } ) {
+            $Error = $Self->_AttachmentTooLargeMessage(
+                Attachment => $UploadResult->{Oversized}->[0],
+                MaxSizeMB  => $AttachmentMaxSizeMB,
+                Language   => $Language,
+            );
+        }
+        else {
+            my $ID = $Object->ArticleSave(
+                ArticleID          => $Request->{ArticleID},
+                CategoryID         => $Request->{CategoryID},
+                Language           => $Request->{ArticleLanguage},
+                Title              => $Request->{Title},
+                Summary            => $Request->{Summary},
+                Keywords           => $Request->{Keywords},
+                Content            => $Request->{Content},
+                Visibility         => $Request->{Visibility},
+                Attachments        => $UploadResult->{Attachments},
+                RemoveAttachmentIDs => $Request->{RemoveKnowledgeAttachmentID},
+                ChangedByUserID    => $User->{user_account_id},
+            );
+            return { Redirect => 'index.pl?Page=AgentKnowledgeBase;Action=View;ArticleID=' . $ID } if $ID;
+            $Error = $Object->Error() || 'Translate:KnowledgeArticleSaveFailed';
+        }
         $Action = $Request->{ArticleID} ? 'Edit' : 'Create';
     }
 
@@ -209,6 +227,8 @@ sub Run {
                     ArticleLanguage    => uc( $Article->{language} || '' ),
                     ArticleVisibility  => 'Translate:KnowledgeVisibility_' . ( $Article->{visibility} || 'internal' ),
                     ArticleRevision    => $Article->{revision_number},
+                    ArticleAttachments => $Article->{attachments} || [],
+                    HasArticleAttachments => $Article->{has_attachments} ? 1 : 0,
                     Revisions          => $Self->_RevisionRows( $Article->{revisions} || [] ),
                 },
             };
@@ -239,6 +259,10 @@ sub Run {
                     CategoryOptionsHTML  => $Self->_CategoryOptions( Categories => $Categories, Selected => $Error ? $Request->{CategoryID} : $Article->{category_id}, Language => $Language ),
                     LanguageOptionsHTML  => $Self->_LanguageOptions( Selected => $Error ? $Request->{ArticleLanguage} : $Article->{language}, Language => $Language ),
                     VisibilityOptionsHTML => $Self->_Options( [ [internal => 'KnowledgeVisibility_internal'], [customer => 'KnowledgeVisibility_customer'] ], $Visibility, $Language ),
+                    ArticleAttachments  => $Article->{attachments} || [],
+                    HasArticleAttachments => $Article->{has_attachments} ? 1 : 0,
+                    AttachmentMaxSizeMB => $AttachmentMaxSizeMB,
+                    AttachmentMaxSizeBytes => $AttachmentMaxSizeBytes,
                     ErrorMessage         => $Error,
                     ErrorClass           => $Error ? '' : 'qisutu-hidden',
                 },
@@ -280,6 +304,82 @@ sub _JSON {
     return { Response => $Self->{Output}->Response(
         ContentType => 'application/json; charset=UTF-8', Headers => [ 'Cache-Control: no-store' ], Body => encode_json( $Data || {} ),
     ) };
+}
+
+sub _UploadedAttachments {
+    my ( $Self, %Param ) = @_;
+
+    my $Request      = $Param{Request} || {};
+    my $MaxSizeBytes = $Param{MaxSizeBytes} || 0;
+    my $Uploads      = $Request->{__Uploads} || {};
+    my $RawList      = [];
+
+    if ( ref $Uploads->{KnowledgeAttachment} eq 'ARRAY' ) {
+        $RawList = $Uploads->{KnowledgeAttachment};
+    }
+    elsif ( ref $Uploads->{'KnowledgeAttachment[]'} eq 'ARRAY' ) {
+        $RawList = $Uploads->{'KnowledgeAttachment[]'};
+    }
+
+    my @Attachments;
+    my @Oversized;
+    for my $Upload ( @{$RawList} ) {
+        next if ref $Upload ne 'HASH';
+
+        my $Filename = $Upload->{Filename} || '';
+        $Filename =~ s{\\}{/}g;
+        $Filename =~ s{\A.*/}{}g;
+        $Filename =~ s{[\r\n\x00]}{}g;
+        $Filename =~ s{\A\s+|\s+\z}{}g;
+        next if !$Filename;
+
+        my $Content = $Upload->{Content};
+        next if !defined $Content;
+        my $Size = $Upload->{ContentSize};
+        $Size = length($Content) if !defined $Size || $Size !~ m{\A\d+\z};
+
+        my $Attachment = {
+            Filename           => $Filename,
+            ContentType        => $Upload->{ContentType} || 'application/octet-stream',
+            Content            => $Content,
+            ContentSize        => $Size,
+            ContentDisposition => 'attachment',
+        };
+
+        if ( $MaxSizeBytes && $Size > $MaxSizeBytes ) {
+            push @Oversized, $Attachment;
+        }
+        else {
+            push @Attachments, $Attachment;
+        }
+    }
+
+    return { Attachments => \@Attachments, Oversized => \@Oversized };
+}
+
+sub _AttachmentMaxSizeMB {
+    my ($Self) = @_;
+
+    my $Value = 25;
+    my $Loaded = eval { require QisutuSystemSetting; 1; };
+    if ( $Loaded && $Self->{DB} ) {
+        $Value = QisutuSystemSetting->new(
+            Config => $Self->{Config},
+            DB     => $Self->{DB},
+        )->AttachmentMaxSizeMB();
+    }
+    return $Value;
+}
+
+sub _AttachmentTooLargeMessage {
+    my ( $Self, %Param ) = @_;
+
+    my $Message = $Self->_T( 'KnowledgeAttachmentTooLarge', $Param{Language} );
+    my $Filename = $Param{Attachment}->{Filename} || 'attachment';
+    my $Maximum  = ( $Param{MaxSizeMB} || 25 ) . ' MB';
+    $Message =~ s{\{\{Filename\}\}}{$Filename}g;
+    $Message =~ s{\{\{MaxSize\}\}}{$Maximum}g;
+    return $Message;
 }
 
 sub _CategoryOptions {

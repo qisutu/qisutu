@@ -90,6 +90,8 @@ sub Run {
     my $KnowledgePermission = $KnowledgeObject->PermissionLevel( User => $Param{User} || {} );
     my $AttachmentMaxSizeMB    = $Self->_AttachmentMaxSizeMB();
     my $AttachmentMaxSizeBytes = $AttachmentMaxSizeMB * 1024 * 1024;
+    my $KnowledgeAttachmentIDs = $Self->_RequestIDList( Value => $Request->{KnowledgeAttachmentID} );
+    my $SelectedKnowledgeAttachments = [];
 
     if ( ( $Request->{Step} || '' ) eq 'AgentLookup' ) {
         return $Self->_JSONResponse(
@@ -576,6 +578,26 @@ sub Run {
 
         if ( $ArticleMode ne 'email' && $ArticleMode ne 'forward' ) {
             $ArticleMode = 'note';
+        }
+
+        if ( !$ArticleCreateError && @{$KnowledgeAttachmentIDs} ) {
+            my $CustomerSafe = (
+                $ArticleMode eq 'email'
+                || $ArticleMode eq 'forward'
+                || ( $ArticleMode eq 'note' && $Request->{CustomerVisible} )
+            ) ? 1 : 0;
+            my $KnowledgeAttachments = $KnowledgeObject->AttachmentsForTicket(
+                AttachmentIDs => $KnowledgeAttachmentIDs,
+                CustomerSafe  => $CustomerSafe,
+            );
+            if ( !defined $KnowledgeAttachments ) {
+                $ArticleCreateError = $KnowledgeObject->Error() || 'Translate:KnowledgeAttachmentLoadFailed';
+                $KnowledgeAttachmentIDs = [];
+            }
+            else {
+                push @{$Attachments}, @{$KnowledgeAttachments};
+                $SelectedKnowledgeAttachments = $KnowledgeAttachments;
+            }
         }
 
         if ( $ArticleMode eq 'email' || $ArticleMode eq 'forward' ) {
@@ -1189,6 +1211,26 @@ sub Run {
     my $TicketToolsOverlayAriaHidden = $ToolActionError ? 'false' : 'true';
     my $TicketToolsButtonExpanded = $ToolActionError ? 'true' : 'false';
 
+    if ( $ArticleCreateError && @{$KnowledgeAttachmentIDs} && !@{$SelectedKnowledgeAttachments} ) {
+        my $ArticleMode = $Request->{ArticleMode} || 'note';
+        $ArticleMode = 'note' if $ArticleMode ne 'email' && $ArticleMode ne 'forward';
+        my $CustomerSafe = (
+            $ArticleMode eq 'email'
+            || $ArticleMode eq 'forward'
+            || ( $ArticleMode eq 'note' && $Request->{CustomerVisible} )
+        ) ? 1 : 0;
+        my $KnowledgeAttachments = $KnowledgeObject->AttachmentsForTicket(
+            AttachmentIDs => $KnowledgeAttachmentIDs,
+            CustomerSafe  => $CustomerSafe,
+        );
+        if ( defined $KnowledgeAttachments ) {
+            $SelectedKnowledgeAttachments = $KnowledgeAttachments;
+        }
+        else {
+            $KnowledgeAttachmentIDs = [];
+        }
+    }
+
     return {
         Template => 'AgentTicketZoom.tt',
         Data     => {
@@ -1326,6 +1368,9 @@ sub Run {
             SubmittedReplyArticleID => $ArticleCreateError ? ( $Request->{ReplyArticleID} || 0 ) : 0,
             SubmittedResponseTemplateAttachmentIDs => $ArticleCreateError ? $Self->_RequestIDList( Value => $Request->{ResponseTemplateAttachmentID} ) : [],
             SubmittedResponseTemplateAttachmentSelection => $ArticleCreateError && $Request->{ResponseTemplateAttachmentSelection} ? 1 : 0,
+            SubmittedKnowledgeAttachmentIDs => $ArticleCreateError ? $KnowledgeAttachmentIDs : [],
+            SubmittedKnowledgeAttachments => $ArticleCreateError ? $SelectedKnowledgeAttachments : [],
+            HasSubmittedKnowledgeAttachments => $ArticleCreateError && @{$SelectedKnowledgeAttachments} ? 1 : 0,
             ResponseTemplateFieldClass => $ArticleCreateError && ( $Request->{ArticleMode} || '' ) eq 'email' && @{$ResponseTemplateList} ? '' : 'qisutu-hidden',
             TicketStatusOptionsHTML  => $StatusOptionsHTML,
             TicketPriorityOptionsHTML => $PriorityOptionsHTML,

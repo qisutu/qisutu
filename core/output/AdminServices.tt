@@ -29,6 +29,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     </div>
 
     <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+    <div class="qisutu-form-success [% NoticeClass %]">[% NoticeMessage %]</div>
 
     [% IF ShowList %]
     <section class="qisutu-panel">
@@ -38,12 +39,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         </div>
         [% IF ServiceCount %]
         <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table">
-            <thead><tr><th>[% Translate.AdminService %]</th><th>[% Translate.AdminSLAsTitle %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminActions %]</th></tr></thead>
+            <thead><tr><th>[% Translate.AdminService %]</th><th>[% Translate.AdminSLAsTitle %]</th><th>[% Translate.AdminServiceCIs %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminActions %]</th></tr></thead>
             <tbody>
             [% FOREACH Service IN ServiceList %]
                 <tr>
                     <td><strong>[% Service.full_name %]</strong><div class="qisutu-form-hint">[% Service.description %]</div></td>
                     <td>[% Service.sla_count %]</td>
+                    <td>[% Service.ci_count %]</td>
                     <td>[% Service.active_label %]</td>
                     <td class="qisutu-admin-table-actions"><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminServices;Action=Edit;ServiceID=[% Service.id %]">[% Translate.AdminEdit %]</a></td>
                 </tr>
@@ -85,5 +87,60 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button></div>
         </form>
     </section>
+
+    <section class="qisutu-panel">
+        <div class="qisutu-panel-header">
+            <div>
+                <h2>[% Translate.AdminServiceCIs %]</h2>
+                <span class="qisutu-panel-subtitle">[% ServiceCICount %]</span>
+                <p>[% Translate.AdminServiceCIsHint %]</p>
+            </div>
+        </div>
+
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="[% FormAction %]">
+            <input type="hidden" name="Page" value="AdminServices">
+            <input type="hidden" name="Action" value="Edit">
+            <input type="hidden" name="Step" value="ServiceCILink">
+            <input type="hidden" name="ServiceID" value="[% ServiceID %]">
+            <div class="qisutu-form-field qisutu-autocomplete">
+                <label>[% Translate.AdminServiceCIAdd %]</label>
+                <input id="qisutu-admin-service-ci-id" type="hidden" name="CMDBCIID" data-qisutu-autocomplete-target>
+                <input type="text" name="CMDBCINumber" autocomplete="off" required data-qisutu-cmdb-autocomplete data-qisutu-autocomplete-url="index.pl?Page=AdminCMDBItems&amp;Step=Search" data-qisutu-autocomplete-hidden="qisutu-admin-service-ci-id">
+                <div class="qisutu-autocomplete-results qisutu-hidden" data-qisutu-autocomplete-results></div>
+            </div>
+            <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminServiceCIAdd %]</button></div>
+        </form>
+
+        [% IF ServiceCICount %]
+        <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table">
+            <thead><tr><th>[% Translate.CMDBNumber %]</th><th>[% Translate.AdminName %]</th><th>[% Translate.CMDBType %]</th><th>[% Translate.CMDBStatus %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminActions %]</th></tr></thead>
+            <tbody>
+            [% FOREACH CI IN ServiceCIs %]
+                <tr>
+                    <td><a class="qisutu-table-link" href="index.pl?Page=AdminCMDBItems;Action=View;CIID=[% CI.id %]">[% CI.ci_number %]</a></td>
+                    <td><strong>[% CI.name %]</strong></td>
+                    <td>[% CI.type_name %]</td>
+                    <td>[% CI.status %]</td>
+                    <td>[% CI.active_label %]</td>
+                    <td class="qisutu-admin-table-actions">
+                        <form method="post" action="[% FormAction %]">
+                            <input type="hidden" name="Page" value="AdminServices">
+                            <input type="hidden" name="Action" value="Edit">
+                            <input type="hidden" name="Step" value="ServiceCIUnlink">
+                            <input type="hidden" name="ServiceID" value="[% ServiceID %]">
+                            <input type="hidden" name="CMDBCIID" value="[% CI.id %]">
+                            <button class="qisutu-button-link qisutu-button-danger-text" type="submit">[% Translate.AdminRemove %]</button>
+                        </form>
+                    </td>
+                </tr>
+            [% END %]
+            </tbody>
+        </table></div>
+        [% ELSE %]
+        <div class="qisutu-empty"><p>[% Translate.AdminServiceCINone %]</p></div>
+        [% END %]
+    </section>
     [% END %]
 </section>
+
+<script src="[% StaticBase %]/js/qisutu-cmdb.js?v=2026090401"></script>

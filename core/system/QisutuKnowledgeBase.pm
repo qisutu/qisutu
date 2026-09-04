@@ -281,11 +281,13 @@ sub ArticleList {
                 a.visibility, a.customer_scope, a.status, a.revision_number, a.published_at,
                 a.created_at, a.changed_at,
                 COALESCE(NULLIF(ct.name, ""), c.internal_name) AS category_name,
-                COUNT(DISTINCT u.id) AS usage_count
+                COUNT(DISTINCT u.id) AS usage_count,
+                COUNT(DISTINCT attachment.id) AS attachment_count
          FROM knowledge_article a
          INNER JOIN knowledge_category c ON c.id = a.category_id
          LEFT JOIN knowledge_category_translation ct ON ct.category_id = c.id AND ct.language = a.language
          LEFT JOIN knowledge_article_usage u ON u.article_id = a.id
+         LEFT JOIN knowledge_article_attachment attachment ON attachment.article_id = a.id
          ' . $Where . '
          GROUP BY a.id, a.article_number, a.category_id, a.language, a.title, a.summary, a.keywords,
                   a.visibility, a.customer_scope, a.status, a.revision_number, a.published_at,
@@ -325,6 +327,8 @@ sub ArticleGet {
          WHERE r.article_id = ? ORDER BY r.revision_number DESC',
         $ArticleID,
     ) || [];
+    $Article->{attachments} = $Self->AttachmentList( ArticleID => $ArticleID );
+    $Article->{has_attachments} = @{ $Article->{attachments} || [] } ? 1 : 0;
     return $Article;
 }
 
@@ -342,6 +346,8 @@ sub ArticleSave {
     my $CustomerScope = 'all';
     my $Status        = 'published';
     my $UserID        = $Self->_ID( $Param{ChangedByUserID} ) || 1;
+    my $Attachments   = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
+    my $RemoveAttachmentIDs = $Self->_IDList( $Param{RemoveAttachmentIDs} );
 
     if ( !$CategoryID || !$Self->{DB}->SelectRow( 'SELECT id FROM knowledge_category WHERE id = ? LIMIT 1', $CategoryID ) ) {
         $Self->{LastError} = 'Translate:KnowledgeArticleCategoryRequired';
@@ -420,13 +426,47 @@ sub ArticleSave {
     if ($OK) {
         $OK = $Self->{DB}->Do( 'DELETE FROM knowledge_article_queue WHERE article_id = ?', $ArticleID );
     }
+    if ($OK) {
+        for my $AttachmentID ( @{$RemoveAttachmentIDs} ) {
+            $OK = $Self->{DB}->Do(
+                'DELETE FROM knowledge_article_attachment WHERE id = ? AND article_id = ?',
+                $AttachmentID, $ArticleID,
+            );
+            last if !$OK;
+        }
+    }
+    if ($OK) {
+        for my $Attachment ( @{$Attachments} ) {
+            next if ref $Attachment ne 'HASH';
+
+            my $Filename = $Self->_FilenameClean( $Attachment->{Filename} || '' );
+            my $Content  = $Attachment->{Content};
+            my $Type     = $Self->_ContentTypeClean( $Attachment->{ContentType} || 'application/octet-stream' );
+            my $Size     = $Attachment->{ContentSize};
+
+            if ( !$Filename || !defined $Content ) {
+                $OK = 0;
+                $Self->{LastError} = 'Translate:KnowledgeAttachmentInvalid';
+                last;
+            }
+            $Size = length($Content) if !defined $Size || $Size !~ m{\A\d+\z};
+
+            $OK = $Self->{DB}->Do(
+                'INSERT INTO knowledge_article_attachment
+                 (article_id, filename, content_type, content, content_size, created_by_user_id, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, NOW())',
+                $ArticleID, $Filename, $Type, $Content, $Size, $UserID,
+            );
+            last if !$OK;
+        }
+    }
 
     if ( $OK && $Self->{DB}->Commit() ) {
         return $ArticleID;
     }
 
     eval { $Self->{DB}->Rollback(); 1; };
-    $Self->{LastError} = $Self->{DB}->Error() || 'Translate:KnowledgeArticleSaveFailed';
+    $Self->{LastError} ||= $Self->{DB}->Error() || 'Translate:KnowledgeArticleSaveFailed';
     return;
 }
 
@@ -503,7 +543,7 @@ sub CustomerArticleGet {
     my $Language   = $Self->_LanguageClean( $Param{Language} );
     return if !$ArticleID;
 
-    return $Self->{DB}->SelectRow(
+    my $Article = $Self->{DB}->SelectRow(
         'SELECT a.id, a.article_number, a.category_id, a.language, a.title, a.summary, a.content,
                 a.revision_number, a.published_at, a.changed_at,
                 COALESCE(NULLIF(ct.name, ""), c.internal_name) AS category_name
@@ -514,6 +554,11 @@ sub CustomerArticleGet {
          LIMIT 1',
         $ArticleID, $Language,
     );
+    return if !$Article;
+
+    $Article->{attachments} = $Self->AttachmentList( ArticleID => $ArticleID );
+    $Article->{has_attachments} = @{ $Article->{attachments} || [] } ? 1 : 0;
+    return $Article;
 }
 
 sub AgentInsertSearch {
@@ -542,6 +587,7 @@ sub AgentInsertSearch {
             status         => 'published',
             revision       => 0 + ( $Article->{revision_number} || 0 ),
             can_insert     => $CanInsert ? 1 : 0,
+            attachment_count => 0 + ( $Article->{attachment_count} || 0 ),
         };
     }
     return \@Result;
@@ -563,6 +609,8 @@ sub AgentInsertArticleGet {
     my $URL = 'index.pl?Page=CustomerKnowledgeBase&Action=View&ArticleID=' . ( $Article->{id} || 0 );
     $URL = $BaseURL . '/' . $URL if $BaseURL;
 
+    my $Attachments = $Article->{attachments} || $Self->AttachmentList( ArticleID => $Article->{id} );
+
     return {
         id             => 0 + ( $Article->{id} || 0 ),
         article_number => $Article->{article_number} || '',
@@ -574,6 +622,15 @@ sub AgentInsertArticleGet {
         revision       => 0 + ( $Article->{revision_number} || 0 ),
         can_insert     => $CanInsert ? 1 : 0,
         portal_url     => $CanInsert && ( $Article->{visibility} || '' ) eq 'customer' ? $URL : '',
+        attachments    => [ map {
+            {
+                id           => 0 + ( $_->{id} || 0 ),
+                filename     => $_->{filename} || 'attachment.bin',
+                content_type => $_->{content_type} || 'application/octet-stream',
+                content_size => 0 + ( $_->{content_size} || 0 ),
+                size_display => $_->{size_display} || '',
+            }
+        } @{ $Attachments || [] } ],
     };
 }
 
@@ -586,7 +643,7 @@ sub UsageRecord {
     my $Article = $Self->{DB}->SelectRow( 'SELECT revision_number FROM knowledge_article WHERE id = ? LIMIT 1', $ArticleID );
     return if !$Article;
     my $Context = $Self->_Choice( $Param{Context}, { map { $_ => 1 } qw(ticket_create reply note forward) }, 'reply' );
-    my $Mode    = $Self->_Choice( $Param{InsertMode}, { solution => 1, title_solution => 1, link => 1 }, 'solution' );
+    my $Mode    = $Self->_Choice( $Param{InsertMode}, { solution => 1, title_solution => 1, link => 1, attachments => 1 }, 'solution' );
     my $Result = $Self->{DB}->Do(
         'INSERT INTO knowledge_article_usage
          (article_id, revision_number, ticket_id, used_by_user_id, usage_context, insert_mode, created_at)
@@ -595,6 +652,114 @@ sub UsageRecord {
     );
     $Self->{LastError} = $Self->{DB}->Error() || 'Knowledge usage could not be recorded' if !$Result;
     return $Result ? 1 : undef;
+}
+
+sub AttachmentList {
+    my ( $Self, %Param ) = @_;
+
+    my $ArticleID = $Self->_ID( $Param{ArticleID} );
+    return [] if !$ArticleID;
+
+    my $ContentColumn = $Param{IncludeContent} ? ', content' : '';
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT id, article_id, filename, content_type, content_size, created_by_user_id, created_at'
+            . $ContentColumn .
+        ' FROM knowledge_article_attachment
+          WHERE article_id = ?
+          ORDER BY id ASC',
+        $ArticleID,
+    );
+
+    if ( !defined $Rows ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:KnowledgeAttachmentLoadFailed';
+        return [];
+    }
+
+    for my $Attachment ( @{$Rows} ) {
+        $Attachment->{size_display} = $Self->_FileSizeFormat( $Attachment->{content_size} || 0 );
+        $Attachment->{download_url} = 'index.pl?Page=KnowledgeAttachmentDownload&AttachmentID=' . ( $Attachment->{id} || 0 );
+    }
+
+    return $Rows;
+}
+
+sub AttachmentGet {
+    my ( $Self, %Param ) = @_;
+
+    my $AttachmentID = $Self->_ID( $Param{AttachmentID} );
+    my $User         = $Param{User} || {};
+    return if !$AttachmentID;
+
+    my $Attachment = $Self->{DB}->SelectRow(
+        'SELECT attachment.id, attachment.article_id, attachment.filename, attachment.content_type,
+                attachment.content, attachment.content_size, article.language, article.visibility,
+                category.active AS category_active
+         FROM knowledge_article_attachment attachment
+         INNER JOIN knowledge_article article ON article.id = attachment.article_id
+         INNER JOIN knowledge_category category ON category.id = article.category_id
+         WHERE attachment.id = ?
+         LIMIT 1',
+        $AttachmentID,
+    );
+    return if !$Attachment;
+
+    my $AccountType = $User->{account_type} || '';
+    if ( $AccountType eq 'agent' ) {
+        return if !$Self->PermissionLevel( User => $User )->{View};
+    }
+    elsif ( $AccountType eq 'customer' ) {
+        my $Language = $Self->_LanguageClean( $Param{Language} );
+        return if ( $Attachment->{visibility} || '' ) ne 'customer';
+        return if !$Attachment->{category_active};
+        return if ( $Attachment->{language} || '' ) ne $Language;
+    }
+    else {
+        return;
+    }
+
+    return $Attachment;
+}
+
+sub AttachmentsForTicket {
+    my ( $Self, %Param ) = @_;
+
+    my $AttachmentIDs = $Self->_IDList( $Param{AttachmentIDs} );
+    return [] if !@{$AttachmentIDs};
+
+    my $Placeholders = join ', ', map {'?'} @{$AttachmentIDs};
+    my $CustomerWhere = $Param{CustomerSafe}
+        ? ' AND article.visibility = "customer" AND category.active = 1'
+        : '';
+    my $Rows = $Self->{DB}->SelectAll(
+        'SELECT attachment.id, attachment.filename, attachment.content_type,
+                attachment.content, attachment.content_size
+         FROM knowledge_article_attachment attachment
+         INNER JOIN knowledge_article article ON article.id = attachment.article_id
+         INNER JOIN knowledge_category category ON category.id = article.category_id
+         WHERE attachment.id IN (' . $Placeholders . ')' . $CustomerWhere . '
+         ORDER BY attachment.id ASC',
+        @{$AttachmentIDs},
+    );
+
+    if ( !defined $Rows || @{$Rows} != @{$AttachmentIDs} ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:KnowledgeAttachmentLoadFailed';
+        return;
+    }
+
+    return [ map {
+        {
+            knowledge_attachment_id => 0 + ( $_->{id} || 0 ),
+            Filename           => $_->{filename} || 'attachment.bin',
+            ContentType        => $_->{content_type} || 'application/octet-stream',
+            Content            => $_->{content},
+            ContentSize        => $_->{content_size} || length( $_->{content} || '' ),
+            ContentDisposition => 'attachment',
+            filename           => $_->{filename} || 'attachment.bin',
+            content_type       => $_->{content_type} || 'application/octet-stream',
+            content_size       => 0 + ( $_->{content_size} || 0 ),
+            size_display       => $Self->_FileSizeFormat( $_->{content_size} || 0 ),
+        }
+    } @{$Rows} ];
 }
 
 sub CustomerIDFromUser {
@@ -659,6 +824,40 @@ sub _LikeEscape {
     $Value = '' if !defined $Value;
     $Value =~ s{([\\%_])}{\\$1}g;
     return $Value;
+}
+
+sub _FilenameClean {
+    my ( $Self, $Filename ) = @_;
+
+    $Filename = '' if !defined $Filename;
+    $Filename =~ s{\\}{/}g;
+    $Filename =~ s{\A.*/}{}g;
+    $Filename =~ s{[\r\n\x00]}{}g;
+    $Filename =~ s{\A\s+|\s+\z}{}g;
+    $Filename = substr( $Filename, 0, 255 ) if length($Filename) > 255;
+    return $Filename;
+}
+
+sub _ContentTypeClean {
+    my ( $Self, $Type ) = @_;
+
+    $Type = 'application/octet-stream' if !defined $Type;
+    $Type =~ s{\r|\n}{ }g;
+    $Type =~ s{\s+}{ }g;
+    $Type =~ s{\A\s+|\s+\z}{}g;
+    $Type = 'application/octet-stream' if !$Type;
+    $Type = substr( $Type, 0, 255 ) if length($Type) > 255;
+    return $Type;
+}
+
+sub _FileSizeFormat {
+    my ( $Self, $Size ) = @_;
+
+    $Size = 0 if !defined $Size || $Size !~ m{\A\d+(?:[.]\d+)?\z};
+    return sprintf( '%.1f GB', $Size / 1024 / 1024 / 1024 ) if $Size >= 1024 * 1024 * 1024;
+    return sprintf( '%.1f MB', $Size / 1024 / 1024 ) if $Size >= 1024 * 1024;
+    return sprintf( '%.1f KB', $Size / 1024 ) if $Size >= 1024;
+    return int($Size) . ' B';
 }
 
 1;

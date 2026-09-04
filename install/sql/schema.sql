@@ -2950,6 +2950,17 @@ CREATE TABLE IF NOT EXISTS `cmdb_ci` (
   CONSTRAINT `cmdb_ci_customer_user_fk` FOREIGN KEY (`customer_user_id`) REFERENCES `customer_user` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `service_cmdb_ci` (
+  `service_id` bigint(20) unsigned NOT NULL,
+  `ci_id` bigint(20) unsigned NOT NULL,
+  `created_by_user_id` bigint(20) unsigned NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`service_id`,`ci_id`),
+  KEY `service_cmdb_ci_ci` (`ci_id`,`service_id`),
+  CONSTRAINT `service_cmdb_ci_service_fk` FOREIGN KEY (`service_id`) REFERENCES `service` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `service_cmdb_ci_ci_fk` FOREIGN KEY (`ci_id`) REFERENCES `cmdb_ci` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `cmdb_ci_value` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `ci_id` bigint(20) unsigned NOT NULL,
@@ -3258,6 +3269,22 @@ CREATE TABLE IF NOT EXISTS `knowledge_article_revision` (
   CONSTRAINT `knowledge_article_revision_article_fk` FOREIGN KEY (`article_id`) REFERENCES `knowledge_article` (`id`) ON DELETE CASCADE,
   CONSTRAINT `knowledge_article_revision_category_fk` FOREIGN KEY (`category_id`) REFERENCES `knowledge_category` (`id`),
   CONSTRAINT `knowledge_article_revision_changed_by_fk` FOREIGN KEY (`changed_by_user_id`) REFERENCES `user_account` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `knowledge_article_attachment` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `article_id` bigint(20) unsigned NOT NULL,
+  `filename` varchar(255) NOT NULL,
+  `content_type` varchar(255) NOT NULL DEFAULT 'application/octet-stream',
+  `content` longblob NOT NULL,
+  `content_size` bigint(20) unsigned NOT NULL DEFAULT 0,
+  `created_by_user_id` bigint(20) unsigned NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `knowledge_article_attachment_article` (`article_id`,`id`),
+  KEY `knowledge_article_attachment_created` (`created_at`,`id`),
+  CONSTRAINT `knowledge_article_attachment_article_fk` FOREIGN KEY (`article_id`) REFERENCES `knowledge_article` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `knowledge_article_attachment_created_by_fk` FOREIGN KEY (`created_by_user_id`) REFERENCES `user_account` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `knowledge_article_customer` (

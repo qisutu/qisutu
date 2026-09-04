@@ -647,6 +647,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <input type="hidden" name="ResponseTemplateAttachmentID" value="[% AttachmentID %]">
                                     [% END %]
                                 </div>
+                                <div data-qisutu-knowledge-hidden-inputs>
+                                    [% FOREACH AttachmentID IN SubmittedKnowledgeAttachmentIDs %]
+                                    <input type="hidden" name="KnowledgeAttachmentID" value="[% AttachmentID %]">
+                                    [% END %]
+                                </div>
 
                                 <div class="qisutu-form-field">
                                     <label for="qisutu-ticket-status">[% Translate.TicketStatusAfterSubmit %]</label>
@@ -667,7 +672,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <label for="qisutu-article-body">[% Translate.TicketArticleBody %]</label>
                                     <textarea id="qisutu-article-body" class="qisutu-richtext" name="Body" rows="7">[% SubmittedArticleBody %]</textarea>
                                     [% IF HasKnowledgeAccess %]
-                                    <div class="qisutu-knowledge-insert-toolbar" data-qisutu-knowledge-insert data-editor="#qisutu-article-body" data-context="ticket_reply" data-ticket-id="[% TicketID %]" data-search-url="index.pl?Page=AgentKnowledgeBase&amp;Step=SearchJSON" data-article-url="index.pl?Page=AgentKnowledgeBase&amp;Step=ArticleGetJSON" data-usage-url="index.pl?Page=AgentKnowledgeBase&amp;Step=UsageRecord" data-queue-id="[% TicketQueueID %]" data-customer-id="[% TicketCustomerID %]" data-mode-selector="[data-qisutu-article-mode]" data-customer-visible-selector="[data-qisutu-note-customer-visible]" data-title-selector="#qisutu-article-subject" data-loading-text="[% Translate.KnowledgeInsertLoading %]" data-empty-text="[% Translate.KnowledgeInsertNoResults %]" data-error-text="[% Translate.KnowledgeInsertError %]" data-not-allowed-text="[% Translate.KnowledgeInsertRestricted %]">
+                                    <div class="qisutu-knowledge-insert-toolbar" data-qisutu-knowledge-insert data-editor="#qisutu-article-body" data-context="ticket_reply" data-ticket-id="[% TicketID %]" data-search-url="index.pl?Page=AgentKnowledgeBase&amp;Step=SearchJSON" data-article-url="index.pl?Page=AgentKnowledgeBase&amp;Step=ArticleGetJSON" data-usage-url="index.pl?Page=AgentKnowledgeBase&amp;Step=UsageRecord" data-queue-id="[% TicketQueueID %]" data-customer-id="[% TicketCustomerID %]" data-mode-selector="[data-qisutu-article-mode]" data-customer-visible-selector="[data-qisutu-note-customer-visible]" data-title-selector="#qisutu-article-subject" data-loading-text="[% Translate.KnowledgeInsertLoading %]" data-empty-text="[% Translate.KnowledgeInsertNoResults %]" data-error-text="[% Translate.KnowledgeInsertError %]" data-not-allowed-text="[% Translate.KnowledgeInsertRestricted %]" data-select-content-text="[% Translate.KnowledgeInsertSelectContent %]">
                                         <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-knowledge-open>[% Translate.KnowledgeInsertOpen %]</button>
                                         <span class="qisutu-form-hint">[% Translate.KnowledgeInsertHelp %]</span>
                                         <div class="qisutu-overlay qisutu-knowledge-insert-overlay" data-qisutu-knowledge-overlay hidden aria-hidden="true">
@@ -675,8 +680,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                                 <div class="qisutu-overlay-header"><div><h2 id="qisutu-knowledge-reply-dialog-title">[% Translate.KnowledgeInsertTitle %]</h2><p>[% Translate.KnowledgeInsertDescription %]</p></div><button class="qisutu-overlay-close" type="button" data-qisutu-knowledge-close aria-label="[% Translate.AdminClose %]">×</button></div>
                                                 <div class="qisutu-knowledge-insert-search"><label for="qisutu-knowledge-reply-search">[% Translate.SearchTitle %]</label><input id="qisutu-knowledge-reply-search" type="search" data-qisutu-knowledge-search placeholder="[% Translate.KnowledgeSearchPlaceholder %]" autocomplete="off"></div>
                                                 <div class="qisutu-knowledge-insert-status" data-qisutu-knowledge-status aria-live="polite"></div>
-                                                <div class="qisutu-knowledge-insert-layout"><div class="qisutu-knowledge-results" data-qisutu-knowledge-results></div><article class="qisutu-knowledge-preview" data-qisutu-knowledge-preview hidden><h3 data-qisutu-knowledge-preview-title></h3><p class="qisutu-knowledge-preview-meta" data-qisutu-knowledge-preview-meta></p><div class="qisutu-rich-content qisutu-knowledge-preview-content" data-qisutu-knowledge-preview-content></div></article></div>
-                                                <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-knowledge-close>[% Translate.AdminCancel %]</button><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-knowledge-insert-mode="link" disabled>[% Translate.KnowledgeInsertLink %]</button><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-knowledge-insert-mode="title_solution" disabled>[% Translate.KnowledgeInsertTitleSolution %]</button><button class="qisutu-button qisutu-button-primary" type="button" data-qisutu-knowledge-insert-mode="solution" disabled>[% Translate.KnowledgeInsertSolution %]</button></div>
+                                                <div class="qisutu-knowledge-insert-layout"><div class="qisutu-knowledge-results" data-qisutu-knowledge-results></div><article class="qisutu-knowledge-preview" data-qisutu-knowledge-preview hidden><h3 data-qisutu-knowledge-preview-title></h3><p class="qisutu-knowledge-preview-meta" data-qisutu-knowledge-preview-meta></p><div class="qisutu-rich-content qisutu-knowledge-preview-content" data-qisutu-knowledge-preview-content></div><div class="qisutu-knowledge-preview-attachments" data-qisutu-knowledge-preview-attachments hidden></div></article></div>
+                                                <div class="qisutu-knowledge-insert-options"><label class="qisutu-form-checkbox"><input type="checkbox" data-qisutu-knowledge-include-text checked disabled><span>[% Translate.KnowledgeInsertIncludeText %]</span></label><div class="qisutu-form-field"><label>[% Translate.KnowledgeInsertTextMode %]</label><select data-qisutu-knowledge-text-mode disabled><option value="solution">[% Translate.KnowledgeInsertSolution %]</option><option value="title_solution">[% Translate.KnowledgeInsertTitleSolution %]</option><option value="link">[% Translate.KnowledgeInsertLink %]</option></select></div><label class="qisutu-form-checkbox"><input type="checkbox" data-qisutu-knowledge-include-attachments disabled><span>[% Translate.KnowledgeInsertIncludeAttachments %]</span></label></div>
+                                                <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-knowledge-close>[% Translate.AdminCancel %]</button><button class="qisutu-button qisutu-button-primary" type="button" data-qisutu-knowledge-apply disabled>[% Translate.KnowledgeInsertApply %]</button></div>
                                             </div>
                                         </div>
                                     </div>
@@ -689,6 +695,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <div class="qisutu-response-template-reply-attachments qisutu-hidden" data-qisutu-response-template-attachment-wrap>
                                         <strong>[% Translate.TicketResponseTemplateAttachmentsTitle %]</strong>
                                         <div data-qisutu-response-template-attachment-list data-qisutu-response-template-remove-label="[% Translate.TicketResponseTemplateAttachmentRemove %]"></div>
+                                    </div>
+                                    <div class="qisutu-knowledge-selected-attachments [% IF HasSubmittedKnowledgeAttachments %][% ELSE %]qisutu-hidden[% END %]" data-qisutu-knowledge-selected-attachment-wrap>
+                                        <strong>[% Translate.KnowledgeSelectedAttachments %]</strong>
+                                        <div data-qisutu-knowledge-selected-attachment-list data-qisutu-knowledge-attachment-remove-label="[% Translate.KnowledgeSelectedAttachmentRemove %]">[% FOREACH Attachment IN SubmittedKnowledgeAttachments %]<div class="qisutu-knowledge-selected-attachment" data-qisutu-knowledge-selected-attachment="[% Attachment.knowledge_attachment_id %]"><span>[% Attachment.filename %] · [% Attachment.size_display %]</span><button class="qisutu-button qisutu-button-secondary qisutu-button-small" type="button" data-qisutu-knowledge-attachment-remove="[% Attachment.knowledge_attachment_id %]">[% Translate.KnowledgeSelectedAttachmentRemove %]</button></div>[% END %]</div>
                                     </div>
                                     <div class="qisutu-ticket-reply-attachment-list" data-qisutu-attachment-list data-qisutu-attachment-remove-label="[% Translate.TicketArticleAttachmentRemove %]">
                                         <p class="qisutu-form-hint" data-qisutu-attachment-empty>[% Translate.TicketArticleAttachmentsEmpty %]</p>
@@ -1003,6 +1013,6 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js?v=2026071802"></script>
-            <script src="[% StaticBase %]/js/qisutu-knowledge-insert.js?v=2026071901"></script>
+            <script src="[% StaticBase %]/js/qisutu-knowledge-insert.js?v=2026090401"></script>
             <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026081603"></script>
             <script src="[% StaticBase %]/js/qisutu-cmdb.js?v=2026071801"></script>

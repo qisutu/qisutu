@@ -8306,6 +8306,60 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     font-size: 0.82rem;
 }
 
+.qisutu-knowledge-preview-attachments,
+.qisutu-knowledge-attachments,
+.qisutu-knowledge-existing-attachments,
+.qisutu-knowledge-selected-attachments {
+    margin-top: 1rem;
+    padding: 0.8rem;
+    border: 1px solid #d6e0e8;
+    border-radius: 0.55rem;
+    background: #f8fafb;
+}
+
+.qisutu-knowledge-preview-attachments ul,
+.qisutu-knowledge-attachments ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.qisutu-knowledge-attachments h3,
+.qisutu-knowledge-existing-attachments h3 {
+    margin: 0 0 0.65rem;
+}
+
+.qisutu-knowledge-attachments li,
+.qisutu-knowledge-existing-attachment,
+.qisutu-knowledge-selected-attachment {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.45rem 0;
+}
+
+.qisutu-knowledge-attachments li span {
+    color: #607083;
+    font-size: 0.82rem;
+}
+
+.qisutu-knowledge-insert-options {
+    display: grid;
+    grid-template-columns: minmax(13rem, 1fr) minmax(12rem, 0.8fr) minmax(13rem, 1fr);
+    gap: 0.75rem;
+    align-items: end;
+    margin-top: 0.85rem;
+    padding: 0.8rem;
+    border: 1px solid #d6e0e8;
+    border-radius: 0.55rem;
+    background: #f8fafb;
+}
+
+.qisutu-knowledge-insert-options .qisutu-form-field {
+    margin: 0;
+}
+
 .qisutu-knowledge-insert-dialog > .qisutu-form-actions {
     margin-top: 0.85rem;
 }
@@ -8313,7 +8367,8 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 @media (max-width: 900px) {
     .qisutu-knowledge-filter,
     .qisutu-knowledge-filter-customer,
-    .qisutu-knowledge-insert-layout {
+    .qisutu-knowledge-insert-layout,
+    .qisutu-knowledge-insert-options {
         grid-template-columns: 1fr;
     }
 
