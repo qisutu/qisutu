@@ -139,43 +139,6 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         </section>
                     </div>
 
-                    <section class="qisutu-panel qisutu-report-schedule-panel" data-report-schedule>
-                        <div class="qisutu-panel-header"><div><h2>[% Translate.ReportScheduleTitle %]</h2><p>[% Translate.ReportScheduleHint %]</p></div></div>
-                        <label class="qisutu-form-checkbox qisutu-report-schedule-active"><input type="checkbox" name="ScheduleActive" value="1" [% ScheduleActiveChecked %] data-report-schedule-active><span>[% Translate.ReportScheduleActive %]</span></label>
-                        <div class="qisutu-form-grid">
-                            <label><span>[% Translate.ReportScheduleFrequency %]</span><select name="ScheduleFrequency" data-report-schedule-frequency>
-                                <option value="daily" [% ScheduleFrequencyDailySelected %]>[% Translate.AutomationDaily %]</option>
-                                <option value="weekly" [% ScheduleFrequencyWeeklySelected %]>[% Translate.AutomationWeekly %]</option>
-                                <option value="monthly" [% ScheduleFrequencyMonthlySelected %]>[% Translate.AutomationMonthly %]</option>
-                            </select></label>
-                            <label><span>[% Translate.ReportScheduleSendTime %]</span><input type="time" name="ScheduleSendTime" value="[% ScheduleSendTime %]" required></label>
-                            <label data-report-schedule-weekday><span>[% Translate.ReportScheduleWeekday %]</span><select name="ScheduleWeekday">
-                                <option value="1" [% ScheduleWeekday1Selected %]>[% Translate.AutomationMonday %]</option><option value="2" [% ScheduleWeekday2Selected %]>[% Translate.AutomationTuesday %]</option>
-                                <option value="3" [% ScheduleWeekday3Selected %]>[% Translate.AutomationWednesday %]</option><option value="4" [% ScheduleWeekday4Selected %]>[% Translate.AutomationThursday %]</option>
-                                <option value="5" [% ScheduleWeekday5Selected %]>[% Translate.AutomationFriday %]</option><option value="6" [% ScheduleWeekday6Selected %]>[% Translate.AutomationSaturday %]</option>
-                                <option value="7" [% ScheduleWeekday7Selected %]>[% Translate.AutomationSunday %]</option>
-                            </select></label>
-                            <label data-report-schedule-monthday><span>[% Translate.ReportScheduleMonthday %]</span><input type="number" name="ScheduleMonthday" min="1" max="28" value="[% ScheduleMonthday %]"></label>
-                            <label><span>[% Translate.ReportSchedulePeriod %]</span><select name="SchedulePeriodType" data-report-schedule-period>
-                                <option value="fixed" [% SchedulePeriodFixedSelected %]>[% Translate.ReportSchedulePeriodFixed %]</option>
-                                <option value="previous_day" [% SchedulePeriodPreviousDaySelected %]>[% Translate.ReportSchedulePeriodPreviousDay %]</option>
-                                <option value="previous_week" [% SchedulePeriodPreviousWeekSelected %]>[% Translate.ReportSchedulePeriodPreviousWeek %]</option>
-                                <option value="previous_month" [% SchedulePeriodPreviousMonthSelected %]>[% Translate.ReportSchedulePeriodPreviousMonth %]</option>
-                                <option value="rolling_days" [% SchedulePeriodRollingSelected %]>[% Translate.ReportSchedulePeriodRolling %]</option>
-                            </select></label>
-                            <label data-report-schedule-period-field><span>[% Translate.ReportSchedulePeriodField %]</span><select name="SchedulePeriodField" data-report-schedule-period-field-select data-selected="[% SchedulePeriodField %]"></select></label>
-                            <label data-report-schedule-rolling><span>[% Translate.ReportScheduleRollingDays %]</span><input type="number" name="ScheduleRollingDays" min="1" max="365" value="[% ScheduleRollingDays %]"></label>
-                            <label class="qisutu-form-grid-wide"><span>[% Translate.ReportScheduleAgents %]</span><select name="ScheduleAgentID" multiple size="5">[% FOREACH Agent IN ScheduleAgents %]<option value="[% Agent.id %]" [% Agent.selected %]>[% Agent.label %]</option>[% END %]</select><small>[% Translate.ReportScheduleAgentsHint %]</small></label>
-                            <label class="qisutu-form-grid-wide"><span>[% Translate.ReportScheduleAdditionalEmails %]</span><textarea name="ScheduleAdditionalEmails" rows="3" placeholder="name@example.com">[% ScheduleAdditionalEmails %]</textarea><small>[% Translate.ReportScheduleAdditionalEmailsHint %]</small></label>
-                        </div>
-                        <fieldset class="qisutu-report-choice-fieldset"><legend>[% Translate.ReportScheduleFormats %]</legend><div class="qisutu-report-choice-grid">
-                            <label class="qisutu-form-checkbox"><input type="checkbox" name="ScheduleFormat_pdf" value="1" [% ScheduleFormatPDFChecked %]><span>PDF</span></label>
-                            <label class="qisutu-form-checkbox"><input type="checkbox" name="ScheduleFormat_csv_analysis" value="1" [% ScheduleFormatCSVAnalysisChecked %]><span>[% Translate.ReportExportCSVAnalysis %]</span></label>
-                            <label class="qisutu-form-checkbox"><input type="checkbox" name="ScheduleFormat_csv_detail" value="1" [% ScheduleFormatCSVDetailChecked %]><span>[% Translate.ReportExportCSVDetails %]</span></label>
-                        </div></fieldset>
-                        [% IF ReportID %]<div class="qisutu-report-schedule-status"><span>[% Translate.ReportScheduleNextRun %]: <strong>[% ScheduleNextRun %]</strong></span><span>[% Translate.ReportScheduleLastRun %]: <strong>[% ScheduleLastRun %]</strong></span><span>[% Translate.ReportScheduleLastStatus %]: <strong>[% ScheduleLastStatus %]</strong></span>[% IF ScheduleLastError %]<span class="qisutu-report-schedule-error">[% ScheduleLastError %]</span>[% END %]</div>[% END %]
-                    </section>
-
                     <section class="qisutu-panel qisutu-report-actions-panel">
                         <div class="qisutu-report-actions">
                             <button class="qisutu-button qisutu-button-primary" type="button" data-report-preview>[% Translate.ReportPreview %]</button>
@@ -214,6 +177,6 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 <script type="application/json" data-report-catalog>[% RAW.CatalogJSON %]</script>
                 <script type="application/json" data-report-configuration>[% RAW.ConfigurationJSON %]</script>
                 <script src="[% StaticBase %]/js/chartjs/chart.umd.min.js?v=4.5.1"></script>
-                <script src="[% StaticBase %]/js/qisutu-reports.js?v=2026090301"></script>
+                <script src="[% StaticBase %]/js/qisutu-reports.js?v=2026090102"></script>
                 [% END %]
             </section>

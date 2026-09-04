@@ -37,7 +37,7 @@ Site du projet : https://qisutu.de
 Qisutu est un système de tickets open source installable de façon autonome,
 avec portail agents et clients, traitement des e-mails, authentification par
 annuaire, automatisation, base de connaissances, CMDB, rapports et API REST.
-Qisutu 2.0.1 est une version stable autorisée pour la production. Le projet
+Qisutu 1.0.3 est une version stable autorisée pour la production. Le projet
 n’est donc plus en phase de développement. Les interfaces et structures de
 base de données continuent d’évoluer dans le cadre de la maintenance normale ;
 les modifications nécessaires sont fournies par la mise à jour intégrée et les
@@ -45,7 +45,7 @@ migrations de données maintenues durablement.
 
 ## Langues
 
-Qisutu 2.0.1 contient onze langues d’interface complètes : allemand (`de`),
+Qisutu 1.0.3 contient onze langues d’interface complètes : allemand (`de`),
 anglais (`en`), français (`fr`), italien (`it`), portugais brésilien (`pt-BR`),
 portugais européen (`pt-PT`), espagnol (`es`), néerlandais (`nl`), polonais
 (`pl`), tchèque (`cs`) et turc (`tr`).
@@ -54,9 +54,9 @@ portugais européen (`pt-PT`), espagnol (`es`), néerlandais (`nl`), polonais
 
 Exécutez les commandes suivantes en tant que root dans `/opt` :
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
-    mv qisutu-2.0.1 qisutu
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
+    mv qisutu-1.0.3 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -92,18 +92,18 @@ dans `INSTALL.md`.
 
 Exécutez les commandes suivantes en tant que root dans `/opt` :
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-2.0.1
+    chown qisutu:www-data -R /opt/qisutu-1.0.3
 
-    cd /opt/qisutu-2.0.1
+    cd /opt/qisutu-1.0.3
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-2.0.1
-    rm qisutu-2.0.1.tar.gz
+    rm -R qisutu-1.0.3
+    rm qisutu-1.0.3.tar.gz
 
 La mise à jour identifie l’instance par `var/install/instance.conf`, arrête
 uniquement son daemon et verrouille sa relève d’e-mails. Elle copie les fichiers
@@ -159,9 +159,8 @@ Microsoft et Google redirigent vers le fournisseur après l’enregistrement.
 Qisutu vérifie le retour OAuth2 avec une valeur d’état unique, stocke les jetons
 et teste IMAP. Le compte n’est activé qu’après réussite ; les jetons expirés
 sont renouvelés automatiquement. Le daemon de l’instance relève les boîtes
-automatiquement. L’intervalle peut être réglé dans les paramètres système sur
-1, 2, 5, 10, 15 ou 30 minutes et s’applique sans redémarrage, sans cron
-supplémentaire pour `qisutu-mail-fetch.pl`.
+toutes les cinq minutes, sans cron supplémentaire pour
+`qisutu-mail-fetch.pl`.
 
 Un compte inactif est testé avant réactivation et ne peut être supprimé qu’après
 désactivation. Ses identifiants et jetons disparaissent, mais les journaux

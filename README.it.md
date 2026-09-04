@@ -35,7 +35,7 @@ Sito del progetto: https://qisutu.de
 
 Qisutu è un sistema open source installabile autonomamente con portale agenti e
 clienti, elaborazione e-mail, autenticazione tramite directory, automazione,
-knowledge base, CMDB, report e API REST. Qisutu 2.0.1 è una versione stabile
+knowledge base, CMDB, report e API REST. Qisutu 1.0.3 è una versione stabile
 approvata per l’uso in produzione e non si trova più in fase di sviluppo.
 Interfacce e strutture del database continuano a evolvere con la manutenzione
 ordinaria; le modifiche necessarie vengono distribuite tramite l’aggiornamento
@@ -43,7 +43,7 @@ integrato e migrazioni dei dati mantenute nel tempo.
 
 ## Lingue
 
-Qisutu 2.0.1 include undici lingue complete dell’interfaccia: tedesco (`de`),
+Qisutu 1.0.3 include undici lingue complete dell’interfaccia: tedesco (`de`),
 inglese (`en`), francese (`fr`), italiano (`it`), portoghese brasiliano
 (`pt-BR`), portoghese europeo (`pt-PT`), spagnolo (`es`), olandese (`nl`),
 polacco (`pl`), ceco (`cs`) e turco (`tr`).
@@ -52,9 +52,9 @@ polacco (`pl`), ceco (`cs`) e turco (`tr`).
 
 Eseguire come root in `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
-    mv qisutu-2.0.1 qisutu
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
+    mv qisutu-1.0.3 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -90,18 +90,18 @@ istanze sono disponibili in `INSTALL.md`.
 
 Eseguire come root in `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-2.0.1
+    chown qisutu:www-data -R /opt/qisutu-1.0.3
 
-    cd /opt/qisutu-2.0.1
+    cd /opt/qisutu-1.0.3
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-2.0.1
-    rm qisutu-2.0.1.tar.gz
+    rm -R qisutu-1.0.3
+    rm qisutu-1.0.3.tar.gz
 
 L’aggiornamento identifica l’istanza tramite `var/install/instance.conf`, arresta
 solo il relativo daemon e blocca solo il recupero e-mail. Copia i file gestiti
@@ -156,8 +156,7 @@ offre:
 Dopo il salvataggio Microsoft e Google reindirizzano al provider. Qisutu verifica
 il ritorno OAuth2 con un valore di stato monouso, salva i token e testa IMAP.
 L’account viene attivato solo dopo il test; i token scaduti si rinnovano
-automaticamente. Nelle impostazioni di sistema l’intervallo di recupero può
-essere impostato su 1, 2, 5, 10, 15 o 30 minuti e viene applicato senza riavvio,
+automaticamente. Il daemon dell’istanza recupera la posta ogni cinque minuti,
 senza cron aggiuntivo per `qisutu-mail-fetch.pl`.
 
 Un account inattivo viene testato prima della riattivazione e può essere

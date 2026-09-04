@@ -270,14 +270,14 @@ my $Schema = _ReadRaw( File::Spec->catfile( $Root, 'install', 'sql', 'schema.sql
 for my $Table (qw(addon_package addon_operation addon_setting addon_migration addon_auth_state addon_external_identity addon_task addon_event_queue)) {
     like( $Schema, qr{CREATE TABLE IF NOT EXISTS `\Q$Table\E`}, "fresh installations create $Table" );
 }
-like( $Schema, qr{INSERT INTO `database_version` \(`version`\) VALUES \('2[.]0[.]1'\)}, 'fresh installations use database version 2.0.1' );
+like( $Schema, qr{INSERT INTO `database_version` \(`version`\) VALUES \('1[.]0[.]2'\)}, 'fresh installations use database version 1.0.2' );
 
 my $Insert = _ReadRaw( File::Spec->catfile( $Root, 'install', 'sql', 'insert.sql' ) );
 like( $Insert, qr{admin[.]addon[.]manage}, 'fresh installations grant the dedicated add-on management permission to administrators' );
 like( $Schema, qr{CREATE TABLE IF NOT EXISTS `addon_event_queue`}, 'fresh installations create the persistent add-on event queue' );
 my $Release = _ReadRaw( File::Spec->catfile( $Root, 'release.conf' ) );
-like( $Release, qr{^version=2[.]0[.]1$}m, 'the versioned add-on API remains included in release 2.0.1' );
-like( $Release, qr{^database_version=2[.]0[.]1$}m, 'the add-on schema remains included in database version 2.0.1' );
+like( $Release, qr{^version=1[.]0[.]3$}m, 'the versioned add-on API is included in release 1.0.3' );
+like( $Release, qr{^database_version=1[.]0[.]2$}m, 'the add-on schema is included in database version 1.0.2' );
 opendir my $BinDirectory, File::Spec->catdir( $Root, 'bin' ) or die "Cannot inspect bin directory: $!";
 my @ModuleBuilder = grep { m{addon.*build}i } readdir $BinDirectory;
 closedir $BinDirectory;

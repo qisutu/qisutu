@@ -294,8 +294,8 @@ like( $AdminTemplate, qr{PlaceholderList}, 'the edit view presents its placehold
 like( $AdminTemplate, qr{name="ResponseLanguage"}, 'the administration view offers a language selector' );
 
 my $Release = _Read( File::Spec->catfile( $Root, 'release.conf' ) );
-like( $Release, qr{^version=2[.]0[.]1$}m, 'automatic responses remain included in release 2.0.1' );
-like( $Release, qr{^database_version=2[.]0[.]1$}m, 'automatic responses remain included in database version 2.0.1' );
+like( $Release, qr{^version=1[.]0[.]3$}m, 'automatic responses are included in release 1.0.3' );
+like( $Release, qr{^database_version=1[.]0[.]2$}m, 'automatic responses are included in database version 1.0.2' );
 
 my $Schema = _Read( File::Spec->catfile( $Root, 'install', 'sql', 'schema.sql' ) );
 like( $Schema, qr{CREATE TABLE `customer_auto_response_template`}, 'fresh installations create automatic-response templates' );

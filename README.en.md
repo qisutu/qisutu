@@ -35,7 +35,7 @@ Project website: https://qisutu.de
 
 Qisutu is an independently installable open-source ticket system with an agent
 and customer portal, email processing, directory authentication, automation,
-knowledge base, CMDB, reports, and REST API. Qisutu 2.0.1 is a stable release
+knowledge base, CMDB, reports, and REST API. Qisutu 1.0.3 is a stable release
 approved for production use. Qisutu is therefore no longer in the development
 phase. Interfaces and database structures continue to evolve as part of regular
 release maintenance; required changes are delivered through the integrated
@@ -43,7 +43,7 @@ updater and permanently maintained data migrations.
 
 ## Languages
 
-Qisutu 2.0.1 includes eleven complete interface languages: German (`de`),
+Qisutu 1.0.3 includes eleven complete interface languages: German (`de`),
 English (`en`), French (`fr`), Italian (`it`), Brazilian Portuguese (`pt-BR`),
 European Portuguese (`pt-PT`), Spanish (`es`), Dutch (`nl`), Polish (`pl`),
 Czech (`cs`), and Turkish (`tr`).
@@ -52,9 +52,9 @@ Czech (`cs`), and Turkish (`tr`).
 
 Run the following commands as root in `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
-    mv qisutu-2.0.1 qisutu
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
+    mv qisutu-1.0.3 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -98,18 +98,18 @@ available in `INSTALL.md`.
 
 Run the following commands as root in `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
+    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
+    tar xzf qisutu-1.0.3.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-2.0.1
+    chown qisutu:www-data -R /opt/qisutu-1.0.3
 
-    cd /opt/qisutu-2.0.1
+    cd /opt/qisutu-1.0.3
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-2.0.1
-    rm qisutu-2.0.1.tar.gz
+    rm -R qisutu-1.0.3
+    rm qisutu-1.0.3.tar.gz
 
 The updater identifies the instance through `var/install/instance.conf`, stops
 only its daemon, and locks only its mail retrieval. It copies all managed
@@ -183,10 +183,9 @@ access tokens are renewed automatically with the refresh token during mail
 retrieval.
 
 The instance-specific Qisutu daemon automatically retrieves configured
-mailboxes. Administrators can set the interval to 1, 2, 5, 10, 15, or 30
-minutes in the system settings, and changes take effect without a restart.
-Each instance uses only its own installation directory and configuration. No
-additional cron job is required for `qisutu-mail-fetch.pl`.
+mailboxes every five minutes. Each instance uses only its own installation
+directory and configuration. No additional cron job is required for
+`qisutu-mail-fetch.pl`.
 
 Inactive accounts are automatically tested for a working IMAP/OAuth2
 connection before reactivation. An account can be deleted permanently only

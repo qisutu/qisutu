@@ -198,7 +198,7 @@ unlike( $Template, qr{name="FollowUpAllowed"}, 'the old follow-up checkbox is no
 
 my $Schema = _Read( File::Spec->catfile( $Root, 'install', 'sql', 'schema.sql' ) );
 like( $Schema, qr{`follow_up_option`\s+varchar\(20\)}, 'fresh installations include the three-way queue setting' );
-like( $Schema, qr{VALUES \('2[.]0[.]1'\)}, 'fresh installations use database version 2.0.1' );
+like( $Schema, qr{VALUES \('1[.]0[.]2'\)}, 'fresh installations use database version 1.0.2' );
 like( $Schema, qr{`follow_up_option` varchar\(20\) NOT NULL DEFAULT 'reopen'}, 'the fresh-install default reopens a closed ticket' );
 
 my $MailFetch = _Read( File::Spec->catfile( $Root, 'bin', 'qisutu-mail-fetch.pl' ) );

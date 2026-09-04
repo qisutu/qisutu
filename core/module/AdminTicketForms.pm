@@ -27,7 +27,6 @@ use warnings;
 use utf8;
 
 use JSON::PP qw(encode_json);
-use QisutuAddonManager;
 use QisutuDynamicField;
 use QisutuTicketForm;
 
@@ -57,8 +56,6 @@ sub Run {
     my $Object   = QisutuTicketForm->new(
         Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output},
     );
-    my $ProcessTemplates = $Self->_KimProcessTemplates();
-    my $KimProcessesAvailable = defined $ProcessTemplates ? 1 : 0;
     my $Status = $Request->{Status} || '';
 
     if ( $Step eq 'CustomerSearch' ) {
@@ -70,7 +67,7 @@ sub Run {
 
     if ( $Step eq 'FormCreate' ) {
         $FormID = $Object->FormCreate(
-            %{ $Self->_FormParameters( Request => $Request, ProcessTemplates => $ProcessTemplates ) },
+            %{ $Self->_FormParameters( Request => $Request ) },
             ChangedByUserID => $User->{user_account_id},
         ) || 0;
         return { Redirect => 'index.pl?Page=AdminTicketForms;Action=Edit;FormID=' . $FormID . ';Status=created' }
@@ -80,7 +77,7 @@ sub Run {
     elsif ( $Step eq 'FormUpdate' ) {
         my $Success = $Object->FormUpdate(
             FormID => $FormID,
-            %{ $Self->_FormParameters( Request => $Request, ProcessTemplates => $ProcessTemplates ) },
+            %{ $Self->_FormParameters( Request => $Request ) },
             ChangedByUserID => $User->{user_account_id},
         );
         return { Redirect => 'index.pl?Page=AdminTicketForms;Action=Edit;FormID=' . $FormID . ';Status=updated' }
@@ -252,12 +249,6 @@ sub Run {
             FormRateLimitHour   => defined $FormValues->{rate_limit_hour} ? $FormValues->{rate_limit_hour} : 20,
             FormRateLimitDay    => defined $FormValues->{rate_limit_day} ? $FormValues->{rate_limit_day} : 240,
             FormRateLimitTotalDay => defined $FormValues->{rate_limit_total_day} ? $FormValues->{rate_limit_total_day} : 5000,
-            KimProcessesAvailable => $KimProcessesAvailable,
-            ProcessTemplateOptionsHTML => $Self->_ProcessTemplateOptions(
-                Templates => $ProcessTemplates || [],
-                Selected  => $FormValues->{process_template_id},
-                Language  => $Language,
-            ),
             FormTranslationsHTML => $Self->_FormTranslationsHTML(
                 Translations => $FormTranslations,
                 Language     => $Language,
@@ -312,7 +303,7 @@ sub _FormParameters {
         $Slug = $Base . '-' . time . '-' . int( 100000 + rand 900000 );
     }
 
-    my $Result = {
+    return {
         InternalName   => $R->{InternalName}, FormType => $FormType, Slug => $Slug,
         QueueID        => $R->{QueueID},
         AllCustomers   => $FormType eq 'customer' && $R->{AllCustomers} ? 1 : 0,
@@ -325,12 +316,6 @@ sub _FormParameters {
         Translations   => $Self->_FormTranslationsFromRequest($R),
         CustomerIDs    => $FormType eq 'customer' ? $Self->_CustomerIDsFromRequest($R) : [],
     };
-    if ( defined $Param{ProcessTemplates} ) {
-        my %Allowed = map { ( $_->{id} || 0 ) => 1 } @{ $Param{ProcessTemplates} || [] };
-        my $Selected = $Self->_ID( $R->{ProcessTemplateID} );
-        $Result->{ProcessTemplateID} = $Selected && $Allowed{$Selected} ? $Selected : undef;
-    }
-    return $Result;
 }
 
 sub _FieldParameters {
@@ -471,35 +456,7 @@ sub _FormValuesFromRequest {
         all_customers => $R->{AllCustomers} ? 1 : 0, require_consent => $R->{RequireConsent} ? 1 : 0,
         allowed_origins => $R->{AllowedOrigins}, rate_limit_hour => $R->{RateLimitHour}, rate_limit_day => $R->{RateLimitDay},
         rate_limit_total_day => $R->{RateLimitTotalDay}, active => $R->{Active} ? 1 : 0, sort_order => $R->{SortOrder},
-        process_template_id => $R->{ProcessTemplateID},
     };
-}
-
-sub _KimProcessTemplates {
-    my ($Self) = @_;
-
-    my $Manager = QisutuAddonManager->new( Config => $Self->{Config}, DB => $Self->{DB} );
-    my $Package = $Manager->PackageGet( Identifier => 'de.qisutu.kim-processes' );
-    return if !$Package || !$Package->{active} || ( $Package->{status} || '' ) ne 'installed';
-    my $Settings = $Manager->SettingsGet( Identifier => 'de.qisutu.kim-processes' ) || {};
-    return if exists $Settings->{enabled} && !$Settings->{enabled};
-
-    my $Loaded = eval { require Qisutu::Addon::KimProcesses::Process; 1 };
-    return if !$Loaded;
-    my $Object = Qisutu::Addon::KimProcesses::Process->new( Config => $Self->{Config}, DB => $Self->{DB} );
-    return $Object->TemplateList( ActiveOnly => 1 ) || [];
-}
-
-sub _ProcessTemplateOptions {
-    my ( $Self, %Param ) = @_;
-    my $HTML = '<option value="">' . $Self->_E( $Self->_T('AdminTicketFormNoProcess', $Param{Language}) ) . '</option>';
-    for my $Template ( @{ $Param{Templates} || [] } ) {
-        my $ID = $Self->_ID( $Template->{id} );
-        next if !$ID;
-        $HTML .= '<option value="' . $ID . '"' . ( $ID == ( $Param{Selected} || 0 ) ? ' selected' : '' ) . '>'
-            . $Self->_E( $Template->{name} || $ID ) . '</option>';
-    }
-    return $HTML;
 }
 
 sub _FieldValuesFromRequest {

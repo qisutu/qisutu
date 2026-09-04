@@ -52,24 +52,6 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             [% RAW.NavigationHTML %]
         </nav>
 
-        [% IF UserIsAgent %]
-        <div class="qisutu-sidebar-collaboration" data-qisutu-sidebar-actions>
-            <button
-                class="qisutu-internal-chat-launcher"
-                type="button"
-                title="[% Translate.InternalChatTitle %]"
-                aria-label="[% Translate.InternalChatOpen %]"
-                aria-expanded="false"
-                aria-controls="QisutuInternalChatDrawer"
-                data-qisutu-internal-chat-open
-            >
-                <span class="qisutu-internal-chat-launcher-icon" aria-hidden="true">●</span>
-                <span class="qisutu-internal-chat-launcher-label">[% Translate.InternalChatButton %]</span>
-                <span class="qisutu-internal-chat-badge" data-qisutu-internal-chat-badge hidden></span>
-            </button>
-        </div>
-        [% END %]
-
         <div class="qisutu-sidebar-user">
             <button
                 class="qisutu-sidebar-user-avatar"
@@ -103,94 +85,6 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </div>
         </div>
     </aside>
-
-    [% IF UserIsAgent %]
-    <div
-        class="qisutu-internal-chat-root"
-        id="QisutuInternalChat"
-        data-csrf-token="[% CSRFToken %]"
-        data-state-url="index.pl?Page=AgentInternalChat&amp;Step=State"
-        data-unread-url="index.pl?Page=AgentInternalChat&amp;Step=Unread"
-        data-messages-url="index.pl?Page=AgentInternalChat&amp;Step=Messages"
-        data-send-url="index.pl?Page=AgentInternalChat&amp;Step=Send"
-        data-delete-url="index.pl?Page=AgentInternalChat&amp;Step=Delete"
-        data-transfer-url="index.pl?Page=AgentInternalChat&amp;Step=Transfer"
-        data-current-ticket-id="[% TicketID %]"
-        data-current-ticket-number="[% TicketNumber %]"
-        data-current-ticket-title="[% TicketTitle %]"
-        data-text-online="[% Translate.InternalChatOnline %]"
-        data-text-offline="[% Translate.InternalChatOffline %]"
-        data-text-you="[% Translate.InternalChatYou %]"
-        data-text-select-agent="[% Translate.InternalChatSelectAgent %]"
-        data-text-load-error="[% Translate.InternalChatLoadFailed %]"
-        data-text-send-error="[% Translate.InternalChatSendFailed %]"
-        data-text-ticket-reference="[% Translate.InternalChatTicketReference %]"
-        data-text-ticket-transferred="[% Translate.InternalChatTicketTransferred %]"
-        data-text-transfer-confirm="[% Translate.InternalChatTransferConfirm %]"
-        data-text-transfer-error="[% Translate.InternalChatTransferFailed %]"
-        data-text-transfer-success="[% Translate.InternalChatTransferSuccess %]"
-        data-text-ticket-alone="[% Translate.InternalChatTicketAlone %]"
-        data-text-address="[% Translate.InternalChatAddress %]"
-        data-text-address-agent="[% Translate.InternalChatAddressAgent %]"
-        data-text-presence-error="[% Translate.InternalChatPresenceFailed %]"
-        data-text-invite-colleague="[% Translate.InternalChatInviteColleague %]"
-        data-text-no-online-agents="[% Translate.InternalChatNoOnlineAgents %]"
-        data-text-ticket-invitation="[% Translate.InternalChatTicketInvitationMessage %]"
-        data-text-delete-confirm="[% Translate.InternalChatDeleteConfirm %]"
-        data-text-delete-error="[% Translate.InternalChatDeleteFailed %]"
-    >
-        <div class="qisutu-internal-chat-backdrop" data-qisutu-internal-chat-backdrop hidden></div>
-        <section
-            class="qisutu-internal-chat-drawer"
-            id="QisutuInternalChatDrawer"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="QisutuInternalChatTitle"
-            data-qisutu-internal-chat-drawer
-            hidden
-        >
-            <header class="qisutu-internal-chat-header">
-                <div>
-                    <h2 id="QisutuInternalChatTitle">[% Translate.InternalChatTitle %]</h2>
-                    <p>[% Translate.InternalChatDescription %]</p>
-                </div>
-                <button class="qisutu-internal-chat-close" type="button" aria-label="[% Translate.InternalChatClose %]" data-qisutu-internal-chat-close>×</button>
-            </header>
-            <div class="qisutu-internal-chat-content">
-                <aside class="qisutu-internal-chat-agents" aria-label="[% Translate.InternalChatAgents %]">
-                    <input
-                        class="qisutu-internal-chat-agent-filter"
-                        type="search"
-                        placeholder="[% Translate.InternalChatAgentSearch %]"
-                        aria-label="[% Translate.InternalChatAgentSearch %]"
-                        data-qisutu-internal-chat-agent-filter
-                    >
-                    <div class="qisutu-internal-chat-agent-list" data-qisutu-internal-chat-agent-list></div>
-                </aside>
-                <section class="qisutu-internal-chat-conversation">
-                    <header class="qisutu-internal-chat-conversation-header">
-                        <div class="qisutu-internal-chat-conversation-heading">
-                            <h3 data-qisutu-internal-chat-conversation-name>[% Translate.InternalChatSelectAgent %]</h3>
-                            <p data-qisutu-internal-chat-conversation-state></p>
-                        </div>
-                        <button class="qisutu-internal-chat-delete" type="button" data-qisutu-internal-chat-delete hidden>[% Translate.InternalChatDelete %]</button>
-                    </header>
-                    <div class="qisutu-internal-chat-empty" data-qisutu-internal-chat-empty>[% Translate.InternalChatSelectAgentHint %]</div>
-                    <div class="qisutu-internal-chat-messages" data-qisutu-internal-chat-messages hidden></div>
-                    <div class="qisutu-internal-chat-ticket-context" data-qisutu-internal-chat-ticket-context hidden>
-                        <span class="qisutu-internal-chat-ticket-context-text" data-qisutu-internal-chat-ticket-context-text></span>
-                        <button class="qisutu-button qisutu-button-primary qisutu-button-small" type="button" data-qisutu-internal-chat-transfer>[% Translate.InternalChatTransferTicket %]</button>
-                    </div>
-                    <div class="qisutu-internal-chat-transfer-status" data-qisutu-internal-chat-transfer-status aria-live="polite"></div>
-                    <form class="qisutu-internal-chat-form" data-qisutu-internal-chat-form hidden>
-                        <textarea name="Message" rows="2" maxlength="4000" placeholder="[% Translate.InternalChatMessagePlaceholder %]" aria-label="[% Translate.InternalChatMessagePlaceholder %]" data-qisutu-internal-chat-message required></textarea>
-                        <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.InternalChatSend %]</button>
-                    </form>
-                </section>
-            </div>
-        </section>
-    </div>
-    [% END %]
 
     <section class="qisutu-workspace">
         <main class="qisutu-main">
