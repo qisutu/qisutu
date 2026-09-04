@@ -43,6 +43,20 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             <h2>[% TicketTitle %]</h2>
                         </div>
 
+                        <section
+                            class="qisutu-ticket-presence"
+                            aria-label="[% Translate.InternalChatTicketPresenceTitle %]"
+                            data-qisutu-ticket-presence
+                            data-ticket-id="[% TicketID %]"
+                            data-presence-url="index.pl?Page=AgentInternalChat&amp;Step=TicketPresence"
+                            data-leave-url="index.pl?Page=AgentInternalChat&amp;Step=TicketPresenceLeave"
+                        >
+                            <strong class="qisutu-ticket-presence-title">[% Translate.InternalChatTicketPresenceTitle %]</strong>
+                            <div class="qisutu-ticket-presence-list" data-qisutu-ticket-presence-list>
+                                <span class="qisutu-ticket-presence-empty">[% Translate.InternalChatPresenceLoading %]</span>
+                            </div>
+                        </section>
+
                         <div class="qisutu-ticket-meta-grid">
                             <div>
                                 <span>[% Translate.TicketNumber %]</span>

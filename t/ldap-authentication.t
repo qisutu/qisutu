@@ -316,7 +316,7 @@ for my $File ( qw(install.sh update.sh bin/cgi-bin/install.pl install/sql/schema
 open my $ReleaseFH, '<:encoding(UTF-8)', "$Root/release.conf" or die $!;
 my $Release = do { local $/; <$ReleaseFH> };
 close $ReleaseFH;
-like( $Release, qr{^version=1[.]0[.]3$}m, 'the current release uses program version 1.0.3' );
-like( $Release, qr{^database_version=1[.]0[.]2$}m, 'the current release uses database version 1.0.2' );
+like( $Release, qr{^version=2[.]0[.]1$}m, 'the current release uses program version 2.0.1' );
+like( $Release, qr{^database_version=2[.]0[.]1$}m, 'the current release uses database version 2.0.1' );
 
 done_testing();

@@ -2276,6 +2276,7 @@ CREATE TABLE `ticket_form` (
   `form_type` varchar(20) NOT NULL DEFAULT 'customer',
   `slug` varchar(100) NOT NULL,
   `queue_id` bigint(20) unsigned NOT NULL,
+  `process_template_id` bigint(20) unsigned DEFAULT NULL,
   `all_customers` tinyint(1) NOT NULL DEFAULT 1,
   `require_consent` tinyint(1) NOT NULL DEFAULT 0,
   `allowed_origins` text DEFAULT NULL,
@@ -3402,6 +3403,70 @@ CREATE TABLE IF NOT EXISTS `report_definition_group` (
   CONSTRAINT `report_definition_group_created_by_fk` FOREIGN KEY (`created_by_user_id`) REFERENCES `user_account` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `report_schedule` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `report_definition_id` bigint(20) unsigned NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 0,
+  `frequency` varchar(20) NOT NULL DEFAULT 'daily',
+  `send_time` time NOT NULL DEFAULT '08:00:00',
+  `weekday` tinyint(3) unsigned DEFAULT NULL,
+  `monthday` tinyint(3) unsigned DEFAULT NULL,
+  `period_type` varchar(30) NOT NULL DEFAULT 'previous_month',
+  `period_field` varchar(100) NOT NULL DEFAULT 'created_at',
+  `rolling_days` smallint(5) unsigned DEFAULT NULL,
+  `formats` varchar(100) NOT NULL DEFAULT 'pdf',
+  `next_run_at` datetime DEFAULT NULL,
+  `last_run_at` datetime DEFAULT NULL,
+  `last_status` varchar(30) NOT NULL DEFAULT '',
+  `last_error` text DEFAULT NULL,
+  `created_by_user_id` bigint(20) unsigned NOT NULL,
+  `changed_by_user_id` bigint(20) unsigned NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `report_schedule_report_unique` (`report_definition_id`),
+  KEY `report_schedule_due` (`active`,`next_run_at`,`id`),
+  CONSTRAINT `report_schedule_report_fk` FOREIGN KEY (`report_definition_id`) REFERENCES `report_definition` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `report_schedule_created_by_fk` FOREIGN KEY (`created_by_user_id`) REFERENCES `user_account` (`id`),
+  CONSTRAINT `report_schedule_changed_by_fk` FOREIGN KEY (`changed_by_user_id`) REFERENCES `user_account` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `report_schedule_recipient` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `report_schedule_id` bigint(20) unsigned NOT NULL,
+  `recipient_type` varchar(20) NOT NULL,
+  `user_account_id` bigint(20) unsigned DEFAULT NULL,
+  `email` varchar(255) NOT NULL,
+  `display_name` varchar(255) NOT NULL DEFAULT '',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `report_schedule_recipient_email_unique` (`report_schedule_id`,`email`),
+  KEY `report_schedule_recipient_user` (`user_account_id`,`report_schedule_id`),
+  CONSTRAINT `report_schedule_recipient_schedule_fk` FOREIGN KEY (`report_schedule_id`) REFERENCES `report_schedule` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `report_schedule_recipient_user_fk` FOREIGN KEY (`user_account_id`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `report_delivery_log` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `report_schedule_id` bigint(20) unsigned DEFAULT NULL,
+  `report_definition_id` bigint(20) unsigned DEFAULT NULL,
+  `scheduled_for` datetime NOT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'processing',
+  `recipients_json` longtext NOT NULL,
+  `formats` varchar(100) NOT NULL,
+  `period_start` date DEFAULT NULL,
+  `period_end` date DEFAULT NULL,
+  `error_message` text DEFAULT NULL,
+  `started_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `finished_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `report_delivery_log_run_unique` (`report_schedule_id`,`scheduled_for`),
+  KEY `report_delivery_log_report` (`report_definition_id`,`started_at`,`id`),
+  KEY `report_delivery_log_status` (`status`,`started_at`,`id`),
+  CONSTRAINT `report_delivery_log_schedule_fk` FOREIGN KEY (`report_schedule_id`) REFERENCES `report_schedule` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `report_delivery_log_report_fk` FOREIGN KEY (`report_definition_id`) REFERENCES `report_definition` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `report_execution_log` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `report_definition_id` bigint(20) unsigned DEFAULT NULL,
@@ -3707,6 +3772,42 @@ CREATE TABLE IF NOT EXISTS `database_migration` (
   KEY `database_migration_version_idx` (`database_version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Internal agent chat and live ticket presence
+CREATE TABLE IF NOT EXISTS `internal_chat_message` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `sender_user_id` bigint(20) unsigned NOT NULL,
+  `recipient_user_id` bigint(20) unsigned NOT NULL,
+  `message_type` varchar(30) NOT NULL DEFAULT 'message',
+  `message_text` text NOT NULL,
+  `ticket_id` bigint(20) unsigned DEFAULT NULL,
+  `ticket_number` varchar(50) NOT NULL DEFAULT '',
+  `ticket_title` varchar(500) NOT NULL DEFAULT '',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `read_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `internal_chat_sender_recipient_id` (`sender_user_id`,`recipient_user_id`,`id`),
+  KEY `internal_chat_recipient_read_id` (`recipient_user_id`,`read_at`,`id`),
+  KEY `internal_chat_ticket_id` (`ticket_id`,`id`),
+  CONSTRAINT `internal_chat_sender_fk` FOREIGN KEY (`sender_user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `internal_chat_recipient_fk` FOREIGN KEY (`recipient_user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `internal_chat_ticket_fk` FOREIGN KEY (`ticket_id`) REFERENCES `ticket` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ticket_presence` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `ticket_id` bigint(20) unsigned NOT NULL,
+  `user_account_id` bigint(20) unsigned NOT NULL,
+  `client_id` varchar(64) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `last_seen_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ticket_presence_ticket_user_client_unique` (`ticket_id`,`user_account_id`,`client_id`),
+  KEY `ticket_presence_ticket_seen` (`ticket_id`,`last_seen_at`),
+  KEY `ticket_presence_user_seen` (`user_account_id`,`last_seen_at`),
+  CONSTRAINT `ticket_presence_ticket_fk` FOREIGN KEY (`ticket_id`) REFERENCES `ticket` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `ticket_presence_user_fk` FOREIGN KEY (`user_account_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Qisutu schema version
 CREATE TABLE IF NOT EXISTS `database_version` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -3716,7 +3817,7 @@ CREATE TABLE IF NOT EXISTS `database_version` (
   UNIQUE KEY `database_version_version_unique` (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `database_version` (`version`) VALUES ('1.0.2');
+INSERT INTO `database_version` (`version`) VALUES ('2.0.1');
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

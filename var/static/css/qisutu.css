@@ -8456,9 +8456,42 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 }
 .qisutu-reports .qisutu-report-meta-panel,
 .qisutu-reports .qisutu-report-step,
+.qisutu-reports .qisutu-report-schedule-panel,
 .qisutu-reports .qisutu-report-actions-panel,
 .qisutu-reports .qisutu-report-preview-panel {
     padding: 26px;
+}
+
+.qisutu-report-schedule-panel {
+    margin-top: 18px;
+}
+
+.qisutu-report-schedule-panel.is-inactive > :not(.qisutu-panel-header):not(.qisutu-report-schedule-active) {
+    opacity: .58;
+}
+
+.qisutu-report-schedule-active {
+    margin: 0 0 18px;
+}
+
+.qisutu-report-schedule-panel select[multiple] {
+    min-height: 120px;
+}
+
+.qisutu-report-schedule-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--qisutu-border-color, #d7e1e8);
+    color: var(--qisutu-text-muted, #637083);
+    font-size: .88rem;
+}
+
+.qisutu-report-schedule-error {
+    flex-basis: 100%;
+    color: var(--qisutu-danger, #c62828);
 }
 .qisutu-report-meta-panel .qisutu-panel-header {
     margin-bottom: 22px;
@@ -8778,6 +8811,7 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 @media (max-width: 560px) {
     .qisutu-reports .qisutu-report-meta-panel,
     .qisutu-reports .qisutu-report-step,
+    .qisutu-reports .qisutu-report-schedule-panel,
     .qisutu-reports .qisutu-report-actions-panel,
     .qisutu-reports .qisutu-report-preview-panel {
         padding-right: 18px;

@@ -29,6 +29,7 @@ use utf8;
 use Digest::SHA qw(sha256_hex);
 use POSIX qw(strftime);
 
+use QisutuAddonManager;
 use QisutuChecklist;
 use QisutuDynamicField;
 use QisutuTicket;
@@ -218,12 +219,12 @@ sub FormCreate {
 
     my $Result = $Self->{DB}->Do(
         'INSERT INTO ticket_form (
-            internal_name, form_type, slug, queue_id, all_customers, require_consent,
+            internal_name, form_type, slug, queue_id, process_template_id, all_customers, require_consent,
             allowed_origins, rate_limit_hour, rate_limit_day, rate_limit_total_day,
             active, sort_order, form_version, created_by_user_id, changed_by_user_id
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)',
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)',
         @{$Data}{qw(
-            InternalName FormType Slug QueueID AllCustomers RequireConsent
+            InternalName FormType Slug QueueID ProcessTemplateID AllCustomers RequireConsent
             AllowedOrigins RateLimitHour RateLimitDay RateLimitTotalDay Active SortOrder
         )},
         $UserID,
@@ -269,6 +270,8 @@ sub FormUpdate {
 
     my $Data = $Self->_FormDataValidate(%Param);
     return if !$Data;
+    $Data->{ProcessTemplateID} = $Current->{process_template_id}
+        if !exists $Param{ProcessTemplateID};
 
     # The two form types have intentionally different administration masks and
     # required data. Changing an existing form to the other type would leave
@@ -295,12 +298,13 @@ sub FormUpdate {
     my $Result = $Self->{DB}->Do(
         'UPDATE ticket_form
          SET internal_name = ?, form_type = ?, slug = ?, queue_id = ?, all_customers = ?,
+             process_template_id = ?,
              require_consent = ?, allowed_origins = ?, rate_limit_hour = ?, rate_limit_day = ?,
              rate_limit_total_day = ?, active = ?, sort_order = ?,
              form_version = form_version + 1, changed_by_user_id = ?, changed_at = NOW()
          WHERE id = ?',
         @{$Data}{qw(
-            InternalName FormType Slug QueueID AllCustomers RequireConsent
+            InternalName FormType Slug QueueID AllCustomers ProcessTemplateID RequireConsent
             AllowedOrigins RateLimitHour RateLimitDay RateLimitTotalDay Active SortOrder
         )},
         $UserID,
@@ -1102,6 +1106,27 @@ sub SubmissionCreate {
         RecipientEmail => $SubmitterEmail,
     );
 
+    my $ProcessHandled = eval {
+        $Self->_ProcessAutoStart(
+            Form         => $Form,
+            TicketID     => $TicketID,
+            TicketObject => $TicketObject,
+            Language     => $Language,
+        );
+        1;
+    };
+    if ( !$ProcessHandled ) {
+        my $UnexpectedError = $@ || 'Unexpected process integration error';
+        $UnexpectedError = substr( $UnexpectedError, 0, 5000 );
+        $TicketObject->ArticleCreate(
+            TicketID => $TicketID, User => { user_account_id => 1, account_type => 'agent' },
+            Subject => $Self->_T('TicketFormProcessStartFailedSubject', $Language, 'Automatic process start failed'),
+            Body => $UnexpectedError, Channel => 'note', SenderType => 'system', FromName => 'Qisutu', FromEmail => '',
+            ContentType => 'text/plain', Visibility => 'agent', Internal => 1, Language => $Language,
+            CreatedByUserID => 1, ChangedByUserID => 1, SkipTicketAccessCheck => 1, SkipNotification => 1,
+        );
+    }
+
     return {
         TicketID         => $TicketID,
         TicketNumber     => $TicketNumber,
@@ -1479,6 +1504,8 @@ sub _FormDataValidate {
         FormType         => $FormType,
         Slug             => $Slug,
         QueueID          => 0 + $QueueID,
+        ProcessTemplateID => defined $Param{ProcessTemplateID} && $Param{ProcessTemplateID} =~ m{\A\d+\z} && $Param{ProcessTemplateID} > 0
+            ? int( $Param{ProcessTemplateID} ) : undef,
         AllCustomers     => $Param{AllCustomers} ? 1 : 0,
         RequireConsent   => $Param{RequireConsent} ? 1 : 0,
         AllowedOrigins   => $AllowedOrigins,
@@ -1490,6 +1517,83 @@ sub _FormDataValidate {
         Translations     => \%CleanTranslations,
         CustomerIDs      => ref $Param{CustomerIDs} eq 'ARRAY' ? $Param{CustomerIDs} : [],
     };
+}
+
+sub _ProcessAutoStart {
+    my ( $Self, %Param ) = @_;
+    my $Form = $Param{Form} || {};
+    my $TemplateID = $Form->{process_template_id} || 0;
+    $TemplateID = 0 if $TemplateID !~ m{\A\d+\z};
+    return 1 if !$TemplateID;
+
+    my $Manager = QisutuAddonManager->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    my $Package = $Manager->PackageGet( Identifier => 'de.qisutu.kim-processes' );
+    return 1 if !$Package || !$Package->{active} || ( $Package->{status} || '' ) ne 'installed';
+    my $Settings = $Manager->SettingsGet( Identifier => 'de.qisutu.kim-processes' ) || {};
+    return 1 if exists $Settings->{enabled} && !$Settings->{enabled};
+
+    my $Runtime;
+    my $InstanceID;
+    my $Error = '';
+    my $Loaded = eval {
+        require Qisutu::Addon::KimProcesses::Runtime;
+        $Runtime = Qisutu::Addon::KimProcesses::Runtime->new(
+            Config => $Self->{Config}, DB => $Self->{DB},
+        );
+        $InstanceID = $Runtime->Start(
+            TicketID   => $Param{TicketID},
+            TemplateID => $TemplateID,
+            Token      => $Settings->{kim_api_token} || '',
+            UserID     => 1,
+        );
+        1;
+    };
+    $Error = $@ || 'KimProcesses runtime could not be loaded' if !$Loaded;
+    $Error ||= $Runtime->Error() || 'Process could not be started' if $Runtime && !$InstanceID;
+
+    my $Instance = $Runtime && $InstanceID ? $Runtime->InstanceGet( ID => $InstanceID ) : undef;
+    $Error ||= $Instance->{last_error} || 'The first process step failed'
+        if $Instance && ( $Instance->{status} || '' ) eq 'error';
+    return 1 if !$Error;
+    $Error = substr( $Error, 0, 5000 );
+
+    my $Template = eval {
+        require Qisutu::Addon::KimProcesses::Process;
+        Qisutu::Addon::KimProcesses::Process->new(
+            Config => $Self->{Config}, DB => $Self->{DB},
+        )->TemplateGet( ID => $TemplateID );
+    } || {};
+    my $ProcessName = $Template->{name} || '#' . $TemplateID;
+    my $Subject = $Self->_T(
+        'TicketFormProcessStartFailedSubject', $Param{Language}, 'Automatic process start failed'
+    );
+    my $Body = $Self->_T(
+        'TicketFormProcessStartFailedBody', $Param{Language},
+        'The process “{process}” could not be started automatically. Error: {error}'
+    );
+    $Body =~ s{\{process\}}{$ProcessName}g;
+    $Body =~ s{\{error\}}{$Error}g;
+
+    my $TicketObject = $Param{TicketObject};
+    $TicketObject->ArticleCreate(
+        TicketID        => $Param{TicketID},
+        User            => { user_account_id => 1, account_type => 'agent' },
+        Subject         => $Subject,
+        Body            => $Body,
+        Channel         => 'note',
+        SenderType      => 'system',
+        FromName        => 'Qisutu',
+        FromEmail       => '',
+        ContentType     => 'text/plain',
+        Visibility      => 'agent',
+        Internal        => 1,
+        Language        => $Param{Language} || 'en',
+        CreatedByUserID => 1,
+        ChangedByUserID => 1,
+        SkipTicketAccessCheck => 1,
+        SkipNotification      => 1,
+    );
+    return 1;
 }
 
 sub _FieldDataValidate {

@@ -68,6 +68,15 @@
     var loading = form.querySelector('[data-report-loading]');
     var previewContent = form.querySelector('[data-report-preview-content]');
     var previewError = form.querySelector('[data-report-preview-error]');
+    var scheduleRoot = form.querySelector('[data-report-schedule]');
+    var scheduleActive = form.querySelector('[data-report-schedule-active]');
+    var scheduleFrequency = form.querySelector('[data-report-schedule-frequency]');
+    var scheduleWeekday = form.querySelector('[data-report-schedule-weekday]');
+    var scheduleMonthday = form.querySelector('[data-report-schedule-monthday]');
+    var schedulePeriod = form.querySelector('[data-report-schedule-period]');
+    var schedulePeriodField = form.querySelector('[data-report-schedule-period-field]');
+    var schedulePeriodFieldSelect = form.querySelector('[data-report-schedule-period-field-select]');
+    var scheduleRolling = form.querySelector('[data-report-schedule-rolling]');
     var currentChart = null;
     var modal = document.querySelector('[data-report-option-modal]');
     var modalSearch = modal.querySelector('[data-report-option-search]');
@@ -114,6 +123,24 @@
         sourceSelect.textContent = '';
         catalog.sources.forEach(function (item) { option(sourceSelect, item.key, item.label).selected = item.key === state.source; });
         sourceDescription.textContent = source().description || '';
+    }
+
+    function renderSchedule() {
+        if (!scheduleRoot) { return; }
+        scheduleRoot.classList.toggle('is-inactive', !scheduleActive.checked);
+        scheduleWeekday.classList.toggle('qisutu-hidden', scheduleFrequency.value !== 'weekly');
+        scheduleMonthday.classList.toggle('qisutu-hidden', scheduleFrequency.value !== 'monthly');
+        schedulePeriodField.classList.toggle('qisutu-hidden', schedulePeriod.value === 'fixed');
+        scheduleRolling.classList.toggle('qisutu-hidden', schedulePeriod.value !== 'rolling_days');
+
+        var selected = schedulePeriodFieldSelect.value || schedulePeriodFieldSelect.dataset.selected || '';
+        var dateFields = source().fields.filter(function (item) { return item.type === 'date'; });
+        schedulePeriodFieldSelect.textContent = '';
+        dateFields.forEach(function (item) {
+            option(schedulePeriodFieldSelect, item.key, item.label).selected = item.key === selected;
+        });
+        if (!schedulePeriodFieldSelect.value && dateFields.length) { schedulePeriodFieldSelect.value = dateFields[0].key; }
+        schedulePeriodFieldSelect.dataset.selected = schedulePeriodFieldSelect.value;
     }
 
     function renderAnalysis() {
@@ -216,13 +243,22 @@
         configInput.value = JSON.stringify(state);
     }
 
-    function renderAll() { normalizeState(); renderSource(); renderFilters(); renderAnalysis(); sharingRender(); sync(); }
+    function renderAll() { normalizeState(); renderSource(); renderFilters(); renderAnalysis(); renderSchedule(); sharingRender(); sync(); }
 
     sourceSelect.addEventListener('change', function () { var item = byKey(catalog.sources, sourceSelect.value); if (item) { state = defaultsForSource(item); renderAll(); } });
     filterLogic.addEventListener('change', sync); groupSelect.addEventListener('change', function () { state.group_by = groupSelect.value; sync(); });
     chartSelect.addEventListener('change', function () { state.chart_type = chartSelect.value; sync(); }); sortSelect.addEventListener('change', function () { state.sort = sortSelect.value; sync(); }); limitInput.addEventListener('input', sync);
     form.querySelector('[data-report-add-filter]').addEventListener('click', function () { var first = source().fields.find(function (item) { return item.type === 'date'; }) || source().fields[0]; if (!first) { return; } state.filters.push({ field: first.key, operator: first.type === 'date' ? 'between' : (first.operators || ['eq'])[0], values: [], value_labels: [] }); renderFilters(); sync(); });
     form.addEventListener('submit', sync);
+
+    if (scheduleRoot) {
+        scheduleActive.addEventListener('change', renderSchedule);
+        scheduleFrequency.addEventListener('change', renderSchedule);
+        schedulePeriod.addEventListener('change', renderSchedule);
+        schedulePeriodFieldSelect.addEventListener('change', function () {
+            schedulePeriodFieldSelect.dataset.selected = schedulePeriodFieldSelect.value;
+        });
+    }
 
     function sharingMenuSet(open) {
         sharingMenu.classList.toggle('qisutu-hidden', !open);

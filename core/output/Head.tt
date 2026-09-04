@@ -35,6 +35,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     <link rel="apple-touch-icon" sizes="120x120" href="[% StaticBase %]/img/apple-touch-icon.png?v=2026072101">
     <link rel="stylesheet" href="[% StaticBase %]/css/qisutu.css?v=[% SystemVersion %]-2026090102">
     <link rel="stylesheet" href="[% StaticBase %]/css/qisutu-file-input.css?v=[% SystemVersion %]-2026090101">
+    [% IF UserIsAgent %]
+    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu-internal-chat.css?v=[% SystemVersion %]-2026090302">
+    [% END %]
     <link rel="stylesheet" href="[% StaticBase %]/css/ckeditor5/ckeditor5.css">
     <link rel="stylesheet" href="[% StaticBase %]/css/[% PageCSS %]">
     [% IF ThemeCSS %]

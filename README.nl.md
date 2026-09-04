@@ -35,14 +35,14 @@ Projectwebsite: https://qisutu.de
 
 Qisutu is zelfstandig installeerbaar en bevat een agent- en klantportaal,
 e-mailverwerking, directoryaanmelding, automatisering, kennisbank, CMDB,
-rapporten en REST-API. Qisutu 1.0.3 is een stabiele productieversie en bevindt
+rapporten en REST-API. Qisutu 2.0.1 is een stabiele productieversie en bevindt
 zich niet meer in de ontwikkelfase. Interfaces en databasestructuren blijven in
 het normale releaseonderhoud evolueren; noodzakelijke wijzigingen worden via de
 geïntegreerde updater en blijvend onderhouden datamigraties geleverd.
 
 ## Talen
 
-Qisutu 1.0.3 bevat elf volledige interfacetalen: Duits (`de`), Engels (`en`),
+Qisutu 2.0.1 bevat elf volledige interfacetalen: Duits (`de`), Engels (`en`),
 Frans (`fr`), Italiaans (`it`), Braziliaans Portugees (`pt-BR`), Europees
 Portugees (`pt-PT`), Spaans (`es`), Nederlands (`nl`), Pools (`pl`), Tsjechisch
 (`cs`) en Turks (`tr`).
@@ -51,9 +51,9 @@ Portugees (`pt-PT`), Spaans (`es`), Nederlands (`nl`), Pools (`pl`), Tsjechisch
 
 Voer als root in `/opt` uit:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
-    tar xzf qisutu-1.0.3.tar.gz
-    mv qisutu-1.0.3 qisutu
+    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
+    tar xzf qisutu-2.0.1.tar.gz
+    mv qisutu-2.0.1 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -87,18 +87,18 @@ Details en een voorbeeld met twee instanties staan in `INSTALL.md`.
 
 Voer als root in `/opt` uit:
 
-    wget https://ftp.qisutu.de/qisutu-1.0.3.tar.gz
-    tar xzf qisutu-1.0.3.tar.gz
+    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
+    tar xzf qisutu-2.0.1.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-1.0.3
+    chown qisutu:www-data -R /opt/qisutu-2.0.1
 
-    cd /opt/qisutu-1.0.3
+    cd /opt/qisutu-2.0.1
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-1.0.3
-    rm qisutu-1.0.3.tar.gz
+    rm -R qisutu-2.0.1
+    rm qisutu-2.0.1.tar.gz
 
 De updater herkent de instantie via `var/install/instance.conf`, stopt alleen
 haar daemon en blokkeert alleen haar e-mailophaling. Beheerde bestanden worden
@@ -150,8 +150,9 @@ Het beheer bundelt inkomende accounts onder `E-mailophaling` en biedt:
 Microsoft en Google leiden na opslaan naar de provider. Qisutu controleert de
 OAuth2-terugkeer met een eenmalige statuswaarde, bewaart tokens en test IMAP.
 Activering volgt alleen na succes; verlopen tokens worden automatisch vernieuwd.
-De instantiedaemon haalt elke vijf minuten mail op, zonder extra cron voor
-`qisutu-mail-fetch.pl`.
+In de systeeminstellingen kan het ophaalinterval worden ingesteld op 1, 2, 5,
+10, 15 of 30 minuten; wijzigingen gelden zonder herstart en zonder extra cron
+voor `qisutu-mail-fetch.pl`.
 
 Een inactief account wordt vóór heractivering getest en kan pas na deactivering
 worden verwijderd. Inloggegevens en tokens verdwijnen, Postmaster-logboeken
