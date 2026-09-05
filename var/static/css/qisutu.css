@@ -804,6 +804,59 @@ a:hover {
     font-size: 13px;
 }
 
+/* Service, SLA and customer assignment administration. */
+.qisutu-service-admin,
+.qisutu-service-admin .qisutu-panel {
+    min-width: 0;
+}
+
+.qisutu-service-admin .qisutu-admin-table {
+    min-width: 640px;
+    table-layout: fixed;
+}
+
+.qisutu-service-admin .qisutu-admin-table th,
+.qisutu-service-admin .qisutu-admin-table td {
+    padding: 12px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+}
+
+.qisutu-service-admin .qisutu-admin-table th {
+    background: var(--qisutu-surface-muted, #f4f7fa);
+}
+
+.qisutu-service-admin .qisutu-admin-table td {
+    vertical-align: middle;
+}
+
+.qisutu-service-admin .qisutu-admin-table th:last-child,
+.qisutu-service-admin .qisutu-admin-table-actions {
+    width: 110px;
+}
+
+.qisutu-service-admin .qisutu-sla-admin-table {
+    min-width: 960px;
+}
+
+.qisutu-service-admin .qisutu-sla-admin-table th:nth-child(4) {
+    width: 26%;
+}
+
+.qisutu-service-admin .qisutu-admin-table .qisutu-form-field {
+    min-width: 0;
+    margin: 0;
+}
+
+.qisutu-service-admin .qisutu-admin-table input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    vertical-align: middle;
+    accent-color: var(--qisutu-primary);
+}
+
 .qisutu-admin-addons,
 .qisutu-admin-addons .qisutu-panel,
 .qisutu-admin-addons .qisutu-table-wrap {
@@ -3606,6 +3659,12 @@ a:hover {
 
 .qisutu-ticket-info-row:nth-child(even) {
     background: transparent;
+}
+
+.qisutu-ticket-info-row > dt,
+.qisutu-ticket-info-row > dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 /* Agent ticket list views, filters, sorting and selectable columns */
@@ -8221,15 +8280,52 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     margin-top: 0.55rem;
 }
 
-.qisutu-knowledge-insert-dialog {
-    width: min(72rem, calc(100vw - 2rem));
-    max-height: min(50rem, calc(100vh - 2rem));
+.qisutu-knowledge-insert-overlay {
+    align-items: center;
+    padding: 1rem;
     overflow: hidden;
+    overscroll-behavior: contain;
+}
+
+body.qisutu-knowledge-overlay-open .qisutu-workspace {
+    overflow-y: hidden;
+}
+
+.qisutu-knowledge-insert-dialog {
+    display: flex;
+    flex-direction: column;
+    width: min(72rem, 100%);
+    height: min(50rem, calc(100vh - 2rem));
+    height: min(50rem, calc(100dvh - 2rem));
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.qisutu-knowledge-insert-dialog > .qisutu-overlay-header,
+.qisutu-knowledge-insert-dialog > .qisutu-form-actions {
+    flex: 0 0 auto;
+}
+
+.qisutu-knowledge-insert-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    overscroll-behavior: contain;
+}
+
+.qisutu-knowledge-insert-body > .qisutu-knowledge-insert-search,
+.qisutu-knowledge-insert-body > .qisutu-knowledge-insert-status,
+.qisutu-knowledge-insert-body > .qisutu-knowledge-insert-options {
+    flex: 0 0 auto;
 }
 
 .qisutu-knowledge-insert-search {
     display: grid;
-    grid-template-columns: auto minmax(12rem, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     gap: 0.65rem;
     align-items: center;
     margin: 1rem 0 0.5rem;
@@ -8247,16 +8343,20 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 
 .qisutu-knowledge-insert-layout {
     display: grid;
-    grid-template-columns: minmax(16rem, 0.8fr) minmax(20rem, 1.2fr);
+    flex: 1 1 0;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    grid-template-rows: minmax(0, 1fr);
     gap: 0.85rem;
-    min-height: 22rem;
-    max-height: calc(100vh - 15rem);
+    min-height: 0;
+    overflow: hidden;
 }
 
 .qisutu-knowledge-results,
 .qisutu-knowledge-preview {
     min-width: 0;
+    min-height: 0;
     overflow: auto;
+    overscroll-behavior: contain;
     border: 1px solid #d6e0e8;
     border-radius: 0.6rem;
     background: #fff;
@@ -8361,6 +8461,8 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 }
 
 .qisutu-knowledge-insert-dialog > .qisutu-form-actions {
+    flex-wrap: wrap;
+    gap: 0.5rem;
     margin-top: 0.85rem;
 }
 
@@ -8375,16 +8477,24 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
     .qisutu-knowledge-table {
         min-width: 760px;
     }
+}
+
+/* On compact screens, scroll the dialog body while keeping its actions visible. */
+@media (max-width: 900px), (max-height: 600px) {
+    .qisutu-knowledge-insert-body {
+        overflow-y: auto;
+    }
 
     .qisutu-knowledge-insert-layout {
-        min-height: 0;
-        max-height: calc(100vh - 16rem);
-        overflow: auto;
+        flex: 0 0 auto;
+        grid-template-rows: none;
+        overflow: visible;
     }
 
     .qisutu-knowledge-results,
     .qisutu-knowledge-preview {
         max-height: 18rem;
+        overscroll-behavior: auto;
     }
 }
 

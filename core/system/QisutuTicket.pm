@@ -1697,6 +1697,34 @@ sub _PostmasterTicketDataResolve {
     }
     elsif ($IsNew) {
         $Snapshot = $Self->_PostmasterQueueSLASnapshot();
+
+        # A single valid customer assignment is unambiguous for incoming mail.
+        # Explicit postmaster actions above keep precedence; multiple services
+        # still require a service selection or a postmaster rule.
+        if ($CustomerID) {
+            my $ServiceObject = QisutuService->new( Config => $Self->{Config}, DB => $Self->{DB} );
+            my $Services = $ServiceObject->AvailableServiceList( CustomerID => $CustomerID );
+            if ( $ServiceObject->Error() ) {
+                $Self->{LastError} = $ServiceObject->Error();
+                return;
+            }
+
+            if ( @{$Services} == 1 ) {
+                my $Service = $Services->[0];
+                $Snapshot = {
+                    service_id                 => $Service->{id},
+                    sla_id                     => $Service->{sla_id},
+                    sla_source                 => 'sla',
+                    sla_assignment_source      => 'customer',
+                    sla_name_snapshot          => $Service->{sla_name},
+                    sla_calendar_id            => $Service->{calendar_id},
+                    sla_update_mode            => $Service->{update_mode} || 'customer_response',
+                    sla_first_response_minutes => $Service->{first_response_minutes} || 0,
+                    sla_update_minutes         => $Service->{update_minutes} || 0,
+                    sla_solution_minutes       => $Service->{solution_minutes} || 0,
+                };
+            }
+        }
     }
     else {
         $Snapshot = {

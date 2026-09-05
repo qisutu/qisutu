@@ -22,7 +22,7 @@ SPDX-FileCopyrightText: 2026 Franziska Steps
 SPDX-License-Identifier: AGPL-3.0-or-later
 %]
 
-<section class="qisutu-dashboard" aria-labelledby="qisutu-admin-customer-services-title">
+<section class="qisutu-dashboard qisutu-service-admin" aria-labelledby="qisutu-admin-customer-services-title">
     <div class="qisutu-dashboard-header"><div><h1 id="qisutu-admin-customer-services-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div></div>
     <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
     <section class="qisutu-panel">
@@ -35,14 +35,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         <div class="qisutu-panel-header"><div><h2>[% Translate.AdminCustomerServicesFor %] [% CustomerName %]</h2><span class="qisutu-panel-subtitle">[% Translate.AdminCustomerServicesHint %]</span></div></div>
         <form method="post" action="[% FormAction %]">
             <input type="hidden" name="Page" value="AdminCustomerServices"><input type="hidden" name="Step" value="CustomerServiceSave"><input type="hidden" name="CustomerID" value="[% CustomerID %]">
-            <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table">
+            <div class="qisutu-table-wrap qisutu-admin-table-wrap"><table class="qisutu-table qisutu-admin-table">
                 <thead><tr><th>[% Translate.AdminAssigned %]</th><th>[% Translate.AdminService %]</th><th>[% Translate.AdminSLA %]</th><th>[% Translate.AdminActive %]</th></tr></thead>
                 <tbody>
                 [% FOREACH Assignment IN AssignmentList %]
                     <tr>
-                        <td><input type="checkbox" name="ServiceActive_[% Assignment.service_id %]" value="1" [% Assignment.active_checked %] [% Assignment.assignment_disabled %]></td>
+                        <td><input type="checkbox" aria-label="[% Translate.AdminAssigned %]: [% Assignment.service_name %]" name="ServiceActive_[% Assignment.service_id %]" value="1" [% Assignment.active_checked %] [% Assignment.assignment_disabled %]></td>
                         <td><strong>[% Assignment.service_name %]</strong></td>
-                        <td><select name="SLAID_[% Assignment.service_id %]" [% Assignment.assignment_disabled %]><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.Assignment.sla_options_html %]</select></td>
+                        <td><div class="qisutu-form-field"><select aria-label="[% Translate.AdminSLA %]: [% Assignment.service_name %]" name="SLAID_[% Assignment.service_id %]" [% Assignment.assignment_disabled %]><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.Assignment.sla_options_html %]</select></div></td>
                         <td>[% Assignment.service_active_label %]</td>
                     </tr>
                 [% END %]

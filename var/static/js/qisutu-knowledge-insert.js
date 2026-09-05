@@ -138,7 +138,8 @@
             overlay.hidden = true;
             overlay.setAttribute('aria-hidden', 'true');
             document.body.classList.remove('qisutu-overlay-open');
-            openButton.focus();
+            document.body.classList.remove('qisutu-knowledge-overlay-open');
+            openButton.focus({ preventScroll: true });
         }
 
         function updateApplyState() {
@@ -363,7 +364,8 @@
             overlay.hidden = false;
             overlay.setAttribute('aria-hidden', 'false');
             document.body.classList.add('qisutu-overlay-open');
-            search.focus();
+            document.body.classList.add('qisutu-knowledge-overlay-open');
+            search.focus({ preventScroll: true });
             runSearch();
         }
 
