@@ -22,7 +22,7 @@ SPDX-FileCopyrightText: 2026 Franziska Steps
 SPDX-License-Identifier: AGPL-3.0-or-later
 %]
 
-<section class="qisutu-dashboard" aria-labelledby="qisutu-admin-services-title">
+<section class="qisutu-dashboard qisutu-service-admin" aria-labelledby="qisutu-admin-services-title">
     <div class="qisutu-dashboard-header">
         <div><h1 id="qisutu-admin-services-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div>
         [% IF ShowBackToList %]<a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminServices">[% Translate.AdminBackToList %]</a>[% END %]
@@ -38,7 +38,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminServices;Action=Create">[% Translate.AdminServiceCreate %]</a>
         </div>
         [% IF ServiceCount %]
-        <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table">
+        <div class="qisutu-table-wrap qisutu-admin-table-wrap"><table class="qisutu-table qisutu-admin-table">
             <thead><tr><th>[% Translate.AdminService %]</th><th>[% Translate.AdminSLAsTitle %]</th><th>[% Translate.AdminServiceCIs %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminActions %]</th></tr></thead>
             <tbody>
             [% FOREACH Service IN ServiceList %]
@@ -112,7 +112,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         </form>
 
         [% IF ServiceCICount %]
-        <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table">
+        <div class="qisutu-table-wrap qisutu-admin-table-wrap"><table class="qisutu-table qisutu-admin-table">
             <thead><tr><th>[% Translate.CMDBNumber %]</th><th>[% Translate.AdminName %]</th><th>[% Translate.CMDBType %]</th><th>[% Translate.CMDBStatus %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminActions %]</th></tr></thead>
             <tbody>
             [% FOREACH CI IN ServiceCIs %]

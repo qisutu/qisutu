@@ -22,7 +22,7 @@ SPDX-FileCopyrightText: 2026 Franziska Steps
 SPDX-License-Identifier: AGPL-3.0-or-later
 %]
 
-<section class="qisutu-dashboard" aria-labelledby="qisutu-admin-slas-title">
+<section class="qisutu-dashboard qisutu-service-admin" aria-labelledby="qisutu-admin-slas-title">
     <div class="qisutu-dashboard-header">
         <div><h1 id="qisutu-admin-slas-title">[% ProgramTitle %]</h1><p>[% ProgramDescription %]</p></div>
         [% IF ShowBackToList %]<a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminSLAs">[% Translate.AdminBackToList %]</a>[% END %]
@@ -33,7 +33,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     <section class="qisutu-panel">
         <div class="qisutu-panel-header"><div><h2>[% Translate.AdminSLAsList %]</h2><span class="qisutu-panel-subtitle">[% SLACount %]</span></div><a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AdminSLAs;Action=Create">[% Translate.AdminSLACreate %]</a></div>
         [% IF SLACount %]
-        <div class="qisutu-admin-table-wrap"><table class="qisutu-admin-table">
+        <div class="qisutu-table-wrap qisutu-admin-table-wrap"><table class="qisutu-table qisutu-admin-table qisutu-sla-admin-table">
             <thead><tr><th>[% Translate.AdminSLA %]</th><th>[% Translate.AdminService %]</th><th>[% Translate.AdminCalendar %]</th><th>[% Translate.AdminEscalations %]</th><th>[% Translate.AdminDefault %]</th><th>[% Translate.AdminActive %]</th><th>[% Translate.AdminActions %]</th></tr></thead>
             <tbody>
             [% FOREACH SLA IN SLAList %]
@@ -42,7 +42,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     <td>[% Translate.AdminEscalationFirstResponse %]: [% SLA.first_response_minutes %]<br>[% Translate.AdminEscalationUpdate %]: [% SLA.update_minutes %]<br>[% Translate.AdminEscalationSolution %]: [% SLA.solution_minutes %]</td>
                     <td>[% SLA.is_default_label %]</td>
                     <td>[% SLA.active_label %]</td>
-                    <td><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminSLAs;Action=Edit;SLAID=[% SLA.id %]">[% Translate.AdminEdit %]</a></td>
+                    <td class="qisutu-admin-table-actions"><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminSLAs;Action=Edit;SLAID=[% SLA.id %]">[% Translate.AdminEdit %]</a></td>
                 </tr>
             [% END %]
             </tbody>
