@@ -59,22 +59,62 @@ sub Run {
             Body=>JSON::PP->new->canonical(1)->encode({success=>JSON::PP::true,items=>\@Items}),
         ) };
     }
-    if ( $Step eq 'APITokenCreate' ) {
+    if ( $Step =~ m{\AAPIToken(?:Create|Update|Activate|Deactivate)\z}
+        && ( $Request->{__RequestMethod} || '' ) ne 'POST' ) {
+        return { Response => $Self->{Output}->Response(
+            Status => '405 Method Not Allowed', Headers => ['Allow: POST'], Body => 'POST required.',
+        ) };
+    }
+
+    my $Editing = $Step eq 'APITokenEdit' || $Step eq 'APITokenUpdate';
+    my $EditToken = $Editing ? $Object->TokenGet( TokenID => $Request->{TokenID} ) : undef;
+    if ( $Editing && !$EditToken ) {
+        $Error = $Object->Error();
+        $Editing = 0;
+    }
+    if ( $Step eq 'APITokenCreate' || ( $Step eq 'APITokenUpdate' && $EditToken ) ) {
         my @Scopes = ref $Request->{Scope} eq 'ARRAY' ? @{$Request->{Scope}} : defined $Request->{Scope} ? ($Request->{Scope}) : ();
-        $Created = $Object->TokenCreate(
+        my %Settings = (
             UserAccountID=>$Request->{UserAccountID}, Label=>$Request->{Label}, Scopes=>\@Scopes,
             Lifetime=>$Request->{Lifetime}, AllowedIPs=>$Request->{AllowedIPs},
             RateLimitPerMinute=>$Request->{RateLimitPerMinute}, ChangedByUserID=>$User->{user_account_id},
         );
-        $Error = $Object->Error() if !$Created;
+        if ( $Editing ) {
+            return { Redirect => 'index.pl?Page=AdminAPI;Notice=updated' }
+                if $Object->TokenUpdate( %Settings, TokenID => $EditToken->{id} );
+            $Error = $Object->Error();
+        }
+        else {
+            $Created = $Object->TokenCreate(%Settings);
+            $Error = $Object->Error() if !$Created;
+        }
     }
-    elsif ( $Step eq 'APITokenDeactivate' ) {
-        my $OK = $Object->TokenDeactivate( TokenID=>$Request->{TokenID}, ChangedByUserID=>$User->{user_account_id} );
-        return { Redirect=>'index.pl?Page=AdminAPI;Notice=deactivated' } if $OK;
+    elsif ( $Step eq 'APITokenDeactivate' || $Step eq 'APITokenActivate' ) {
+        my $Method = $Step eq 'APITokenActivate' ? 'TokenActivate' : 'TokenDeactivate';
+        my $OK = $Object->$Method( TokenID=>$Request->{TokenID}, ChangedByUserID=>$User->{user_account_id} );
+        return { Redirect=>'index.pl?Page=AdminAPI;Notice=' . ( $Step eq 'APITokenActivate' ? 'activated' : 'deactivated' ) } if $OK;
         $Error = $Object->Error();
     }
 
+    my $Form = {};
+    if ( $Editing && $Step eq 'APITokenEdit' ) {
+        $Form = {
+            Label => $EditToken->{label}, UserAccountID => $EditToken->{user_account_id},
+            Scope => $EditToken->{scopes}, Lifetime => 'keep', AllowedIPs => $EditToken->{allowed_ips},
+            RateLimitPerMinute => $EditToken->{rate_limit_per_minute},
+        };
+    }
+    elsif ( $Error && ( $Step eq 'APITokenCreate' || ( $Editing && $Step eq 'APITokenUpdate' ) ) ) {
+        $Form = $Request;
+    }
+    my $HasFormValues = $Editing || $Step eq 'APITokenCreate' && $Error;
     my $Definitions = $Object->ScopeDefinitions();
+    if ( $EditToken ) {
+        my %Known = map { $_->{Key} => 1 } @{$Definitions};
+        for my $Scope ( @{$EditToken->{scopes}} ) {
+            push @{$Definitions}, { Key => $Scope, Label => $Scope, Group => 'addons' } if !$Known{$Scope}++;
+        }
+    }
     my %Group;
     for my $Def (@{$Definitions}) {
         my %Copy=%{$Def};
@@ -90,19 +130,26 @@ sub Run {
     my $Tokens=$Object->TokenList();
     my %ScopeLabel=map{$_->{Key}=>$Self->_T($_->{Label},$Language)}@{$Definitions};
     for my $Token(@{$Tokens}) {
-        $Token->{scope_display}=join(', ',map{$ScopeLabel{$_}||$_}@{$Token->{scopes}||[]});
+        $Token->{scope_html} = join '', map {
+            '<span class="qisutu-api-scope-tag">' . $Self->_E( $ScopeLabel{$_} || $_ ) . '</span>'
+        } @{$Token->{scopes} || []};
         $Token->{status_key}=!$Token->{active}?'APITokenStatusInactive':$Token->{expired}?'APITokenStatusExpired':!$Token->{is_active}?'APITokenStatusUserInactive':'APITokenStatusActive';
         $Token->{status_display}=$Self->_T($Token->{status_key},$Language);
+        $Token->{status_class}=$Token->{status_key} eq 'APITokenStatusActive' ? 'is-active' : $Token->{status_key} eq 'APITokenStatusInactive' ? 'is-inactive' : 'is-warning';
         $Token->{account_type_display}=$Self->_T(($Token->{account_type}||'')eq'customer'?'APIAccountCustomer':'APIAccountAgent',$Language);
         $Token->{expires_display}=$Token->{expires_at}||$Self->_T('APILifetimeNever',$Language);
-        $Token->{last_used_display}=$Token->{last_used_at}?$Token->{last_used_at}.($Token->{last_used_ip}?' / '.$Token->{last_used_ip}:''):'-';
-        $Token->{action_html}='';
-        if($Token->{active}) {
-            $Token->{action_html}='<form method="post" action="index.pl" class="qisutu-inline-form" data-api-deactivate>'
-                .'<input type="hidden" name="Page" value="AdminAPI"><input type="hidden" name="Step" value="APITokenDeactivate">'
-                .'<input type="hidden" name="TokenID" value="'.int($Token->{id}||0).'">'
-                .'<button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">'.$Self->_E($Self->_T('APIDeactivateToken',$Language)).'</button></form>';
-        }
+        $Token->{last_used_display}=$Token->{last_used_at} || '-';
+        my $TokenID = int($Token->{id} || 0);
+        my $ActionStep = $Token->{active} ? 'APITokenDeactivate' : 'APITokenActivate';
+        my $ActionLabel = $Token->{active} ? 'APIDeactivateToken' : 'APIActivateToken';
+        my $ActionClass = $Token->{active} ? 'qisutu-button-danger' : 'qisutu-button-secondary';
+        $Token->{action_html} = '<div class="qisutu-api-token-actions">'
+            . '<a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=AdminAPI&amp;Step=APITokenEdit&amp;TokenID=' . $TokenID . '">'
+            . $Self->_E($Self->_T('AdminEdit',$Language)) . '</a>'
+            . '<form method="post" action="index.pl" class="qisutu-inline-form"' . ($Token->{active} ? ' data-api-deactivate' : '') . '>'
+            . '<input type="hidden" name="Page" value="AdminAPI"><input type="hidden" name="Step" value="' . $ActionStep . '">'
+            . '<input type="hidden" name="TokenID" value="' . $TokenID . '">'
+            . '<button class="qisutu-button ' . $ActionClass . ' qisutu-button-small" type="submit">' . $Self->_E($Self->_T($ActionLabel,$Language)) . '</button></form></div>';
     }
     my $Logs=$Object->RequestLogList(Limit=>100);
     for my $Log(@{$Logs}){$Log->{success_class}=($Log->{status_code}||500)<400?'is-success':'is-error';}
@@ -114,10 +161,14 @@ sub Run {
     $APIURL.=$WebPath if!$APIURL||$APIURL!~m{\Q$WebPath\E\z};
     $APIURL.='/api.pl/v1';
     my $SelectedUser='';
-    if ($Request->{UserAccountID}) {
-        my $Row=$Object->UserGet(UserAccountID=>$Request->{UserAccountID});
-        $SelectedUser=$Row->{user_name}.' — '.$Row->{login} if$Row;
+    if ($Form->{UserAccountID}) {
+        my $Row=$Object->UserGet(UserAccountID=>$Form->{UserAccountID});
+        $Row = $EditToken if !$Row && $EditToken && $Form->{UserAccountID} eq $EditToken->{user_account_id};
+        $SelectedUser=$Row->{user_name}.' — '.$Row->{login} if $Row;
     }
+    my %NoticeKeys = ( deactivated => 'APITokenDeactivated', activated => 'APITokenActivated', updated => 'APITokenUpdated' );
+    my $NoticeKey = $NoticeKeys{$Request->{Notice} || ''} || '';
+    my $Lifetime = $Form->{Lifetime} || ( $Editing ? 'keep' : '90d' );
     return {
         Template=>'AdminAPI.tt',
         Data=>{
@@ -125,20 +176,24 @@ sub Run {
             ErrorMessage=>$Self->_ErrorTranslate($Error,$Language),ErrorClass=>$Error?'':'qisutu-hidden',
             TokenCreated=>$Created?1:0,PlainToken=>$Created?$Created->{PlainToken}:'',CreatedPrefix=>$Created?$Created->{Prefix}:'',
             TokenList=>$Tokens,TokenCount=>scalar@{$Tokens},HasTokens=>@{$Tokens}?1:0,
-            ScopeGroupsHTML=>$Self->_ScopeGroupsHTML(Groups=>\@ScopeGroups,Request=>$Request,HasError=>$Error?1:0),RequestLogs=>$Logs,HasRequestLogs=>@{$Logs}?1:0,
+            ScopeGroupsHTML=>$Self->_ScopeGroupsHTML(Groups=>\@ScopeGroups,Request=>$Form,HasError=>$HasFormValues?1:0),RequestLogs=>$Logs,HasRequestLogs=>@{$Logs}?1:0,
             APIBaseURL=>$APIURL,OpenAPIURL=>$APIURL.'/openapi.json',
-            FormLabel=>$Error?($Request->{Label}||''):'',FormUserAccountID=>$Error?($Request->{UserAccountID}||''):'',FormSelectedUser=>$SelectedUser,
-            FormLifetime30Selected=>$Error&&($Request->{Lifetime}||'')eq'30d'?'selected':'',
-            FormLifetime90Selected=>!$Error||($Request->{Lifetime}||'')eq'90d'?'selected':'',
-            FormLifetime365Selected=>$Error&&($Request->{Lifetime}||'')eq'365d'?'selected':'',
-            FormLifetimeNeverSelected=>$Error&&($Request->{Lifetime}||'')eq'never'?'selected':'',
-            FormAllowedIPs=>$Error?($Request->{AllowedIPs}||''):'',FormRateLimit=>$Error?($Request->{RateLimitPerMinute}||120):120,
-            FormRateLimit60Selected=>($Error?($Request->{RateLimitPerMinute}||120):120)==60?'selected':'',
-            FormRateLimit120Selected=>($Error?($Request->{RateLimitPerMinute}||120):120)==120?'selected':'',
-            FormRateLimit300Selected=>($Error?($Request->{RateLimitPerMinute}||120):120)==300?'selected':'',
-            FormRateLimit1000Selected=>($Error?($Request->{RateLimitPerMinute}||120):120)==1000?'selected':'',
-            NoticeMessage=>($Request->{Notice}||'')eq'deactivated'?$Self->_T('APITokenDeactivated',$Language):'',
-            NoticeClass=>($Request->{Notice}||'')eq'deactivated'?'':'qisutu-hidden',
+            EditingToken => $Editing ? 1 : 0,
+            FormTitle => $Self->_T($Editing ? 'APITokenEditTitle' : 'APITokenCreateTitle', $Language),
+            FormDescription => $Self->_T($Editing ? 'APITokenEditDescription' : 'APITokenCreateDescription', $Language),
+            FormStep => $Editing ? 'APITokenUpdate' : 'APITokenCreate',
+            FormSubmitLabel => $Self->_T($Editing ? 'APISaveToken' : 'APICreateToken', $Language),
+            FormTokenID => $Editing ? $EditToken->{id} : '',
+            FormCurrentExpiry => $Editing ? ($EditToken->{expires_at} || $Self->_T('APILifetimeNever', $Language)) : '',
+            FormLabel=>$Form->{Label}||'', FormUserAccountID=>$Form->{UserAccountID}||'', FormSelectedUser=>$SelectedUser,
+            FormLifetimeKeepSelected=>$Lifetime eq 'keep'?'selected':'',
+            FormLifetime30Selected=>$Lifetime eq '30d'?'selected':'',
+            FormLifetime90Selected=>$Lifetime eq '90d'?'selected':'',
+            FormLifetime365Selected=>$Lifetime eq '365d'?'selected':'',
+            FormLifetimeNeverSelected=>$Lifetime eq 'never'?'selected':'',
+            FormAllowedIPs=>$Form->{AllowedIPs}||'', FormRateLimit=>$Form->{RateLimitPerMinute}||120,
+            NoticeMessage=>$NoticeKey?$Self->_T($NoticeKey,$Language):'',
+            NoticeClass=>$NoticeKey?'':'qisutu-hidden',
         },
     };
 }
@@ -148,6 +203,9 @@ sub _T {
 }
 sub _ErrorTranslate {
     my($Self,$Error,$Language)=@_;return''if!$Error;my%Map=(
+        'API token was not found'=>'APITokenNotFound', 'API token lifetime is invalid'=>'APITokenLifetimeInvalid',
+        'API token has expired; update its validity first'=>'APITokenActivateExpired',
+        'API token could not be updated'=>'APITokenUpdateFailed', 'API token could not be activated'=>'APITokenActivateFailed',
         'API token user and label are required'=>'APITokenUserLabelRequired','API token label is too long'=>'APITokenLabelTooLong',
         'At least one API permission is required'=>'APITokenScopeRequired','API user was not found or is inactive'=>'APITokenUserInvalid',
         'API allowed IP address list is invalid'=>'APITokenAllowedIPInvalid','Secure API token generation failed'=>'APITokenGenerationFailed',

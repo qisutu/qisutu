@@ -81,62 +81,11 @@ sub ScopeAllowed {
 sub TokenCreate {
     my ( $Self, %Param ) = @_;
 
-    my $UserAccountID = $Self->_ID( $Param{UserAccountID} );
-    my $ChangedBy     = $Self->_ID( $Param{ChangedByUserID} );
-    my $Label         = $Self->_Trim( $Param{Label} );
-    my $Scopes        = ref $Param{Scopes} eq 'ARRAY' ? $Param{Scopes} : [];
-    my $AllowedIPs    = $Self->_AllowedIPsNormalize( $Param{AllowedIPs} );
-    my $RateLimit     = $Param{RateLimitPerMinute} || 120;
-    my $Lifetime      = $Param{Lifetime} || 'never';
-
-    if ( !$UserAccountID || !$ChangedBy || !$Label ) {
-        $Self->{LastError} = 'API token user and label are required';
-        return;
-    }
-    if ( length($Label) > 190 ) {
-        $Self->{LastError} = 'API token label is too long';
-        return;
-    }
-    if ( !defined $AllowedIPs ) {
-        $Self->{LastError} = 'API allowed IP address list is invalid';
-        return;
-    }
-
-    my $User = $Self->{DB}->SelectRow(
-        'SELECT id, account_type, is_active, is_system_user
-         FROM user_account
-         WHERE id = ? AND is_active = 1 AND is_system_user = 0
-         LIMIT 1',
-        $UserAccountID,
-    );
-    if (!$User) {
-        $Self->{LastError} = 'API user was not found or is inactive';
-        return;
-    }
-
-    my %Known = map { $_->{Key} => $_ } @{ $Self->ScopeDefinitions() };
-    my %Seen;
-    my @Scopes;
-    for my $Scope ( @{$Scopes} ) {
-        next if !$Known{$Scope} || $Seen{$Scope}++;
-        push @Scopes, $Scope;
-    }
-    if (!@Scopes) {
-        $Self->{LastError} = 'At least one API permission is required';
-        return;
-    }
-
-    $RateLimit = 120 if $RateLimit !~ m{\A\d+\z};
-    $RateLimit = 10 if $RateLimit < 10;
-    $RateLimit = 5000 if $RateLimit > 5000;
-
-    my %LifetimeSQL = (
-        '30d'  => 'DATE_ADD(NOW(), INTERVAL 30 DAY)',
-        '90d'  => 'DATE_ADD(NOW(), INTERVAL 90 DAY)',
-        '365d' => 'DATE_ADD(NOW(), INTERVAL 365 DAY)',
-        never  => 'NULL',
-    );
-    my $ExpiresSQL = $LifetimeSQL{$Lifetime} || $LifetimeSQL{never};
+    my $Settings = $Self->_TokenSettingsValidate(%Param);
+    return if !$Settings;
+    my ( $UserAccountID, $ChangedBy, $Label, $AllowedIPs, $RateLimit, $ExpiresSQL ) =
+        @{$Settings}{qw(UserAccountID ChangedBy Label AllowedIPs RateLimit ExpiresSQL)};
+    my @Scopes = @{$Settings->{Scopes}};
 
     my $Secret = $Self->_RandomHex(48);
     if (!$Secret) {
@@ -195,6 +144,78 @@ sub TokenList {
         $Row->{expired} = $Row->{expires_at} && $Row->{expires_at} lt $Self->_Now() ? 1 : 0;
     }
     return $Rows;
+}
+
+sub TokenGet {
+    my ( $Self, %Param ) = @_;
+    my $TokenID = $Self->_ID( $Param{TokenID} );
+    my $Row = $TokenID ? $Self->{DB}->SelectRow(
+        'SELECT at.id, at.user_account_id, at.label, at.token_prefix, at.scopes_json,
+                at.allowed_ips, at.rate_limit_per_minute, at.active, at.expires_at,
+                ua.login, ua.email, ua.firstname, ua.lastname, ua.account_type,
+                ua.is_active, ua.is_system_user
+         FROM api_token at
+         INNER JOIN user_account ua ON ua.id = at.user_account_id
+         WHERE at.id = ? LIMIT 1',
+        $TokenID,
+    ) : undef;
+    if (!$Row) {
+        $Self->{LastError} = 'API token was not found';
+        return;
+    }
+    $Row->{scopes} = $Self->_ScopesDecode( $Row->{scopes_json} );
+    $Row->{user_name} = $Self->_UserName($Row);
+    $Row->{expired} = $Row->{expires_at} && $Row->{expires_at} le $Self->_Now() ? 1 : 0;
+    return $Row;
+}
+
+sub TokenUpdate {
+    my ( $Self, %Param ) = @_;
+    my $Token = $Self->TokenGet( TokenID => $Param{TokenID} );
+    return if !$Token;
+    my $Settings = $Self->_TokenSettingsValidate( %Param, ExistingToken => $Token );
+    return if !$Settings;
+    my $Result = $Self->{DB}->Do(
+        'UPDATE api_token
+         SET user_account_id = ?, label = ?, scopes_json = ?, allowed_ips = ?,
+             rate_limit_per_minute = ?, expires_at = ' . $Settings->{ExpiresSQL} . ',
+             changed_by_user_id = ?, changed_at = NOW()
+         WHERE id = ?',
+        $Settings->{UserAccountID}, $Settings->{Label},
+        JSON::PP->new->canonical(1)->encode( $Settings->{Scopes} ),
+        $Settings->{AllowedIPs}, $Settings->{RateLimit}, $Settings->{ChangedBy}, $Token->{id},
+    );
+    if (!$Result) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'API token could not be updated';
+        return;
+    }
+    return 1;
+}
+
+sub TokenActivate {
+    my ( $Self, %Param ) = @_;
+    my $ChangedBy = $Self->_ID( $Param{ChangedByUserID} );
+    return if !$ChangedBy;
+    my $Token = $Self->TokenGet( TokenID => $Param{TokenID} );
+    return if !$Token;
+    if ( !$Token->{is_active} || $Token->{is_system_user} ) {
+        $Self->{LastError} = 'API user was not found or is inactive';
+        return;
+    }
+    if ( $Token->{expired} ) {
+        $Self->{LastError} = 'API token has expired; update its validity first';
+        return;
+    }
+    my $Result = $Self->{DB}->Do(
+        'UPDATE api_token SET active = 1, changed_by_user_id = ?, changed_at = NOW()
+         WHERE id = ?',
+        $ChangedBy, $Token->{id},
+    );
+    if (!$Result) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'API token could not be activated';
+        return;
+    }
+    return 1;
 }
 
 sub TokenDeactivate {
@@ -383,6 +404,80 @@ sub IdempotencyStore {
 }
 
 sub Error { return $_[0]->{LastError} || ''; }
+
+sub _TokenSettingsValidate {
+    my ( $Self, %Param ) = @_;
+    my $UserAccountID = $Self->_ID( $Param{UserAccountID} );
+    my $ChangedBy     = $Self->_ID( $Param{ChangedByUserID} );
+    my $Label         = $Self->_Trim( $Param{Label} );
+    my $Scopes        = ref $Param{Scopes} eq 'ARRAY' ? $Param{Scopes} : [];
+    my $AllowedIPs    = $Self->_AllowedIPsNormalize( $Param{AllowedIPs} );
+    my $RateLimit     = $Param{RateLimitPerMinute} || 120;
+    my $Lifetime      = $Param{Lifetime} || ( $Param{ExistingToken} ? 'keep' : 'never' );
+
+    if ( !$UserAccountID || !$ChangedBy || !$Label ) {
+        $Self->{LastError} = 'API token user and label are required';
+        return;
+    }
+    if ( length($Label) > 190 ) {
+        $Self->{LastError} = 'API token label is too long';
+        return;
+    }
+    if ( !defined $AllowedIPs ) {
+        $Self->{LastError} = 'API allowed IP address list is invalid';
+        return;
+    }
+
+    my $User = $Self->{DB}->SelectRow(
+        'SELECT id, account_type, is_active, is_system_user
+         FROM user_account
+         WHERE id = ? AND is_active = 1 AND is_system_user = 0
+         LIMIT 1',
+        $UserAccountID,
+    );
+    if (!$User) {
+        $Self->{LastError} = 'API user was not found or is inactive';
+        return;
+    }
+
+    my %Known = map { $_->{Key} => $_ } @{ $Self->ScopeDefinitions() };
+    if ( $Param{ExistingToken} ) {
+        $Known{$_} ||= 1 for @{$Param{ExistingToken}->{scopes} || []};
+    }
+    my %Seen;
+    my @Scopes;
+    for my $Scope ( @{$Scopes} ) {
+        next if !$Known{$Scope} || $Seen{$Scope}++;
+        push @Scopes, $Scope;
+    }
+    if (!@Scopes) {
+        $Self->{LastError} = 'At least one API permission is required';
+        return;
+    }
+
+    $RateLimit = 120 if $RateLimit !~ m{\A\d+\z};
+    $RateLimit = 10 if $RateLimit < 10;
+    $RateLimit = 5000 if $RateLimit > 5000;
+
+    my %LifetimeSQL = (
+        '30d'  => 'DATE_ADD(NOW(), INTERVAL 30 DAY)',
+        '90d'  => 'DATE_ADD(NOW(), INTERVAL 90 DAY)',
+        '365d' => 'DATE_ADD(NOW(), INTERVAL 365 DAY)',
+        never  => 'NULL',
+    );
+    $LifetimeSQL{keep} = 'expires_at' if $Param{ExistingToken};
+    if ( !exists $LifetimeSQL{$Lifetime} ) {
+        $Self->{LastError} = 'API token lifetime is invalid';
+        return;
+    }
+    my $ExpiresSQL = $LifetimeSQL{$Lifetime};
+
+    return {
+        UserAccountID => $UserAccountID, ChangedBy => $ChangedBy, Label => $Label,
+        AllowedIPs => $AllowedIPs, RateLimit => $RateLimit, ExpiresSQL => $ExpiresSQL,
+        Scopes => \@Scopes,
+    };
+}
 
 sub _RandomHex {
     my ( $Self, $Bytes ) = @_;
