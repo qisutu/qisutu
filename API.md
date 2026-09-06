@@ -14,6 +14,8 @@ For an installation with the web path `/qisutu`, the base URL is:
 
 An administrator creates API tokens under `Administration > API`. Send a token as `Authorization: Bearer TOKEN`. The legacy `X-Qisutu-API-Token: TOKEN` header is also accepted. Token scopes, account permissions, optional source-IP restrictions, expiry, activation state, and per-minute rate limits are enforced together.
 
+Existing accesses can be changed with **Edit** in the same administration page. The label, associated user, scopes, allowed IP addresses and request limit can be updated without generating a new key. Validity is preserved by default; selecting a new period starts it when saving, and **No expiry date** removes the expiration. Editing does not change the activation state. Use **Deactivate** or **Activate** to change that state; an expired access must first have its validity extended, and its user must be active. The full key remains visible only when it is first created.
+
 Requests with a JSON body must use `Content-Type: application/json`. The body must be a JSON object and may not exceed 50 MiB. List query values are URL encoded. Responses are UTF-8. Successful JSON responses use `{"data": ...}` and may add `"meta"`. Error responses use:
 
 `{"error":{"code":"CODE","message":"MESSAGE","request_id":"REQUEST-ID"}}`
