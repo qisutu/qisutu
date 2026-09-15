@@ -4507,7 +4507,13 @@ sub TicketQueueUpdate {
     if ( $Recalculated && ( $Ticket->{queue_id} || 0 ) != $QueueID ) {
         $Self->_AddonEventEmit(
             Event => 'ticket.queue_changed',
-            Payload => { ticket_id => 0 + $TicketID, old_queue_id => 0 + ( $Ticket->{queue_id} || 0 ), new_queue_id => 0 + $QueueID, changed_by_user_id => 0 + $ChangedByUserID },
+            Payload => {
+                ticket_id          => 0 + $TicketID,
+                old_queue_id       => 0 + ( $Ticket->{queue_id} || 0 ),
+                new_queue_id       => 0 + $QueueID,
+                changed_by_user_id => 0 + $ChangedByUserID,
+                ( $Param{SuppressNotification} ? ( suppress_notifications => 1 ) : () ),
+            },
         );
     }
     return $Recalculated;

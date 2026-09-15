@@ -187,6 +187,11 @@ sub Send {
         return 0;
     }
 
+    # An automatic queue move can be processed by an add-on after the original
+    # caller has returned. Honor its event context before preparing any mail.
+    return 0 if $Param{SuppressNotification}
+        || ( $Self->{Config}->{AgentNotificationSuppressedTickets} || {} )->{$TicketID};
+
     if ( !$Self->SchemaEnsure() ) {
         $Self->{LastError} ||= 'Agent notification schema could not be prepared';
         return 0;

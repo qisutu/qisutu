@@ -159,10 +159,10 @@ ok( !exists $Removed{'core/config/programs/CMDB.pm'}, 'aktive CMDB-Navigation wi
 
 my $ReleaseContent = join "\n", read_lines('release.conf');
 my ($ReleaseVersion) = $ReleaseContent =~ /^version=([^\s]+)$/m;
-is( $ReleaseVersion, '2.0.1', 'das Paket verwendet Programmversion 2.0.1' );
+is( $ReleaseVersion, '2.0.2', 'das Paket verwendet Programmversion 2.0.2' );
 like( $ReleaseContent, qr{^minimum_program_version=1[.]0[.]1$}m, 'offizielle Updates beginnen bei Version 1.0.1' );
-like( $ReleaseContent, qr{^database_version=2[.]0[.]1$}m, 'das Paket verwendet Datenbankversion 2.0.1' );
-is_deeply( [ sort keys %Removed ], [], 'Version 2.0.1 enthält keine Update-Entfernungseinträge' );
+like( $ReleaseContent, qr{^database_version=2[.]0[.]2$}m, 'das Paket verwendet Datenbankversion 2.0.2' );
+is_deeply( [ sort keys %Removed ], [], 'Version 2.0.2 enthält keine Update-Entfernungseinträge' );
 
 my @ReadmeFiles = qw(
     README.md README.en.md README.fr.md README.it.md README.pt-BR.md README.pt-PT.md
@@ -185,13 +185,16 @@ for my $ReadmeFile (@ReadmeFiles) {
 my $ChangelogContent = join "\n", read_lines('CHANGELOG.md');
 my ($CurrentReleaseNotes) = $ChangelogContent =~ m{^## \Q$ReleaseVersion\E\s*\n(.*?)(?=^## |\z)}ms;
 ok( defined $CurrentReleaseNotes, 'CHANGELOG beginnt mit dem aktuellen Releaseabschnitt' );
-like( $CurrentReleaseNotes, qr{internal chat}i, 'CHANGELOG beschreibt den internen Chat' );
-like( $CurrentReleaseNotes, qr{handed over directly}i, 'CHANGELOG beschreibt die Ticketübergabe' );
-like( $CurrentReleaseNotes, qr{delivered automatically by e-mail}i, 'CHANGELOG beschreibt den automatischen Reportversand' );
-like( $CurrentReleaseNotes, qr{KimProcesses}i, 'CHANGELOG beschreibt die Prozessverknüpfung für Formulare' );
-like( $CurrentReleaseNotes, qr{retrieval interval}i, 'CHANGELOG beschreibt das einstellbare E-Mail-Abrufintervall' );
-like( $CurrentReleaseNotes, qr{linked directly to configuration items}i, 'CHANGELOG beschreibt die Service-CI-Zuordnung' );
-like( $CurrentReleaseNotes, qr{FAQ articles.*multiple attachments}i, 'CHANGELOG beschreibt FAQ-Anhänge und ihre Ticketübernahme' );
+like( $CurrentReleaseNotes, qr{notification suppression.*automatic queue moves}i, 'CHANGELOG beschreibt die Benachrichtigungskorrektur' );
+like( $CurrentReleaseNotes, qr{program and database version are \Q$ReleaseVersion\E}i, 'CHANGELOG nennt die aktuelle Programm- und Datenbankversion' );
+my ($CollaborationReleaseNotes) = $ChangelogContent =~ m{^## 2[.]0[.]1\s*\n(.*?)(?=^## |\z)}ms;
+like( $CollaborationReleaseNotes, qr{internal chat}i, 'CHANGELOG beschreibt den internen Chat' );
+like( $CollaborationReleaseNotes, qr{handed over directly}i, 'CHANGELOG beschreibt die Ticketübergabe' );
+like( $CollaborationReleaseNotes, qr{delivered automatically by e-mail}i, 'CHANGELOG beschreibt den automatischen Reportversand' );
+like( $CollaborationReleaseNotes, qr{KimProcesses}i, 'CHANGELOG beschreibt die Prozessverknüpfung für Formulare' );
+like( $CollaborationReleaseNotes, qr{retrieval interval}i, 'CHANGELOG beschreibt das einstellbare E-Mail-Abrufintervall' );
+like( $CollaborationReleaseNotes, qr{linked directly to configuration items}i, 'CHANGELOG beschreibt die Service-CI-Zuordnung' );
+like( $CollaborationReleaseNotes, qr{FAQ articles.*multiple attachments}i, 'CHANGELOG beschreibt FAQ-Anhänge und ihre Ticketübernahme' );
 
 my $MigrationRoot = File::Spec->catdir( $Root, 'install', 'update', 'database' );
 opendir my $MigrationDH, $MigrationRoot or die "Cannot inspect $MigrationRoot: $!";
@@ -208,6 +211,6 @@ my ($ConfigVersion) = $ConfigContent =~ /Version\s*=>\s*'([^']+)'/;
 is( $ConfigVersion, $ReleaseVersion, 'Release- und Standardkonfiguration verwenden dieselbe Programmversion' );
 
 my $SchemaContent = join "\n", read_lines('install/sql/schema.sql');
-like( $SchemaContent, qr{INSERT INTO `database_version` \(`version`\) VALUES \('2[.]0[.]1'\)}, 'das Neuinstallationsschema verwendet Datenbankversion 2.0.1' );
+like( $SchemaContent, qr{INSERT INTO `database_version` \(`version`\) VALUES \('2[.]0[.]2'\)}, 'das Neuinstallationsschema verwendet Datenbankversion 2.0.2' );
 
 done_testing();

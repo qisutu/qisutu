@@ -37,7 +37,7 @@ Site du projet : https://qisutu.de
 Qisutu est un système de tickets open source installable de façon autonome,
 avec portail agents et clients, traitement des e-mails, authentification par
 annuaire, automatisation, base de connaissances, CMDB, rapports et API REST.
-Qisutu 2.0.1 est une version stable autorisée pour la production. Le projet
+Qisutu 2.0.2 est une version stable autorisée pour la production. Le projet
 n’est donc plus en phase de développement. Les interfaces et structures de
 base de données continuent d’évoluer dans le cadre de la maintenance normale ;
 les modifications nécessaires sont fournies par la mise à jour intégrée et les
@@ -45,7 +45,7 @@ migrations de données maintenues durablement.
 
 ## Langues
 
-Qisutu 2.0.1 contient onze langues d’interface complètes : allemand (`de`),
+Qisutu 2.0.2 contient onze langues d’interface complètes : allemand (`de`),
 anglais (`en`), français (`fr`), italien (`it`), portugais brésilien (`pt-BR`),
 portugais européen (`pt-PT`), espagnol (`es`), néerlandais (`nl`), polonais
 (`pl`), tchèque (`cs`) et turc (`tr`).
@@ -54,9 +54,9 @@ portugais européen (`pt-PT`), espagnol (`es`), néerlandais (`nl`), polonais
 
 Exécutez les commandes suivantes en tant que root dans `/opt` :
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
-    mv qisutu-2.0.1 qisutu
+    wget https://ftp.qisutu.de/qisutu-2.0.2.tar.gz
+    tar xzf qisutu-2.0.2.tar.gz
+    mv qisutu-2.0.2 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -92,18 +92,18 @@ dans `INSTALL.md`.
 
 Exécutez les commandes suivantes en tant que root dans `/opt` :
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
+    wget https://ftp.qisutu.de/qisutu-2.0.2.tar.gz
+    tar xzf qisutu-2.0.2.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-2.0.1
+    chown qisutu:www-data -R /opt/qisutu-2.0.2
 
-    cd /opt/qisutu-2.0.1
+    cd /opt/qisutu-2.0.2
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-2.0.1
-    rm qisutu-2.0.1.tar.gz
+    rm -R qisutu-2.0.2
+    rm qisutu-2.0.2.tar.gz
 
 La mise à jour identifie l’instance par `var/install/instance.conf`, arrête
 uniquement son daemon et verrouille sa relève d’e-mails. Elle copie les fichiers

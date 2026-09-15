@@ -35,14 +35,14 @@ Strona projektu: https://qisutu.de
 
 Qisutu jest samodzielnie instalowanym systemem z portalami agentów i klientów,
 obsługą poczty, logowaniem katalogowym, automatyzacją, bazą wiedzy, CMDB,
-raportami i REST API. Qisutu 2.0.1 jest stabilnym wydaniem do pracy produkcyjnej
+raportami i REST API. Qisutu 2.0.2 jest stabilnym wydaniem do pracy produkcyjnej
 i nie znajduje się już w fazie rozwoju. Interfejsy oraz struktury bazy są nadal
 rozwijane w ramach regularnego utrzymania; zmiany dostarcza zintegrowany
 aktualizator i stale utrzymywane migracje danych.
 
 ## Języki
 
-Qisutu 2.0.1 zawiera jedenaście pełnych języków interfejsu: niemiecki (`de`),
+Qisutu 2.0.2 zawiera jedenaście pełnych języków interfejsu: niemiecki (`de`),
 angielski (`en`), francuski (`fr`), włoski (`it`), portugalski brazylijski
 (`pt-BR`), portugalski europejski (`pt-PT`), hiszpański (`es`), niderlandzki
 (`nl`), polski (`pl`), czeski (`cs`) i turecki (`tr`).
@@ -51,9 +51,9 @@ angielski (`en`), francuski (`fr`), włoski (`it`), portugalski brazylijski
 
 Jako root w `/opt` wykonaj:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
-    mv qisutu-2.0.1 qisutu
+    wget https://ftp.qisutu.de/qisutu-2.0.2.tar.gz
+    tar xzf qisutu-2.0.2.tar.gz
+    mv qisutu-2.0.2 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -86,18 +86,18 @@ znajdują się w `INSTALL.md`.
 
 Jako root w `/opt` wykonaj:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
+    wget https://ftp.qisutu.de/qisutu-2.0.2.tar.gz
+    tar xzf qisutu-2.0.2.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-2.0.1
+    chown qisutu:www-data -R /opt/qisutu-2.0.2
 
-    cd /opt/qisutu-2.0.1
+    cd /opt/qisutu-2.0.2
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-2.0.1
-    rm qisutu-2.0.1.tar.gz
+    rm -R qisutu-2.0.2
+    rm qisutu-2.0.2.tar.gz
 
 Aktualizator rozpoznaje instancję przez `var/install/instance.conf`, zatrzymuje
 tylko jej daemon i blokuje tylko jej pobieranie poczty. Kopiuje pliki zarządzane

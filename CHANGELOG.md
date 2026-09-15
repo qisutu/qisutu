@@ -2,6 +2,12 @@
 
 This file records human-readable changes and upgrade impact for published Qisutu releases. Publicly known vulnerabilities fixed in a release are listed with their CVE or other public identifier. If no such vulnerability is listed, none was publicly known with an assigned identifier when that release was prepared.
 
+## 2.0.2
+
+Qisutu 2.0.2 is a maintenance release. Notification suppression for automatic queue moves is now included in the queue-change event and honored when add-on handlers run later. This carries KimAutoAnswer's suppression into deferred agent notifications while keeping the original incoming-ticket notification and normal manual-move notifications available. Suppression is scoped to the affected ticket and event; later actions and other tickets remain unaffected.
+
+Upgrade impact: use the included `update.sh` process described in `INSTALL.md` and restart the Qisutu daemon to load the updated modules. The program and database version are 2.0.2. This correction requires no new tables or columns. The versioned internal add-on API remains at version 1.0.
+
 ## 2.0.1
 
 The REST API administration now loads the user-selection script from the configured static asset path. Selecting an API user opens a styled overlay with a searchable, scrollable list of agents and customer contacts. The dialog stays within the viewport, prevents background scrolling and returns focus to the selection button when closed. User names and logins containing quotation marks are preserved when selecting an account.
