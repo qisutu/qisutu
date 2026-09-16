@@ -1382,6 +1382,8 @@ sub _PartIsAttachment {
     my $ContentType = lc( $Param{ContentType} || '' );
 
     return 1 if $Disposition =~ m{\A\s*attachment\b};
+    # Invitations can be an unnamed part of multipart/alternative.
+    return 1 if $ContentType eq 'text/calendar';
     return 0 if $ContentID && $ContentType =~ m{\Aimage/} && $Disposition !~ m{\A\s*attachment\b};
     return 1 if $Filename && $ContentType !~ m{\Atext/(?:plain|html)\z};
 
@@ -1533,6 +1535,7 @@ sub _DefaultAttachmentFilename {
         'application/pdf' => 'pdf',
         'text/plain'      => 'txt',
         'text/html'       => 'html',
+        'text/calendar'   => 'ics',
         'image/png'       => 'png',
         'image/jpeg'      => 'jpg',
         'image/gif'       => 'gif',
@@ -2181,6 +2184,24 @@ sub _SMTPAttachmentPart {
     my $MimeType = $Self->_HeaderValueClean( $Attachment->{ContentType} || $Self->_MimeTypeByFilename($Filename) );
     $MimeType ||= 'application/octet-stream';
 
+    # Stored attachment types contain no MIME parameters. Restore the calendar
+    # method from the original data so clients can recognize the invitation.
+    # Only inspect the calendar-level properties; leave all file bytes intact.
+    if ( $Self->_ContentTypeBase($MimeType) eq 'text/calendar' || $Filename =~ m{\.ics\z}i ) {
+        my $Calendar = $Content;
+        $Calendar =~ s{\r\n?}{\n}g;
+        $Calendar =~ s{\n[ \t]}{}g;
+        if ( $Calendar =~ m{\ABEGIN:VCALENDAR\n(.*?)(?=^BEGIN:|\z)}ims ) {
+            my $Properties = $1;
+            my $Charset = $Self->_ContentTypeCharset($MimeType);
+            $Charset = 'UTF-8' if $Charset !~ m{\A[A-Za-z0-9._-]+\z};
+            $MimeType = 'text/calendar; charset=' . $Charset;
+            if ( $Properties =~ m{^METHOD:([A-Za-z0-9-]+)[ \t]*(?:\n|\z)}im ) {
+                $MimeType .= '; method=' . uc($1);
+            }
+        }
+    }
+
     my $EncodedContent = encode_base64( $Content, "\r\n" );
     $EncodedContent =~ s{\r?\n\z}{};
 
@@ -2254,6 +2275,7 @@ sub _MimeTypeByFilename {
     return 'application/pdf' if $Filename =~ m{\.pdf\z}i;
     return 'text/plain' if $Filename =~ m{\.txt\z}i;
     return 'text/csv' if $Filename =~ m{\.csv\z}i;
+    return 'text/calendar' if $Filename =~ m{\.ics\z}i;
     return 'application/msword' if $Filename =~ m{\.doc\z}i;
     return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' if $Filename =~ m{\.docx\z}i;
     return 'application/vnd.ms-excel' if $Filename =~ m{\.xls\z}i;
