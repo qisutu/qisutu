@@ -430,6 +430,7 @@ sub SchemaEnsure {
             name VARCHAR(255) NOT NULL,
             subject VARCHAR(500) NOT NULL DEFAULT "",
             body_html LONGTEXT NOT NULL,
+            article_body_default_migrated TINYINT(1) NOT NULL DEFAULT 0,
             active TINYINT(1) NOT NULL DEFAULT 1,
             sort_order INT UNSIGNED NOT NULL DEFAULT 1000,
             created_by_user_id BIGINT UNSIGNED NOT NULL DEFAULT 1,
@@ -548,6 +549,27 @@ sub SchemaEnsure {
         }
     }
 
+    my $ArticleBodyColumn = $Self->_SchemaObjectCount(
+        SQL => 'SELECT COUNT(*) AS object_count
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = ?
+                  AND COLUMN_NAME = ?',
+        Bind => [ 'agent_notification_template', 'article_body_default_migrated' ],
+    );
+    return if !defined $ArticleBodyColumn;
+
+    if ( !$ArticleBodyColumn ) {
+        my $OK = $Self->{DB}->Do(
+            'ALTER TABLE agent_notification_template
+             ADD COLUMN article_body_default_migrated TINYINT(1) NOT NULL DEFAULT 0 AFTER body_html'
+        );
+        if ( !$OK ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Agent notification article body migration column could not be prepared';
+            return;
+        }
+    }
+
     $Self->{SchemaChecked} = 1;
 
     return 1;
@@ -583,6 +605,7 @@ sub PlaceholderList {
         { placeholder => '{{Ticket.Priority}}',       description => 'Priorität des Tickets' },
         { placeholder => '{{Ticket.Link}}',           description => 'URL zum Ticket' },
         { placeholder => '{{Ticket.LinkHTML}}',       description => 'fertiger HTML-Link zum Ticket' },
+        { placeholder => '{{Ticket.ArticleBody}}',    description => 'Vollständiger Text des Ticketartikels' },
         { placeholder => '{{Ticket.ArticleBody[15]}}', description => 'Die ersten 15 Textzeilen des Ticketartikels; die Zahl ist frei wählbar' },
         { placeholder => '{{System.Name}}',           description => 'Systemname' },
         { placeholder => '{{System.HTTPType}}',       description => 'HTTP-Typ des Systems' },
@@ -734,12 +757,13 @@ sub _DefaultTemplatesEnsure {
                     name,
                     subject,
                     body_html,
+                    article_body_default_migrated,
                     active,
                     sort_order,
                     created_by_user_id,
                     changed_by_user_id
                  ) VALUES (
-                    ?, ?, ?, ?, ?, 1, ?, 1, 1
+                    ?, ?, ?, ?, ?, 1, 1, ?, 1, 1
                  )
                  ON DUPLICATE KEY UPDATE
                     name = VALUES(name),
@@ -759,7 +783,54 @@ sub _DefaultTemplatesEnsure {
         }
     }
 
+    $Self->_ArticleBodyDefaultsMigrate() || return;
+
     $Self->{DefaultsEnsured} = 1;
+
+    return 1;
+}
+
+sub _ArticleBodyDefaultsMigrate {
+    my ($Self) = @_;
+
+    my $Templates = $Self->{DB}->SelectAll(
+        'SELECT id, body_html
+         FROM agent_notification_template
+         WHERE article_body_default_migrated = 0'
+    );
+    if ( !$Templates ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Agent notification templates could not be loaded for article body migration';
+        return;
+    }
+
+    for my $Template ( @{$Templates} ) {
+        my $Original = $Template->{body_html} || '';
+        my $Body = $Original;
+
+        if ( !$Self->_ArticleBodyPlaceholderPresent($Body) ) {
+            my $Block = '<p>{{Ticket.ArticleBody}}</p>';
+            # Preserve the existing layout and put the article before the ticket link.
+            if ( $Body !~ s{(<p\b[^>]*>\s*\{\{\s*Ticket[.]LinkHTML\s*\}\}\s*</p>)}{$Block$1}ix ) {
+                $Body .= $Block;
+            }
+        }
+
+        # Migrate once so later deliberate template edits remain possible.
+        # Compare the old body to avoid overwriting a concurrent administrator edit.
+        my $OK = $Self->{DB}->Do(
+            'UPDATE agent_notification_template
+             SET body_html = ?, article_body_default_migrated = 1
+             WHERE id = ? AND article_body_default_migrated = 0
+               AND BINARY body_html = BINARY ?',
+            $Body,
+            $Template->{id},
+            $Original,
+        );
+        if ( !$OK ) {
+            $Self->{LastError} = $Self->{DB}->Error() || 'Agent notification article body default could not be migrated';
+            return;
+        }
+    }
 
     return 1;
 }
