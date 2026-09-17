@@ -6,7 +6,7 @@
 1aba8ff7f9ea9ee7470fa1ba9056011b5779607294ff792d2102fdddac07827b  ./CONTRIBUTING.md
 6b1901bb9c7fbb0a5a91c756f3ec099e6f6e8958f0fa7801c34df3b222682c91  ./COPYRIGHT
 3d16bce5224e376d3845d39366e2d1e45507cdd667a5078976f2a29b7fc5903a  ./DEVELOPMENT.md
-b49cd30009945a1567830aed6d970e95bc977587a6e4ad706faf4c6e41082851  ./INSTALL.md
+4f1d0ead0d3758943924e1a38428905374c5547b7789950738c7d08edb60d20b  ./INSTALL.md
 0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0  ./LICENSE
 8ddfb43a100f154cbd05d8fb70ad6702627ab7509e4b85fd6392a42b0c1db09a  ./MODULES.md
 07a434e83e818528d96d3b039533224be53ff3a95902ab2c68bd8814ee3a7470  ./README.cs.md
@@ -313,7 +313,7 @@ e9635932eef8a20dd5ac141d1741718ebddbb75ca8da36ee07780c903229ad3e  ./core/system/
 7440a06ded2d024c480fc81f7d3ea92b4b70257cafa2e668929d370d6f7ca888  ./core/system/QisutuSystemSetting.pm
 554aa15cf16d3d90245d1ddfc70b92b74397bc58af78a5b73cc446612620c554  ./core/system/QisutuTheme.pm
 a5fdc075586a282f893ab8a6dbf9e4fdaf587e3973e9bc60f869697df702d0a3  ./core/system/QisutuTicket.pm
-e97cc3a5a67738d607d073541af6d380030256979c25ba9377bb0e7c887f0931  ./core/system/QisutuTicketForm.pm
+f13dfa90d9a4ba8478a3f598c5b37472835ebf2dc509541c748f0a5b84316725  ./core/system/QisutuTicketForm.pm
 66706d44c27bf0ade8724d68b3aa23bd736ca41bb72e04663afad8108dfd5692  ./core/system/QisutuTicketHistory.pm
 e381db0ab4150850702de18a997d5d799f50b7d1319575272b2fd46d4ee3ce8b  ./core/system/QisutuTicketLink.pm
 2eb503740d03c283808b02f45e06d2241664cbcbca82bd60066de850e3162f9f  ./core/system/QisutuTicketPDF.pm
@@ -322,11 +322,13 @@ e381db0ab4150850702de18a997d5d799f50b7d1319575272b2fd46d4ee3ce8b  ./core/system/
 fcc1da9d7c83f32dff4129789fafa513f27f51e11946a1a0a6b375e1e134ddcf  ./core/system/QisutuTimeAccountingReport.pm
 e062e9217f5d63415dcdf40f076c9ff52ea3f932ab3cf5478b92dc3cd464a65d  ./core/system/QisutuTwoFactor.pm
 63175fdc77b199535c7cf5a09135fd820c0344a30ff92ec03968c11b59aa0a33  ./core/system/QisutuUserPreference.pm
-8d1b0b580cf7105872bf823ea26df8a1301a4e9e99a7104de80b841debe91fd4  ./install.sh
 3b05cab2d10e850dc4968229eaa4ba59c125b764398bf122a91cde5217906e1e  ./install/sql/insert.sql
-2ecf95f7888996d4409ec8f87de22fbad4d7e270e64b590da5573fa5d5864a1b  ./install/sql/schema.sql
+d63de238d1b7103a2f00b6d4e45ace9b1da1d03b771da2e885ec5b14f399da86  ./install/sql/schema.sql
 607dcaa3f1cdc12e6d7ebe1278198df4c73522da6806857ccc2ce3041ae5750c  ./install/update/QisutuSchemaSync.pl
+2af8b98e953933c39d69d5175a08aa37e4a0c5773091ad8a43671ec3a33a4e3a  ./install/update/database/2.0.1/001-contact-history-account-lookup.sql
+2d04a240a63b46172076581fd3f16cc90263d1ea994001052a310e5c6a768fc4  ./install/update/database/2.0.1/002-remove-automatic-webform-contacts.sql
 069828869bbfc2566914655216bb749480f014e4fa32b041cdfd3890c332c193  ./install/update/database/README.txt
+8d1b0b580cf7105872bf823ea26df8a1301a4e9e99a7104de80b841debe91fd4  ./install.sh
 dd4dc921047b6207d09fbaae480b71b9433eae3fd94c4a6444b8643649de0eed  ./release.conf
 5b51069adf483ca5001dd2a4ad304142397e26107858278eda148f8fed94754d  ./release.remove
 26430b4befa3134f3ef8dc5284e88653577ebecaa2ed64fcdaa9c745e5a45c73  ./scriptfiles/qisutu-apache.conf

@@ -948,17 +948,11 @@ sub SubmissionCreate {
     };
 
     if ( $Context eq 'public' ) {
-        my $Contact = $Self->_PublicContactResolve(
-            Name  => $SubmitterName,
-            Email => $SubmitterEmail,
-        );
-        if ( !$Contact ) {
-            $Self->{DB}->Rollback();
-            return;
-        }
-        $CustomerID      = $Contact->{customer_id};
-        $CustomerUserID  = $Contact->{customer_user_id};
-        $CreatedByUserID = $Contact->{user_account_id};
+        # Public submissions keep their sender data on the article and form snapshot.
+        # They must not create customer records or claim an existing portal identity.
+        $CustomerID      = undef;
+        $CustomerUserID  = undef;
+        $CreatedByUserID = 1;
     }
 
     my $TicketResult = $Self->{DB}->Do(
@@ -1355,101 +1349,6 @@ sub _RateLimitCheck {
         }
     }
     return 1;
-}
-
-sub _PublicContactResolve {
-    my ( $Self, %Param ) = @_;
-
-    my $Email = lc $Self->_Trim( $Param{Email} );
-    my $Name  = $Self->_Trim( $Param{Name} );
-    my $Existing = $Self->{DB}->SelectRow(
-        'SELECT ua.id AS user_account_id, cu.id AS customer_user_id, cu.customer_id
-         FROM user_account ua
-         INNER JOIN customer_user cu ON cu.user_account_id = ua.id
-         INNER JOIN customer c ON c.id = cu.customer_id
-         WHERE LOWER(ua.email) = ? AND ua.account_type = "customer"
-           AND ua.is_active = 0 AND c.customer_number = "QISUTU-WEBFORM"
-         ORDER BY cu.active DESC, cu.id ASC
-         LIMIT 1',
-        $Email,
-    );
-    return $Existing if $Existing;
-
-    my $Customer = $Self->{DB}->SelectRow(
-        'SELECT id FROM customer WHERE customer_number = ? LIMIT 1',
-        'QISUTU-WEBFORM',
-    );
-    if ( !$Customer ) {
-        my $Created = $Self->{DB}->Do(
-            'INSERT INTO customer (
-                customer_number, name, active, created_by_user_id, changed_by_user_id
-             ) VALUES (?, ?, 1, 1, 1)',
-            'QISUTU-WEBFORM',
-            'Web form contacts',
-        );
-        if ( !$Created ) {
-            $Self->{LastError} = $Self->{DB}->Error() || 'Translate:TicketCreateFailed';
-            return;
-        }
-        $Customer = { id => $Self->{DB}->LastInsertID('customer') };
-    }
-
-    # Never attach an unauthenticated public submission to an existing portal
-    # identity. Otherwise knowing an e-mail address could expose that new
-    # ticket in the real customer's portal. In the rare e-mail collision case
-    # the submission remains assigned to the web-form customer without a
-    # customer user; its validated input snapshot and article keep the address.
-    my $ExistingAccount = $Self->{DB}->SelectRow(
-        'SELECT id AS user_account_id
-         FROM user_account
-         WHERE LOWER(email) = ? AND account_type = "customer"
-         LIMIT 1',
-        $Email,
-    );
-    if ($ExistingAccount) {
-        return {
-            customer_id      => $Customer->{id},
-            customer_user_id => undef,
-            user_account_id  => 1,
-        };
-    }
-
-    my ( $Firstname, $Lastname ) = split /\s+/, $Name, 2;
-    $Firstname ||= $Name || 'Web';
-    $Lastname  ||= 'Form';
-    my $PasswordHash = 'QISUTU_WEBFORM_CONTACT_' . sha256_hex( join ':', $Email, time, rand() );
-    my $Created = $Self->{DB}->Do(
-        'INSERT INTO user_account (
-            login, account_type, email, password_hash, firstname, lastname,
-            is_active, is_system_user, password_changed_at
-         ) VALUES (?, "customer", ?, ?, ?, ?, 0, 0, NULL)',
-        $Email,
-        $Email,
-        $PasswordHash,
-        $Firstname,
-        $Lastname,
-    );
-    if ( !$Created ) {
-        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:TicketCreateFailed';
-        return;
-    }
-    my $UserAccountID = $Self->{DB}->LastInsertID('user_account');
-    $Created = $Self->{DB}->Do(
-        'INSERT INTO customer_user (
-            customer_id, user_account_id, active, created_by_user_id, changed_by_user_id
-         ) VALUES (?, ?, 1, 1, 1)',
-        $Customer->{id},
-        $UserAccountID,
-    );
-    if ( !$Created ) {
-        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:TicketCreateFailed';
-        return;
-    }
-    return {
-        customer_id      => $Customer->{id},
-        customer_user_id => $Self->{DB}->LastInsertID('customer_user'),
-        user_account_id  => $UserAccountID,
-    };
 }
 
 sub _FormDataValidate {

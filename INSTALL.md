@@ -338,10 +338,20 @@ Zusätzlich lassen sich Grenzwerte pro IP und Stunde, pro IP und Tag sowie ein
 Gesamtlimit pro Tag festlegen. Der öffentliche Einstieg liegt innerhalb des
 Instanz-Webpfads unter `form.pl?Form=URL-KENNUNG`.
 
-Webformular-Kontakte werden dem internen Kunden `QISUTU-WEBFORM` zugeordnet.
-Die Benutzerkonten sind absichtlich inaktiv und können sich nicht am
-Kundenportal anmelden. Formularübermittlungen bleiben als Snapshot am Ticket
-erhalten und werden bei späteren Formularänderungen nicht verändert.
+Öffentliche Webformulare erstellen keine Kunden, Ansprechpartner oder
+Benutzerkonten. Die Tickets bleiben zunächst ohne Kundenzuordnung; Name und
+E-Mail-Adresse des Absenders werden im Artikel und im Formular-Snapshot
+aufbewahrt. Kunden und Ansprechpartner werden regulär in der Administration
+angelegt. Formulare im angemeldeten Kundenportal verwenden weiterhin den
+bereits vorhandenen Kunden und Ansprechpartner. Formularübermittlungen bleiben
+als Snapshot am Ticket erhalten und werden bei späteren Formularänderungen
+nicht verändert.
+
+Beim regulären Update werden eindeutig erkennbare, unveränderte
+Webformular-Platzhalter aus früheren Ständen entfernt. Tickets und
+Formular-Snapshots bleiben erhalten. Die freigegebenen Login- und
+E-Mail-Adressen können danach für vollständig neue Ansprechpartner verwendet
+werden.
 
 ## Protokolle
 
