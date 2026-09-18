@@ -617,6 +617,23 @@ sub Run {
             $ArticleCreateError = 'Translate:TicketMergedReadOnly';
         }
 
+        if ( !$ArticleCreateError && $ArticleMode eq 'forward' ) {
+            my $OriginalAttachments = $Self->_ArticleForwardAttachments(
+                TicketObject => $TicketObject,
+                TicketID     => $TicketID,
+                ArticleID    => $Request->{ReplyArticleID},
+                User         => $User,
+                Language     => $Language,
+            );
+
+            if ( !defined $OriginalAttachments ) {
+                $ArticleCreateError = 'Translate:TicketToolForwardSendFailed';
+            }
+            else {
+                push @{$Attachments}, @{$OriginalAttachments};
+            }
+        }
+
         if ( !$ArticleCreateError && $ArticleMode eq 'email' && ( $Request->{ResponseTemplateID} || 0 ) ) {
             my $TemplateObject = $Self->_ResponseTemplateObject();
             my $TemplateLanguage = $TemplateObject ? $TemplateObject->LanguageClean(
@@ -1616,6 +1633,55 @@ sub _ArticleForwardData {
         Subject      => $Subject,
         BodyTemplate => $BodyTemplate,
     };
+}
+
+sub _ArticleForwardAttachments {
+    my ( $Self, %Param ) = @_;
+
+    my $TicketObject = $Param{TicketObject};
+    my $TicketID     = $Param{TicketID} || 0;
+    my $ArticleID    = $Param{ArticleID} || 0;
+    my $User         = $Param{User} || {};
+
+    return if !$TicketObject || $TicketID !~ m{\A\d+\z} || !$TicketID;
+    return if $ArticleID !~ m{\A\d+\z} || !$ArticleID;
+
+    # Resolve the source through the same ticket and visibility checks as the
+    # article view. Never accept attachment IDs supplied by the browser.
+    my $Articles = $TicketObject->ArticleList(
+        TicketID => $TicketID,
+        User     => $User,
+        Language => $Param{Language} || 'en',
+        All      => 1,
+    ) || [];
+    my ($Article) = grep { ( $_->{id} || 0 ) == $ArticleID } @{$Articles};
+    return if !$Article;
+
+    my @Attachments;
+    for my $Meta ( @{ $Article->{attachments} || [] } ) {
+        my $Attachment = $TicketObject->ArticleAttachmentGet(
+            AttachmentID => $Meta->{id},
+            User         => $User,
+        );
+
+        # Abort the forward if an original attachment cannot be loaded. Sending
+        # only its name in the quoted text would silently lose the file again.
+        return if !$Attachment
+            || ( $Attachment->{ticket_id} || 0 ) != $TicketID
+            || ( $Attachment->{article_id} || 0 ) != $ArticleID
+            || !defined $Attachment->{content};
+
+        push @Attachments, {
+            Filename           => $Attachment->{filename},
+            ContentType        => $Attachment->{content_type},
+            Content            => $Attachment->{content},
+            ContentSize        => length( $Attachment->{content} ),
+            ContentID          => $Attachment->{content_id} || '',
+            ContentDisposition => $Attachment->{content_disposition} || 'attachment',
+        };
+    }
+
+    return \@Attachments;
 }
 
 sub _ArticleReplyData {

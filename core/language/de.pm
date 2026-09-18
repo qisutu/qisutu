@@ -742,7 +742,7 @@ use utf8;
     TicketPriority                  => 'Priorität',
     TicketAge                       => 'Alter',
     TicketCustomer                  => 'Kunde',
-    TicketCustomerUser              => 'Ansprechpartner',
+    TicketCustomerUser              => 'Ansprech­partner',
     TicketOwner                     => 'Besitzer',
     TicketResponsible               => 'Verantwortlicher',
     TicketCreated                   => 'Erstellt',

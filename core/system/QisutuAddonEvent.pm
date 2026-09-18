@@ -47,12 +47,7 @@ sub Emit {
     $Self->{LastError} = '';
     my $Event = lc( $Param{Event} || '' );
     my $Source = lc( $Param{Source} || 'qisutu.core' );
-    my $Payload = ref $Param{Payload} eq 'HASH' ? { %{ $Param{Payload} } } : {};
-    # Preserve notification suppression when a handler emits a later event
-    # for the same ticket. The payload survives asynchronous processing.
-    if ( ( $Self->{Config}->{AgentNotificationSuppressedTickets} || {} )->{ $Payload->{ticket_id} || 0 } ) {
-        $Payload->{suppress_notifications} = 1;
-    }
+    my $Payload = ref $Param{Payload} eq 'HASH' ? $Param{Payload} : {};
     return $Self->_Error('invalid add-on event name')
         if $Event !~ m{\A[a-z][a-z0-9_-]*(?:\.[a-z0-9_-]+)+\z} || length($Event) > 190;
     return $Self->_Error('invalid add-on event source')
@@ -200,16 +195,6 @@ sub _Run {
         || $Method !~ m{\A[A-Za-z][A-Za-z0-9_]*\z};
     if ( !eval "require $Class; 1;" ) {
         return $Self->_Error( $@ || 'add-on event handler could not be loaded' );
-    }
-    # Scope the persisted flag to this handler and ticket. Restore the previous
-    # context automatically, including when construction or handling fails.
-    my $Payload = ref $Param{Payload} eq 'HASH' ? $Param{Payload} : {};
-    my $TicketID = $Payload->{ticket_id} || 0;
-    local $Self->{Config}->{AgentNotificationSuppressedTickets} = {
-        %{ $Self->{Config}->{AgentNotificationSuppressedTickets} || {} },
-    };
-    if ( $Payload->{suppress_notifications} && $TicketID =~ m{\A\d+\z} && $TicketID ) {
-        $Self->{Config}->{AgentNotificationSuppressedTickets}->{$TicketID} = 1;
     }
     my $API = QisutuAddonAPI->new(
         Config     => $Self->{Config},

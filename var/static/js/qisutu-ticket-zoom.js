@@ -85,7 +85,7 @@
     function initReplyActions() {
         var form = document.querySelector('[data-qisutu-ticket-reply-form]');
         var modeInput = document.querySelector('[data-qisutu-article-mode]');
-        var replyArticleIDInput = document.querySelector('[data-qisutu-reply-article-id]');
+        var replyArticleIDInput = form ? form.querySelector('input[name="ReplyArticleID"]') : null;
         var title = document.querySelector('[data-qisutu-reply-form-title]');
         var submit = document.querySelector('[data-qisutu-reply-submit]');
         var subject = document.getElementById('qisutu-article-subject');

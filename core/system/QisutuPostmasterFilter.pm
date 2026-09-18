@@ -1053,10 +1053,10 @@ sub _ConditionMatch {
     my @Value     = @{$Values};
 
     if ( $Operator eq 'empty' ) {
-        return !grep { defined $_ && $_ ne '' } @Value ? 1 : 0;
+        return ( grep { defined $_ && $_ ne '' } @Value ) ? 0 : 1;
     }
     if ( $Operator eq 'not_empty' ) {
-        return grep { defined $_ && $_ ne '' } @Value ? 1 : 0;
+        return ( grep { defined $_ && $_ ne '' } @Value ) ? 1 : 0;
     }
 
     @Value = ('') if !@Value;
@@ -1078,10 +1078,10 @@ sub _ConditionMatch {
     }
 
     if ($Negative) {
-        return grep { $_ } @Matches ? 0 : 1;
+        return ( grep { $_ } @Matches ) ? 0 : 1;
     }
 
-    return grep { $_ } @Matches ? 1 : 0;
+    return ( grep { $_ } @Matches ) ? 1 : 0;
 }
 
 sub _SingleMatch {

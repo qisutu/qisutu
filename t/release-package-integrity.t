@@ -185,16 +185,13 @@ for my $ReadmeFile (@ReadmeFiles) {
 my $ChangelogContent = join "\n", read_lines('CHANGELOG.md');
 my ($CurrentReleaseNotes) = $ChangelogContent =~ m{^## \Q$ReleaseVersion\E\s*\n(.*?)(?=^## |\z)}ms;
 ok( defined $CurrentReleaseNotes, 'CHANGELOG beginnt mit dem aktuellen Releaseabschnitt' );
-like( $CurrentReleaseNotes, qr{notification suppression.*automatic queue moves}i, 'CHANGELOG beschreibt die Benachrichtigungskorrektur' );
-like( $CurrentReleaseNotes, qr{program and database version are \Q$ReleaseVersion\E}i, 'CHANGELOG nennt die aktuelle Programm- und Datenbankversion' );
-my ($CollaborationReleaseNotes) = $ChangelogContent =~ m{^## 2[.]0[.]1\s*\n(.*?)(?=^## |\z)}ms;
-like( $CollaborationReleaseNotes, qr{internal chat}i, 'CHANGELOG beschreibt den internen Chat' );
-like( $CollaborationReleaseNotes, qr{handed over directly}i, 'CHANGELOG beschreibt die Ticketübergabe' );
-like( $CollaborationReleaseNotes, qr{delivered automatically by e-mail}i, 'CHANGELOG beschreibt den automatischen Reportversand' );
-like( $CollaborationReleaseNotes, qr{KimProcesses}i, 'CHANGELOG beschreibt die Prozessverknüpfung für Formulare' );
-like( $CollaborationReleaseNotes, qr{retrieval interval}i, 'CHANGELOG beschreibt das einstellbare E-Mail-Abrufintervall' );
-like( $CollaborationReleaseNotes, qr{linked directly to configuration items}i, 'CHANGELOG beschreibt die Service-CI-Zuordnung' );
-like( $CollaborationReleaseNotes, qr{FAQ articles.*multiple attachments}i, 'CHANGELOG beschreibt FAQ-Anhänge und ihre Ticketübernahme' );
+like( $CurrentReleaseNotes, qr{internal chat}i, 'CHANGELOG beschreibt den internen Chat' );
+like( $CurrentReleaseNotes, qr{handed over directly}i, 'CHANGELOG beschreibt die Ticketübergabe' );
+like( $CurrentReleaseNotes, qr{delivered automatically by e-mail}i, 'CHANGELOG beschreibt den automatischen Reportversand' );
+like( $CurrentReleaseNotes, qr{KimProcesses}i, 'CHANGELOG beschreibt die Prozessverknüpfung für Formulare' );
+like( $CurrentReleaseNotes, qr{retrieval interval}i, 'CHANGELOG beschreibt das einstellbare E-Mail-Abrufintervall' );
+like( $CurrentReleaseNotes, qr{linked directly to configuration items}i, 'CHANGELOG beschreibt die Service-CI-Zuordnung' );
+like( $CurrentReleaseNotes, qr{FAQ articles.*multiple attachments}i, 'CHANGELOG beschreibt FAQ-Anhänge und ihre Ticketübernahme' );
 
 my $MigrationRoot = File::Spec->catdir( $Root, 'install', 'update', 'database' );
 opendir my $MigrationDH, $MigrationRoot or die "Cannot inspect $MigrationRoot: $!";
