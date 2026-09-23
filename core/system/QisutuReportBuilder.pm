@@ -29,6 +29,7 @@ use utf8;
 use JSON::PP ();
 use Time::HiRes qw(time);
 use QisutuPermission;
+use QisutuReportChart;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -89,7 +90,7 @@ sub Catalog {
         chart_types => [
             {key=>'bar',label_key=>'ReportChartBar'}, {key=>'stacked_bar',label_key=>'ReportChartStackedBar'},
             {key=>'line',label_key=>'ReportChartLine'}, {key=>'area',label_key=>'ReportChartArea'},
-            {key=>'doughnut',label_key=>'ReportChartDoughnut'}, {key=>'table',label_key=>'ReportChartTable'},
+            {key=>'pie',label_key=>'ReportChartPie'}, {key=>'table',label_key=>'ReportChartTable'},
             {key=>'kpi',label_key=>'ReportChartKPI'},
         ],
         sorts => [
@@ -130,14 +131,19 @@ sub ConfigurationValidate {
         return;
     }
 
-    my %Chart = map { $_=>1 } qw(bar stacked_bar line area doughnut table kpi);
+    my %Chart = map { $_=>1 } qw(bar stacked_bar line area pie table kpi);
     my $ChartType = $Input->{chart_type} || 'bar';
+    $ChartType = 'pie' if $ChartType eq 'doughnut';
     if ( !$Chart{$ChartType} ) {
         $Self->{LastError} = 'Translate:ReportErrorInvalidChart';
         return;
     }
-    $ChartType = 'kpi' if $GroupKey eq 'none' && $ChartType eq 'doughnut';
-    $ChartType = 'bar' if $ChartType eq 'doughnut' && @MetricKeys > 1;
+    if ( $ChartType eq 'pie' && !QisutuReportChart->new()->MetricsCompatible(
+        Configuration => { source => $SourceKey, metrics => \@MetricKeys },
+    ) ) {
+        $Self->{LastError} = 'Translate:ReportErrorPieMetrics';
+        return;
+    }
 
     my %Sort = map { $_=>1 } qw(label_asc label_desc value_desc value_asc);
     my $Sort = $Input->{sort} || 'label_asc';
@@ -279,6 +285,11 @@ sub Execute {
         group=>{key=>$Group->{key},label_key=>$Group->{label_key},label=>$Group->{label}},
         details=>$Details,duration_ms=>$Duration,was_limited=>$Limited,
     };
+    if ( $Config->{chart_type} eq 'pie' ) {
+        my $Chart = QisutuReportChart->new();
+        $Result->{pie} = $Chart->PieData( Result => $Result );
+        if ( !$Result->{pie} ) { $Self->{LastError} = $Chart->Error(); return; }
+    }
     $Self->ExecutionLogCreate(
         ReportID=>$Param{ReportID},UserID=>$UserID,ExecutionType=>$Param{ExecutionType}||'preview',
         DataSource=>$Config->{source},ResultRows=>scalar(@{$Details->{rows}}),DurationMS=>$Duration,WasLimited=>$Limited,
@@ -301,7 +312,11 @@ sub ReportList {
          ORDER BY is_owner DESC,rd.changed_at DESC,rd.name ASC,rd.id DESC',
         $UserID,$IsAdmin,$UserID,$UserID,
     )||[];
-    for my$Row(@{$Rows}){$Row->{configuration}=$Self->_JSONDecode($Row->{configuration_json})||{};$Row->{is_editable}=($Row->{is_owner}||$IsAdmin)?1:0;}
+    for my$Row(@{$Rows}){
+        $Row->{configuration}=$Self->_JSONDecode($Row->{configuration_json})||{};
+        $Row->{configuration}->{chart_type} = 'pie' if ( $Row->{configuration}->{chart_type} || '' ) eq 'doughnut';
+        $Row->{is_editable}=($Row->{is_owner}||$IsAdmin)?1:0;
+    }
     return$Rows;
 }
 
@@ -321,6 +336,7 @@ sub ReportGet {
     );
     if(!$Row){$Self->{LastError}='Translate:ReportErrorNotFound';return;}
     $Row->{configuration}=$Self->_JSONDecode($Row->{configuration_json})||{};
+    $Row->{configuration}->{chart_type} = 'pie' if ( $Row->{configuration}->{chart_type} || '' ) eq 'doughnut';
     $Row->{is_editable}=($Row->{is_owner}||$IsAdmin)?1:0;
     my$Groups=$Self->{DB}->SelectAll('SELECT user_group_id FROM report_definition_group WHERE report_definition_id=? ORDER BY user_group_id',$ID)||[];
     $Row->{group_ids}=[map{0+$_->{user_group_id}}@{$Groups}];

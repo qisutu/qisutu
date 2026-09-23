@@ -35,14 +35,14 @@ Projectwebsite: https://qisutu.de
 
 Qisutu is zelfstandig installeerbaar en bevat een agent- en klantportaal,
 e-mailverwerking, directoryaanmelding, automatisering, kennisbank, CMDB,
-rapporten en REST-API. Qisutu 2.0.1 is een stabiele productieversie en bevindt
+rapporten en REST-API. Qisutu 2.0.2 is een stabiele productieversie en bevindt
 zich niet meer in de ontwikkelfase. Interfaces en databasestructuren blijven in
 het normale releaseonderhoud evolueren; noodzakelijke wijzigingen worden via de
 geïntegreerde updater en blijvend onderhouden datamigraties geleverd.
 
 ## Talen
 
-Qisutu 2.0.1 bevat elf volledige interfacetalen: Duits (`de`), Engels (`en`),
+Qisutu 2.0.2 bevat elf volledige interfacetalen: Duits (`de`), Engels (`en`),
 Frans (`fr`), Italiaans (`it`), Braziliaans Portugees (`pt-BR`), Europees
 Portugees (`pt-PT`), Spaans (`es`), Nederlands (`nl`), Pools (`pl`), Tsjechisch
 (`cs`) en Turks (`tr`).
@@ -51,9 +51,9 @@ Portugees (`pt-PT`), Spaans (`es`), Nederlands (`nl`), Pools (`pl`), Tsjechisch
 
 Voer als root in `/opt` uit:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
-    mv qisutu-2.0.1 qisutu
+    wget https://ftp.qisutu.de/qisutu-2.0.2.tar.gz
+    tar xzf qisutu-2.0.2.tar.gz
+    mv qisutu-2.0.2 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -87,18 +87,18 @@ Details en een voorbeeld met twee instanties staan in `INSTALL.md`.
 
 Voer als root in `/opt` uit:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
+    wget https://ftp.qisutu.de/qisutu-2.0.2.tar.gz
+    tar xzf qisutu-2.0.2.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-2.0.1
+    chown qisutu:www-data -R /opt/qisutu-2.0.2
 
-    cd /opt/qisutu-2.0.1
+    cd /opt/qisutu-2.0.2
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-2.0.1
-    rm qisutu-2.0.1.tar.gz
+    rm -R qisutu-2.0.2
+    rm qisutu-2.0.2.tar.gz
 
 De updater herkent de instantie via `var/install/instance.conf`, stopt alleen
 haar daemon en blokkeert alleen haar e-mailophaling. Beheerde bestanden worden

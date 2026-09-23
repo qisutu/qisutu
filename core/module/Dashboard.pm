@@ -593,7 +593,8 @@ sub _DateEpoch {
 sub _JSONForHTML {
     my ( $Self, $Data ) = @_;
 
-    my $JSON = encode_json( $Data || {} );
+    # Keep characters for the UTF-8 template; Response encodes the HTML once.
+    my $JSON = JSON::PP->new->utf8(0)->encode( $Data || {} );
     $JSON =~ s{&}{\\u0026}g;
     $JSON =~ s{<}{\\u003c}g;
     $JSON =~ s{>}{\\u003e}g;

@@ -29,6 +29,7 @@ use utf8;
 use JSON::PP ();
 use POSIX qw(strftime);
 use QisutuReportBuilder;
+use QisutuReportChart;
 use QisutuReportPDF;
 use QisutuReportScheduler;
 
@@ -146,7 +147,12 @@ sub _ResultTranslate {
     my($Self,%Param)=@_;my$R=$Param{Result};my$L=$Param{Language};for my$M(@{$R->{metrics}||[]}){$M->{label}=$Self->_T($M->{label_key},$L);}my$G=$R->{group}||{};$G->{label}||=$Self->_T($G->{label_key},$L);
     if(($R->{configuration}->{group_by}||'')eq'billable'){for my$Row(@{$R->{rows}||[]}){$Row->{label}=$Self->_T($Row->{key}?'Yes':'No',$L);}}
     if(($R->{configuration}->{group_by}||'')eq'escalation'){for my$Row(@{$R->{rows}||[]}){my$Key='ReportEscalation'.ucfirst($Row->{key}||'normal');$Row->{label}=$Self->_T($Key,$L);}}
-    my$Columns=$R->{details}->{columns}||[];for my$Index(0..$#{$Columns}){my$C=$Columns->[$Index];$C->{label}||=$Self->_T($C->{label_key},$L);if(($C->{type}||'')eq'boolean'){for my$Row(@{$R->{details}->{rows}||[]}){$Row->[$Index]=$Self->_T($Row->[$Index]?'Yes':'No',$L);}}}return$R;
+    my$Columns=$R->{details}->{columns}||[];for my$Index(0..$#{$Columns}){my$C=$Columns->[$Index];$C->{label}||=$Self->_T($C->{label_key},$L);if(($C->{type}||'')eq'boolean'){for my$Row(@{$R->{details}->{rows}||[]}){$Row->[$Index]=$Self->_T($Row->[$Index]?'Yes':'No',$L);}}}
+    if ( ($R->{configuration}->{chart_type} || '') =~ m{\A(?:pie|doughnut)\z} ) {
+        $R->{configuration}->{chart_type} = 'pie';
+        $R->{pie} = QisutuReportChart->new()->PieData(Result=>$R,Translate=>sub { $Self->_T($_[0],$L) });
+    }
+    return$R;
 }
 
 sub _CSVResponse {

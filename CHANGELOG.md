@@ -2,7 +2,7 @@
 
 This file records human-readable changes and upgrade impact for published Qisutu releases. Publicly known vulnerabilities fixed in a release are listed with their CVE or other public identifier. If no such vulnerability is listed, none was publicly known with an assigned identifier when that release was prepared.
 
-## 2.0.1
+## 2.0.2
 
 The REST API administration now loads the user-selection script from the configured static asset path. Selecting an API user opens a styled overlay with a searchable, scrollable list of agents and customer contacts. The dialog stays within the viewport, prevents background scrolling and returns focus to the selection button when closed. User names and logins containing quotation marks are preserved when selecting an account.
 
@@ -12,7 +12,7 @@ The FAQ insertion dialog in new and existing agent tickets now stays within the 
 
 Incoming e-mail tickets now automatically inherit the customer's service and SLA when exactly one active, valid customer assignment is available and no postmaster service/SLA action overrides it. The ticket stores the customer-specific SLA name, calendar, update mode and escalation times. Multiple eligible services continue to require an explicit selection or postmaster rule; existing ticket snapshots are preserved on ordinary e-mail replies. Service, SLA and customer-service administration tables now use the standard table styling with readable spacing, wrapping and scrollable layouts on narrow screens. Customer SLA selectors use the standard form controls, and long labels in the ticket information sidebar wrap without overlapping their values.
 
-Qisutu 2.0.1 introduces direct collaboration between agents. The new internal chat shows which agents are online using a ten-minute activity window and refreshes the agent state every ten minutes. Its launcher is integrated into a stable lower sidebar action area and is positioned immediately before Kim when that add-on is installed. If Kim is absent, the internal-chat and Microsoft Teams launchers remain grouped in that same row directly above the user area instead of being distributed across the navigation or page. Agents can exchange direct messages, see unread messages, retain their conversation history, and explicitly delete the currently selected conversation.
+Qisutu 2.0.2 introduces direct collaboration between agents. The new internal chat shows which agents are online using a ten-minute activity window and refreshes the agent state every ten minutes. Its launcher is integrated into a stable lower sidebar action area and is positioned immediately before Kim when that add-on is installed. If Kim is absent, the internal-chat and Microsoft Teams launchers remain grouped in that same row directly above the user area instead of being distributed across the navigation or page. Agents can exchange direct messages, see unread messages, retain their conversation history, and explicitly delete the currently selected conversation.
 
 Ticket collaboration is integrated with the chat. The ticket detail view shows which agents currently have the ticket open and lets an agent address any of them directly. If no other agent has the ticket open, an online colleague can be invited from the same presence row; Qisutu opens the direct chat and sends the ticket link together with an invitation message. Tickets can also be handed over directly in the chat. Qisutu verifies that the recipient may edit the ticket queue, changes the owner, creates a handover event in the conversation, and records an internal ticket note naming the sender and recipient.
 
@@ -26,7 +26,7 @@ Services can now be linked directly to configuration items in the CMDB. The serv
 
 FAQ articles in the knowledge base can now contain multiple attachments. Agents can add, review, download, retain, or remove these files while maintaining an article, and customer-visible FAQ attachments are also available through the protected customer portal download. When using a FAQ in either a new ticket or an existing ticket, agents choose independently whether to insert the FAQ text, attach the FAQ files, or do both. The selected FAQ files become normal ticket-article and e-mail attachments, remain removable before submission, and are checked again on the server for visibility, validity, and the configured attachment-size limit.
 
-Upgrade impact: use the included `update.sh` process described in `INSTALL.md`. The database version is 2.0.1. The schema synchronization adds the internal-chat, ticket-presence, report-scheduling, recipient, delivery-log, service-to-configuration-item, and FAQ-attachment structures as well as the optional process-template reference on ticket forms without deleting existing data. The versioned internal add-on API remains at version 1.0.
+Upgrade impact: use the included `update.sh` process described in `INSTALL.md`. The database version is 2.0.2. The schema synchronization adds the internal-chat, ticket-presence, report-scheduling, recipient, delivery-log, service-to-configuration-item, and FAQ-attachment structures as well as the optional process-template reference on ticket forms without deleting existing data. The versioned internal add-on API remains at version 1.0.
 
 No publicly known Qisutu runtime vulnerability with a CVE or comparable public identifier was fixed in this release.
 

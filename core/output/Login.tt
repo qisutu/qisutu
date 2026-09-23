@@ -36,6 +36,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                 <form class="qisutu-login-language" method="get" action="[% FormAction %]">
                     <input type="hidden" name="Step" value="LocalLogin">
+                    <input type="hidden" name="ReturnLocation" value="[% ReturnLocation %]">
                     <div class="qisutu-login-language-control">
                         <select id="qisutu-login-language" name="Language" aria-label="[% Translate.PreferencesLanguage %]" onchange="this.form.submit()">
                             [% FOREACH LoginLanguage IN LoginLanguages %]
@@ -60,6 +61,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 <form class="qisutu-login-form" method="post" action="[% FormAction %]" autocomplete="on">
                     <input type="hidden" name="Step" value="Login">
                     <input type="hidden" name="Language" value="[% Language %]">
+                    <input type="hidden" name="ReturnLocation" value="[% ReturnLocation %]">
 
                     <fieldset class="qisutu-login-type">
                         <legend>[% Translate.LoginAccountType %]</legend>

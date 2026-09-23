@@ -2483,7 +2483,10 @@ use utf8;
     ReportOperatorOneOf=>'ist einer von', ReportOperatorNoneOf=>'ist keiner von', ReportOperatorBetween=>'liegt zwischen',
     ReportOperatorAtLeast=>'ist mindestens', ReportOperatorAtMost=>'ist höchstens', ReportOperatorEmpty=>'ist leer', ReportOperatorNotEmpty=>'ist nicht leer',
     ReportChartBar=>'Balkendiagramm', ReportChartStackedBar=>'Gestapelte Balken', ReportChartLine=>'Liniendiagramm', ReportChartArea=>'Flächendiagramm',
-    ReportChartDoughnut=>'Ringdiagramm', ReportChartTable=>'Nur Tabelle', ReportChartKPI=>'Nur Kennzahlen',
+    ReportChartPie => 'Tortendiagramm',
+    ReportPieOther => 'Übrige',
+    ReportErrorPieMetrics => 'Diese Kennzahlen lassen sich nicht als gemeinsame Torte darstellen. Wähle eine einzelne Kennzahl oder nicht überlappende Teilmengen derselben Gesamtmenge.',
+    ReportChartDoughnut => 'Tortendiagramm', ReportChartTable=>'Nur Tabelle', ReportChartKPI=>'Nur Kennzahlen',
     ReportSortLabelAsc=>'Bezeichnung aufsteigend', ReportSortLabelDesc=>'Bezeichnung absteigend', ReportSortValueDesc=>'Erste Kennzahl absteigend', ReportSortValueAsc=>'Erste Kennzahl aufsteigend',
 
     ReportSourceTickets=>'Tickets', ReportSourceTicketsDescription=>'Ticketbestand, Status, Queues, Kunden, SLA-Werte und dynamische Felder auswerten.',

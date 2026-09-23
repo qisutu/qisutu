@@ -92,7 +92,9 @@ sub LoginCheck {
         $AccountType,
     );
 
-    if ( !$User ) {
+    # The database collation ignores case; require the stored spelling for
+    # local credentials before checking the password or creating a session.
+    if ( !$User || !defined $User->{login} || $User->{login} ne $Login ) {
         $Self->{LastError} = 'Invalid login or password';
         return;
     }

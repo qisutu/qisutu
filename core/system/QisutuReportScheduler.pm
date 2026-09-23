@@ -33,6 +33,7 @@ use Time::Local qw(timelocal);
 
 use QisutuMail;
 use QisutuReportBuilder;
+use QisutuReportChart;
 use QisutuReportPDF;
 
 sub new {
@@ -557,6 +558,12 @@ sub _ResultTranslate {
     }
     my $Group = $Result->{group} || {};
     $Group->{label} ||= $Self->_T( $Group->{label_key}, $Language );
+    if ( ( $Result->{configuration}->{group_by} || '' ) eq 'billable' ) {
+        for my $Row ( @{ $Result->{rows} || [] } ) { $Row->{label} = $Self->_T( $Row->{key} ? 'Yes' : 'No', $Language ); }
+    }
+    if ( ( $Result->{configuration}->{group_by} || '' ) eq 'escalation' ) {
+        for my $Row ( @{ $Result->{rows} || [] } ) { $Row->{label} = $Self->_T( 'ReportEscalation' . ucfirst( $Row->{key} || 'normal' ), $Language ); }
+    }
     my $Columns = $Result->{details}->{columns} || [];
     for my $Index ( 0 .. $#{$Columns} ) {
         my $Column = $Columns->[$Index];
@@ -567,6 +574,13 @@ sub _ResultTranslate {
             }
         }
     }
+    if ( ( $Result->{configuration}->{chart_type} || '' ) =~ m{\A(?:pie|doughnut)\z} ) {
+        $Result->{configuration}->{chart_type} = 'pie';
+        $Result->{pie} = QisutuReportChart->new()->PieData(
+            Result => $Result, Translate => sub { $Self->_T( $_[0], $Language ) },
+        );
+    }
+    return $Result;
 }
 
 sub _FilterSummary {

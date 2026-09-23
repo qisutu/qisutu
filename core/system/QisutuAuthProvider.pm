@@ -50,6 +50,21 @@ sub Error {
     return $Self->{LastError} || '';
 }
 
+sub ReturnLocationClean {
+    my ( $Self, $Location ) = @_;
+    return '' if !defined $Location || ref $Location;
+
+    # Notification links only need a ticket view. Never carry actions or an
+    # arbitrary redirect URL through authentication.
+    return '' if $Location !~ m{\Aindex\.pl\?Page=((?:Agent|Customer)TicketZoom)[&;]TicketID=([1-9][0-9]{0,19})\z};
+    return 'index.pl?Page=' . $1 . '&TicketID=' . $2;
+}
+
+sub ReturnLocation {
+    my ($Self) = @_;
+    return $Self->ReturnLocationClean( $Self->{ReturnLocation} );
+}
+
 sub ProviderList {
     my ( $Self, %Param ) = @_;
     my $AccountType = $Param{AccountType} || '';
@@ -83,6 +98,7 @@ sub AuthorizationBegin {
     my ( $Self, %Param ) = @_;
     $Self->{LastError} = '';
     my $Key = $Param{Provider} || '';
+    my $ReturnLocation = $Self->ReturnLocationClean( $Param{ReturnLocation} ) || 'index.pl';
     my $Definition = $Self->_ProviderGet($Key) || return $Self->_Error('Translate:ExternalAuthProviderInvalid');
     my $RedirectURI = $Self->_RedirectURI() || return;
     my $State    = $Self->_RandomToken(32) || return;
@@ -99,8 +115,8 @@ sub AuthorizationBegin {
         'INSERT INTO addon_auth_state (
             state_hash, provider_key, nonce_encrypted, verifier_encrypted,
             return_location, expires_at
-         ) VALUES (?, ?, ?, ?, "index.pl", DATE_ADD(NOW(), INTERVAL 10 MINUTE))',
-        sha256_hex($State), $Key, $EncryptedNonce, $EncryptedVerifier,
+         ) VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))',
+        sha256_hex($State), $Key, $EncryptedNonce, $EncryptedVerifier, $ReturnLocation,
     );
     return $Self->_Error( $Self->{DB}->Error() || 'Translate:ExternalAuthStateFailed' ) if !$Stored;
 
@@ -121,14 +137,13 @@ sub AuthorizationBegin {
 sub AuthorizationComplete {
     my ( $Self, %Param ) = @_;
     $Self->{LastError} = '';
+    $Self->{ReturnLocation} = '';
     my $Request = $Param{Request} || {};
     my $State = $Self->_Scalar( $Request->{state} );
     my $Code  = $Self->_Scalar( $Request->{code} );
-    if ( $Request->{error} ) {
-        return $Self->_Error('Translate:ExternalAuthProviderRejected');
-    }
     return $Self->_Error('Translate:ExternalAuthCallbackInvalid')
-        if $State !~ m{\A[A-Za-z0-9_-]{40,200}\z} || $Code eq '' || length($Code) > 4096;
+        if $State !~ m{\A[A-Za-z0-9_-]{40,200}\z}
+        || ( !$Request->{error} && ( $Code eq '' || length($Code) > 4096 ) );
     return $Self->_Error('Translate:ExternalAuthStateFailed') if !$Self->{DB}->BeginWork();
     my $Row = $Self->{DB}->SelectRow(
         'SELECT * FROM addon_auth_state
@@ -144,6 +159,9 @@ sub AuthorizationComplete {
         $Self->{DB}->Rollback();
         return $Self->_Error('Translate:ExternalAuthStateFailed');
     }
+
+    $Self->{ReturnLocation} = $Self->ReturnLocationClean( $Row->{return_location} );
+    return $Self->_Error('Translate:ExternalAuthProviderRejected') if $Request->{error};
 
     my $Definition = $Self->_ProviderGet( $Row->{provider_key} )
         || return $Self->_Error('Translate:ExternalAuthProviderInvalid');

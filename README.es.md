@@ -35,7 +35,7 @@ Sitio del proyecto: https://qisutu.de
 
 Qisutu es un sistema open source instalable de forma independiente, con portales
 de agentes y clientes, procesamiento de correo, autenticación por directorio,
-automatización, base de conocimientos, CMDB, informes y API REST. Qisutu 2.0.1
+automatización, base de conocimientos, CMDB, informes y API REST. Qisutu 2.0.2
 es una versión estable aprobada para producción y ya no está en fase de
 desarrollo. Las interfaces y estructuras de base de datos siguen evolucionando
 con el mantenimiento regular; los cambios necesarios se distribuyen mediante
@@ -43,7 +43,7 @@ el actualizador integrado y migraciones de datos mantenidas permanentemente.
 
 ## Idiomas
 
-Qisutu 2.0.1 incluye once idiomas completos: alemán (`de`), inglés (`en`),
+Qisutu 2.0.2 incluye once idiomas completos: alemán (`de`), inglés (`en`),
 francés (`fr`), italiano (`it`), portugués brasileño (`pt-BR`), portugués
 europeo (`pt-PT`), español (`es`), neerlandés (`nl`), polaco (`pl`), checo
 (`cs`) y turco (`tr`).
@@ -52,9 +52,9 @@ europeo (`pt-PT`), español (`es`), neerlandés (`nl`), polaco (`pl`), checo
 
 Ejecute como root en `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
-    mv qisutu-2.0.1 qisutu
+    wget https://ftp.qisutu.de/qisutu-2.0.2.tar.gz
+    tar xzf qisutu-2.0.2.tar.gz
+    mv qisutu-2.0.2 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -90,18 +90,18 @@ instancias están en `INSTALL.md`.
 
 Ejecute como root en `/opt`:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
+    wget https://ftp.qisutu.de/qisutu-2.0.2.tar.gz
+    tar xzf qisutu-2.0.2.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-2.0.1
+    chown qisutu:www-data -R /opt/qisutu-2.0.2
 
-    cd /opt/qisutu-2.0.1
+    cd /opt/qisutu-2.0.2
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-2.0.1
-    rm qisutu-2.0.1.tar.gz
+    rm -R qisutu-2.0.2
+    rm qisutu-2.0.2.tar.gz
 
 El actualizador identifica la instancia mediante `var/install/instance.conf`,
 detiene solo su daemon y bloquea únicamente su recogida de correo. Copia los

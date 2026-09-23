@@ -1,3 +1,5 @@
+#!/usr/bin/env perl
+
 # Qisutu - Open Source Ticket System
 # Copyright (C) 2026 Franziska Steps
 # Qisutu - Kim-KI, https://qisutu.de
@@ -20,7 +22,15 @@
 # SPDX-FileCopyrightText: 2026 Franziska Steps
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-product=Qisutu
-version=2.0.2
-minimum_program_version=1.0.1
-database_version=2.0.2
+use strict;
+use warnings;
+use File::Spec;
+use FindBin;
+use Test::More;
+
+my ($Node) = grep { -f $_ && -x $_ }
+    map { File::Spec->catfile($_, 'node') } File::Spec->path();
+plan skip_all => 'Node.js is required to exercise the browser chart renderer' if !$Node;
+my $Status = system($Node, File::Spec->catfile($FindBin::Bin, 'report-chart-rendering.js'));
+is($Status, 0, 'production chart rendering preserves filled pies, distinct slices and existing charts');
+done_testing();

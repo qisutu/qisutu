@@ -159,10 +159,10 @@ ok( !exists $Removed{'core/config/programs/CMDB.pm'}, 'aktive CMDB-Navigation wi
 
 my $ReleaseContent = join "\n", read_lines('release.conf');
 my ($ReleaseVersion) = $ReleaseContent =~ /^version=([^\s]+)$/m;
-is( $ReleaseVersion, '2.0.1', 'das Paket verwendet Programmversion 2.0.1' );
+is( $ReleaseVersion, '2.0.2', 'das Paket verwendet Programmversion 2.0.2' );
 like( $ReleaseContent, qr{^minimum_program_version=1[.]0[.]1$}m, 'offizielle Updates beginnen bei Version 1.0.1' );
-like( $ReleaseContent, qr{^database_version=2[.]0[.]1$}m, 'das Paket verwendet Datenbankversion 2.0.1' );
-is_deeply( [ sort keys %Removed ], [], 'Version 2.0.1 enthält keine Update-Entfernungseinträge' );
+like( $ReleaseContent, qr{^database_version=2[.]0[.]2$}m, 'das Paket verwendet Datenbankversion 2.0.2' );
+is_deeply( [ sort keys %Removed ], [], 'Version 2.0.2 enthält keine Update-Entfernungseinträge' );
 
 my @ReadmeFiles = qw(
     README.md README.en.md README.fr.md README.it.md README.pt-BR.md README.pt-PT.md
@@ -208,6 +208,6 @@ my ($ConfigVersion) = $ConfigContent =~ /Version\s*=>\s*'([^']+)'/;
 is( $ConfigVersion, $ReleaseVersion, 'Release- und Standardkonfiguration verwenden dieselbe Programmversion' );
 
 my $SchemaContent = join "\n", read_lines('install/sql/schema.sql');
-like( $SchemaContent, qr{INSERT INTO `database_version` \(`version`\) VALUES \('2[.]0[.]1'\)}, 'das Neuinstallationsschema verwendet Datenbankversion 2.0.1' );
+like( $SchemaContent, qr{INSERT INTO `database_version` \(`version`\) VALUES \('2[.]0[.]2'\)}, 'das Neuinstallationsschema verwendet Datenbankversion 2.0.2' );
 
 done_testing();

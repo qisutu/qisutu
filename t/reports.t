@@ -68,6 +68,43 @@ use QisutuReportPDF;
     sub Error { return $_[0]->{Error} }
 }
 
+{
+    package Local::SavedReportDB;
+    our @ISA = ('Local::ReportDB');
+    sub new { bless { Calls=>[], Do=>[], Error=>'', NextID=>0, Reports=>{} }, shift }
+    sub SelectAll {
+        my ( $Self, $SQL, @Bind ) = @_;
+        if ( $SQL =~ m{FROM report_definition rd} ) {
+            return [ map { { %{ $Self->{Reports}->{$_} }, is_owner=>1 } } sort keys %{ $Self->{Reports} } ];
+        }
+        return $Self->SUPER::SelectAll( $SQL, @Bind );
+    }
+    sub SelectRow {
+        my ( $Self, $SQL, @Bind ) = @_;
+        if ( $SQL =~ m{FROM report_definition rd} ) {
+            my $Row = $Self->{Reports}->{ $Bind[1] } || return;
+            return { %{$Row}, is_owner=>1 };
+        }
+        return $Self->SUPER::SelectRow( $SQL, @Bind );
+    }
+    sub Do {
+        my ( $Self, $SQL, @Bind ) = @_;
+        if ( $SQL =~ m{INSERT INTO report_definition \(} ) {
+            my $ID = ++$Self->{NextID};
+            $Self->{Reports}->{$ID} = { id=>$ID, name=>$Bind[1], configuration_json=>$Bind[4] };
+        }
+        elsif ( $SQL =~ m{UPDATE report_definition SET name} ) {
+            $Self->{Reports}->{ $Bind[6] }->{configuration_json} = $Bind[3];
+        }
+        return $Self->SUPER::Do( $SQL, @Bind );
+    }
+    sub LastInsertID { return $_[0]->{NextID} }
+    sub BeginWork { return 1 }
+    sub Commit { return 1 }
+    sub Rollback { return 1 }
+}
+
+
 my $DB = Local::ReportDB->new();
 my $Builder = QisutuReportBuilder->new(
     Config=>{ Language=>{Default=>'de'} }, DB=>$DB, Permission=>Local::ReportPermission->new(),
@@ -103,6 +140,45 @@ is( $Builder->Error(), 'Translate:ReportErrorInvalidSource', 'invalid source has
 
 my $InvalidField = { %{$Config}, filters=>[ {field=>'t.id) OR 1=1 --',operator=>'eq',values=>[1]} ] };
 ok( !$Builder->ConfigurationValidate(Configuration=>$InvalidField), 'unknown SQL-like field is rejected' );
+
+my $SavedBuilder = QisutuReportBuilder->new(
+    DB=>Local::SavedReportDB->new(), Permission=>Local::ReportPermission->new(),
+);
+for my $Group (qw(queue none)) {
+    for my $Count (1..3) {
+        my @Metrics = (qw(ticket_count open_count closed_count))[0..$Count-1];
+        my $Pie = {
+            %{ $SavedBuilder->DefaultConfiguration() },
+            group_by=>$Group, metrics=>\@Metrics, chart_type=>'doughnut',
+        };
+        my $ID = $SavedBuilder->ReportSave(UserID=>7,Name=>'Kreisdiagramm',Configuration=>$Pie);
+        ok( $ID, "$Group/$Count: legacy doughnut report can be saved as pie" );
+        my $Report = $SavedBuilder->ReportGet(ReportID=>$ID,UserID=>7);
+        is( $Report->{configuration}->{chart_type}, 'pie', "$Group/$Count: saved legacy chart type becomes pie" );
+        is_deeply( $Report->{configuration}->{metrics}, \@Metrics, "$Group/$Count: all selected metrics remain saved" );
+        my $Preview = $SavedBuilder->Execute(Configuration=>$Report->{configuration},User=>{user_account_id=>7});
+        is( $Preview->{configuration}->{chart_type}, 'pie', "$Group/$Count: preview retains pie chart type" );
+        is( scalar @{ $Preview->{metrics} }, $Count, "$Group/$Count: preview retains all metrics" );
+        ok( $SavedBuilder->ReportSave(ReportID=>$ID,UserID=>7,Name=>'Kreisdiagramm',Configuration=>$Report->{configuration}), "$Group/$Count: saved pie report can be updated" );
+        is( $SavedBuilder->ReportGet(ReportID=>$ID,UserID=>7)->{configuration}->{chart_type}, 'pie', "$Group/$Count: chart type survives another save and load" );
+    }
+}
+my $LegacyID = $SavedBuilder->{DB}->{NextID};
+my $LegacyConfiguration = JSON::PP->new->decode($SavedBuilder->{DB}->{Reports}->{$LegacyID}->{configuration_json});
+$LegacyConfiguration->{chart_type} = 'doughnut';
+$SavedBuilder->{DB}->{Reports}->{$LegacyID}->{configuration_json} = JSON::PP->new->encode($LegacyConfiguration);
+is( $SavedBuilder->ReportGet(ReportID=>$LegacyID,UserID=>7)->{configuration}->{chart_type}, 'pie', 'opening a stored legacy ring selects pie in the designer' );
+my $ListedReports = $SavedBuilder->ReportList(UserID=>7);
+ok( !grep( {($_->{configuration}->{chart_type}||'') ne 'pie'} @{$ListedReports} ), 'listing reports normalizes stored legacy ring configurations' );
+my $CopiedID = $SavedBuilder->ReportCopy(ReportID=>$LegacyID,UserID=>7);
+ok( $CopiedID && $CopiedID != $LegacyID, 'stored legacy ring report can be copied' );
+is( $SavedBuilder->ReportGet(ReportID=>$CopiedID,UserID=>7)->{configuration}->{chart_type}, 'pie', 'copied legacy report is persisted as pie' );
+for my $Type (qw(bar stacked_bar line area pie table kpi)) {
+    my $ChartConfiguration = $Builder->ConfigurationValidate(Configuration=>{ %{$Config},chart_type=>$Type });
+    is( $ChartConfiguration->{chart_type}, $Type, "$Type remains accepted" );
+}
+ok( !$Builder->ConfigurationValidate(Configuration=>{ %{$Config},chart_type=>'invalid' }), 'unknown chart type remains rejected' );
+is( $Builder->Error(), 'Translate:ReportErrorInvalidChart', 'invalid chart type has a clear error' );
 
 my $Result = $Builder->Execute(
     Configuration=>$Config, User=>{user_account_id=>7}, ReportID=>0, ExecutionType=>'preview', DetailLimit=>20,

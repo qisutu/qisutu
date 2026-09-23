@@ -75,6 +75,7 @@ use QisutuOutput;
         return;
     }
     sub Error { return shift->{Error} || '' }
+    sub ReturnLocation { return '' }
 }
 
 {

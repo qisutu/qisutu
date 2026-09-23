@@ -3844,7 +3844,7 @@ CREATE TABLE IF NOT EXISTS `database_version` (
   UNIQUE KEY `database_version_version_unique` (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `database_version` (`version`) VALUES ('2.0.1');
+INSERT INTO `database_version` (`version`) VALUES ('2.0.2');
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

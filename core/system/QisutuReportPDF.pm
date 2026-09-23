@@ -27,12 +27,23 @@ use warnings;
 use utf8;
 
 use Encode qw(encode FB_DEFAULT);
+use QisutuReportChart;
 
 sub new { my($Class,%Param)=@_;return bless{LastError=>'',%Param},$Class; }
 sub Error { return $_[0]->{LastError}||''; }
 
 sub Create {
     my($Self,%Param)=@_;$Self->{LastError}='';my$Result=$Param{Result}||{};
+    if ( ( $Result->{configuration}->{chart_type} || '' ) =~ m{\A(?:pie|doughnut)\z} ) {
+        my $Chart = QisutuReportChart->new();
+        my $Pie = $Result->{pie} || $Chart->PieData( Result => $Result );
+        if (!$Pie) {
+            $Self->{LastError} = $Chart->Error() || 'Translate:ReportErrorPieMetrics';
+            return;
+        }
+        $Result = { %{$Result}, pie => $Pie };
+        $Param{Result} = $Result;
+    }
     my@Pages;
     push@Pages,$Self->_OverviewPage(%Param);
     my$Details=$Result->{details}||{};my$Rows=$Details->{rows}||[];my$Columns=$Details->{columns}||[];
@@ -77,10 +88,39 @@ sub _Chart {
     my($Self,%Param)=@_;my$R=$Param{Result};my$Rows=$R->{rows}||[];my$Metrics=$R->{metrics}||[];my$Type=$Param{Type};my$C='';
     $C.=$Self->_Rect($Param{X},$Param{Y},$Param{W},$Param{H},1,1,1);$C.=$Self->_StrokeRect($Param{X},$Param{Y},$Param{W},$Param{H},0.84,0.88,0.91);
     my@Colors=([0.02,0.46,0.62],[0.95,0.35,0.20],[0.32,0.70,0.42]);my$PlotX=$Param{X}+42;my$PlotY=$Param{Y}+35;my$PlotW=$Param{W}-60;my$PlotH=$Param{H}-65;
-    if($Type eq'doughnut'){
-        my@Values=map{0+($_->{values}->[0]||0)}@{$Rows};my$Total=0;$Total+=$_ for@Values;return$C if!$Total;my$CX=$Param{X}+$Param{W}*0.38;my$CY=$Param{Y}+$Param{H}*0.52;my$Radius=70;my$Start=-1.570796;
-        for my$I(0..$#Values){next if!$Values[$I];my$End=$Start+6.283185*$Values[$I]/$Total;my$Color=$Colors[$I%@Colors];$C.=$Self->_Sector($CX,$CY,$Radius,$Start,$End,@{$Color});$Start=$End;}
-        $C.=$Self->_Circle($CX,$CY,35,1,1,1);my$LY=$Param{Y}+$Param{H}-35;for my$I(0..$#{$Rows}){last if$I>8;my$Color=$Colors[$I%@Colors];$C.=$Self->_Rect($Param{X}+$Param{W}*0.64,$LY-5,8,8,@{$Color});$C.=$Self->_Text($Param{X}+$Param{W}*0.64+13,$LY,7,$Self->_Truncate($Rows->[$I]->{label},25).' '.$Self->_FormatValue($Values[$I],$Metrics->[0]->{format}),0,0.2,0.25,0.3);$LY-=16;}return$C;
+    if($Type eq'pie'||$Type eq'doughnut'){
+        my $Pie = $R->{pie};
+        my $Values = $Pie->{values} || [];
+        my $Labels = $Pie->{labels} || [];
+        my $SliceColors = $Pie->{colors} || [];
+        my $CX = $Param{X} + 132;
+        my $CY = $Param{Y} + $Param{H} * 0.50;
+        my $Radius = 82;
+        my $Total = 0;
+        $Total += $_ for @{$Values};
+        my $Start = atan2( 0, -1 ) / 2;
+        for my $I ( 0 .. $#{$Values} ) {
+            next if !$Values->[$I] || !$Total;
+            my $End = $Start - 2 * atan2( 0, -1 ) * $Values->[$I] / $Total;
+            my @Color = $Self->_HexColor( $SliceColors->[$I] );
+            $C .= $Self->_Sector( $CX, $CY, $Radius, $Start, $End, @Color );
+            $Start = $End;
+        }
+        my $LY = $Param{Y} + $Param{H} - 28;
+        for my $I ( 0 .. $#{$Labels} ) {
+            last if $I > 10;
+            my @Color = $Self->_HexColor( $SliceColors->[$I] );
+            my $Label = $Self->_Truncate( $Labels->[$I], 30 ) . ': '
+                . $Self->_FormatValue( $Values->[$I], $Pie->{format} );
+            $C .= $Self->_Rect( $Param{X} + 250, $LY - 2, 8, 8, @Color );
+            $C .= $Self->_Text( $Param{X} + 263, $LY, 7, $Label, 0, 0.2, 0.25, 0.3 );
+            $LY -= 16;
+        }
+        if ( @{$Labels} > 11 ) {
+            $C .= $Self->_Text( $Param{X} + 263, $LY, 7, '… (+' . ( @{$Labels} - 11 ) . ')',
+                0, 0.2, 0.25, 0.3 );
+        }
+        return $C;
     }
     my$Max=0;for my$Row(@{$Rows}){my$V=$Type eq'stacked_bar'?0:undef;for my$I(0..$#{$Metrics}){my$N=0+($Row->{values}->[$I]||0);$V=$Type eq'stacked_bar'?$V+$N:(!defined$V||$N>$V?$N:$V);}$Max=$V if defined$V&&$V>$Max;}$Max=1 if!$Max;
     for my$I(0..4){my$Y=$PlotY+$PlotH*$I/4;$C.=$Self->_Line($PlotX,$Y,$PlotX+$PlotW,$Y,0.88,0.90,0.92,0.5);$C.=$Self->_Text($Param{X}+4,$Y-2,6,sprintf('%.0f',$Max*$I/4),0,0.4,0.45,0.5);}
@@ -109,7 +149,25 @@ sub _StrokeRect { my($Self,$X,$Y,$W,$H,$R,$G,$B)=@_;return sprintf('%.3f %.3f %.
 sub _Line { my($Self,$X1,$Y1,$X2,$Y2,$R,$G,$B,$Width)=@_;return sprintf('%.3f %.3f %.3f RG %.2f w %.2f %.2f m %.2f %.2f l S'."\n",$R,$G,$B,$Width||1,$X1,$Y1,$X2,$Y2); }
 sub _Polyline { my($Self,$P,$R,$G,$B,$W)=@_;return''if!@{$P};my$C=sprintf('%.3f %.3f %.3f RG %.2f w %.2f %.2f m ',$R,$G,$B,$W||1,$P->[0]->[0],$P->[0]->[1]);for my$I(1..$#{$P}){$C.=sprintf('%.2f %.2f l ',$P->[$I]->[0],$P->[$I]->[1]);}return$C."S\n"; }
 sub _Circle { my($Self,$X,$Y,$R,$CR,$CG,$CB)=@_;my$K=0.55228475*$R;return sprintf('%.3f %.3f %.3f rg %.2f %.2f m %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f %.2f %.2f %.2f %.2f c f'."\n",$CR,$CG,$CB,$X+$R,$Y,$X+$R,$Y+$K,$X+$K,$Y+$R,$X,$Y+$R,$X-$K,$Y+$R,$X-$R,$Y+$K,$X-$R,$Y,$X-$R,$Y-$K,$X-$K,$Y-$R,$X,$Y-$R,$X+$K,$Y-$R,$X+$R,$Y-$K,$X+$R,$Y); }
-sub _Sector { my($Self,$X,$Y,$R,$Start,$End,$CR,$CG,$CB)=@_;my$Steps=int(($End-$Start)*18);$Steps=2 if$Steps<2;my$C=sprintf('%.3f %.3f %.3f rg %.2f %.2f m ',$CR,$CG,$CB,$X,$Y);for my$I(0..$Steps){my$A=$Start+($End-$Start)*$I/$Steps;$C.=sprintf('%.2f %.2f l ',$X+$R*cos($A),$Y+$R*sin($A));}return$C."h f\n"; }
+sub _Sector {
+    my ( $Self, $X, $Y, $R, $Start, $End, $CR, $CG, $CB ) = @_;
+    my $Steps = int( abs( $End - $Start ) * 18 );
+    $Steps = 2 if $Steps < 2;
+    my $FullCircle = abs( $End - $Start ) >= 2 * atan2( 0, -1 ) - 0.000001;
+    my $C = sprintf( 'q %.3f %.3f %.3f rg 1 1 1 RG 1 w %.2f %.2f m ',
+        $CR, $CG, $CB, $FullCircle ? $X + $R * cos($Start) : $X,
+        $FullCircle ? $Y + $R * sin($Start) : $Y );
+    for my $I ( 0 .. $Steps ) {
+        my $A = $Start + ( $End - $Start ) * $I / $Steps;
+        $C .= sprintf( '%.2f %.2f l ', $X + $R * cos($A), $Y + $R * sin($A) );
+    }
+    return $C . "h B Q\n";
+}
+sub _HexColor {
+    my ( $Self, $Color ) = @_;
+    return (0, 0, 0) if !defined $Color || $Color !~ m{\A#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})\z}i;
+    return map { hex($_) / 255 } ( $1, $2, $3 );
+}
 sub _PDFText { my($Self,$V)=@_;$V=''if!defined$V;$V="$V";$V=encode('cp1252',$V,FB_DEFAULT)if utf8::is_utf8($V);$V=~s{\\}{\\\\}g;$V=~s{\(}{\\(}g;$V=~s{\)}{\\)}g;$V=~s{\r|\n}{ }g;return$V; }
 sub _Truncate { my($Self,$V,$N)=@_;$V=''if!defined$V;$V=~s{\s+}{ }g;return length($V)>$N?substr($V,0,$N-1).'…':$V; }
 sub _FormatValue { my($Self,$V,$Format)=@_;$V=0 if!defined$V;return sprintf('%.2f %%',$V)if($Format||'')eq'percent';if(($Format||'')eq'minutes'){my$M=int($V+0.5);return int($M/60).' h '.sprintf('%02d',$M%60).' min';}return $V==int($V)?int($V):sprintf('%.2f',$V); }

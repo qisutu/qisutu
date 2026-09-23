@@ -114,6 +114,7 @@
         state.columns = Array.isArray(state.columns) && state.columns.length ? state.columns.slice(0, 12) : (item.default_columns || []).slice();
         state.filter_logic = state.filter_logic === 'any' ? 'any' : 'all';
         state.group_by = byKey(item.groups, state.group_by) ? state.group_by : item.default_group;
+        if (state.chart_type === 'doughnut') { state.chart_type = 'pie'; }
         state.chart_type = byKey(catalog.chart_types, state.chart_type) ? state.chart_type : 'bar';
         state.sort = byKey(catalog.sorts, state.sort) ? state.sort : 'label_asc';
         state.limit = Math.max(5, Math.min(100, Number(state.limit) || 25));
@@ -368,9 +369,35 @@
     function renderChart(result) {
         var canvas = form.querySelector('[data-report-chart-canvas]'); var wrap = canvas.parentElement; var type = result.configuration.chart_type; if (currentChart) { currentChart.destroy(); currentChart = null; }
         wrap.classList.toggle('qisutu-hidden', type === 'table' || type === 'kpi' || !result.rows.length); if (wrap.classList.contains('qisutu-hidden') || typeof window.Chart !== 'function') { return; }
-        var colors = ['#08789f', '#ef5b3a', '#4eae6c']; var chartType = type === 'doughnut' ? 'doughnut' : type === 'line' || type === 'area' ? 'line' : 'bar';
-        var datasets = (result.metrics || []).map(function (metric, index) { return { label: metric.label, data: result.rows.map(function (row) { return Number(row.values[index]) || 0; }), backgroundColor: type === 'doughnut' ? result.rows.map(function (_, rowIndex) { return ['#08789f','#ef5b3a','#4eae6c','#f2b134','#8259a3','#28a8a8','#d35d8c','#6f7f91'][rowIndex % 8]; }) : colors[index % colors.length], borderColor: colors[index % colors.length], borderWidth: 2, fill: type === 'area', tension: 0.25 }; });
-        currentChart = new window.Chart(canvas, { type: chartType, data: { labels: result.rows.map(function (row) { return row.label; }), datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { position: 'bottom' } }, scales: chartType === 'doughnut' ? {} : { x: { stacked: type === 'stacked_bar' }, y: { beginAtZero: true, stacked: type === 'stacked_bar' } } } });
+        var isPie = type === 'pie' || type === 'doughnut';
+        if (isPie) {
+            var pie = result.pie;
+            if (!pie || !pie.values || !pie.values.length) { wrap.classList.add('qisutu-hidden'); return; }
+            var total = pie.values.reduce(function (sum, value) { return sum + Number(value); }, 0);
+            currentChart = new window.Chart(canvas, {
+                type: 'pie',
+                data: {
+                    labels: pie.labels,
+                    datasets: [{ data: pie.values, backgroundColor: pie.colors, borderColor: '#ffffff', borderWidth: 2 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: false, cutout: 0,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: { callbacks: { label: function (context) {
+                            var value = Number(context.raw) || 0;
+                            var share = total ? (value * 100 / total).toLocaleString(undefined, { maximumFractionDigits: 1 }) : '0';
+                            return context.label + ': ' + formatValue(value, pie.format) + ' (' + share + ' %)';
+                        } } }
+                    }
+                }
+            });
+            return;
+        }
+        var colors = ['#08789f', '#ef5b3a', '#4eae6c'];
+        var chartType = type === 'line' || type === 'area' ? 'line' : 'bar';
+        var datasets = (result.metrics || []).map(function (metric, index) { return { label: metric.label, data: result.rows.map(function (row) { return Number(row.values[index]) || 0; }), backgroundColor: colors[index % colors.length], borderColor: colors[index % colors.length], borderWidth: 2, fill: type === 'area', tension: 0.25 }; });
+        currentChart = new window.Chart(canvas, { type: chartType, data: { labels: result.rows.map(function (row) { return row.label; }), datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: type === 'stacked_bar' }, y: { beginAtZero: true, stacked: type === 'stacked_bar' } } } });
     }
 
     function preview() {

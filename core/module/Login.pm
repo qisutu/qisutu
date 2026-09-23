@@ -90,6 +90,14 @@ sub Run {
 
     my $Step = $Param{Step} || '';
 
+    $Self->{ReturnLocation} = QisutuAuthProvider->ReturnLocationClean( $Param{ReturnLocation} );
+    if ( !$Self->{ReturnLocation} && ( $Param{__RequestMethod} || 'GET' ) eq 'GET'
+        && !ref $Param{Page} && !ref $Param{TicketID} ) {
+        $Self->{ReturnLocation} = QisutuAuthProvider->ReturnLocationClean(
+            'index.pl?Page=' . ( $Param{Page} || '' ) . '&TicketID=' . ( $Param{TicketID} || '' ),
+        );
+    }
+
     $Self->{PublicLanguage} = $Self->_LanguageClean( $Param{Language} )
         || $Self->_LanguageClean( $Param{LoginLanguageCookie} )
         || $Self->_BrowserLanguage( $Param{BrowserLanguage} )
@@ -150,7 +158,8 @@ sub Run {
 sub _LoginShow {
     my ( $Self, %Param ) = @_;
 
-    my $AccountType = $Param{AccountType} || 'agent';
+    my $AccountType = $Param{AccountType}
+        || ( ( $Self->{ReturnLocation} || '' ) =~ m{\?Page=CustomerTicketZoom&} ? 'customer' : 'agent' );
     my $ProviderSource = $Self->{ExternalAuth}
         ? $Self->{ExternalAuth}->ProviderList( AccountType => 'agent' )
         : [];
@@ -159,6 +168,11 @@ sub _LoginShow {
         my %Provider = %{$_};
         if ( $Provider{begin_url} ) {
             $Provider{begin_url} .= ';Language=' . $Language;
+            if ( $Self->{ReturnLocation} ) {
+                my $ReturnLocation = $Self->{ReturnLocation};
+                $ReturnLocation =~ s{([^A-Za-z0-9_.~-])}{sprintf('%%%02X', ord($1))}eg;
+                $Provider{begin_url} .= ';ReturnLocation=' . $ReturnLocation;
+            }
         }
         \%Provider;
     } @{$ProviderSource} ];
@@ -194,6 +208,7 @@ sub _ExternalAuthBegin {
     my ( $Self, %Param ) = @_;
     my $URL = $Self->{ExternalAuth}->AuthorizationBegin(
         Provider => $Param{Provider} || '',
+        ReturnLocation => $Self->{ReturnLocation},
     );
     if (!$URL) {
         return $Self->_LoginShow(
@@ -210,6 +225,7 @@ sub _ExternalAuthBegin {
 sub _ExternalAuthCallback {
     my ( $Self, %Param ) = @_;
     my $User = $Self->{ExternalAuth}->AuthorizationComplete( Request => \%Param );
+    $Self->{ReturnLocation} = $Self->{ExternalAuth}->ReturnLocation();
     if (!$User) {
         return $Self->_LoginShow(
             ErrorMessage => $Self->{ExternalAuth}->Error() || 'Translate:ExternalAuthLoginFailed',
@@ -314,7 +330,7 @@ sub _LoginFinish {
         HttpOnly => 1,
     );
 
-    my $Location = $Param{SuccessLocation} || 'index.pl';
+    my $Location = $Self->{ReturnLocation} || $Param{SuccessLocation} || 'index.pl';
 
     return $Self->{Output}->Redirect(
         Location => $Location,
@@ -389,7 +405,7 @@ sub _TwoFactorVerify {
             Cookie   => $Cookie,
             Data     => $Self->_TemplateData(
                 PageTitle         => 'Translate:TwoFactorRecoveryCodesTitle',
-                FormAction        => $Param{SuccessLocation} || 'index.pl',
+                FormAction        => $Self->{ReturnLocation} || $Param{SuccessLocation} || 'index.pl',
                 RecoveryCodesHTML => join( '', map { '<li><code>' . $Self->{Output}->HTMLEscape($_) . '</code></li>' } @{$Codes} ),
             ),
         );
@@ -724,6 +740,7 @@ sub _TemplateData {
         SystemName      => $Self->{Config}->{System}->{Name} || 'Qisutu',
         ErrorMessage    => $Param{ErrorMessage} || '',
         FormAction      => $Param{FormAction} || 'index.pl',
+        ReturnLocation  => $Self->{ReturnLocation} || '',
         LoginValue      => $Param{LoginValue} || '',
         UserInput       => $Param{UserInput} || '',
         Token           => $Param{Token} || '',

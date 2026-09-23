@@ -36,7 +36,7 @@ Projektwebsite: https://qisutu.de
 
 Qisutu ist ein eigenständig installierbares Open-Source-Ticketsystem mit
 Agenten- und Kundenportal, E-Mail-Verarbeitung, Verzeichnisanmeldung,
-Automatisierung, Wissensdatenbank, CMDB, Berichten und REST-API. Qisutu 2.0.1
+Automatisierung, Wissensdatenbank, CMDB, Berichten und REST-API. Qisutu 2.0.2
 ist eine stabile, für den produktiven Einsatz freigegebene Version. Qisutu
 befindet sich damit nicht mehr in der Entwicklungsphase. Schnittstellen und
 Datenbankstrukturen werden im Rahmen der regulären Releasepflege
@@ -46,7 +46,7 @@ bereitgestellt.
 
 ## Sprachen
 
-Qisutu 2.0.1 enthält elf vollständige Oberflächensprachen:
+Qisutu 2.0.2 enthält elf vollständige Oberflächensprachen:
 Deutsch (`de`), Englisch (`en`), Französisch (`fr`), Italienisch (`it`),
 Brasilianisches Portugiesisch (`pt-BR`), Europäisches Portugiesisch (`pt-PT`),
 Spanisch (`es`), Niederländisch (`nl`), Polnisch (`pl`), Tschechisch (`cs`)
@@ -56,9 +56,9 @@ und Türkisch (`tr`).
 
 Die folgenden Befehle als root im Verzeichnis `/opt` ausführen:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
-    mv qisutu-2.0.1 qisutu
+    wget https://ftp.qisutu.de/qisutu-2.0.2.tar.gz
+    tar xzf qisutu-2.0.2.tar.gz
+    mv qisutu-2.0.2 qisutu
 
     useradd -d /opt/qisutu -c 'Qisutu user' qisutu
     usermod -G www-data qisutu
@@ -103,18 +103,18 @@ Instanzen stehen in `INSTALL.md`.
 
 Die folgenden Befehle als root im Verzeichnis `/opt` ausführen:
 
-    wget https://ftp.qisutu.de/qisutu-2.0.1.tar.gz
-    tar xzf qisutu-2.0.1.tar.gz
+    wget https://ftp.qisutu.de/qisutu-2.0.2.tar.gz
+    tar xzf qisutu-2.0.2.tar.gz
 
-    chown qisutu:www-data -R /opt/qisutu-2.0.1
+    chown qisutu:www-data -R /opt/qisutu-2.0.2
 
-    cd /opt/qisutu-2.0.1
+    cd /opt/qisutu-2.0.2
     chmod +x update.sh
     ./update.sh
 
     cd /opt
-    rm -R qisutu-2.0.1
-    rm qisutu-2.0.1.tar.gz
+    rm -R qisutu-2.0.2
+    rm qisutu-2.0.2.tar.gz
 
 Der Updater erkennt die Instanz über `var/install/instance.conf`, stoppt nur
 deren Daemon und sperrt deren Mailabruf. Er kopiert alle verwalteten
