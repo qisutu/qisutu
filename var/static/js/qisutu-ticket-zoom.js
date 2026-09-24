@@ -635,28 +635,30 @@
     }
 
     function initPendingUntil() {
-        var statusSelect = document.querySelector('[data-qisutu-ticket-status]');
-        var pendingField = document.querySelector('[data-qisutu-pending-until-field]');
-        var pendingInput = document.getElementById('qisutu-ticket-pending-until');
+        document.querySelectorAll('[data-qisutu-ticket-status]').forEach(function (statusSelect) {
+            var form = statusSelect.closest('form');
+            var pendingField = form ? form.querySelector('[data-qisutu-pending-until-field]') : null;
+            var pendingInput = pendingField ? pendingField.querySelector('input[name="PendingUntil"]') : null;
 
-        if (!statusSelect || !pendingField) {
-            return;
-        }
-
-        function updatePendingField() {
-            var selected = statusSelect.options[statusSelect.selectedIndex];
-            var stateType = selected ? (selected.getAttribute('data-state-type') || '') : '';
-            var isPending = stateType === 'pending';
-
-            pendingField.classList.toggle('qisutu-hidden', !isPending);
-
-            if (pendingInput) {
-                pendingInput.required = isPending;
+            if (!pendingField) {
+                return;
             }
-        }
 
-        statusSelect.addEventListener('change', updatePendingField);
-        updatePendingField();
+            function updatePendingField() {
+                var selected = statusSelect.options[statusSelect.selectedIndex];
+                var stateType = selected ? (selected.getAttribute('data-state-type') || '') : '';
+                var isPending = stateType === 'pending';
+
+                pendingField.classList.toggle('qisutu-hidden', !isPending);
+
+                if (pendingInput) {
+                    pendingInput.required = isPending;
+                }
+            }
+
+            statusSelect.addEventListener('change', updatePendingField);
+            updatePendingField();
+        });
     }
 
 

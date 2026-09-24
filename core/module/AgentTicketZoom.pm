@@ -1116,6 +1116,16 @@ sub Run {
         DefaultStateName => 'open',
         CurrentStateName => $Ticket->{state_name},
     );
+    my $StateOptionsHTML = $Self->_StatusOptionsHTML(
+        Language         => $Language,
+        CurrentStateID   => $ToolActionError && $ToolActionActive eq 'state'
+            ? ( $Request->{StatusID} || $Ticket->{state_id} ) : $Ticket->{state_id},
+        CurrentStateName => $Ticket->{state_name},
+        ExcludeMerged    => 1,
+    );
+    my $StatePendingUntil = $ToolActionError && $ToolActionActive eq 'state'
+        ? ( $Request->{PendingUntil} || '' ) : ( $Ticket->{pending_until} || '' );
+    $StatePendingUntil =~ s{ }{T};
     my $PriorityOptionsHTML = $Self->_PriorityOptionsHTML(
         CurrentPriorityID => $Ticket->{priority_id},
         Language          => $Language,
@@ -1175,6 +1185,13 @@ sub Run {
         Language => $Language,
         IDPrefix => 'qisutu-ticket-tool-queue-dynamic-field',
     ) : '';
+    my $StateDynamicFieldsHTML = $DynamicFieldObject ? $DynamicFieldObject->FormHTML(
+        QueueID  => $Ticket->{queue_id},
+        TicketID => $Ticket->{id},
+        Request  => $ToolActionError && $ToolActionActive eq 'state' ? $Request : {},
+        Language => $Language,
+        IDPrefix => 'qisutu-ticket-tool-state-dynamic-field',
+    ) : '';
     my $CloseDynamicFieldsHTML = $DynamicFieldObject ? $DynamicFieldObject->FormHTML(
         QueueID  => $Ticket->{queue_id},
         TicketID => $Ticket->{id},
@@ -1198,7 +1215,7 @@ sub Run {
         IDPrefix => 'qisutu-ticket-article-time-accounting',
     );
     my %ToolTimeAccountingFieldsHTML;
-    for my $Tool (qw(priority owner responsible customer service queue close)) {
+    for my $Tool (qw(priority owner responsible customer service queue state close)) {
         $ToolTimeAccountingFieldsHTML{$Tool} = $TimeAccountingObject->FormHTML(
             Language => $Language,
             Request  => $ToolActionError && $ToolActionActive eq $Tool ? $Request : {},
@@ -1393,6 +1410,9 @@ sub Run {
             TicketPriorityOptionsHTML => $PriorityOptionsHTML,
             TicketQueueOptionsHTML   => $QueueOptionsHTML,
             TicketServiceOptionsHTML => $ServiceOptionsHTML,
+            TicketToolStateOptionsHTML => $StateOptionsHTML,
+            TicketToolStatePendingUntil => $StatePendingUntil,
+            TicketToolStateArticleBody => $ToolActionError && $ToolActionActive eq 'state' ? ( $Request->{ToolArticleBody} || '' ) : '',
             TicketClosedStateOptionsHTML => $ClosedStateOptionsHTML,
             SplitQueueOptionsHTML => $SplitQueueOptionsHTML,
             SplitStateOptionsHTML => $SplitStateOptionsHTML,
@@ -1410,6 +1430,7 @@ sub Run {
             TicketArticleDynamicFieldsHTML => $ArticleDynamicFieldsHTML,
             TicketPriorityDynamicFieldsHTML => $PriorityDynamicFieldsHTML,
             TicketQueueDynamicFieldsHTML => $QueueDynamicFieldsHTML,
+            TicketStateDynamicFieldsHTML => $StateDynamicFieldsHTML,
             TicketCloseDynamicFieldsHTML => $CloseDynamicFieldsHTML,
             TicketDynamicFieldsDisplayHTML => $TicketDynamicFieldsDisplayHTML,
             HasTicketDynamicFields => $TicketDynamicFieldsDisplayHTML ? 1 : 0,
@@ -1422,6 +1443,7 @@ sub Run {
             TicketToolCustomerTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{customer},
             TicketToolServiceTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{service},
             TicketToolQueueTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{queue},
+            TicketToolStateTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{state},
             TicketToolCloseTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{close},
             ManualTimeAccountingFieldsHTML => $ManualTimeAccountingFieldsHTML,
             ManualTimeAccountingDescription => $TimeAccountingActionError && ( $Request->{Step} || '' ) eq 'TimeAccountingCreate' ? ( $Request->{TimeAccountingDescription} || '' ) : '',
@@ -2292,7 +2314,7 @@ sub _TicketToolUpdate {
     my $Action       = $Self->_Trim( $Request->{ToolAction} );
     my $Body         = $Request->{ToolArticleBody} || '';
 
-    my %Allowed = map { $_ => 1 } qw(priority owner responsible customer service queue close);
+    my %Allowed = map { $_ => 1 } qw(priority owner responsible customer service queue state close);
 
     if ( !$Allowed{$Action} ) {
         return {
@@ -2352,12 +2374,24 @@ sub _TicketToolUpdate {
         };
     }
 
+    if ( $Action eq 'state' && !$Self->_QueueAccessCheck(
+        User       => $User,
+        QueueID    => $TicketBefore->{queue_id},
+        Permission => 'ticket.edit',
+    ) ) {
+        return {
+            Success    => 0,
+            ActiveTool => $Action,
+            Error      => 'Translate:TicketChangeAccessDenied',
+        };
+    }
+
     my $Summary = '';
     my $UpdateOK;
     my $DynamicFieldQueueID = $Action eq 'queue'
         ? ( $Request->{QueueID} || 0 )
         : ( $TicketBefore->{queue_id} || 0 );
-    my $SaveDynamicFields = $Action eq 'priority' || $Action eq 'queue' || $Action eq 'close' ? 1 : 0;
+    my $SaveDynamicFields = $Action eq 'priority' || $Action eq 'queue' || $Action eq 'state' || $Action eq 'close' ? 1 : 0;
     my $ToolDynamicFieldObject = $SaveDynamicFields ? $Self->_DynamicFieldObject() : undef;
 
     if ( $SaveDynamicFields && $DynamicFieldQueueID ) {
@@ -2648,6 +2682,54 @@ sub _TicketToolUpdate {
             ChangedByUserID => $User->{user_account_id},
         );
     }
+    elsif ( $Action eq 'state' ) {
+        my $State = $Self->_ToolStateGet( StateID => $Request->{StatusID} );
+
+        if (!$State) {
+            return {
+                Success    => 0,
+                ActiveTool => $Action,
+                Error      => 'Translate:TicketToolSelectionRequired',
+            };
+        }
+
+        my $PendingUntil = $Request->{PendingUntil} || '';
+        my $CurrentPendingUntil = $TicketBefore->{pending_until} || '';
+        for ( $PendingUntil, $CurrentPendingUntil ) {
+            s{T}{ };
+            s{:00\z}{} if m{\A\d{4}-\d{2}-\d{2} \d{2}:\d{2}:00\z};
+        }
+        if (
+            ( $TicketBefore->{state_id} || 0 ) == $State->{id}
+            && ( ( $State->{state_type} || '' ) ne 'pending' || $PendingUntil eq $CurrentPendingUntil )
+        ) {
+            return {
+                Success    => 0,
+                ActiveTool => $Action,
+                Error      => 'Translate:TicketToolNoChange',
+            };
+        }
+
+        $Summary = $Self->_ToolSummary(
+            Language => $Language,
+            Action   => $Action,
+            OldValue => $Self->_TicketStateText( State => $TicketBefore->{state_name}, Language => $Language ),
+            NewValue => $Self->_TicketStateText( State => $State->{name}, Language => $Language ),
+        );
+
+        $Self->{DB}->BeginWork() || return {
+            Success    => 0,
+            ActiveTool => $Action,
+            Error      => 'Translate:TicketToolUpdateFailed',
+        };
+
+        $UpdateOK = $TicketObject->TicketStatusUpdate(
+            TicketID        => $TicketID,
+            StatusID        => $State->{id},
+            PendingUntil    => $Request->{PendingUntil},
+            ChangedByUserID => $User->{user_account_id},
+        );
+    }
     elsif ( $Action eq 'close' ) {
         my $ClosedStateID = $Request->{ClosedStateID} || 0;
         my $ClosedState = $Self->_ClosedStateGet( StateID => $ClosedStateID );
@@ -2860,6 +2942,24 @@ sub _QueueGet {
             AND active = 1
          LIMIT 1',
         $QueueID,
+    );
+}
+
+sub _ToolStateGet {
+    my ( $Self, %Param ) = @_;
+
+    my $StateID = $Param{StateID} || 0;
+    return if $StateID !~ m{\A\d+\z} || !$StateID;
+
+    return $Self->{DB}->SelectRow(
+        'SELECT id, name, state_type
+         FROM ticket_state
+         WHERE id = ?
+            AND active = 1
+            AND name <> ?
+         LIMIT 1',
+        $StateID,
+        'merged',
     );
 }
 
@@ -3135,6 +3235,16 @@ sub _ToolSummary {
     my $OldValue = $Param{OldValue} || '-';
     my $NewValue = $Param{NewValue} || '-';
 
+    if ( $Action eq 'state' && $Self->{Output} ) {
+        my $Summary = $Self->{Output}->Translate(
+            Key      => 'TicketToolStateSummary',
+            Language => $Language,
+        );
+        my %Values = ( OldValue => $OldValue, NewValue => $NewValue );
+        $Summary =~ s{\{(OldValue|NewValue)\}}{$Values{$1}}ge;
+        return $Summary;
+    }
+
     my %DE = (
         priority => 'Priorität geändert',
         owner       => 'Besitzer geändert',
@@ -3167,6 +3277,13 @@ sub _ToolArticleSubject {
 
     my $Language = $Param{Language} || 'en';
     my $Action   = $Param{Action} || '';
+
+    if ( $Action eq 'state' && $Self->{Output} ) {
+        return $Self->{Output}->Translate(
+            Key      => 'TicketToolStateChanged',
+            Language => $Language,
+        );
+    }
 
     if ( $Action eq 'close' && $Self->{Output} ) {
         my $Subject = $Self->{Output}->Translate(
@@ -4031,7 +4148,8 @@ sub _StatusOptionsHTML {
          ORDER BY sort_order ASC, id ASC'
     ) || [];
 
-    my $SelectedID = 0;
+    $States = [ grep { ( $_->{name} || '' ) ne 'merged' } @{$States} ] if $Param{ExcludeMerged};
+    my $SelectedID = $Param{CurrentStateID} || 0;
 
     for my $State ( @{$States} ) {
         if ( !$SelectedID && ( $State->{name} || '' ) eq $DefaultStateName ) {
