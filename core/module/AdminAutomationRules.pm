@@ -48,6 +48,11 @@ sub Run {
     my $RuleType = $Self->{Program}->{RuleType} || 'trigger';
     my $Page     = $RuleType eq 'schedule' ? 'AdminAutomationSchedules' : 'AdminAutomationTriggers';
     my $Object   = QisutuAutomation->new( Config => $Self->{Config}, DB => $Self->{DB} );
+    if ( ( $Request->{Step} || '' ) eq 'RuleDelete' && ( $Request->{__RequestMethod} || '' ) ne 'POST' ) {
+        return { Response => $Self->{Output}->Response(
+            Status => '405 Method Not Allowed', Headers => [ 'Allow: POST' ], Body => 'Rule deletion requires POST.',
+        ) };
+    }
     my $Options  = $Object->Options( Language => $Language ) || {};
     my $DynamicFields = $Options->{DynamicFields} || [];
     my $Step = $Request->{Step} || '';
@@ -107,6 +112,12 @@ sub Run {
             return { Redirect => 'index.pl?Page=' . $Page . ';Action=Edit;RuleID=' . ( $Request->{RuleID} || 0 ) } if $OK;
             $Error = $Object->Error();
         }
+    }
+    elsif ( $Step eq 'RuleDelete' ) {
+        my $OK = $Object->RuleDelete( RuleID => $Request->{RuleID}, RuleType => $RuleType );
+        return { Redirect => 'index.pl?Page=' . $Page } if $OK;
+        $Error = $Object->Error();
+        $Action = 'List';
     }
     elsif ( $Step eq 'RuleDeactivate' ) {
         my $OK = $Object->RuleDeactivate(
@@ -177,6 +188,7 @@ sub Run {
             FormStep           => $Action eq 'Create' ? 'RuleCreate' : 'RuleUpdate',
             FormRuleID         => $FormRequest->{RuleID} || '',
             FormName           => $FormRequest->{Name} || '',
+            RuleDeleteConfirm  => $Self->_RuleDeleteConfirm( Name => $FormRequest->{Name}, Language => $Language ),
             FormDescription    => $FormRequest->{Description} || '',
             FormSortOrder      => defined $FormRequest->{SortOrder} ? $FormRequest->{SortOrder} : 1000,
             FormActiveChecked  => $FormRequest->{Active} ? 'checked' : '',
@@ -299,6 +311,7 @@ sub _RulesRowsHTML {
     my $Page = $Param{Page} || '';
     my $Language = $Param{Language} || 'en';
     my $Edit = $Self->{Output}->Translate( Key => 'AdminEdit', Language => $Language );
+    my $Delete = $Self->{Output}->Translate( Key => 'AdminDelete', Language => $Language );
     my $Yes  = $Self->{Output}->Translate( Key => 'AdminActiveYes', Language => $Language );
     my $No   = $Self->{Output}->Translate( Key => 'AdminActiveNo', Language => $Language );
 
@@ -320,10 +333,25 @@ sub _RulesRowsHTML {
         $HTML .= '<td>' . $Self->{Output}->HTMLEscape( $Rule->{active} ? $Yes : $No ) . '</td>';
         $HTML .= '<td><a class="qisutu-button qisutu-button-secondary qisutu-button-small" href="index.pl?Page=' .
             $Self->{Output}->HTMLEscape($Page) . ';Action=Edit;RuleID=' . int( $Rule->{id} || 0 ) . '">' .
-            $Self->{Output}->HTMLEscape($Edit) . '</a></td>';
+            $Self->{Output}->HTMLEscape($Edit) . '</a> ';
+        $HTML .= '<form class="qisutu-form-inline" method="post" action="index.pl" data-qisutu-automation-delete="' .
+            $Self->{Output}->HTMLEscape( $Self->_RuleDeleteConfirm( Name => $Rule->{name}, Language => $Language ) ) . '">' .
+            '<input type="hidden" name="Page" value="' . $Self->{Output}->HTMLEscape($Page) . '">' .
+            '<input type="hidden" name="Step" value="RuleDelete">' .
+            '<input type="hidden" name="RuleID" value="' . int( $Rule->{id} || 0 ) . '">' .
+            '<button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">' .
+            $Self->{Output}->HTMLEscape($Delete) . '</button></form></td>';
         $HTML .= '</tr>';
     }
     return $HTML;
+}
+
+sub _RuleDeleteConfirm {
+    my ( $Self, %Param ) = @_;
+    my $Message = $Self->{Output}->Translate( Key => 'AutomationRuleDeleteConfirm', Language => $Param{Language} || 'en' );
+    my $Name = $Param{Name} || '';
+    $Message =~ s{\{name\}}{$Name}g;
+    return $Message;
 }
 
 sub _PreviewRowsHTML {

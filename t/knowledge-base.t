@@ -73,13 +73,13 @@ ok(
         Article => { id => 1, visibility => 'internal', status => 'published', customer_scope => 'all' },
         CustomerID => 4,
     ),
-    'internal article is never customer-safe',
+    'internal article is never directly visible in the customer portal',
 );
 ok(
     $Object->_ArticleCustomerAllowed(
         Article => { id => 1, visibility => 'customer', status => 'draft', customer_scope => 'selected' },
     ),
-    'customer visibility alone makes an article customer-safe',
+    'customer visibility permits direct access in the customer portal',
 );
 
 my $ArticleID = $Object->ArticleSave(
@@ -120,5 +120,51 @@ like( join( ' ', @{$ArticleInsert} ), qr/all/, 'article is always stored without
 my ($AttachmentInsert) = grep { $_->[0] =~ /INSERT INTO knowledge_article_attachment/ } @{ $DB->{calls} };
 ok( $AttachmentInsert, 'an uploaded FAQ attachment is stored in the article transaction' );
 is( $AttachmentInsert->[2], 'printer-guide.pdf', 'FAQ attachment filenames are reduced to their basename' );
+
+{
+    no warnings 'redefine';
+    my $Article = {
+        id              => 7,
+        article_number  => 'KB00000007',
+        title           => 'Agent FAQ',
+        content         => '<p>Restart the printer.</p>',
+        visibility      => 'internal',
+        revision_number => 2,
+        attachment_count => 1,
+        attachments     => [ {
+            id => 17, filename => 'manual.pdf', content_type => 'application/pdf', content_size => 9,
+        } ],
+    };
+    local *QisutuKnowledgeBase::ArticleList = sub { return [ $Article ]; };
+    local *QisutuKnowledgeBase::ArticleGet = sub {
+        my ( $Self, %Param ) = @_;
+        return $Param{ArticleID} == $Article->{id} ? $Article : undef;
+    };
+    local *QisutuSystemSetting::BaseURL = sub { return 'https://qisutu.example'; };
+
+    for my $Visibility (qw(internal customer)) {
+        $Article->{visibility} = $Visibility;
+        for my $CustomerSafe (0, 1) {
+            subtest "$Visibility FAQ in agent message with CustomerSafe=$CustomerSafe" => sub {
+                my $Results = $Object->AgentInsertSearch( CustomerSafe => $CustomerSafe );
+                is( $Results->[0]->{can_insert}, 1, 'search result allows agent insertion' );
+                my $Selected = $Object->AgentInsertArticleGet(
+                    ArticleID => 7, CustomerSafe => $CustomerSafe,
+                );
+                is( $Selected->{can_insert}, 1, 'selected article can be inserted into the reply' );
+                is( $Selected->{content}, $Article->{content}, 'FAQ solution is available for insertion' );
+                is( $Selected->{attachments}->[0]->{id}, 17, 'FAQ attachment is available for selection' );
+                if ( $Visibility eq 'internal' ) {
+                    is( $Selected->{portal_url}, '', 'internal FAQ has no customer-portal link' );
+                }
+                else {
+                    like( $Selected->{portal_url}, qr/CustomerKnowledgeBase.*ArticleID=7/, 'customer FAQ retains its portal link' );
+                }
+                is( $Article->{visibility}, $Visibility, 'using the FAQ does not change its portal visibility' );
+            };
+        }
+    }
+    ok( !defined $Object->AgentInsertArticleGet( ArticleID => 99, CustomerSafe => 1 ), 'missing FAQ cannot be inserted' );
+}
 
 done_testing();

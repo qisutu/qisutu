@@ -187,7 +187,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 </div>
 
                 <div class="qisutu-form-actions qisutu-automation-preview-actions">
-                    <button class="qisutu-button qisutu-button-secondary" type="submit" data-qisutu-automation-preview data-preview-step="RulePreview">[% Translate.AutomationPreview %]</button>
+                    <button class="qisutu-button qisutu-button-secondary" type="submit" formnovalidate data-qisutu-automation-preview data-preview-step="RulePreview">[% Translate.AutomationPreview %]</button>
                 </div>
                 [% IF PreviewVisible %]
                 <div class="qisutu-automation-preview">
@@ -277,6 +277,14 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button>
         </div>
     </form>
-    <script src="[% StaticBase %]/js/qisutu-automation.js?v=2026071205"></script>
+    [% IF ShowEdit %]
+    <form class="qisutu-form-inline" method="post" action="index.pl" data-qisutu-automation-delete="[% RuleDeleteConfirm %]">
+        <input type="hidden" name="Page" value="[% PageName %]">
+        <input type="hidden" name="Step" value="RuleDelete">
+        <input type="hidden" name="RuleID" value="[% FormRuleID %]">
+        <button class="qisutu-button qisutu-button-danger" type="submit">[% Translate.AdminDelete %]</button>
+    </form>
     [% END %]
+    [% END %]
+    <script src="[% StaticBase %]/js/qisutu-automation.js?v=2026092401"></script>
 </section>

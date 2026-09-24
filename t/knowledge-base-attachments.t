@@ -84,7 +84,7 @@ is( $ForTicket->[0]->{Filename}, 'manual.pdf', 'ticket attachment keeps the FAQ 
 is( $ForTicket->[0]->{Content}, 'pdf-bytes', 'ticket attachment includes the stored bytes' );
 is( $ForTicket->[0]->{knowledge_attachment_id}, 17, 'the source FAQ attachment remains identifiable in the form' );
 my ($SafeCall) = grep { $_->[0] eq 'SelectAll' && $_->[1] =~ /attachment[.]id IN/ } @{ $DB->{calls} };
-like( $SafeCall->[1], qr/article[.]visibility = "customer"/, 'customer-visible tickets only accept customer-visible FAQ attachments' );
+unlike( $SafeCall->[1], qr/article[.]visibility\s*=/, 'agents may copy internal FAQ attachments into customer-visible ticket messages' );
 
 my $MissingDB = Local::KnowledgeAttachmentDB->new( rows => [] );
 my $MissingObject = QisutuKnowledgeBase->new(

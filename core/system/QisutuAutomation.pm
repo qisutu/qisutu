@@ -198,6 +198,28 @@ sub RuleDeactivate {
     return 1;
 }
 
+sub RuleDelete {
+    my ( $Self, %Param ) = @_;
+    my $RuleID = $Self->_Unsigned( $Param{RuleID} );
+    my $Type = $Param{RuleType} || '';
+    if ( !$RuleID || $Type !~ m{\A(?:trigger|schedule)\z} ) {
+        $Self->{LastError} = 'Translate:AutomationRuleDeleteFailed';
+        return;
+    }
+
+    # The automation_job foreign key removes this rule's jobs in the same statement.
+    # Ticket records and the deletion audit log are not affected.
+    my $Result = $Self->{DB}->Do(
+        'DELETE FROM automation_rule WHERE id = ? AND rule_type = ?',
+        $RuleID, $Type,
+    );
+    if ( !$Result || 0 + $Result == 0 ) {
+        $Self->{LastError} = 'Translate:AutomationRuleDeleteFailed';
+        return;
+    }
+    return 1;
+}
+
 sub ConditionsFromRequest {
     my ( $Self, %Param ) = @_;
     my $Request = $Param{Request} || {};

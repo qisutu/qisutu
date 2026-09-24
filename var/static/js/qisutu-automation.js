@@ -62,19 +62,15 @@
     function previewSubmit(Button) {
         var Form = Button.closest('form');
         var Step = Form ? Form.querySelector('[data-qisutu-automation-step]') : null;
-        var PreviewRequested = false;
         if (!Form || !Step) {
             return;
         }
-        Button.addEventListener('click', function () {
-            PreviewRequested = true;
-            Step.value = Button.getAttribute('data-preview-step') || 'RulePreview';
-        });
-        Form.addEventListener('submit', function () {
-            if (!PreviewRequested) {
-                Step.value = Form.querySelector('input[name="RuleID"]').value ? 'RuleUpdate' : 'RuleCreate';
-            }
-            PreviewRequested = false;
+        Form.addEventListener('submit', function (Event) {
+            // A click can be followed by failed native validation without a submit event.
+            // Determine the action from this submission instead of remembering an earlier click.
+            Step.value = Event.submitter === Button
+                ? Button.getAttribute('data-preview-step') || 'RulePreview'
+                : Form.querySelector('input[name="RuleID"]').value ? 'RuleUpdate' : 'RuleCreate';
         });
     }
 
@@ -409,6 +405,14 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-qisutu-automation-delete]').forEach(function (Form) {
+            Form.addEventListener('submit', function (Event) {
+                if (!window.confirm(Form.getAttribute('data-qisutu-automation-delete'))) {
+                    Event.preventDefault();
+                }
+            });
+        });
+
         var Schedule = document.querySelector('[data-qisutu-schedule-type]');
         if (Schedule) {
             Schedule.addEventListener('change', scheduleFieldsUpdate);

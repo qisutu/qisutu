@@ -569,14 +569,10 @@ sub AgentInsertSearch {
         Language => $Param{Language},
         Limit    => 50,
     );
-    my $CustomerSafe = $Param{CustomerSafe} ? 1 : 0;
     my @Result;
 
+    # FAQ visibility controls direct customer-portal access, not agent replies.
     for my $Article ( @{$Rows} ) {
-        my $CanInsert = 1;
-        if ($CustomerSafe) {
-            $CanInsert = $Self->_ArticleCustomerAllowed( Article => $Article );
-        }
         push @Result, {
             id             => 0 + ( $Article->{id} || 0 ),
             article_number => $Article->{article_number} || '',
@@ -586,7 +582,7 @@ sub AgentInsertSearch {
             visibility     => $Article->{visibility} || 'internal',
             status         => 'published',
             revision       => 0 + ( $Article->{revision_number} || 0 ),
-            can_insert     => $CanInsert ? 1 : 0,
+            can_insert     => 1,
             attachment_count => 0 + ( $Article->{attachment_count} || 0 ),
         };
     }
@@ -597,10 +593,6 @@ sub AgentInsertArticleGet {
     my ( $Self, %Param ) = @_;
     my $Article = $Self->ArticleGet( ArticleID => $Param{ArticleID} );
     return if !$Article;
-
-    my $CanInsert = $Param{CustomerSafe}
-        ? $Self->_ArticleCustomerAllowed( Article => $Article )
-        : 1;
 
     my $BaseURL = QisutuSystemSetting->new( Config => $Self->{Config}, DB => $Self->{DB} )->BaseURL() || '';
     $BaseURL = $Self->_Trim($BaseURL);
@@ -620,8 +612,8 @@ sub AgentInsertArticleGet {
         visibility     => $Article->{visibility} || 'internal',
         status         => 'published',
         revision       => 0 + ( $Article->{revision_number} || 0 ),
-        can_insert     => $CanInsert ? 1 : 0,
-        portal_url     => $CanInsert && ( $Article->{visibility} || '' ) eq 'customer' ? $URL : '',
+        can_insert     => 1,
+        portal_url     => $Self->_ArticleCustomerAllowed( Article => $Article ) ? $URL : '',
         attachments    => [ map {
             {
                 id           => 0 + ( $_->{id} || 0 ),
@@ -727,16 +719,15 @@ sub AttachmentsForTicket {
     return [] if !@{$AttachmentIDs};
 
     my $Placeholders = join ', ', map {'?'} @{$AttachmentIDs};
-    my $CustomerWhere = $Param{CustomerSafe}
-        ? ' AND article.visibility = "customer" AND category.active = 1'
-        : '';
+    # Agents explicitly copy selected FAQ attachments into the ticket message.
+    # CustomerSafe does not restrict these copies; AttachmentGet protects the FAQ originals.
     my $Rows = $Self->{DB}->SelectAll(
         'SELECT attachment.id, attachment.filename, attachment.content_type,
                 attachment.content, attachment.content_size
          FROM knowledge_article_attachment attachment
          INNER JOIN knowledge_article article ON article.id = attachment.article_id
          INNER JOIN knowledge_category category ON category.id = article.category_id
-         WHERE attachment.id IN (' . $Placeholders . ')' . $CustomerWhere . '
+         WHERE attachment.id IN (' . $Placeholders . ')
          ORDER BY attachment.id ASC',
         @{$AttachmentIDs},
     );
