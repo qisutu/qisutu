@@ -605,8 +605,8 @@ sub PlaceholderList {
         { placeholder => '{{Ticket.Priority}}',       description => 'Priorität des Tickets' },
         { placeholder => '{{Ticket.Link}}',           description => 'URL zum Ticket' },
         { placeholder => '{{Ticket.LinkHTML}}',       description => 'fertiger HTML-Link zum Ticket' },
-        { placeholder => '{{Ticket.ArticleBody}}',    description => 'Vollständiger Text des Ticketartikels' },
-        { placeholder => '{{Ticket.ArticleBody[15]}}', description => 'Die ersten 15 Textzeilen des Ticketartikels; die Zahl ist frei wählbar' },
+        { placeholder => '{{Ticket.ArticleBody}}',    description => 'Translate:NotificationArticleBodyFull' },
+        { placeholder => '{{Ticket.ArticleBody[15]}}',   description => 'Translate:NotificationArticleBodyLines' },
         { placeholder => '{{System.Name}}',           description => 'Systemname' },
         { placeholder => '{{System.HTTPType}}',       description => 'HTTP-Typ des Systems' },
         { placeholder => '{{System.FQDN}}',           description => 'FQDN des Systems' },
@@ -808,7 +808,7 @@ sub _ArticleBodyDefaultsMigrate {
         my $Body = $Original;
 
         if ( !$Self->_ArticleBodyPlaceholderPresent($Body) ) {
-            my $Block = '<p>{{Ticket.ArticleBody}}</p>';
+            my $Block = '<p>{{Ticket.ArticleBody[15]}}</p>';
             # Preserve the existing layout and put the article before the ticket link.
             if ( $Body !~ s{(<p\b[^>]*>\s*\{\{\s*Ticket[.]LinkHTML\s*\}\}\s*</p>)}{$Block$1}ix ) {
                 $Body .= $Block;
@@ -1237,18 +1237,16 @@ sub _PlaceholderReplaceHTML {
         \s*</p>
     }{$1}gix;
 
-    $HTML =~ s{
-        \{\{\s*Ticket[.]ArticleBody(?:\[\s*(\d{1,4})\s*\])?\s*\}\}
-    }{
-        $Self->_ArticleBodyHTML(
-            Text  => $Placeholder->{'Ticket.ArticleBody'} || '',
-            Lines => defined $1 ? $1 : undef,
-        )
-    }gex;
-
-    $HTML =~ s{\{\{\s*([A-Za-z0-9_.]+)\s*\}\}}{
+    # Expand once: placeholder-like text inside an article stays article text.
+    $HTML =~ s{\{\{\s*(Ticket[.]ArticleBody\[\s*\d{1,4}\s*\]|[A-Za-z0-9_.]+)\s*\}\}}{
         my $Key = $1;
-        if ( $PreserveEmpty{$Key} && ( !exists $Placeholder->{$Key} || !defined $Placeholder->{$Key} || $Placeholder->{$Key} eq '' ) ) {
+        if ( $Key =~ m{\ATicket[.]ArticleBody(?:\[\s*(\d{1,4})\s*\])?\z} ) {
+            $Self->_ArticleBodyHTML(
+                Text  => $Placeholder->{'Ticket.ArticleBody'} // '',
+                Lines => defined $1 ? $1 : undef,
+            );
+        }
+        elsif ( $PreserveEmpty{$Key} && ( !exists $Placeholder->{$Key} || !defined $Placeholder->{$Key} || $Placeholder->{$Key} eq '' ) ) {
             '{{' . $Key . '}}';
         }
         elsif ( $Key eq 'Ticket.LinkHTML' ) {
@@ -1268,19 +1266,19 @@ sub _PlaceholderReplacePlain {
     my $Text        = $Param{Text} || '';
     my $Placeholder = $Param{Placeholder} || {};
 
-    $Text =~ s{
-        \{\{\s*Ticket[.]ArticleBody(?:\[\s*(\d{1,4})\s*\])?\s*\}\}
-    }{
-        $Self->_ArticleBodyExcerpt(
-            Text  => $Placeholder->{'Ticket.ArticleBody'} || '',
-            Lines => defined $1 ? $1 : undef,
-        )
-    }gex;
-
-    $Text =~ s{\{\{\s*([A-Za-z0-9_.]+)\s*\}\}}{
-        my $Value = exists $Placeholder->{$1} ? $Placeholder->{$1} : '';
-        $Value =~ s{<[^>]+>}{}g;
-        $Value;
+    $Text =~ s{\{\{\s*(Ticket[.]ArticleBody\[\s*\d{1,4}\s*\]|[A-Za-z0-9_.]+)\s*\}\}}{
+        my $Key = $1;
+        if ( $Key =~ m{\ATicket[.]ArticleBody(?:\[\s*(\d{1,4})\s*\])?\z} ) {
+            $Self->_ArticleBodyExcerpt(
+                Text  => $Placeholder->{'Ticket.ArticleBody'} // '',
+                Lines => defined $1 ? $1 : undef,
+            );
+        }
+        else {
+            my $Value = exists $Placeholder->{$Key} ? $Placeholder->{$Key} : '';
+            $Value =~ s{<[^>]+>}{}g;
+            $Value;
+        }
     }gex;
 
     $Text =~ s{\s+}{ }g;
@@ -1349,21 +1347,160 @@ sub _ArticleBodyPlainText {
     $Body =~ s{\x00}{}g;
 
     my $IsHTML = ( $Article->{content_type} || '' ) =~ m{text/html}i ? 1 : 0;
-    if ($IsHTML) {
-        $Body = QisutuHTML->Sanitize($Body);
-        $Body =~ s{<\s*br\s*/?\s*>}{\n}gi;
-        $Body =~ s{<\s*/\s*(?:p|div|li|tr|h[1-6]|blockquote|pre)\s*>}{\n}gi;
-    }
+    return $Self->_ArticleHTMLPlainText($Body) if $IsHTML;
 
     my @Line = split /\n/, $Body, -1;
     for my $Line (@Line) {
-        $Line = QisutuHTML->PlainTextSearch($Line) if $IsHTML;
         $Line =~ s{\A[ \t]+|[ \t]+\z}{}g;
     }
     shift @Line while @Line && $Line[0] eq '';
     pop @Line while @Line && $Line[-1] eq '';
 
     return join "\n", @Line;
+}
+
+sub _ArticleHTMLPlainText {
+    my ( $Self, $HTML ) = @_;
+
+    $HTML = QisutuHTML->Sanitize($HTML);
+    my @Line;
+    my @List;
+    my @Block;
+    my $Line = '';
+    my $Prefix = '';
+    my $Pre = 0;
+    my $PendingGap = 0;
+    my %BlockTag = map { $_ => 1 } qw(p div li ul ol tr table h1 h2 h3 h4 h5 h6 blockquote pre hr figure figcaption);
+    my $Flush = sub {
+        my ($KeepEmpty) = @_;
+        $Line =~ s{\A[ \t ]+|[ \t ]+\z}{}g if !$Pre;
+        if ( length($Line) ) {
+            # Adjacent paragraph/list margins collapse to one gap. An explicit
+            # empty paragraph or BR already supplies that gap; never double it.
+            push @Line, '' if $PendingGap && @Line && $Line[-1] ne '';
+            push @Line, $Prefix . $Line;
+            $Prefix = '';
+            $PendingGap = 0;
+        }
+        elsif ($KeepEmpty) {
+            push @Line, '';
+            $PendingGap = 0;
+        }
+        $Line = '';
+    };
+
+    # Source indentation is ordinary HTML whitespace. Rendered empty blocks,
+    # BRs, and paragraph/list margins carry layout and must survive conversion.
+    for my $Part ( split /(<[^>]*>)/, $HTML ) {
+        if ( $Part =~ m{\A<(/?)([a-z0-9]+)\b([^>]*)>\z}i ) {
+            my ( $Close, $Tag, $Attr ) = ( $1, lc $2, $3 );
+            if ( $BlockTag{$Tag} ) {
+                $Flush->();
+                if (!$Close) {
+                    my ( $Before, $After, $TrimLast ) = $Self->_ArticleBlockSpacing( $Tag, $Attr );
+                    $PendingGap = { Depth => scalar(@Block), TrimLast => 0 } if $Before;
+                    push @Block, { Tag => $Tag, Start => scalar(@Line), After => $After, TrimLast => $TrimLast, Text => 0, Space => 0 }
+                        if $Tag ne 'hr';
+                }
+                elsif ( @Block && $Block[-1]->{Tag} eq $Tag ) {
+                    # The ticket stylesheet suppresses default bottom margins
+                    # on a last child (for example a paragraph inside a list item).
+                    $PendingGap = 0 if $PendingGap && $PendingGap->{TrimLast}
+                        && $PendingGap->{Depth} >= @Block;
+                    my $Block = pop @Block;
+                    # Empty editor paragraphs and NBSP-filled mail blocks are
+                    # intentional blank lines. Nested wrappers add no lines.
+                    if ( @Line == $Block->{Start} && ( $Tag eq 'p' || $Tag eq 'div' && $Block->{Space} ) ) {
+                        $Flush->(1);
+                    }
+                    $PendingGap = { Depth => scalar(@Block), TrimLast => $Block->{TrimLast} }
+                        if $Block->{After} && $Block->{Text};
+                }
+            }
+            if ( $Tag eq 'br' ) {
+                $Flush->(1);
+            }
+            elsif ( $Tag eq 'ul' || $Tag eq 'ol' ) {
+                if ($Close) {
+                    pop @List;
+                }
+                else {
+                    push @List, { Type => $Tag, Number => 0 };
+                }
+            }
+            elsif ( $Tag eq 'li' ) {
+                $Prefix = '';
+                if (!$Close) {
+                    my $Marker = @List && $List[-1]->{Type} eq 'ol'
+                        ? ++$List[-1]->{Number} . '. '
+                        : "• ";
+                    $Prefix = ( '  ' x ( @List > 1 ? @List - 1 : 0 ) ) . $Marker;
+                }
+            }
+            elsif ( $Tag eq 'td' || $Tag eq 'th' ) {
+                $Line .= ' | ' if !$Close && $Line =~ m{\S};
+            }
+            elsif ( $Tag eq 'pre' ) {
+                $Pre = $Close ? 0 : 1;
+            }
+            next;
+        }
+
+        my $HasSpace = $Part =~ m{(?:&nbsp;|&#0*160;|&#x0*a0;| )}i ? 1 : 0;
+        $Part =~ s{(?:&#0*160;|&#x0*a0;)}{ }gi;
+        # Decode only after tokenizing so escaped tags remain literal text.
+        $Part = QisutuHTML->_EntityDecode($Part);
+        for my $Block (@Block) {
+            $Block->{Text} = 1 if $Part =~ m{\S};
+            $Block->{Space} = 1 if $HasSpace;
+        }
+        if ($Pre) {
+            my @Piece = split /\n/, $Part, -1;
+            $Line .= shift(@Piece) // '';
+            for my $Piece (@Piece) {
+                $Flush->(1);
+                $Line .= $Piece;
+            }
+        }
+        else {
+            $Part =~ s{\s+}{ }g;
+            $Line .= $Part;
+        }
+    }
+    $Flush->();
+    return join "\n", @Line;
+}
+
+sub _ArticleBlockSpacing {
+    my ( $Self, $Tag, $Attr ) = @_;
+
+    # Account for the ticket view's rich-text block spacing. Explicit inline margins
+    # override these defaults, including margin:0 used by mail clients.
+    my $Before = $Tag =~ m{\Ah[1-6]\z} ? 1 : 0;
+    my $After = $Tag =~ m{\A(?:p|ul|ol|blockquote|table|h[1-6])\z} ? 1 : 0;
+    my $TrimLast = $Tag =~ m{\A(?:p|ul|ol|blockquote|table)\z} ? 1 : 0;
+    if ( $Attr =~ m{\bstyle="([^"]*)"}i ) {
+        for my $Rule ( split /;/, $1 ) {
+            my ( $Name, $Value ) = split /:/, $Rule, 2;
+            next if !defined $Value;
+            $Name =~ s{\A\s+|\s+\z}{}g;
+            $Value =~ s{\A\s+|\s+\z}{}g;
+            my @Margin = split /\s+/, $Value;
+            if ( $Name eq 'margin' && @Margin ) {
+                $Before = $Margin[0] =~ m{[1-9]} ? 1 : 0;
+                $After = $Margin[ @Margin > 2 ? 2 : 0 ] =~ m{[1-9]} ? 1 : 0;
+                $TrimLast = 0;
+            }
+            elsif ( $Name eq 'margin-top' ) {
+                $Before = $Value =~ m{[1-9]} ? 1 : 0;
+            }
+            elsif ( $Name eq 'margin-bottom' ) {
+                $After = $Value =~ m{[1-9]} ? 1 : 0;
+                $TrimLast = 0;
+            }
+        }
+    }
+    return ( $Before, $After, $TrimLast );
 }
 
 sub _ArticleBodyExcerpt {
@@ -1375,9 +1512,10 @@ sub _ArticleBodyExcerpt {
     my @Line = split /\n/, $Text, -1;
     if ( defined $Param{Lines} ) {
         my $Limit = int( $Param{Lines} || 0 );
-        return '' if $Limit < 1;
+        # Zero explicitly requests the complete article.
+        return '' if $Limit < 0;
         $Limit = 1000 if $Limit > 1000;
-        $#Line = $Limit - 1 if @Line > $Limit;
+        $#Line = $Limit - 1 if $Limit > 0 && @Line > $Limit;
     }
 
     return join "\n", @Line;
@@ -1392,7 +1530,7 @@ sub _ArticleBodyHTML {
     $Text = $Self->_Escape($Text);
     $Text =~ s{\n}{<br>}g;
 
-    return '<div style="margin:12px 0;padding:12px;background:#f5f5f5;border-left:3px solid #d8e0e7;">'
+    return '<div style="margin:12px 0;padding:12px;background:#f5f5f5;border-left:3px solid #d8e0e7;line-height:1.4;">'
         . $Text
         . '</div>';
 }

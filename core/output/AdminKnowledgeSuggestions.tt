@@ -1,0 +1,60 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+<section class="qisutu-dashboard">
+    <div class="qisutu-dashboard-header">
+        <div>
+            <h1>[% ProgramTitle %]</h1>
+            <p>[% ProgramDescription %]</p>
+        </div>
+    </div>
+    <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
+    <div class="qisutu-form-success [% NoticeClass %]">[% NoticeMessage %]</div>
+    <section class="qisutu-panel">
+        <p>[% Translate.KnowledgeSuggestionsBehavior %]</p>
+        <form class="qisutu-admin-form qisutu-admin-form-wide" method="post" action="index.pl">
+            <input type="hidden" name="Page" value="AdminKnowledgeSuggestions">
+            <input type="hidden" name="Step" value="SettingsSave">
+            <label class="qisutu-checkbox-row">
+                <input type="checkbox" name="Enabled" value="1" [% EnabledChecked %]>
+                <span>[% Translate.KnowledgeSuggestionsEnabled %]</span>
+            </label>
+            <p class="qisutu-form-hint">[% Translate.KnowledgeSuggestionsEnabledHint %]</p>
+            <div class="qisutu-admin-form-columns">
+                <div class="qisutu-form-field">
+                    <label for="knowledge-suggestions-max-results">[% Translate.KnowledgeSuggestionsMaxResults %]</label>
+                    <input id="knowledge-suggestions-max-results" name="MaxResults" type="number" min="1" max="10" step="1" value="[% MaxResults %]" required>
+                    <span class="qisutu-form-hint">[% Translate.KnowledgeSuggestionsMaxResultsHint %]</span>
+                </div>
+                <div class="qisutu-form-field">
+                    <label for="knowledge-suggestions-minimum-length">[% Translate.KnowledgeSuggestionsMinimumLength %]</label>
+                    <input id="knowledge-suggestions-minimum-length" name="MinimumLength" type="number" min="2" max="10" step="1" value="[% MinimumLength %]" required>
+                    <span class="qisutu-form-hint">[% Translate.KnowledgeSuggestionsMinimumLengthHint %]</span>
+                </div>
+            </div>
+            <div class="qisutu-form-actions">
+                <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.KnowledgeSuggestionsSave %]</button>
+            </div>
+        </form>
+    </section>
+</section>

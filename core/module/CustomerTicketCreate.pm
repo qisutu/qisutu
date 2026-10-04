@@ -26,6 +26,7 @@ use strict;
 use warnings;
 use utf8;
 use QisutuCMDB;
+use QisutuKnowledgeSuggestions;
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -190,7 +191,7 @@ sub Run {
         Language => $Language,
     );
 
-    return {
+    my $Result = {
         Template => 'CustomerTicketCreate.tt',
         Data     => {
             PageTitle          => 'Translate:TicketCreateNew',
@@ -221,6 +222,14 @@ sub Run {
             FormAction         => 'index.pl',
         },
     };
+    # A suggestion failure must never prevent the customer from creating a ticket.
+    my $Suggestions = eval {
+        QisutuKnowledgeSuggestions->new( Config => $Self->{Config}, DB => $Self->{DB} )->FormData(
+            User => $User, Data => { %{ $Result->{Data} }, Language => $Language },
+        );
+    } || {};
+    @{ $Result->{Data} }{ keys %{$Suggestions} } = values %{$Suggestions};
+    return $Result;
 }
 
 sub _QueueOptionsHTML {

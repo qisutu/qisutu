@@ -151,3 +151,70 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
             <script src="[% StaticBase %]/js/qisutu-richtext.js"></script>
             <script src="[% StaticBase %]/js/qisutu-customer-ticket-create.js?v=2026082801"></script>
+
+[% IF ShowKnowledgeSuggestions %]
+<link rel="stylesheet" href="[% StaticBase %]/css/qisutu-knowledge-suggestions.css?v=[% SystemVersion %]">
+<section id="qisutu-knowledge-suggestions" class="qisutu-knowledge-suggestions qisutu-form-field-wide qisutu-ticket-form-field-wide" aria-labelledby="qisutu-knowledge-suggestions-heading" hidden
+    data-field-name="[% KnowledgeFieldName %]"
+    data-body-field-name="[% KnowledgeBodyFieldName %]"
+    data-language="[% KnowledgeLanguage %]"
+    data-endpoint="[% KnowledgeEndpoint %]"
+    data-csrf-token="[% CSRFToken %]"
+    data-minimum-length="[% KnowledgeMinimumLength %]"
+    data-debounce="[% KnowledgeDebounce %]"
+    data-message-loading="[% Translate.KnowledgeSuggestionsLoading %]"
+    data-message-empty="[% Translate.KnowledgeSuggestionsEmpty %]"
+    data-message-browse-empty="[% Translate.KnowledgeSuggestionsBrowseEmpty %]"
+    data-message-error="[% Translate.KnowledgeSuggestionsError %]"
+    data-message-open="[% Translate.KnowledgeSuggestionsOpen %]"
+    data-message-article-loading="[% Translate.KnowledgeSuggestionsArticleLoading %]"
+    data-message-article-error="[% Translate.KnowledgeSuggestionsArticleError %]"
+    data-message-result-count="[% Translate.KnowledgeSuggestionsResultCount %]">
+    <div class="qisutu-knowledge-suggestions-heading">
+        <span class="qisutu-knowledge-suggestions-icon" aria-hidden="true">?</span>
+        <div>
+            <h2 id="qisutu-knowledge-suggestions-heading">[% Translate.KnowledgeSuggestionsHeading %]</h2>
+            <p class="qisutu-knowledge-suggestions-hint">[% Translate.KnowledgeSuggestionsHint %]</p>
+        </div>
+        <button class="qisutu-button qisutu-button-secondary qisutu-knowledge-choose" type="button" data-knowledge-choose aria-controls="qisutu-knowledge-browser" aria-expanded="false">[% Translate.KnowledgeSuggestionsChoose %]</button>
+    </div>
+    <div id="qisutu-knowledge-browser" class="qisutu-knowledge-browser" data-knowledge-browser hidden>
+        <h3>[% Translate.KnowledgeSuggestionsBrowseHeading %]</h3>
+        <p class="qisutu-knowledge-suggestions-hint">[% Translate.KnowledgeSuggestionsBrowseHint %]</p>
+        <label for="qisutu-knowledge-browse-query">[% Translate.KnowledgeSuggestionsBrowseQuery %]</label>
+        <div class="qisutu-knowledge-browse-controls">
+            <input id="qisutu-knowledge-browse-query" type="search" maxlength="500" data-knowledge-browse-query autocomplete="off">
+            <button class="qisutu-button qisutu-button-secondary" type="button" data-knowledge-browse-search>[% Translate.KnowledgeSuggestionsBrowseSearch %]</button>
+        </div>
+        <p class="qisutu-knowledge-suggestions-status" data-knowledge-browse-status role="status" aria-live="polite" aria-atomic="true"></p>
+        <ul class="qisutu-knowledge-suggestions-results qisutu-knowledge-browse-results" data-knowledge-browse-results></ul>
+    </div>
+    <div data-knowledge-automatic hidden>
+        <p class="qisutu-knowledge-suggestions-status" data-knowledge-status role="status" aria-live="polite" aria-atomic="true"></p>
+        <ul class="qisutu-knowledge-suggestions-results" data-knowledge-results></ul>
+    </div>
+</section>
+<dialog id="qisutu-knowledge-dialog" class="qisutu-knowledge-dialog" aria-labelledby="qisutu-knowledge-dialog-title">
+    <div class="qisutu-knowledge-dialog-shell">
+        <div class="qisutu-knowledge-dialog-header">
+            <h2 id="qisutu-knowledge-dialog-title" data-knowledge-dialog-title></h2>
+            <button class="qisutu-knowledge-dialog-close" type="button" data-knowledge-dialog-close aria-label="[% Translate.KnowledgeSuggestionsClose %]" autofocus>×</button>
+        </div>
+        <div class="qisutu-knowledge-dialog-body">
+            <p class="qisutu-knowledge-dialog-status" data-knowledge-dialog-status role="status" aria-live="polite" aria-atomic="true"></p>
+            <p class="qisutu-knowledge-dialog-category" data-knowledge-dialog-category hidden></p>
+            <p class="qisutu-knowledge-dialog-summary" data-knowledge-dialog-summary hidden></p>
+            <div class="qisutu-knowledge-dialog-content" data-knowledge-dialog-content></div>
+            <section class="qisutu-knowledge-dialog-attachments" data-knowledge-dialog-attachments hidden aria-labelledby="qisutu-knowledge-attachments-heading">
+                <h3 id="qisutu-knowledge-attachments-heading">[% Translate.KnowledgeSuggestionsAttachments %]</h3>
+                <ul data-knowledge-dialog-attachment-list></ul>
+            </section>
+        </div>
+        <div class="qisutu-knowledge-dialog-actions">
+            <a class="qisutu-button qisutu-button-secondary" data-knowledge-dialog-portal target="_blank" rel="noopener noreferrer" hidden>[% Translate.KnowledgeSuggestionsOpenPortal %]</a>
+            <button class="qisutu-button qisutu-button-primary" type="button" data-knowledge-dialog-continue>[% Translate.KnowledgeSuggestionsContinue %]</button>
+        </div>
+    </div>
+</dialog>
+<script src="[% StaticBase %]/js/qisutu-knowledge-suggestions.js?v=[% SystemVersion %]" defer></script>
+[% END %]

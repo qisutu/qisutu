@@ -266,7 +266,7 @@ like( $GermanPlaceholder->{'Ticket.LinkHTML'}, qr{Ticket 2026000042 öffnen}, 't
 my $ArticleText = $Runtime->_ArticleBodyPlainText(
     Article => {
         content_type => 'text/html',
-        body => '<p>Line 1 &amp; safe</p><p>Line 2</p><p>&lt;Line 3&gt;</p>',
+        body => '<p style="margin:0">Line 1 &amp; safe</p><p style="margin:0">Line 2</p><p style="margin:0">&lt;Line 3&gt;</p>',
     },
 );
 is(
@@ -312,9 +312,11 @@ is(
         my ($Template) = grep {
             $_->{type} eq $Param{NotificationType}
         } @{ QisutuAgentNotificationTemplates->Templates( Language => $Param{Language} ) };
+        my $Body = $Template->{body_html} || '';
+        $Body =~ s{\{\{Ticket[.]ArticleBody\[15\]\}\}}{'{{Ticket.ArticleBody[2]}}'}ge;
         return {
             %{$Template},
-            body_html => ( $Template->{body_html} || '' ) . '<p>{{Ticket.ArticleBody[2]}}</p>',
+            body_html => $Body,
             active    => 1,
         };
     }

@@ -49,7 +49,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     [% IF ShowArticle %]
     <article class="qisutu-panel qisutu-knowledge-article"><div class="qisutu-panel-header"><div><span class="qisutu-knowledge-number">[% ArticleNumber %]</span><h2>[% ArticleTitle %]</h2><p>[% ArticleSummary %]</p></div><div class="qisutu-form-actions"><a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AgentKnowledgeBase;Action=Edit;ArticleID=[% ArticleID %]">[% Translate.AdminEdit %]</a><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase">[% Translate.AdminBackToList %]</a></div></div>
         <div class="qisutu-knowledge-meta"><span>[% ArticleCategory %]</span><span>[% ArticleLanguage %]</span><span>[% ArticleVisibility %]</span><span>[% Translate.KnowledgeRevision %] [% ArticleRevision %]</span></div>
-        <div class="qisutu-knowledge-content">[% RAW.ArticleContent %]</div>
+        <div class="qisutu-knowledge-content qisutu-richtext-output">[% RAW.ArticleContent %]</div>
         [% IF HasArticleAttachments %]<div class="qisutu-knowledge-attachments"><h3>[% Translate.KnowledgeAttachments %]</h3><ul>[% FOREACH Attachment IN ArticleAttachments %]<li><a href="[% Attachment.download_url %]" download>[% Attachment.filename %]</a><span>[% Attachment.size_display %] · [% Attachment.content_type %]</span></li>[% END %]</ul></div>[% END %]
     </article>
     <section class="qisutu-panel"><div class="qisutu-panel-header"><h2>[% Translate.KnowledgeRevisionHistory %]</h2></div><div class="qisutu-table-wrap"><table class="qisutu-table qisutu-table-compact"><thead><tr><th>[% Translate.KnowledgeRevision %]</th><th>[% Translate.KnowledgeVisibility %]</th><th>[% Translate.TicketChanged %]</th><th>[% Translate.KnowledgeChangedBy %]</th></tr></thead><tbody>[% FOREACH Revision IN Revisions %]<tr><td>[% Revision.revision_number %]</td><td>[% Revision.visibility_label %]</td><td>[% Revision.created_at %]</td><td>[% Revision.actor %]</td></tr>[% END %]</tbody></table></div></section>
@@ -66,7 +66,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
             </div>
             <div class="qisutu-form-field"><label>[% Translate.KnowledgeArticleSummary %]</label><textarea name="Summary" rows="3">[% Summary %]</textarea></div>
             <div class="qisutu-form-field"><label>[% Translate.KnowledgeKeywords %]</label><input type="text" name="Keywords" value="[% Keywords %]"><span class="qisutu-form-hint">[% Translate.KnowledgeKeywordsHelp %]</span></div>
-            <div class="qisutu-form-field"><label>[% Translate.KnowledgeSolution %] *</label><textarea class="qisutu-richtext" name="Content" rows="14">[% Content %]</textarea></div>
+            <div class="qisutu-form-field qisutu-form-field-richtext"><label for="qisutu-knowledge-content">[% Translate.KnowledgeSolution %] *</label><textarea id="qisutu-knowledge-content" class="qisutu-richtext" name="Content" rows="14">[% Content %]</textarea></div>
             <div class="qisutu-form-field"><label for="qisutu-knowledge-attachments">[% Translate.KnowledgeAddAttachments %]</label><input id="qisutu-knowledge-attachments" type="file" name="KnowledgeAttachment" multiple><span class="qisutu-form-hint">[% Translate.KnowledgeAttachmentHelp %] [% AttachmentMaxSizeMB %] MB</span></div>
             [% IF HasArticleAttachments %]<div class="qisutu-admin-form-block qisutu-knowledge-existing-attachments"><h3>[% Translate.KnowledgeExistingAttachments %]</h3>[% FOREACH Attachment IN ArticleAttachments %]<label class="qisutu-knowledge-existing-attachment"><span><a href="[% Attachment.download_url %]" download>[% Attachment.filename %]</a> · [% Attachment.size_display %] · [% Attachment.content_type %]</span><span class="qisutu-form-checkbox"><input type="checkbox" name="RemoveKnowledgeAttachmentID" value="[% Attachment.id %]"><span>[% Translate.KnowledgeRemoveAttachment %]</span></span></label>[% END %]</div>[% END %]
             <div class="qisutu-form-actions"><button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.AdminSave %]</button><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentKnowledgeBase">[% Translate.AdminCancel %]</a></div>
@@ -97,3 +97,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     </section>
     [% END %]
 </section>
+
+[% IF ShowForm %]
+<script>
+    window.QISUTU_STATIC_BASE = '[% StaticBase %]';
+</script>
+<script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
+<script src="[% StaticBase %]/js/qisutu-richtext.js?v=2026071802"></script>
+[% END %]

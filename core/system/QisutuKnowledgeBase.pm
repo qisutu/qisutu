@@ -329,7 +329,24 @@ sub ArticleGet {
     ) || [];
     $Article->{attachments} = $Self->AttachmentList( ArticleID => $ArticleID );
     $Article->{has_attachments} = @{ $Article->{attachments} || [] } ? 1 : 0;
+    $Article->{content} = $Self->ContentHTML( $Article->{content} );
     return $Article;
+}
+
+sub ContentHTML {
+    my ( $Self, $Content ) = @_;
+    $Content = '' if !defined $Content;
+
+    # Frühere FAQ-Formulare speicherten Textarea-Inhalte ohne HTML-Tags.
+    # Deren Zeilenumbrüche müssen beim Anzeigen, Bearbeiten und Einfügen
+    # als HTML-Umbrüche erhalten bleiben. Vorhandenes Richtext-HTML bleibt
+    # unverändert; Quelltext-Einrückungen sind dort keine sichtbaren Zeilen.
+    # Ungeprüfte Eingaben werden weiterhin in ArticleSave sanitisiert.
+    if ( $Content !~ m{<\s*/?\s*[a-z][^>]*>}i ) {
+        $Content =~ s{\r\n|\r|\n}{<br>}g;
+    }
+
+    return $Content;
 }
 
 sub ArticleSave {
@@ -341,7 +358,7 @@ sub ArticleSave {
     my $Title         = $Self->_Trim( $Param{Title} );
     my $Summary       = $Self->_Trim( $Param{Summary} );
     my $Keywords      = $Self->_Trim( $Param{Keywords} );
-    my $Content       = QisutuHTML->Sanitize( $Param{Content} || '' );
+    my $Content       = QisutuHTML->Sanitize( $Self->ContentHTML( $Param{Content} ) );
     my $Visibility    = $Self->_Choice( $Param{Visibility}, { internal => 1, customer => 1 }, 'internal' );
     my $CustomerScope = 'all';
     my $Status        = 'published';
@@ -558,6 +575,7 @@ sub CustomerArticleGet {
 
     $Article->{attachments} = $Self->AttachmentList( ArticleID => $ArticleID );
     $Article->{has_attachments} = @{ $Article->{attachments} || [] } ? 1 : 0;
+    $Article->{content} = $Self->ContentHTML( $Article->{content} );
     return $Article;
 }
 

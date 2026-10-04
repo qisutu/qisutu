@@ -68,6 +68,8 @@ sub Apply {
     my %INC = map { $_ => 1 } @INC;
     for my $Row ( @{$Rows} ) {
         my $Identifier = lc( $Row->{package_identifier} || '' );
+        # Knowledge suggestions are supplied by core, including both programs and UI.
+        next if $Identifier eq 'de.qisutu.knowledge-suggestions';
         my $Path = $Row->{installed_path} || '';
         next if $Identifier !~ m{\A[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+\z};
         next if !$Path || index( $Path, $Root . '/' ) != 0;

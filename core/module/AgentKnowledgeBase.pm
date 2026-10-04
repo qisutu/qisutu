@@ -255,7 +255,7 @@ sub Run {
                     Title                => $Error ? ( $Request->{Title} || '' ) : ( $Article->{title} || '' ),
                     Summary              => $Error ? ( $Request->{Summary} || '' ) : ( $Article->{summary} || '' ),
                     Keywords             => $Error ? ( $Request->{Keywords} || '' ) : ( $Article->{keywords} || '' ),
-                    Content              => $Error ? ( $Request->{Content} || '' ) : ( $Article->{content} || '' ),
+                    Content              => $Object->ContentHTML( $Error ? $Request->{Content} : $Article->{content} ),
                     CategoryOptionsHTML  => $Self->_CategoryOptions( Categories => $Categories, Selected => $Error ? $Request->{CategoryID} : $Article->{category_id}, Language => $Language ),
                     LanguageOptionsHTML  => $Self->_LanguageOptions( Selected => $Error ? $Request->{ArticleLanguage} : $Article->{language}, Language => $Language ),
                     VisibilityOptionsHTML => $Self->_Options( [ [internal => 'KnowledgeVisibility_internal'], [customer => 'KnowledgeVisibility_customer'] ], $Visibility, $Language ),

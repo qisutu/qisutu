@@ -45,9 +45,12 @@ sub IncomingNormalize {
     $HTML = $Class->_MailQuoteMarkerWrap($HTML);
 
     $HTML = $Class->_SignatureWrap($HTML);
-    $HTML = $Class->_EmptyBlockClean($HTML);
-    $HTML = $Class->_ImageSpacingNormalize($HTML);
-    $HTML = $Class->_WhitespaceNormalize($HTML);
+
+    # Leere Absätze und <br>-Folgen gehören zum verfassten Mailinhalt.
+    # Sie dürfen weder gelöscht noch gekürzt werden, auch nicht vor oder
+    # hinter Bildern. Die Sicherheitsfilterung erfolgt separat in Sanitize.
+    $HTML =~ s{\A\s+}{};
+    $HTML =~ s{\s+\z}{};
 
     return $HTML;
 }
@@ -266,42 +269,6 @@ sub _SignatureWrap {
     if ( $HTML =~ s{(?:<\s*br\s*/?\s*>\s*)?--\s*<\s*br\s*/?\s*>(.*)\z}{<div class="qisutu-mail-signature">--<br>$1</div>}is ) {
         return $HTML;
     }
-
-    return $HTML;
-}
-
-sub _EmptyBlockClean {
-    my ( $Class, $HTML ) = @_;
-
-    $HTML ||= '';
-
-    for ( 1 .. 12 ) {
-        last if $HTML !~ s{<\s*(p|div)\b[^>]*>(?:\s|&nbsp;|&#160;|<\s*br\s*/?\s*>)*<\s*/\s*\1\s*>}{}gis;
-    }
-
-    return $HTML;
-}
-
-sub _ImageSpacingNormalize {
-    my ( $Class, $HTML ) = @_;
-
-    $HTML ||= '';
-
-    for ( 1 .. 6 ) {
-        $HTML =~ s{(?:\s|&nbsp;|&#160;|<\s*br\s*/?\s*>|<\s*(?:p|div)\b[^>]*>\s*<\s*/\s*(?:p|div)\s*>)+(?=<\s*img\b)}{}gis;
-        $HTML =~ s{(<\s*img\b[^>]*>)(?:\s|&nbsp;|&#160;|<\s*br\s*/?\s*>|<\s*(?:p|div)\b[^>]*>\s*<\s*/\s*(?:p|div)\s*>)+}{$1<br>}gis;
-    }
-
-    return $HTML;
-}
-
-sub _WhitespaceNormalize {
-    my ( $Class, $HTML ) = @_;
-
-    $HTML ||= '';
-    $HTML =~ s{(?:\s*<\s*br\s*/?\s*>\s*){3,}}{<br><br>}gis;
-    $HTML =~ s{\A\s+}{};
-    $HTML =~ s{\s+\z}{};
 
     return $HTML;
 }

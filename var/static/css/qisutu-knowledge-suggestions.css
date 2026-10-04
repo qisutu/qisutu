@@ -1,0 +1,424 @@
+/*
+ * Qisutu - Open Source Ticket System
+ * Copyright (C) 2026 Franziska Steps
+ * Qisutu - Kim-KI, https://qisutu.de
+ *
+ * This file is part of Qisutu.
+ *
+ * Qisutu is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Qisutu is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-FileCopyrightText: 2026 Franziska Steps
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+.qisutu-knowledge-suggestions {
+    min-width: 0;
+    grid-column: 1 / -1;
+    padding: 16px 18px;
+    border: 1px solid var(--qisutu-border, #d8e0e7);
+    border-radius: var(--qisutu-radius, 8px);
+    background: var(--qisutu-primary-soft, rgba(1, 80, 104, 0.10));
+    color: var(--qisutu-text, #1f2933);
+}
+
+.qisutu-knowledge-suggestions[hidden],
+.qisutu-knowledge-suggestions [hidden],
+.qisutu-knowledge-dialog [hidden] {
+    display: none !important;
+}
+
+.qisutu-knowledge-suggestions-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.qisutu-knowledge-suggestions-icon {
+    display: grid;
+    flex: 0 0 28px;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--qisutu-primary, #015068);
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.qisutu-knowledge-suggestions-heading h2 {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.qisutu-knowledge-suggestions-hint,
+.qisutu-knowledge-suggestions-status,
+.qisutu-knowledge-dialog-status {
+    margin: 5px 0 0;
+    color: var(--qisutu-muted, #6b7785);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.qisutu-knowledge-suggestions-status {
+    margin: 12px 0 0;
+}
+
+.qisutu-knowledge-suggestions[data-state="error"] .qisutu-knowledge-suggestions-status,
+.qisutu-knowledge-dialog[data-state="error"] .qisutu-knowledge-dialog-status {
+    color: var(--qisutu-danger, #b42318);
+}
+
+.qisutu-knowledge-suggestions-results {
+    display: grid;
+    gap: 8px;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.qisutu-knowledge-suggestions-results:empty,
+.qisutu-knowledge-dialog-status:empty {
+    display: none;
+}
+
+.qisutu-knowledge-suggestions-result {
+    display: block;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--qisutu-border, #d8e0e7);
+    border-radius: var(--qisutu-radius, 8px);
+    background: var(--qisutu-surface, #fff);
+    color: var(--qisutu-text, #1f2933);
+    text-align: start;
+    font: inherit;
+    line-height: 1.5;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
+.qisutu-knowledge-suggestions-result:hover {
+    border-color: var(--qisutu-primary, #015068);
+}
+
+.qisutu-knowledge-suggestions-result:focus-visible,
+.qisutu-knowledge-dialog-close:focus-visible,
+.qisutu-knowledge-dialog a:focus-visible,
+.qisutu-knowledge-dialog button:focus-visible {
+    outline: 3px solid var(--qisutu-primary, #015068);
+    outline-offset: 3px;
+}
+
+.qisutu-knowledge-suggestions-result-title,
+.qisutu-knowledge-suggestions-result-summary,
+.qisutu-knowledge-suggestions-result-category,
+.qisutu-knowledge-suggestions-result-open {
+    display: block;
+}
+
+.qisutu-knowledge-suggestions-result-title {
+    color: var(--qisutu-primary, #015068);
+    font-weight: 700;
+}
+
+.qisutu-knowledge-suggestions-result-category {
+    margin-top: 2px;
+    color: var(--qisutu-muted, #6b7785);
+    font-size: 12px;
+}
+
+.qisutu-knowledge-suggestions-result-summary {
+    margin-top: 4px;
+    font-size: 13px;
+}
+
+.qisutu-knowledge-suggestions-result-open {
+    margin-top: 6px;
+    color: var(--qisutu-primary, #015068);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.qisutu-knowledge-dialog {
+    width: min(820px, calc(100vw - 36px));
+    max-width: 820px;
+    max-height: calc(100vh - 36px);
+    max-height: calc(100dvh - 36px);
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--qisutu-border, #d8e0e7);
+    border-radius: 12px;
+    background: var(--qisutu-surface, #fff);
+    color: var(--qisutu-text, #1f2933);
+    box-shadow: var(--qisutu-shadow, 0 18px 45px rgba(15, 23, 42, 0.10));
+}
+
+.qisutu-knowledge-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.48);
+}
+
+.qisutu-knowledge-dialog-shell {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 38px);
+    max-height: calc(100dvh - 38px);
+}
+
+.qisutu-knowledge-dialog-header {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--qisutu-border, #d8e0e7);
+}
+
+.qisutu-knowledge-dialog-header h2 {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.qisutu-knowledge-dialog-close {
+    display: grid;
+    flex: 0 0 36px;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--qisutu-border, #d8e0e7);
+    border-radius: 6px;
+    background: var(--qisutu-bg, #f4f7f9);
+    color: var(--qisutu-text, #1f2933);
+    font: inherit;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.qisutu-knowledge-dialog-close:hover {
+    background: var(--qisutu-primary-soft, rgba(1, 80, 104, 0.10));
+}
+
+.qisutu-knowledge-dialog-body {
+    min-height: 60px;
+    padding: 18px 22px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    overflow-wrap: anywhere;
+}
+
+.qisutu-knowledge-dialog-category {
+    margin: 0 0 8px;
+    color: var(--qisutu-primary, #015068);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.qisutu-knowledge-dialog-summary {
+    margin: 0 0 18px;
+    color: var(--qisutu-muted, #6b7785);
+    line-height: 1.6;
+}
+
+.qisutu-knowledge-dialog-content {
+    line-height: 1.65;
+}
+
+.qisutu-knowledge-dialog-content > :first-child {
+    margin-top: 0;
+}
+
+.qisutu-knowledge-dialog-content > :last-child {
+    margin-bottom: 0;
+}
+
+.qisutu-knowledge-dialog-content img,
+.qisutu-knowledge-dialog-content video {
+    max-width: 100%;
+    height: auto;
+}
+
+.qisutu-knowledge-dialog-content pre {
+    max-width: 100%;
+    padding: 12px;
+    overflow-x: auto;
+    border-radius: 6px;
+    background: var(--qisutu-bg, #f4f7f9);
+}
+
+.qisutu-knowledge-dialog-content table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+}
+
+.qisutu-knowledge-dialog-content th,
+.qisutu-knowledge-dialog-content td {
+    padding: 7px 10px;
+    border: 1px solid var(--qisutu-border, #d8e0e7);
+    vertical-align: top;
+}
+
+.qisutu-knowledge-dialog-content a,
+.qisutu-knowledge-dialog-attachments a {
+    color: var(--qisutu-primary, #015068);
+}
+
+.qisutu-knowledge-dialog-attachments {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--qisutu-border, #d8e0e7);
+}
+
+.qisutu-knowledge-dialog-attachments h3 {
+    margin: 0 0 10px;
+    font-size: 15px;
+}
+
+.qisutu-knowledge-dialog-attachments ul {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding-left: 20px;
+}
+
+.qisutu-knowledge-dialog-attachment-size {
+    margin-left: 8px;
+    color: var(--qisutu-muted, #6b7785);
+    font-size: 12px;
+}
+
+.qisutu-knowledge-dialog-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--qisutu-border, #d8e0e7);
+}
+
+@media (max-width: 600px) {
+    .qisutu-knowledge-suggestions {
+        padding: 14px;
+    }
+
+    .qisutu-knowledge-dialog {
+        width: calc(100vw - 20px);
+        max-height: calc(100vh - 20px);
+        max-height: calc(100dvh - 20px);
+    }
+
+    .qisutu-knowledge-dialog-shell {
+        max-height: calc(100vh - 22px);
+        max-height: calc(100dvh - 22px);
+    }
+
+    .qisutu-knowledge-dialog-header,
+    .qisutu-knowledge-dialog-body,
+    .qisutu-knowledge-dialog-actions {
+        padding: 14px;
+    }
+
+    .qisutu-knowledge-dialog-header h2 {
+        font-size: 18px;
+    }
+
+    .qisutu-knowledge-dialog-actions .qisutu-button {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
+}
+
+.qisutu-knowledge-choose {
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.qisutu-knowledge-browser {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--qisutu-border, #d8e0e7);
+}
+
+.qisutu-knowledge-browser > label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.qisutu-knowledge-browse-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.qisutu-knowledge-browse-controls input {
+    min-width: 0;
+    flex: 1 1 auto;
+    padding: 9px 12px;
+    border: 1px solid var(--qisutu-border, #d8e0e7);
+    border-radius: 6px;
+    background: var(--qisutu-surface, #fff);
+    color: var(--qisutu-text, #1f2933);
+    font: inherit;
+}
+
+.qisutu-knowledge-browse-controls input:focus-visible,
+.qisutu-knowledge-choose:focus-visible {
+    outline: 3px solid var(--qisutu-primary, #015068);
+    outline-offset: 2px;
+}
+
+.qisutu-knowledge-browse-results {
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 3px;
+    scrollbar-gutter: stable;
+}
+
+.qisutu-knowledge-browser[data-state="error"] [data-knowledge-browse-status] {
+    color: var(--qisutu-danger, #b42318);
+}
+
+@media (max-width: 600px) {
+    .qisutu-knowledge-suggestions-heading {
+        flex-wrap: wrap;
+    }
+    .qisutu-knowledge-choose {
+        margin-left: 40px;
+    }
+    .qisutu-knowledge-browse-controls {
+        flex-wrap: wrap;
+    }
+    .qisutu-knowledge-browse-controls input {
+        flex-basis: 100%;
+    }
+}
+
+.qisutu-knowledge-browser h3 {
+    margin: 0 0 4px;
+    font-size: 14px;
+}
+
+.qisutu-knowledge-browser > .qisutu-knowledge-suggestions-hint {
+    margin-bottom: 12px;
+}
