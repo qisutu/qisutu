@@ -56,6 +56,12 @@
             return;
         }
 
+        // CKEditor owns its hidden upload inputs and their toolbar buttons.
+        // Wrapping them adds visible file-picker labels inside the editor UI.
+        if (input.closest('.ck') || input.classList.contains('ck-hidden')) {
+            return;
+        }
+
         wrapper = document.createElement('span');
         wrapper.className = 'qisutu-file-input';
         input.parentNode.insertBefore(wrapper, input);
