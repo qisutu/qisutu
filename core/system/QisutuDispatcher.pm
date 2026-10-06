@@ -299,7 +299,7 @@ sub _BaseData {
         UserTimezone       => $Timezone,
         Robots             => 'noindex, nofollow',
         StaticBase         => $Self->{Config}->{Paths}->{StaticURL} || '/static',
-        PageCSS            => 'qisutu.css',
+        PageCSS            => '',
         BodyClass          => $BodyClass,
         ThemeCSS           => $ThemeData->{Stylesheet} || '',
         ThemeCSSVersion    => $ThemeData->{Version} || '1',

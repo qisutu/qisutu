@@ -166,6 +166,18 @@ sub Touch {
         return;
     }
 
+    my $Request = $Param{Request} || {};
+    my $Page    = $Request->{Page} || '';
+    my $Step    = $Request->{Step} || '';
+
+    # Automatic polling is not user activity. In particular, the unread check
+    # runs even while the chat is closed or a browser tab is left unattended.
+    # Only explicit chat actions and the activity report may refresh a session.
+    return 1 if $Page eq 'AgentInternalChat'
+        && ( ( $Request->{__RequestMethod} || '' ) ne 'POST'
+            || $Step !~ m{\A(?:Activity|Send|Delete|Transfer)\z} );
+    return 1 if $Page eq 'Dashboard' && $Step eq 'Data';
+
     my $TokenHash = $Self->_TokenHash( Token => $Token );
     my $Lifetime  = $Self->{Config}->{Session}->{LifetimeSeconds} || 28800;
 

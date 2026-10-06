@@ -184,6 +184,12 @@
             return;
         }
 
+        OpenButton.disabled = false;
+
+        // Keep the dialog outside the workspace's stacking context so the
+        // navigation cannot cover it. Persisted selections stay in the form.
+        document.body.appendChild(Overlay);
+
         HiddenInputs.querySelectorAll('[data-qisutu-customer-selected]').forEach(function (Input) {
             Selected.set(String(Input.dataset.customerId || ''), Input.dataset.customerLabel || '');
         });
@@ -195,12 +201,6 @@
             if (WorkingCount) {
                 WorkingCount.textContent = String(Working.size);
             }
-        }
-
-        function AllCustomersUpdate() {
-            var IsAll = Boolean(AllCustomers && AllCustomers.checked);
-            OpenButton.disabled = IsAll;
-            Root.classList.toggle('qisutu-customer-assignment-all', IsAll);
         }
 
         function HiddenInputsRebuild() {
@@ -331,6 +331,9 @@
 
         ApplyButton.addEventListener('click', function () {
             Selected = new Map(Working);
+            if (AllCustomers) {
+                AllCustomers.checked = false;
+            }
             HiddenInputsRebuild();
             CountUpdate();
             OverlayClose();
@@ -374,11 +377,7 @@
             }
         });
 
-        if (AllCustomers) {
-            AllCustomers.addEventListener('change', AllCustomersUpdate);
-        }
         CountUpdate();
-        AllCustomersUpdate();
     }
 
     document.querySelectorAll('[data-qisutu-ticket-form-field-type]').forEach(function (Select) {

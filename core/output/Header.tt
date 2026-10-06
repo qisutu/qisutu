@@ -111,6 +111,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         data-csrf-token="[% CSRFToken %]"
         data-state-url="index.pl?Page=AgentInternalChat&amp;Step=State"
         data-unread-url="index.pl?Page=AgentInternalChat&amp;Step=Unread"
+        data-activity-url="index.pl?Page=AgentInternalChat&amp;Step=Activity"
         data-messages-url="index.pl?Page=AgentInternalChat&amp;Step=Messages"
         data-send-url="index.pl?Page=AgentInternalChat&amp;Step=Send"
         data-delete-url="index.pl?Page=AgentInternalChat&amp;Step=Delete"

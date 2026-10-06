@@ -201,7 +201,6 @@ sub main {
         $CurrentUser = $Session->Get( Token => $SessionToken );
 
         if ($CurrentUser) {
-            $Session->Touch( Token => $SessionToken );
             $CurrentUser->{csrf_token} = $Security->CSRFToken( SessionToken => $SessionToken );
         }
     }
@@ -225,6 +224,10 @@ sub main {
             );
             return;
         }
+    }
+
+    if ($CurrentUser) {
+        $Session->Touch( Token => $SessionToken, Request => $Param );
     }
 
     if ( ( $Param->{Page} || '' ) eq 'Logout' ) {

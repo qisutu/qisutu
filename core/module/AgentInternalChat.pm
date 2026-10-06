@@ -61,6 +61,19 @@ sub Run {
         });
     }
 
+    if ( $Step eq 'Activity' ) {
+        if ( ( $Request->{__RequestMethod} || '' ) ne 'POST' ) {
+            return $Self->_JSON( Status => '405 Method Not Allowed', Data => {
+                success => 0,
+                message => $Self->_Translate( Key => 'InternalChatRequestInvalid', Language => $Language ),
+            });
+        }
+
+        # index.pl has validated the session and CSRF token and recorded this
+        # explicit activity through QisutuSession::Touch before dispatching.
+        return $Self->_JSON( Data => { success => 1 } );
+    }
+
     if ( $Step eq 'State' ) {
         my $Agents = $Chat->AgentList( UserID => $UserID );
         my $UnreadCount = $Chat->UnreadCount( UserID => $UserID );

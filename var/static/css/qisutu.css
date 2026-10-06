@@ -7385,9 +7385,10 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 .qisutu-ticket-form-create-actions { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: flex-end; }
 .qisutu-customer-assignment-summary { align-items: center; background: var(--qisutu-surface-soft, #f6f8f9); border: 1px solid var(--qisutu-border, #d7dee2); border-radius: .5rem; display: flex; gap: 1rem; justify-content: space-between; margin-top: .8rem; padding: .7rem .85rem; }
 .qisutu-customer-assignment-all .qisutu-customer-assignment-summary { opacity: .65; }
-.qisutu-customer-assignment-overlay { align-items: center; background: rgba(15, 31, 45, .58); display: flex; inset: 0; justify-content: center; padding: 1rem; position: fixed; z-index: 1200; }
+.qisutu-customer-assignment-overlay { align-items: center; background: rgba(15, 31, 45, .58); display: flex; inset: 0 0 0 248px; justify-content: center; padding: 1rem; position: fixed; z-index: 1200; }
+html.qisutu-sidebar-collapsed .qisutu-customer-assignment-overlay { left: 68px; }
 .qisutu-customer-assignment-overlay[hidden] { display: none; }
-.qisutu-customer-assignment-dialog { background: var(--qisutu-surface, #fff); border-radius: .65rem; box-shadow: 0 22px 70px rgba(15, 31, 45, .3); display: flex; flex-direction: column; max-height: min(820px, calc(100vh - 2rem)); overflow: hidden; width: min(1040px, calc(100vw - 2rem)); }
+.qisutu-customer-assignment-dialog { background: var(--qisutu-surface, #fff); border-radius: .65rem; box-shadow: 0 22px 70px rgba(15, 31, 45, .3); display: flex; flex-direction: column; max-height: min(820px, calc(100vh - 2rem)); overflow: hidden; width: min(1040px, 100%); }
 .qisutu-customer-assignment-dialog > header { align-items: flex-start; border-bottom: 1px solid var(--qisutu-border, #d7dee2); display: flex; gap: 1rem; justify-content: space-between; padding: 1rem 1.1rem; }
 .qisutu-customer-assignment-dialog > header h3 { margin: 0; }
 .qisutu-customer-assignment-dialog > header p { color: var(--qisutu-text-muted, #617283); margin: .25rem 0 0; }
@@ -7396,7 +7397,7 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 .qisutu-customer-assignment-search { padding: .85rem 1.1rem .55rem; }
 .qisutu-customer-assignment-search input { width: 100%; }
 .qisutu-customer-assignment-status { color: var(--qisutu-text-muted, #617283); min-height: 1.25rem; padding: 0 1.1rem .35rem; }
-.qisutu-customer-assignment-results { align-content: start; display: grid; gap: .35rem; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); min-height: 180px; overflow: auto; padding: .2rem 1.1rem .8rem; }
+.qisutu-customer-assignment-results { align-content: start; display: grid; gap: .35rem; grid-template-columns: minmax(0, 1fr); min-height: 0; max-height: 50vh; overflow: auto; padding: .2rem 1.1rem .8rem; }
 .qisutu-customer-assignment-item { align-items: center; border: 1px solid var(--qisutu-border, #d7dee2); border-radius: .38rem; cursor: pointer; display: grid; gap: .45rem; grid-template-columns: auto minmax(0, 1fr); min-height: 2.7rem; padding: .38rem .5rem; }
 .qisutu-customer-assignment-item:hover { background: var(--qisutu-surface-soft, #f1f6f8); border-color: var(--qisutu-primary, #00627a); }
 .qisutu-customer-assignment-item input { margin: 0; }
@@ -7405,8 +7406,13 @@ html.qisutu-sidebar-collapsed .qisutu-ticket-search-overlay {
 .qisutu-customer-assignment-item strong { font-size: .87rem; }
 .qisutu-customer-assignment-item small { color: var(--qisutu-text-muted, #617283); font-size: .75rem; margin-top: .08rem; }
 .qisutu-customer-assignment-more { align-self: center; margin: 0 1.1rem .8rem; }
+.qisutu-customer-assignment-more[hidden] { display: none; }
 .qisutu-customer-assignment-dialog > footer { align-items: center; border-top: 1px solid var(--qisutu-border, #d7dee2); display: flex; gap: 1rem; justify-content: space-between; padding: .8rem 1.1rem; }
 .qisutu-customer-assignment-dialog > footer > div { display: flex; gap: .55rem; }
+@media (max-width: 900px) {
+    .qisutu-customer-assignment-overlay,
+    html.qisutu-sidebar-collapsed .qisutu-customer-assignment-overlay { left: 0; }
+}
 @media (max-width: 620px) {
     .qisutu-customer-assignment-overlay { padding: 0; }
     .qisutu-customer-assignment-dialog { border-radius: 0; max-height: 100vh; min-height: 100vh; width: 100vw; }

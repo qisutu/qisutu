@@ -79,4 +79,23 @@ like(
     'sidebar displays the installed version directly beside the product name',
 );
 
+my $Head = $Output->RenderSingle(
+    Template => 'Head.tt',
+    Data     => $Data,
+);
+my @MainStylesheets = $Head =~ m{href="([^"]*/css/qisutu[.]css(?:[?][^"]*)?)"}g;
+is( scalar @MainStylesheets, 1, 'the main stylesheet is included only once' );
+like( $MainStylesheets[0] || '', qr{[?]v=0[.]0[.]79-\d+\z}, 'the main stylesheet uses a versioned URL' );
+unlike( $Head, qr{href="[^"]*/css/"}, 'an empty page stylesheet does not create a directory request' );
+
+my $HeadWithPageStyle = $Output->RenderSingle(
+    Template => 'Head.tt',
+    Data     => { %{$Data}, PageCSS => 'qisutu-response-templates.css?v=2026081601' },
+);
+like(
+    $HeadWithPageStyle,
+    qr{href="/qisutu/static/css/qisutu-response-templates[.]css[?]v=2026081601"},
+    'a page can still add its own stylesheet with its existing version',
+);
+
 done_testing();

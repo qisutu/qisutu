@@ -25,7 +25,8 @@
 (function () {
     'use strict';
 
-    var AgentRefreshMilliseconds = 10 * 60 * 1000;
+    var AgentRefreshMilliseconds = 30 * 1000;
+    var ActivityReportMilliseconds = 30 * 1000;
     var UnreadRefreshMilliseconds = 30 * 1000;
     var MessageRefreshMilliseconds = 4 * 1000;
     var TicketPresenceRefreshMilliseconds = 30 * 1000;
@@ -58,6 +59,7 @@
     function getJSON(URL) {
         return window.fetch(URL, {
             credentials: 'same-origin',
+            cache: 'no-store',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         }).then(function (Response) {
             if (!Response.ok) {
@@ -130,6 +132,40 @@
         var LoadingMessages = false;
         var MessageTimer = null;
         var InviteMode = false;
+        var LastActivityReport = null;
+        var ReportingActivity = false;
+
+        function activityReport(Event) {
+            var Now = Date.now();
+            var URL = Root.getAttribute('data-activity-url');
+
+            if (!URL || document.visibilityState !== 'visible' || ReportingActivity
+                || (Event && Event.isTrusted === false)
+                || (LastActivityReport !== null && Now - LastActivityReport < ActivityReportMilliseconds)) {
+                return;
+            }
+
+            LastActivityReport = Now;
+            ReportingActivity = true;
+            postForm(URL, { CSRFToken: CSRFToken }).catch(function () {
+                // Retry on a later user action, never from a background timer.
+            }).finally(function () {
+                ReportingActivity = false;
+            });
+        }
+
+        // Track activity throughout Qisutu, including typing a long ticket
+        // reply. Background message/presence timers never call activityReport.
+        ['pointerdown', 'pointermove', 'keydown', 'input', 'wheel', 'touchstart'].forEach(function (Name) {
+            document.addEventListener(Name, activityReport, { capture: true, passive: true });
+        });
+        window.addEventListener('focus', activityReport);
+        document.addEventListener('visibilitychange', function (Event) {
+            activityReport(Event);
+            if (document.visibilityState === 'visible' && isOpen()) {
+                loadAgents();
+            }
+        });
 
         function sidebarActionsSynchronize() {
             var Sidebar = document.getElementById('QisutuSidebar');
@@ -648,9 +684,18 @@
             }
         });
 
+        activityReport();
         loadAgents();
-        window.setInterval(loadAgents, AgentRefreshMilliseconds);
-        window.setInterval(loadUnread, UnreadRefreshMilliseconds);
+        window.setInterval(function () {
+            if (isOpen()) {
+                loadAgents();
+            }
+        }, AgentRefreshMilliseconds);
+        window.setInterval(function () {
+            if (!isOpen()) {
+                loadUnread();
+            }
+        }, UnreadRefreshMilliseconds);
 
         (function initTicketPresence() {
             var Presence = document.querySelector('[data-qisutu-ticket-presence]');
