@@ -341,12 +341,13 @@ sub ContentHTML {
     # Deren Zeilenumbrüche müssen beim Anzeigen, Bearbeiten und Einfügen
     # als HTML-Umbrüche erhalten bleiben. Vorhandenes Richtext-HTML bleibt
     # unverändert; Quelltext-Einrückungen sind dort keine sichtbaren Zeilen.
-    # Ungeprüfte Eingaben werden weiterhin in ArticleSave sanitisiert.
+    # Auch Altbestände werden beim Anzeigen mit der aktuellen Bereinigung
+    # verarbeitet. Bereits gespeicherte unsichere Inhalte bleiben so inaktiv.
     if ( $Content !~ m{<\s*/?\s*[a-z][^>]*>}i ) {
         $Content =~ s{\r\n|\r|\n}{<br>}g;
     }
 
-    return $Content;
+    return QisutuHTML->Sanitize($Content);
 }
 
 sub ArticleSave {

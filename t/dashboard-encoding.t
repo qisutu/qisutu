@@ -72,7 +72,7 @@ for my $Language (qw(de en fr it es pt-BR pt-PT nl pl cs tr)) {
     my $Response = $Output->Response( Body => $HTML );
     my (undef, $Body) = split /\r\n\r\n/, $Response, 2;
     my $Decoded = decode('UTF-8', $Body, FB_CROAK);
-    my ($Embedded) = $Decoded =~ m{<script id="qisutu-dashboard-data" type="application/json">(.*?)</script>}s;
+    my ($Embedded) = $Decoded =~ m{<script\b[^>]*\bid="qisutu-dashboard-data"[^>]*>(.*?)</script>}s;
     ok( defined $Embedded, "$Language: response contains initial chart data" );
     is_deeply( JSON::PP->new->utf8(0)->decode($Embedded), $Data,
         "$Language: initial chart data preserves all Unicode text through HTML response" );

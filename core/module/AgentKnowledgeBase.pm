@@ -35,6 +35,13 @@ sub Run {
     my ( $Self, %Param ) = @_;
     my $Request  = $Param{Request} || {};
     my $User     = $Param{User} || {};
+    if ( ( $User->{account_type} || '' ) ne 'agent' || !$User->{user_account_id} ) {
+        return { Response => $Self->{Output}->Response(
+            Status  => '403 Forbidden',
+            Headers => [ 'Cache-Control: no-store' ],
+            Body    => 'Forbidden',
+        ) };
+    }
     my $Language = $Request->{Language} || $Self->{Config}->{Language}->{Default} || 'en';
     my $Object   = QisutuKnowledgeBase->new( Config => $Self->{Config}, DB => $Self->{DB}, Output => $Self->{Output} );
     my $Step     = $Request->{Step} || '';

@@ -60,34 +60,117 @@ sub Sanitize {
 
     $HTML = '' if !defined $HTML;
 
-    $HTML =~ s{<!--.*?-->}{}gs;
-    $HTML =~ s{<\s*(script|style|iframe|object|embed|link|meta|base|form|input|button|textarea|select|option)[^>]*>.*?<\s*/\s*\1\s*>}{}gsi;
-    $HTML =~ s{<\s*/?\s*(script|style|iframe|object|embed|link|meta|base|form|input|button|textarea|select|option)[^>]*>}{}gsi;
-
-    my %Void = map { $_ => 1 } qw(br img);
+    # Rebuild markup from individual tokens. Every literal angle bracket in
+    # text is escaped, including malformed tags. Removing a token therefore
+    # cannot join its neighbours into a new, unchecked HTML tag.
+    $HTML =~ s/\x00//g;
+    my %Void = map { $_ => 1 } qw(br hr img);
     my %Allowed = map { $_ => 1 } qw(
         a b blockquote br code div em figcaption figure h2 h3 h4 h5 h6 hr i img
         li ol p pre s span strong table tbody td th thead tr u ul
     );
 
-    $HTML =~ s{<\s*(/)?\s*([a-zA-Z0-9]+)([^>]*)>}{
-        my $Close = $1 || '';
-        my $Tag   = lc $2;
-        my $Attr  = defined $3 ? $3 : '';
+    my %DropContent = map { $_ => 1 } qw(
+        script style iframe object form button textarea select option template
+        svg math xmp noembed noframes noscript plaintext title
+    );
+    my %RawText = map { $_ => 1 } qw(
+        script style iframe textarea xmp noembed noframes noscript plaintext title
+    );
+    my $Result = '';
+    my $Position = 0;
+    my $Length = length $HTML;
+    my $SkipTag = '';
+    my $SkipDepth = 0;
 
-        if ( !$Allowed{$Tag} ) {
-            '';
+    while ( $Position < $Length ) {
+        if ( $SkipTag && $RawText{$SkipTag} ) {
+            pos($HTML) = $Position;
+            last if $HTML !~ m{</\Q$SkipTag\E(?=[\s/>])[^>]*>}gi;
+            $Position = pos($HTML);
+            $SkipTag = '';
+            $SkipDepth = 0;
+            next;
         }
-        elsif ($Close) {
-            $Void{$Tag} ? '' : "</$Tag>";
+        my $Start = index( $HTML, '<', $Position );
+        $Start = $Length if $Start < 0;
+        if ( !$SkipTag ) {
+            $Result .= $Class->_HTMLTextEscape( substr( $HTML, $Position, $Start - $Position ) );
         }
-        else {
-            my $CleanAttr = $Class->_CleanAttributes( Tag => $Tag, Attr => $Attr );
-            $Void{$Tag} ? "<$Tag$CleanAttr>" : "<$Tag$CleanAttr>";
-        }
-    }gex;
+        last if $Start == $Length;
+        $Position = $Start;
 
-    return $HTML;
+        if ( substr( $HTML, $Start, 4 ) eq '<!--' ) {
+            pos($HTML) = $Start + 4;
+            $Position = $HTML =~ /--!?>/g ? pos($HTML) : $Length;
+            next;
+        }
+
+        pos($HTML) = $Start;
+        if ( $HTML !~ m{\G<(/?)([a-zA-Z][a-zA-Z0-9:_-]*)(?=[\s/>])}gc ) {
+            $Result .= '&lt;' if !$SkipTag;
+            $Position++;
+            next;
+        }
+        my ( $Close, $Tag ) = ( $1, lc $2 );
+        my $AttributeStart = pos($HTML);
+        my $End = $AttributeStart;
+        my $Complete = 0;
+
+        # Quotes can contain angle brackets. Scan each input character at
+        # most once, even for incomplete or deliberately malformed tags.
+        while ( $End < $Length ) {
+            my $Character = substr( $HTML, $End, 1 );
+            if ( $Character eq '"' || $Character eq "'" ) {
+                my $QuoteEnd = index( $HTML, $Character, $End + 1 );
+                $End = $QuoteEnd < 0 ? $Length : $QuoteEnd + 1;
+                next;
+            }
+            last if $Character eq '<';
+            if ( $Character eq '>' ) {
+                $Complete = 1;
+                last;
+            }
+            $End++;
+        }
+
+        if (!$Complete) {
+            $Result .= $Class->_HTMLTextEscape( substr( $HTML, $Start, $End - $Start ) ) if !$SkipTag;
+            $Position = $End;
+            next;
+        }
+        $Position = $End + 1;
+        if ($SkipTag) {
+            if ( $Tag eq $SkipTag ) {
+                $SkipDepth += $Close ? -1 : 1;
+                $SkipTag = '' if !$SkipDepth;
+            }
+            next;
+        }
+        if ( $DropContent{$Tag} && !$Close ) {
+            $SkipTag = $Tag;
+            $SkipDepth = 1;
+            next;
+        }
+        next if !$Allowed{$Tag};
+        if ($Close) {
+            $Result .= "</$Tag>" if !$Void{$Tag};
+            next;
+        }
+        my $Attr = substr( $HTML, $AttributeStart, $End - $AttributeStart );
+        $Result .= '<' . $Tag . $Class->_CleanAttributes( Tag => $Tag, Attr => $Attr ) . '>';
+    }
+
+    return $Result;
+}
+
+sub _HTMLTextEscape {
+    my ( $Class, $Text ) = @_;
+    # Keep character references and authored whitespace unchanged. Decoding
+    # text entities cannot produce markup in the browser's HTML tokenizer.
+    $Text =~ s/</&lt;/g;
+    $Text =~ s/>/&gt;/g;
+    return $Text;
 }
 
 sub PlainTextSearch {
@@ -279,12 +362,15 @@ sub _CleanAttributes {
     my $Tag  = $Param{Tag}  || '';
     my $Attr = $Param{Attr} || '';
     my @Clean;
+    my %Seen;
 
     while ( $Attr =~ m{([a-zA-Z0-9:_-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))}g ) {
         my $Name  = lc $1;
         my $Value = defined $2 ? $2 : defined $3 ? $3 : defined $4 ? $4 : '';
 
         next if $Name =~ m{\Aon};
+        next if $Seen{$Name}++;
+        $Value = $Class->_AttributeEntityDecode($Value);
 
         if ( $Name eq 'style' ) {
             my $Style = $Class->_CleanStyle($Value);
@@ -305,7 +391,10 @@ sub _CleanAttributes {
         }
 
         if ( $Tag eq 'a' && ( $Name eq 'href' || $Name eq 'target' || $Name eq 'rel' ) ) {
-            next if $Name eq 'href' && $Value =~ m{\A\s*(?:javascript|data):}i;
+            if ( $Name eq 'href' ) {
+                $Value = $Class->_SafeURL( Value => $Value, Image => 0 );
+                next if !defined $Value;
+            }
             $Value = '_blank' if $Name eq 'target' && $Value ne '_self';
             $Value = 'noopener noreferrer' if $Name eq 'rel';
             push @Clean, $Name . '="' . $Class->_Escape($Value) . '"';
@@ -313,7 +402,10 @@ sub _CleanAttributes {
         }
 
         if ( $Tag eq 'img' && ( $Name eq 'src' || $Name eq 'alt' || $Name eq 'width' || $Name eq 'height' ) ) {
-            next if $Name eq 'src' && $Value =~ m{\A\s*javascript:}i;
+            if ( $Name eq 'src' ) {
+                $Value = $Class->_SafeURL( Value => $Value, Image => 1 );
+                next if !defined $Value;
+            }
             next if ( $Name eq 'width' || $Name eq 'height' ) && $Value !~ m{\A\d{1,4}\z};
             push @Clean, $Name . '="' . $Class->_Escape($Value) . '"';
             next;
@@ -327,6 +419,58 @@ sub _CleanAttributes {
     }
 
     return @Clean ? ' ' . join( ' ', @Clean ) : '';
+}
+
+sub _AttributeEntityDecode {
+    my ( $Class, $Value ) = @_;
+    my %Named = (
+        amp => '&', lt => '<', gt => '>', quot => '"', apos => "'",
+        AMP => '&', LT => '<', GT => '>', QUOT => '"',
+        colon => ':', Tab => "\t", NewLine => "\n", nbsp => chr(160),
+    );
+    # Decode once, just as an HTML attribute is parsed once. Remaining
+    # unknown references are escaped on output and cannot become a scheme.
+    $Value =~ s{&(?:\#(x[0-9a-f]+|[0-9]+);?|([A-Za-z][A-Za-z0-9]+);)}{
+        my ( $Number, $Name ) = ( $1, $2 );
+        if (defined $Number) {
+            my $Hex = $Number =~ s/^x//i;
+            $Number =~ s/^0+//;
+            my $Code = length($Number) > ( $Hex ? 6 : 7 ) ? 0xfffd
+                : $Hex ? hex($Number || '0') : 0 + ($Number || 0);
+            $Code > 0 && $Code <= 0x10ffff && !( $Code >= 0xd800 && $Code <= 0xdfff )
+                ? chr($Code) : chr(0xfffd);
+        }
+        else {
+            exists $Named{$Name} ? $Named{$Name} : '&' . $Name . ';';
+        }
+    }gexi;
+    return $Value;
+}
+
+sub _SafeURL {
+    my ( $Class, %Param ) = @_;
+    my $Value = $Param{Value};
+    # Browsers remove embedded ASCII tabs/newlines before reading a scheme.
+    # Reject all controls instead of checking only a literal "javascript:".
+    return if $Value =~ /[\x00-\x1f\x7f]/;
+    $Value =~ s/\A +| +\z//g;
+    if ( $Value =~ m{\A([a-z][a-z0-9+.-]*):}i ) {
+        my $Scheme = lc $1;
+        my %Allowed = $Param{Image}
+            ? map { $_ => 1 } qw(http https cid)
+            : map { $_ => 1 } qw(http https mailto tel ftp);
+        if ( $Param{Image} && $Scheme eq 'data' ) {
+            return $Value if $Value =~ m{\Adata:image/(?:png|jpe?g|gif|webp|bmp|x-icon|vnd\.microsoft\.icon|avif);base64,[a-z0-9+/]*={0,2}\z}i;
+            return;
+        }
+        return if !$Allowed{$Scheme};
+    }
+    else {
+        # Relative URLs have no colon in their first path component. This
+        # also rejects obfuscated/invalid schemes rather than guessing.
+        return if $Value =~ m{\A[^/?\#]*:};
+    }
+    return $Value;
 }
 
 sub _CleanStyle {

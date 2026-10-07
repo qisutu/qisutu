@@ -2,6 +2,16 @@
 
 This file records human-readable changes and upgrade impact for published Qisutu releases. Publicly known vulnerabilities fixed in a release are listed with their CVE or other public identifier. If no such vulnerability is listed, none was publicly known with an assigned identifier when that release was prepared.
 
+## 2.0.3
+
+Security release dated 2026-10-07: HTML sanitization now rebuilds allowed markup from tokens and escapes malformed markup so repeated storage/display passes cannot create active tags. Link schemes reject control characters and encoded script URLs. Existing FAQ content is sanitized when displayed. The shared knowledge-base navigation uses an account-specific landing route, and the agent module explicitly rejects non-agent accounts before reading or writing data. HTML responses include a nonce-based script policy; trusted template scripts and existing UI controls remain supported. No database schema change or additional Perl dependency is required.
+
+The two security issues were reported by **kta1kri**. Thank you for the private report and reproducible test cases.
+
+Package correction: the Eclipse project name is 2.0.3. The root `.project` file is optional editor metadata and is excluded from the program checksum manifest. Eclipse changes to this file no longer block updates. Program files, unexpected additional files and symbolic links retain their existing integrity checks.
+
+Upgrade impact: the program and database-version marker are 2.0.3. The schema structure is unchanged; existing migrations retain their original versioned paths. The standard update process applies this release to existing 2.0.2 installations. Existing third-party add-ons should be checked for compatibility with the nonce-based Content Security Policy before deployment.
+
 ## 2.0.2
 
 FAQ authoring now loads the bundled rich-text editor. Line breaks and blank lines in existing plain-text FAQ solutions are converted for display, editing, article previews and ticket insertion without rewriting stored articles or revisions. Plain-text fallback submissions also retain their line breaks; existing HTML paragraphs, lists and source indentation remain intact.

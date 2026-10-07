@@ -173,4 +173,13 @@ $Article = ImportAndDisplay( Message(
 ) );
 is( $Article->{body_html}, '<div>A</div><div><br></div><div>B</div>', 'HTML security filtering still removes executable content while retaining blank lines' );
 
+
+my $AttackArticle = ImportAndDisplay( Message(
+    '<p>Printer broken</p><<<x>x>img src=x onerror=alert(1)>',
+    'text/html', 'quoted-printable',
+) );
+unlike( $AttackArticle->{body}, qr{<img\b[^>]*\bonerror}i, 'nested mail attack is inactive when stored' );
+unlike( $AttackArticle->{body_html}, qr{<img\b[^>]*\bonerror}i, 'nested mail attack stays inactive in the actual ticket display path' );
+is( $AttackArticle->{body_html}, $AttackArticle->{body}, 'mail sanitization cannot activate markup on the second pass' );
+
 done_testing();

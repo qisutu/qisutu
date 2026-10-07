@@ -69,7 +69,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     <td>[% Package.version %]</td>
                                     <td>[% Package.status_label %]</td>
                                     <td>
-                                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]" onsubmit="return confirm('[% Translate.AddonUninstallConfirm %]');">
+                                        <form class="qisutu-inline-form" method="post" action="[% FormAction %]" data-qisutu-submit-confirm="[% Translate.AddonUninstallConfirm %]">
                                             <input type="hidden" name="Page" value="AdminAddons"><input type="hidden" name="Step" value="PackageUninstall"><input type="hidden" name="Identifier" value="[% Package.package_identifier %]">
                                             <button class="qisutu-button qisutu-button-danger qisutu-button-small" type="submit">[% Translate.AddonUninstall %]</button>
                                         </form>

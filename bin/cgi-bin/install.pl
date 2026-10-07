@@ -59,7 +59,7 @@ my $BootstrapFile = File::Spec->catfile( $InstallPath, 'database-bootstrap.conf'
 my $InstanceFile = File::Spec->catfile( $InstallPath, 'instance.conf' );
 my $InstallerOperationLockFile = File::Spec->catfile( $InstallPath, 'installer-operation.lock' );
 my $InstallerLanguagePath = File::Spec->catdir( $RootPath, 'core', 'language', 'installer' );
-my $ProgramVersion = '0.0.1';
+my $ProgramVersion = '2.0.3';
 
 if ( open my $ReleaseHandle, '<:encoding(UTF-8)', $ReleaseFile ) {
     while ( my $Line = <$ReleaseHandle> ) {

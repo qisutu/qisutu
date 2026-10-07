@@ -131,7 +131,7 @@ my @Languages=qw(de en fr it es nl pl cs tr pt-PT pt-BR);
 for my $Lang (@Languages) {
  my $D=do "$Root/core/language/$Lang.pm";
  ok($D->{KnowledgeSuggestionsChoose} && $D->{KnowledgeSuggestionsSaveFailed} && $D->{NotificationArticleBodyLines},"$Lang includes customer/admin/notification translations");
- my $HTML=$Out->RenderSingle(Template=>'CustomerTicketCreate.tt',Data=>{Language=>$Lang,StaticBase=>'/static',SystemVersion=>'2.0.2',CSRFToken=>'test-token',ShowKnowledgeSuggestions=>1,KnowledgeFieldName=>'Title',KnowledgeBodyFieldName=>'Body',KnowledgeLanguage=>$Lang,KnowledgeEndpoint=>'index.pl?Page=CustomerKnowledgeSuggestions',KnowledgeMinimumLength=>3,KnowledgeDebounce=>350});
+ my $HTML=$Out->RenderSingle(Template=>'CustomerTicketCreate.tt',Data=>{Language=>$Lang,StaticBase=>'/static',SystemVersion=>'2.0.3',CSRFToken=>'test-token',ShowKnowledgeSuggestions=>1,KnowledgeFieldName=>'Title',KnowledgeBodyFieldName=>'Body',KnowledgeLanguage=>$Lang,KnowledgeEndpoint=>'index.pl?Page=CustomerKnowledgeSuggestions',KnowledgeMinimumLength=>3,KnowledgeDebounce=>350});
  like($HTML,qr{data-csrf-token="test-token"},"$Lang exposes the session CSRF token to the native widget");
  like($HTML,qr{/js/qisutu-knowledge-suggestions[.]js},"$Lang loads the core script");
  unlike($HTML,qr{/addons/|\[%|Translate[.]},"$Lang has no add-on paths or unresolved template markers");

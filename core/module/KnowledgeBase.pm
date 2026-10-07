@@ -20,7 +20,28 @@
 # SPDX-FileCopyrightText: 2026 Franziska Steps
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-product=Qisutu
-version=2.0.3
-minimum_program_version=1.0.1
-database_version=2.0.3
+package KnowledgeBase;
+
+use strict;
+use warnings;
+use utf8;
+
+sub new { my ( $Class, %Param ) = @_; return bless { %Param }, $Class; }
+
+sub Run {
+    my ( $Self, %Param ) = @_;
+    my $User = $Param{User} || {};
+    my $Type = $User->{account_type} || '';
+
+    # The shared navigation parent is visible to both account types. It must
+    # never execute agent actions or forward untrusted Step/Action parameters.
+    if ( $User->{user_account_id} && ( $Type eq 'agent' || $Type eq 'customer' ) ) {
+        return { Redirect => 'index.pl?Page='
+            . ( $Type eq 'agent' ? 'AgentKnowledgeBase' : 'CustomerKnowledgeBase' ) };
+    }
+    return { Response => $Self->{Output}->Response(
+        Status => '403 Forbidden', Headers => [ 'Cache-Control: no-store' ], Body => 'Forbidden',
+    ) };
+}
+
+1;

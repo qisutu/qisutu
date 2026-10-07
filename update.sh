@@ -504,6 +504,8 @@ package_manifest_source_validate() {
     while IFS= read -r -d '' source_file; do
         relative_path="${source_file#"$SOURCE_ROOT/"}"
         [[ "$relative_path" == "release.sha256" ]] && continue
+        # Eclipse rewrites its root project metadata; it is not a program file.
+        [[ "$relative_path" == ".project" ]] && continue
         [[ -n "${manifest_paths[$relative_path]+x}" || -n "${removed_paths[$relative_path]+x}" ]] \
             || fail "Programmdatei ist nicht in release.sha256 eingetragen: $relative_path"
     done < <(find "$SOURCE_ROOT" -type f -print0)

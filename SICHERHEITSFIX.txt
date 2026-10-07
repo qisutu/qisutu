@@ -1,0 +1,55 @@
+Qisutu 2.0.3 – Sicherheitskorrektur vom 07.10.2026
+
+Gemeldet von: kta1kri.
+
+Behoben:
+- Verschachtelte HTML-Eingaben können bei wiederholter Bereinigung keine
+  ungeprüften Tags oder Ereignisattribute mehr erzeugen.
+- JavaScript-Links mit Tabulatoren, Zeilenumbrüchen und Zeichenreferenzen
+  werden abgefangen. Übliche HTTP-, Mail-, Telefon- und interne Links bleiben
+  erhalten; eingebettete Rasterbilder und CID-Bilder werden weiter unterstützt.
+- Bereits gespeicherte Ticket- und FAQ-Inhalte werden bei der Anzeige bereinigt.
+- Der gemeinsame Wissensdatenbank-Menüpunkt leitet kontotypabhängig weiter.
+  Kunden erreichen damit keine Agentenaktionen. Das Agentenmodul prüft die
+  Benutzerart zusätzlich selbst, bevor eine Datenbankabfrage erfolgt.
+- Eine Content Security Policy erlaubt Inline-Skripte nur mit einer pro
+  Antwort erzeugten Nonce aus einer sicheren Zufallsquelle. Die Nonce wird
+  ausschließlich vertrauenswürdigem Vorlagenquelltext zugewiesen.
+- Bisherige Inline-Ereignisse der Standardoberfläche wurden in eine lokale
+  JavaScript-Datei verschoben, damit die Bedienelemente mit CSP weiterarbeiten.
+
+Paket:
+Paketkorrektur: Die Eclipse-Projektdatei .project nennt jetzt 2.0.3 und ist
+als lokale Editor-Metadatei aus release.sha256 ausgenommen. Änderungen dieser
+Datei blockieren das Update nicht mehr. Alle Programmdateien werden weiterhin
+geprüft; unbekannte Zusatzdateien und symbolische Links bleiben unzulässig.
+Vollständiger Quellstand einschließlich aktualisierter release.sha256.
+Programm- und Datenbank-Versionskennung sind 2.0.3. Keine zusätzliche Perl-Abhängigkeit
+und keine Änderung der Datenbankstruktur. Installierte Add-ons sind in dieser ZIP nicht
+enthalten; ihre eigenen dynamisch erzeugten Inline-Skripte ohne Nonce werden
+von der neuen CSP blockiert. Add-on-Vorlagendateien erhalten die Nonce ebenfalls
+vor dem Einsetzen dynamischer Werte; lokale externe Skripte bleiben erlaubt.
+
+Prüfung:
+Die gezielten Sicherheits-, Formatierungs-, Berechtigungs- und Vorlagentests
+sind erfolgreich. Die ursprünglichen Kundenzugriffe wurden zusätzlich mit
+unveränderten Anwendungsmodulen und einer isolierten SQLite-Testdatenbank
+nachgestellt: Kunden werden abgefangen, Agenten können weiter lesen und
+schreiben. HTML-Mails wurden durch den echten Mailparser sowie ArticleCreate
+und ArticleList geprüft. Die Paket-Prüfsummen wurden neu berechnet.
+
+Grenzen der Prüfung:
+Kein vollständiger Apache/MariaDB-Installationslauf, kein tatsächlicher
+IMAP-Abruf und kein Browser-Lauf. Die neue CSP wurde auf Header- und
+Vorlagenausgabe geprüft; die verlagerten UI-Ereignisse wurden mit Node getestet.
+Perl::Critic ist in der Prüfumgebung nicht installiert und konnte nicht laufen.
+
+Zwei Fehler der vollständigen Testsuite bestehen bereits in der Original-ZIP
+und wurden dort separat reproduziert:
+- t/internal-chat.t erwartet einen Aktualisierungsabstand von zehn Minuten,
+  während die mitgelieferte Chat-Datei bereits dreißig Sekunden verwendet.
+- t/license-headers.t beanstandet unvollständige Lizenzköpfe in den beiden
+  SQL-Migrationen unter install/update/database/2.0.1/.
+Diese unveränderten Bestandsdateien wurden nicht im Rahmen dieses Fixes geändert.
+Die laut DEVELOPMENT.md erforderliche vollständige Produktionsfreigabe mit
+Perl::Critic und fehlerfreier Gesamttestsuite ist damit noch nicht nachgewiesen.

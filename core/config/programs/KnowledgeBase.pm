@@ -22,7 +22,7 @@
 
 {
     Name            => 'KnowledgeBase',
-    Module          => 'AgentKnowledgeBase',
+    Module          => 'KnowledgeBase',
     Title           => 'KnowledgeBaseNavigation',
     Description     => 'KnowledgeBaseDescription',
     Icon            => 'W',

@@ -28,6 +28,7 @@ use utf8;
 
 use Encode qw(encode);
 use File::Spec;
+use MIME::Base64 qw(encode_base64);
 
 sub new {
     my ( $Class, %Param ) = @_;
@@ -130,6 +131,11 @@ sub Response {
     push @Header, 'Referrer-Policy: strict-origin-when-cross-origin' if !$Existing{'referrer-policy'};
     push @Header, 'X-Frame-Options: DENY' if !$Existing{'x-frame-options'} && !$Param{AllowFrame};
     push @Header, 'Permissions-Policy: camera=(), microphone=(), geolocation=()' if !$Existing{'permissions-policy'};
+    if ( $ContentType =~ m{\Atext/html\b}i && !$Existing{'content-security-policy'} ) {
+        push @Header, "Content-Security-Policy: script-src 'self' 'nonce-"
+            . $Self->_CSPNonce()
+            . "'; script-src-attr 'none'; object-src 'none'; base-uri 'self'";
+    }
     if ( ( $ENV{HTTPS} || '' ) eq 'on' && !$Existing{'strict-transport-security'} ) {
         push @Header, 'Strict-Transport-Security: max-age=31536000';
     }
@@ -314,10 +320,34 @@ sub _TemplateLoad {
         return;
     }
 
+    # Only scripts in trusted template source receive a nonce. Do this before
+    # inserting article bodies or any other dynamic values, never on the
+    # completed page, where an attacker could otherwise acquire a nonce.
+    if ( $Content =~ m{<script\b}i ) {
+        my $Nonce = $Self->_CSPNonce();
+        $Content =~ s{<script\b}{<script nonce="$Nonce"}gi;
+    }
+
     return $Self->_TemplateReplace(
         Content => $Content,
         Data    => $Data,
     );
+}
+
+sub _CSPNonce {
+    my ($Self) = @_;
+    return $Self->{CSPNonce} if $Self->{CSPNonce};
+
+    open my $Random, '<:raw', '/dev/urandom' or die 'Cannot open secure random source';
+    my $Bytes = '';
+    while ( length($Bytes) < 24 ) {
+        my $Read = read( $Random, my $Part, 24 - length($Bytes) );
+        die 'Cannot read secure random source' if !defined $Read || !$Read;
+        $Bytes .= $Part;
+    }
+    close $Random;
+    $Self->{CSPNonce} = encode_base64( $Bytes, '' );
+    return $Self->{CSPNonce};
 }
 
 sub _TemplateReplace {

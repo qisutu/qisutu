@@ -48,6 +48,8 @@ Web-facing changes are additionally tested against malformed input, missing perm
 
 Before publishing a production release, maintainers must complete and record all of the following:
 
+Generate `release.sha256` from the final package contents, excluding the manifest itself and the root `.project` file. `.project` is optional Eclipse metadata that the editor may rewrite; it is not installed by the updater. All other packaged files remain checksum-protected. Validate the extracted final archive as well as the source directory.
+
 1. `prove -Icore/system -Icore/config -Icore/cpan-lib -r t`
 2. `tools/qisutu-static-analysis`
 3. Review of test and analysis output; no confirmed medium or higher severity exploitable finding may remain open.

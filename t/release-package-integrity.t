@@ -96,6 +96,7 @@ for my $Line ( read_lines('release.remove') ) {
 }
 
 is_deeply( \@ManifestProblems, [], 'release.sha256 enthält nur eindeutige und sichere Einträge' );
+ok( !exists $Manifest{'.project'}, 'lokale Eclipse-Projektmetadaten gehören nicht in die Programmprüfsummen' );
 is_deeply( \@RemovalProblems, [], 'release.remove enthält nur eindeutige und sichere Einträge' );
 
 my @Overlap = sort grep { exists $Manifest{$_} } keys %Removed;
@@ -144,14 +145,14 @@ find(
                 push @Symlinks, $Relative if !exists $Removed{$Relative};
                 return;
             }
-            return if !-f $Path || $Relative eq 'release.sha256';
+            return if !-f $Path || $Relative eq 'release.sha256' || $Relative eq '.project';
             push @Unlisted, $Relative if !exists $Manifest{$Relative};
         },
     },
     $Root,
 );
 
-is_deeply( [ sort @Unlisted ], [], 'jede Paketdatei ist in release.sha256 eingetragen' );
+is_deeply( [ sort @Unlisted ], [], 'jede Paketdatei außer lokalen Eclipse-Projektmetadaten ist in release.sha256 eingetragen' );
 is_deeply( [ sort @Symlinks ], [], 'das Updatepaket enthält keine symbolischen Links' );
 
 ok( exists $Manifest{'core/config/programs/CMDB.pm'}, 'aktive CMDB-Navigation bleibt im Updatepaket' );
@@ -159,10 +160,10 @@ ok( !exists $Removed{'core/config/programs/CMDB.pm'}, 'aktive CMDB-Navigation wi
 
 my $ReleaseContent = join "\n", read_lines('release.conf');
 my ($ReleaseVersion) = $ReleaseContent =~ /^version=([^\s]+)$/m;
-is( $ReleaseVersion, '2.0.2', 'das Paket verwendet Programmversion 2.0.2' );
+is( $ReleaseVersion, '2.0.3', 'das Paket verwendet Programmversion 2.0.3' );
 like( $ReleaseContent, qr{^minimum_program_version=1[.]0[.]1$}m, 'offizielle Updates beginnen bei Version 1.0.1' );
-like( $ReleaseContent, qr{^database_version=2[.]0[.]2$}m, 'das Paket verwendet Datenbankversion 2.0.2' );
-is_deeply( [ sort keys %Removed ], [], 'Version 2.0.2 enthält keine Update-Entfernungseinträge' );
+like( $ReleaseContent, qr{^database_version=2[.]0[.]3$}m, 'das Paket verwendet Datenbankversion 2.0.3' );
+is_deeply( [ sort keys %Removed ], [], 'Version 2.0.3 enthält keine Update-Entfernungseinträge' );
 
 my @ReadmeFiles = qw(
     README.md README.en.md README.fr.md README.it.md README.pt-BR.md README.pt-PT.md
@@ -185,13 +186,18 @@ for my $ReadmeFile (@ReadmeFiles) {
 my $ChangelogContent = join "\n", read_lines('CHANGELOG.md');
 my ($CurrentReleaseNotes) = $ChangelogContent =~ m{^## \Q$ReleaseVersion\E\s*\n(.*?)(?=^## |\z)}ms;
 ok( defined $CurrentReleaseNotes, 'CHANGELOG beginnt mit dem aktuellen Releaseabschnitt' );
-like( $CurrentReleaseNotes, qr{internal chat}i, 'CHANGELOG beschreibt den internen Chat' );
-like( $CurrentReleaseNotes, qr{handed over directly}i, 'CHANGELOG beschreibt die Ticketübergabe' );
-like( $CurrentReleaseNotes, qr{delivered automatically by e-mail}i, 'CHANGELOG beschreibt den automatischen Reportversand' );
-like( $CurrentReleaseNotes, qr{KimProcesses}i, 'CHANGELOG beschreibt die Prozessverknüpfung für Formulare' );
-like( $CurrentReleaseNotes, qr{retrieval interval}i, 'CHANGELOG beschreibt das einstellbare E-Mail-Abrufintervall' );
-like( $CurrentReleaseNotes, qr{linked directly to configuration items}i, 'CHANGELOG beschreibt die Service-CI-Zuordnung' );
-like( $CurrentReleaseNotes, qr{FAQ articles.*multiple attachments}i, 'CHANGELOG beschreibt FAQ-Anhänge und ihre Ticketübernahme' );
+like( $CurrentReleaseNotes, qr{HTML sanitization}, 'CHANGELOG beschreibt die HTML-Sicherheitskorrektur' );
+like( $CurrentReleaseNotes, qr{agent module explicitly rejects non-agent accounts}, 'CHANGELOG beschreibt die korrigierte Wissensdatenbank-Berechtigung' );
+like( $CurrentReleaseNotes, qr{nonce-based script policy}, 'CHANGELOG beschreibt den zusätzlichen Browserschutz' );
+like( $CurrentReleaseNotes, qr{kta1kri}, 'CHANGELOG nennt den Melder der Sicherheitslücken' );
+my ($PreviousReleaseNotes) = $ChangelogContent =~ m{^## 2[.]0[.]2\s*\n(.*?)(?=^## |\z)}ms;
+like( $PreviousReleaseNotes, qr{internal chat}i, 'CHANGELOG beschreibt den internen Chat' );
+like( $PreviousReleaseNotes, qr{handed over directly}i, 'CHANGELOG beschreibt die Ticketübergabe' );
+like( $PreviousReleaseNotes, qr{delivered automatically by e-mail}i, 'CHANGELOG beschreibt den automatischen Reportversand' );
+like( $PreviousReleaseNotes, qr{KimProcesses}i, 'CHANGELOG beschreibt die Prozessverknüpfung für Formulare' );
+like( $PreviousReleaseNotes, qr{retrieval interval}i, 'CHANGELOG beschreibt das einstellbare E-Mail-Abrufintervall' );
+like( $PreviousReleaseNotes, qr{linked directly to configuration items}i, 'CHANGELOG beschreibt die Service-CI-Zuordnung' );
+like( $PreviousReleaseNotes, qr{FAQ articles.*multiple attachments}i, 'CHANGELOG beschreibt FAQ-Anhänge und ihre Ticketübernahme' );
 
 my $MigrationRoot = File::Spec->catdir( $Root, 'install', 'update', 'database' );
 opendir my $MigrationDH, $MigrationRoot or die "Cannot inspect $MigrationRoot: $!";
@@ -208,6 +214,6 @@ my ($ConfigVersion) = $ConfigContent =~ /Version\s*=>\s*'([^']+)'/;
 is( $ConfigVersion, $ReleaseVersion, 'Release- und Standardkonfiguration verwenden dieselbe Programmversion' );
 
 my $SchemaContent = join "\n", read_lines('install/sql/schema.sql');
-like( $SchemaContent, qr{INSERT INTO `database_version` \(`version`\) VALUES \('2[.]0[.]2'\)}, 'das Neuinstallationsschema verwendet Datenbankversion 2.0.2' );
+like( $SchemaContent, qr{INSERT INTO `database_version` \(`version`\) VALUES \('2[.]0[.]3'\)}, 'das Neuinstallationsschema verwendet Datenbankversion 2.0.3' );
 
 done_testing();

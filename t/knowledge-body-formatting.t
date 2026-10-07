@@ -102,12 +102,12 @@ is( decode_json($JSON)->{article}->{content}, $Expected, 'customer suggestion mo
 
 for my $Locale (qw(de en fr it es nl pl cs tr pt-PT pt-BR)) {
     for my $Page ( [ $Agent, 'agent' ], [ $Customer, 'customer' ] ) {
-        my $View = $Page->[0]->Run( Request => { Action => 'View', ArticleID => 7, Language => $Locale }, User => {} );
+        my $View = $Page->[0]->Run( Request => { Action => 'View', ArticleID => 7, Language => $Locale }, User => { user_account_id => 1, account_type => $Page->[1] } );
         is( $View->{Data}->{ArticleContent}, $Expected, "$Locale $Page->[1] view uses the formatted content" );
         my $HTML = $Output->RenderSingle( Template => $View->{Template}, Data => { %{ $View->{Data} }, Language => $Locale } );
         like( $HTML, qr{\Q$Expected\E}, "$Locale $Page->[1] template renders the breaks as HTML" );
     }
-    my $Edit = $Agent->Run( Request => { Action => 'Edit', ArticleID => 7, Language => $Locale }, User => {} );
+    my $Edit = $Agent->Run( Request => { Action => 'Edit', ArticleID => 7, Language => $Locale }, User => { user_account_id => 1, account_type => 'agent' } );
     is( $Edit->{Data}->{Content}, $Expected, "$Locale edit loads legacy line breaks as editor HTML" );
     my $Form = $Output->RenderSingle( Template => $Edit->{Template}, Data => {
         %{ $Edit->{Data} }, Language => $Locale, StaticBase => '/custom-static',
@@ -137,10 +137,10 @@ is( $DB->{Article}->{content}, $Rich, 'rich-text save retains author formatting 
 $Knowledge->ArticleSave( ArticleID => 7, CategoryID => 1, Title => 'Sicher', Content => '<p onclick="bad()">A<br><br>B</p><script>bad()</script>', ChangedByUserID => 1 );
 is( $DB->{Article}->{content}, '<p>A<br><br>B</p>', 'save still sanitizes executable HTML' );
 
-my $Failed = $Agent->Run( Request => { Step => 'ArticleSave', ArticleID => 7, CategoryID => 1, Title => '', Content => $Plain, Language => 'de' }, User => { user_account_id => 1 } );
+my $Failed = $Agent->Run( Request => { Step => 'ArticleSave', ArticleID => 7, CategoryID => 1, Title => '', Content => $Plain, Language => 'de' }, User => { user_account_id => 1, account_type => 'agent' } );
 ok( $Failed->{Data}->{ErrorMessage}, 'invalid input returns to the form' );
 is( $Failed->{Data}->{Content}, $Expected, 'redisplayed form preserves line breaks after a validation error' );
-my $Create = $Agent->Run( Request => { Action => 'Create', Language => 'de' }, User => {} );
+my $Create = $Agent->Run( Request => { Action => 'Create', Language => 'de' }, User => { user_account_id => 1, account_type => 'agent' } );
 my $CreateHTML = $Output->RenderSingle( Template => $Create->{Template}, Data => { %{ $Create->{Data} }, StaticBase => '/static' } );
 like( $CreateHTML, qr{/js/ckeditor5/ckeditor5\.umd\.js}, 'new FAQ form also loads the rich-text editor' );
 

@@ -27,7 +27,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
     <section class="qisutu-panel">
         <div class="qisutu-panel-header"><h2>[% Translate.AdminCustomerServiceCustomerSelect %]</h2></div>
-        <form method="get" action="index.pl" class="qisutu-admin-form"><input type="hidden" name="Page" value="AdminCustomerServices"><div class="qisutu-form-field"><label>[% Translate.AdminCustomer %]</label><select name="CustomerID" required onchange="this.form.submit()"><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.CustomerOptionsHTML %]</select></div></form>
+        <form method="get" action="index.pl" class="qisutu-admin-form"><input type="hidden" name="Page" value="AdminCustomerServices"><div class="qisutu-form-field"><label>[% Translate.AdminCustomer %]</label><select name="CustomerID" required data-qisutu-auto-submit><option value="">[% Translate.AdminNoSelection %]</option>[% RAW.CustomerOptionsHTML %]</select></div></form>
     </section>
 
     [% IF HasCustomer %]

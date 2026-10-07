@@ -28,7 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
         <div class="qisutu-form-actions">
             [% IF ShowListCanImport %]<a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=[% ProgramPage %];Action=ExportCSV">[% Translate.CMDBExportCSV %]</a><a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AdminCMDBImports">[% Translate.CMDBImportProfiles %]</a>[% END %]
             [% IF ShowListCanCreate %]<a class="qisutu-button qisutu-button-primary" href="index.pl?Page=[% ProgramPage %];Action=Create">[% Translate.CMDBCreate %]</a>[% END %]
-            [% IF ShowBack %][% IF AdminMode %]<a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=[% ProgramPage %]">[% Translate.AdminBackToList %]</a>[% ELSE %]<button class="qisutu-button qisutu-button-secondary" type="button" onclick="history.back()">[% Translate.AdminBackToList %]</button>[% END %][% END %]
+            [% IF ShowBack %][% IF AdminMode %]<a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=[% ProgramPage %]">[% Translate.AdminBackToList %]</a>[% ELSE %]<button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-history-back>[% Translate.AdminBackToList %]</button>[% END %][% END %]
         </div>
     </div>
     <div class="qisutu-form-error [% ErrorClass %]">[% ErrorMessage %]</div>
