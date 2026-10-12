@@ -223,7 +223,8 @@
 
                     editor.updateSourceElement();
 
-                    if (!editor.getData().replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()) {
+                    if (textarea.getAttribute('data-qisutu-richtext-optional') !== '1'
+                        && !editor.getData().replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()) {
                         invalidEditor = editor;
                     }
                 });

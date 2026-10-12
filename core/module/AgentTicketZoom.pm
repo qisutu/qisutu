@@ -1215,7 +1215,7 @@ sub Run {
         IDPrefix => 'qisutu-ticket-article-time-accounting',
     );
     my %ToolTimeAccountingFieldsHTML;
-    for my $Tool (qw(priority owner responsible customer service queue state close)) {
+    for my $Tool (qw(title priority owner responsible customer service queue state close)) {
         $ToolTimeAccountingFieldsHTML{$Tool} = $TimeAccountingObject->FormHTML(
             Language => $Language,
             Request  => $ToolActionError && $ToolActionActive eq $Tool ? $Request : {},
@@ -1410,6 +1410,9 @@ sub Run {
             TicketPriorityOptionsHTML => $PriorityOptionsHTML,
             TicketQueueOptionsHTML   => $QueueOptionsHTML,
             TicketServiceOptionsHTML => $ServiceOptionsHTML,
+            TicketToolTitleValue => $ToolActionError && $ToolActionActive eq 'title'
+                ? ( defined $Request->{Title} ? $Request->{Title} : '' ) : $Ticket->{title},
+            TicketToolTitleArticleBody => $ToolActionError && $ToolActionActive eq 'title' ? ( $Request->{ToolArticleBody} || '' ) : '',
             TicketToolStateOptionsHTML => $StateOptionsHTML,
             TicketToolStatePendingUntil => $StatePendingUntil,
             TicketToolStateArticleBody => $ToolActionError && $ToolActionActive eq 'state' ? ( $Request->{ToolArticleBody} || '' ) : '',
@@ -1437,6 +1440,7 @@ sub Run {
             TicketFormInformationHTML => $TicketFormInformationHTML,
             HasTicketFormInformation  => $TicketFormInformationHTML ? 1 : 0,
             ArticleTimeAccountingFieldsHTML => $ArticleTimeAccountingFieldsHTML,
+            TicketToolTitleTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{title},
             TicketToolPriorityTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{priority},
             TicketToolOwnerTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{owner},
             TicketToolResponsibleTimeAccountingFieldsHTML => $ToolTimeAccountingFieldsHTML{responsible},
@@ -2314,7 +2318,7 @@ sub _TicketToolUpdate {
     my $Action       = $Self->_Trim( $Request->{ToolAction} );
     my $Body         = $Request->{ToolArticleBody} || '';
 
-    my %Allowed = map { $_ => 1 } qw(priority owner responsible customer service queue state close);
+    my %Allowed = map { $_ => 1 } qw(title priority owner responsible customer service queue state close);
 
     if ( !$Allowed{$Action} ) {
         return {
@@ -2332,7 +2336,16 @@ sub _TicketToolUpdate {
         };
     }
 
-    if ( $Action ne 'service' && !$Self->_BodyHasVisibleContent( Body => $Body ) ) {
+    # The entry point verifies CSRF tokens on POST; never accept a title change via GET.
+    if ( $Action eq 'title' && ( $Request->{__RequestMethod} || '' ) ne 'POST' ) {
+        return {
+            Success    => 0,
+            ActiveTool => $Action,
+            Error      => 'Translate:TicketToolUpdateFailed',
+        };
+    }
+
+    if ( $Action ne 'service' && $Action ne 'title' && !$Self->_BodyHasVisibleContent( Body => $Body ) ) {
         return {
             Success    => 0,
             ActiveTool => $Action,
@@ -2374,7 +2387,7 @@ sub _TicketToolUpdate {
         };
     }
 
-    if ( $Action eq 'state' && !$Self->_QueueAccessCheck(
+    if ( ( $Action eq 'state' || $Action eq 'title' ) && !$Self->_QueueAccessCheck(
         User       => $User,
         QueueID    => $TicketBefore->{queue_id},
         Permission => 'ticket.edit',
@@ -2410,7 +2423,30 @@ sub _TicketToolUpdate {
         }
     }
 
-    if ( $Action eq 'priority' ) {
+    if ( $Action eq 'title' ) {
+        my $Title = $Self->_Trim( $Request->{Title} );
+        $Summary = $Self->_ToolSummary(
+            Language => $Language,
+            Action   => $Action,
+            OldValue => $TicketBefore->{title},
+            NewValue => $Title,
+        );
+
+        $Self->{DB}->BeginWork() || return {
+            Success    => 0,
+            ActiveTool => $Action,
+            Error      => 'Translate:TicketToolUpdateFailed',
+        };
+
+        $UpdateOK = $TicketObject->TicketTitleUpdate(
+            TicketID        => $TicketID,
+            Title           => $Title,
+            ExpectedTitle   => $TicketBefore->{title},
+            User            => $User,
+            ChangedByUserID => $User->{user_account_id},
+        );
+    }
+    elsif ( $Action eq 'priority' ) {
         my $PriorityID = $Request->{PriorityID} || 0;
         my $Priority = $Self->_PriorityGet( PriorityID => $PriorityID );
 
@@ -3232,12 +3268,12 @@ sub _ToolSummary {
 
     my $Language = $Param{Language} || 'en';
     my $Action   = $Param{Action} || '';
-    my $OldValue = $Param{OldValue} || '-';
-    my $NewValue = $Param{NewValue} || '-';
+    my $OldValue = defined $Param{OldValue} && length $Param{OldValue} ? $Param{OldValue} : '-';
+    my $NewValue = defined $Param{NewValue} && length $Param{NewValue} ? $Param{NewValue} : '-';
 
-    if ( $Action eq 'state' && $Self->{Output} ) {
+    if ( ( $Action eq 'state' || $Action eq 'title' ) && $Self->{Output} ) {
         my $Summary = $Self->{Output}->Translate(
-            Key      => 'TicketToolStateSummary',
+            Key      => $Action eq 'title' ? 'TicketToolTitleSummary' : 'TicketToolStateSummary',
             Language => $Language,
         );
         my %Values = ( OldValue => $OldValue, NewValue => $NewValue );
@@ -3278,9 +3314,9 @@ sub _ToolArticleSubject {
     my $Language = $Param{Language} || 'en';
     my $Action   = $Param{Action} || '';
 
-    if ( $Action eq 'state' && $Self->{Output} ) {
+    if ( ( $Action eq 'state' || $Action eq 'title' ) && $Self->{Output} ) {
         return $Self->{Output}->Translate(
-            Key      => 'TicketToolStateChanged',
+            Key      => $Action eq 'title' ? 'TicketToolTitleChanged' : 'TicketToolStateChanged',
             Language => $Language,
         );
     }

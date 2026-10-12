@@ -290,6 +290,7 @@ sub SMTPSend {
         ReplyToEmail => $ReplyToEmail,
         InlineImages => $InlineImages,
         Attachments  => $Attachments,
+        AutoSubmitted => $Param{AutoSubmitted},
     );
     $Self->_CommunicationStep(
         Level   => 'success',
@@ -1059,6 +1060,77 @@ sub _IMAPFetchBody {
     }
 
     return '';
+}
+
+sub _AutomationHeaderValue {
+    my ( $Self, %Param ) = @_;
+
+    my $Headers = ref $Param{Headers} eq 'HASH' ? $Param{Headers} : {};
+    my $Name = lc( $Param{Name} || '' );
+    my @Value = map { $Headers->{$_} }
+        sort grep { lc($_) eq $Name && !ref $Headers->{$_} } keys %{$Headers};
+    my $Value = join ', ', grep { defined $_ } @Value;
+    $Value =~ s{\r?\n[ \t]+}{ }g;
+    $Value =~ s{\A\s+|\s+\z}{}g;
+    return $Value;
+}
+
+sub _AutomationHeaderToken {
+    my ( $Self, $Value ) = @_;
+
+    $Value = lc( $Value || '' );
+    # RFC 3834 permits folding whitespace, nested comments and parameters.
+    # Inspect the keyword rather than comparing the complete header value.
+    while ( $Value =~ s{\((?:[^()\\]|\\.)*\)}{ }g ) { }
+    $Value =~ s{\A\s+}{};
+    return $1 if $Value =~ m{\A([a-z0-9!#$%&'*+.^_`|~\-]+)};
+    return '';
+}
+
+sub IsAutomatedMessage {
+    my ( $Self, %Param ) = @_;
+
+    my $AutoSubmitted = $Self->_AutomationHeaderToken(
+        $Self->_AutomationHeaderValue( Headers => $Param{Headers}, Name => 'auto-submitted' )
+    );
+    return 1 if $AutoSubmitted && $AutoSubmitted ne 'no';
+
+    for my $Name ( qw(x-autoreply x-autorespond) ) {
+        my $Value = $Self->_AutomationHeaderToken(
+            $Self->_AutomationHeaderValue( Headers => $Param{Headers}, Name => $Name )
+        );
+        return 1 if $Value && $Value !~ m{\A(?:no|none|false|off|0)\z};
+    }
+
+    my $Precedence = $Self->_AutomationHeaderToken(
+        $Self->_AutomationHeaderValue( Headers => $Param{Headers}, Name => 'precedence' )
+    );
+    return 1 if $Precedence eq 'auto_reply';
+
+    my $ContentType = $Self->_AutomationHeaderValue( Headers => $Param{Headers}, Name => 'content-type' );
+    return 1 if $ContentType =~ m{\Amultipart/report(?:\s*;|\s*\z)}i;
+    return 0;
+}
+
+sub AutoResponseSuppressed {
+    my ( $Self, %Param ) = @_;
+
+    return 1 if $Self->IsAutomatedMessage( Headers => $Param{Headers} );
+
+    my $Precedence = $Self->_AutomationHeaderToken(
+        $Self->_AutomationHeaderValue( Headers => $Param{Headers}, Name => 'precedence' )
+    );
+    return 1 if $Precedence =~ m{\A(?:bulk|junk|list)\z};
+
+    my $Suppress = $Self->_AutomationHeaderValue( Headers => $Param{Headers}, Name => 'x-auto-response-suppress' );
+    # Retain the existing conservative rejection policy. For ordinary receipts,
+    # delivery/read-report suppression alone does not suppress an auto-reply.
+    return 1 if $Param{Rejection} && $Suppress;
+    return 1 if $Suppress =~ m{(?:\A|,)\s*(?:all|autoreply)\s*(?:,|\z)}i;
+
+    my $ReturnPath = $Self->_AutomationHeaderValue( Headers => $Param{Headers}, Name => 'return-path' );
+    return 1 if $ReturnPath =~ m{\A<\s*>\z};
+    return 0;
 }
 
 sub MessageParse {
@@ -1960,6 +2032,10 @@ sub _SMTPMessageBuild {
         'Message-ID: <' . time() . '.' . int( rand(1000000) ) . '@' . $MessageIDHost . '>',
         'MIME-Version: 1.0',
     );
+
+    if ( ( $Param{AutoSubmitted} || '' ) =~ m{\A(?:auto-replied|auto-generated)\z} ) {
+        push @Header, 'Auto-Submitted: ' . $Param{AutoSubmitted};
+    }
 
     if (@CcEmails) {
         push @Header, 'Cc: ' . $Self->_AddressListFormat( Emails => \@CcEmails );

@@ -4,6 +4,12 @@ This file records human-readable changes and upgrade impact for published Qisutu
 
 ## 2.0.3
 
+Agents can now change the ticket title under Ticket actions. The form starts with the current title and accepts up to 500 characters, with an optional internal comment. Queue edit permissions, POST/CSRF protection and merged-ticket restrictions apply. The existing history trigger records the old and new titles; an internal note is saved in the same transaction. Renaming does not send e-mail or change existing article subjects. All eleven interface languages are supported; no database schema change is required.
+
+E-mail follow-up correction: recognized automatic replies and delivery/read reports are retained as internal system articles on existing tickets, including closed queues configured to reject follow-ups or create a new ticket. They do not reopen tickets or trigger customer-reply notifications or receipts. Explicit postmaster reject/ignore and article/state actions still apply. Mailing-list/bulk headers alone suppress receipts without reclassifying a customer's article. Header-based loop prevention now also covers new-ticket receipts, and outgoing automatic receipts carry Auto-Submitted: auto-replied.
+
+Real customer replies by e-mail or through the customer portal now change any pending-type state to open, including pending reminders and pending automatic closure. The existing status update accounts for pending and SLA-pause working time and clears the waiting deadline. Explicit e-mail filter state or pending-time actions take precedence. Reply and state notifications are dispatched after the article transaction commits. Existing imported articles are not rewritten; there is no database schema change.
+
 Security release dated 2026-10-07: HTML sanitization now rebuilds allowed markup from tokens and escapes malformed markup so repeated storage/display passes cannot create active tags. Link schemes reject control characters and encoded script URLs. Existing FAQ content is sanitized when displayed. The shared knowledge-base navigation uses an account-specific landing route, and the agent module explicitly rejects non-agent accounts before reading or writing data. HTML responses include a nonce-based script policy; trusted template scripts and existing UI controls remain supported. No database schema change or additional Perl dependency is required.
 
 The two security issues were reported by **kta1kri**. Thank you for the private report and reproducible test cases.

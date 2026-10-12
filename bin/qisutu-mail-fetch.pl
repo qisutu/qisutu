@@ -208,10 +208,11 @@ sub main {
             my $ExistingTicketID = $TicketObject->TicketIDFromSubject(
                 Subject => $Message->{subject},
             );
+            my $AutomatedMessage = QisutuMail->IsAutomatedMessage( Headers => $Message->{headers} );
             my $ClosedFollowUp = $ExistingTicketID
                 ? $TicketObject->ClosedTicketFollowUpGet( TicketID => $ExistingTicketID )
                 : undef;
-            my $ClosedFollowUpMode = $ClosedFollowUp && $ClosedFollowUp->{IsClosed}
+            my $ClosedFollowUpMode = !$AutomatedMessage && $ClosedFollowUp && $ClosedFollowUp->{IsClosed}
                 ? ( $ClosedFollowUp->{Mode} || 'reopen' )
                 : '';
             my $MessageScope = $ExistingTicketID && $ClosedFollowUpMode ne 'new_ticket'
@@ -442,6 +443,7 @@ sub main {
                 ToEmail         => $Message->{to_email} || $Mailbox->{email},
                 Cc              => $Message->{cc},
                 Attachments     => $Message->{attachments} || [],
+                Headers         => $Message->{headers},
                 CreatedByUserID => 1,
                 ChangedByUserID => 1,
             );
@@ -455,6 +457,7 @@ sub main {
 
                 my $ImportAction = $TicketObject->LastEmailImportAction();
                 my $ArticleID    = $TicketObject->LastEmailImportArticleID();
+                my $ImportDetails = $TicketObject->LastEmailImportDetails();
                 $MailCrypto->ArticleCryptoRecord(
                     TicketID  => $TicketID,
                     ArticleID => $ArticleID,
@@ -475,12 +478,13 @@ sub main {
                     Level   => 'success',
                     Stage   => 'ticket',
                     Message => ( $ImportAction && $ImportAction eq 'updated' ? 'Ticket updated: ' : 'Ticket created: ' )
-                        . ( $TicketReference || '#' . $TicketID ),
+                        . ( $TicketReference || '#' . $TicketID )
+                        . ( $ImportDetails->{AutomatedMessage} ? ' (automated message)' : '' ),
                     Details => 'IMAP UID: ' . ( $Message->{uid} || '' )
                         . "\nTicket ID: " . $TicketID
                         . "\nArticle ID: " . ( $ArticleID || 0 )
-                        . "\nArticle visibility: " . ( $FilterResult->{ArticleVisibility} || 'both' )
-                        . "\nSender type: " . ( $FilterResult->{SenderType} || 'customer' ),
+                        . "\nArticle visibility: " . ( $ImportDetails->{Visibility} || 'both' )
+                        . "\nSender type: " . ( $ImportDetails->{SenderType} || 'customer' ),
                 ) if $CommunicationID;
 
                 my $NotificationSummary = $TicketObject->LastAgentNotificationSummary();

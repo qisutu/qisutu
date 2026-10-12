@@ -274,7 +274,57 @@ my @Sent;
     );
     like( $Response->Error(), qr{suppressed}, 'automatic-sender suppression is reported' );
     is( scalar @Sent, 2, 'suppressed automatic message does not call SMTP' );
+
+    for my $Type (@Type) {
+        ok( !$Response->Send(
+            ResponseType => $Type, TicketID => 42, ArticleID => 8,
+            RecipientEmail => 'robot@example.test',
+            Headers => { 'auto-submitted' => 'auto-replied' },
+        ), "$Type suppresses replies to automated messages" );
+        like( $Response->Error(), qr{suppressed}, "$Type records why the receipt was suppressed" );
+    }
+    is( scalar @Sent, 2, 'none of the four suppressed event types reaches SMTP' );
+    is( $Sent[0]->{AutoSubmitted}, 'auto-replied', 'ticket receipts request the standard automation header' );
+    is( $Sent[1]->{AutoSubmitted}, 'auto-replied', 'rejection receipts request the standard automation header' );
 }
+
+for my $Case (
+    [ {}, 0, 0, 'ordinary message' ],
+    [ { 'Auto-Submitted' => ' Auto-Replied ' }, 1, 1, 'case and whitespace' ],
+    [ { 'auto-submitted' => 'auto-generated; owner-email="robot@example.test"' }, 1, 1, 'automated message with parameter' ],
+    [ { 'auto-submitted' => "(outer (inner))\r\n\tno (human); owner-email=human" }, 0, 0, 'human message with comments and parameters' ],
+    [ { 'x-autoreply' => 'yes' }, 1, 1, 'X-Autoreply' ],
+    [ { 'x-autorespond' => 'vacation' }, 1, 1, 'X-Autorespond' ],
+    [ { 'x-autoreply' => 'no', 'x-autorespond' => '0' }, 0, 0, 'negative legacy markers' ],
+    [ { 'precedence' => 'auto_reply' }, 1, 1, 'explicit automatic reply precedence' ],
+    [ { 'precedence' => 'bulk' }, 0, 1, 'bulk does not reclassify a customer article' ],
+    [ { 'precedence' => 'list' }, 0, 1, 'list does not reclassify a customer article' ],
+    [ { 'precedence' => 'junk' }, 0, 1, 'junk does not reclassify a customer article' ],
+    [ { 'x-auto-response-suppress' => 'All' }, 0, 1, 'suppression is not an automation marker' ],
+    [ { 'x-auto-response-suppress' => 'RN, AutoReply' }, 0, 1, 'explicit receipt suppression' ],
+    [ { 'x-auto-response-suppress' => 'RN, OOF' }, 0, 0, 'read and vacation suppression alone' ],
+    [ { 'x-auto-response-suppress' => 'None' }, 0, 0, 'no suppression requested' ],
+    [ { 'return-path' => '<>' }, 0, 1, 'null return path suppresses receipts' ],
+    [ { 'content-type' => 'Multipart/Report; report-type=delivery-status; boundary=x' }, 1, 1, 'delivery report' ],
+    [ { 'content-type' => 'multipart/report; report-type=disposition-notification; boundary=x' }, 1, 1, 'read receipt' ],
+    [ { 'content-type' => 'multipart/reporter' }, 0, 0, 'unrelated MIME type' ],
+) {
+    my ( $Headers, $Automated, $Suppressed, $Label ) = @{$Case};
+    is( QisutuMail->IsAutomatedMessage( Headers => $Headers ), $Automated, "$Label: article classification" );
+    is( QisutuMail->AutoResponseSuppressed( Headers => $Headers ), $Suppressed, "$Label: response policy" );
+}
+ok( QisutuMail->AutoResponseSuppressed(
+    Headers => { 'x-auto-response-suppress' => 'RN' }, Rejection => 1,
+), 'the legacy rejection suppression policy is retained' );
+
+my $Mail = QisutuMail->new( Config => {} );
+my %MessageParam = ( FromEmail => 'support@example.test', ToEmail => 'customer@example.test', Body => 'Receipt' );
+like( $Mail->_SMTPMessageBuild( %MessageParam, AutoSubmitted => 'auto-replied' ),
+    qr{^Auto-Submitted: auto-replied\r?$}m, 'automatic responses contain Auto-Submitted on the wire' );
+unlike( $Mail->_SMTPMessageBuild(%MessageParam), qr{^Auto-Submitted:}m,
+    'ordinary outgoing agent mail receives no automation marker' );
+unlike( $Mail->_SMTPMessageBuild( %MessageParam, AutoSubmitted => "auto-replied\r\n" . 'Bcc: other@example.test' ),
+    qr{^(?:Auto-Submitted|Bcc):}m, 'automation header parameter cannot inject message headers' );
 
 my $Root = File::Spec->catdir( $FindBin::Bin, '..' );
 my $TicketSource = _Read( File::Spec->catfile( $Root, 'core', 'system', 'QisutuTicket.pm' ) );

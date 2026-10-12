@@ -109,6 +109,9 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             </div>
 
                             <div class="qisutu-ticket-tools-grid" role="tablist" aria-label="[% Translate.TicketToolsTitle %]">
+                                [% IF CanChangeTicket %]
+                                <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="title">[% Translate.TicketToolTitle %]</button>
+                                [% END %]
                                 <button class="qisutu-ticket-tools-tile qisutu-ticket-tools-tile-active" type="button" role="tab" aria-selected="true" data-qisutu-ticket-tool="priority">[% Translate.TicketToolPriority %]</button>
                                 <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="owner">[% Translate.TicketToolOwner %]</button>
                                 <button class="qisutu-ticket-tools-tile" type="button" role="tab" aria-selected="false" data-qisutu-ticket-tool="responsible">[% Translate.TicketToolResponsible %]</button>
@@ -127,6 +130,36 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                 <div class="qisutu-form-error [% TicketToolErrorClass %]">
                                     [% TicketToolError %]
                                 </div>
+
+                                [% IF CanChangeTicket %]
+                                <div class="qisutu-ticket-tools-panel qisutu-hidden" data-qisutu-ticket-tool-panel="title">
+                                    <h4>[% Translate.TicketToolTitle %]</h4>
+                                    <form method="post" action="index.pl" data-qisutu-ticket-tool-form>
+                                        <input type="hidden" name="Page" value="AgentTicketZoom">
+                                        <input type="hidden" name="Step" value="TicketToolUpdate">
+                                        <input type="hidden" name="TicketID" value="[% TicketID %]">
+                                        <input type="hidden" name="ToolAction" value="title">
+
+                                        <div class="qisutu-ticket-tools-form-grid">
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                                <label for="qisutu-ticket-tool-title">[% Translate.TicketTitle %]</label>
+                                                <input id="qisutu-ticket-tool-title" type="text" name="Title" value="[% TicketToolTitleValue %]" maxlength="500" required>
+                                            </div>
+                                            <div class="qisutu-form-field qisutu-ticket-tools-form-wide">
+                                                <label for="qisutu-ticket-tool-title-body">[% Translate.TicketToolInternalArticle %] ([% Translate.AdminOptional %])</label>
+                                                <textarea id="qisutu-ticket-tool-title-body" class="qisutu-richtext" name="ToolArticleBody" rows="5" data-qisutu-richtext-optional="1">[% TicketToolTitleArticleBody %]</textarea>
+                                                <p class="qisutu-form-help">[% Translate.TicketToolTitleNoteHelp %]</p>
+                                            </div>
+                                        </div>
+
+                                        [% RAW.TicketToolTitleTimeAccountingFieldsHTML %]
+
+                                        <div class="qisutu-form-actions">
+                                            <button class="qisutu-button qisutu-button-primary" type="submit">[% Translate.TicketToolSaveChange %]</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                [% END %]
 
                                 <div class="qisutu-ticket-tools-panel" data-qisutu-ticket-tool-panel="priority">
                                     <h4>[% Translate.TicketToolPriority %]</h4>
@@ -1051,7 +1084,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 window.QISUTU_STATIC_BASE = '[% StaticBase %]';
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
-            <script src="[% StaticBase %]/js/qisutu-richtext.js?v=2026100502"></script>
+            <script src="[% StaticBase %]/js/qisutu-richtext.js?v=2026101301"></script>
             <script src="[% StaticBase %]/js/qisutu-knowledge-insert.js?v=2026090502"></script>
             <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026092401"></script>
             <script src="[% StaticBase %]/js/qisutu-cmdb.js?v=2026071801"></script>

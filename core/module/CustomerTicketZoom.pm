@@ -88,6 +88,7 @@ sub Run {
         my $FromName = $Self->_UserName( User => $User );
         my $FromEmail = $User->{email} || '';
         my $ArticleID;
+        my $StateUpdate;
         my $WasClosed = $TicketForSubmit && ( $TicketForSubmit->{state_type} || '' ) eq 'closed' ? 1 : 0;
 
         if ( !$ArticleCreateError ) {
@@ -113,6 +114,7 @@ sub Run {
                 Language        => $Language,
                 CreatedByUserID => $User->{user_account_id},
                 ChangedByUserID => $User->{user_account_id},
+                SkipNotification => 1,
             );
 
             if ( !$ArticleID ) {
@@ -122,7 +124,32 @@ sub Run {
         }
 
         if ( !$ArticleCreateError ) {
+            $StateUpdate = $TicketObject->_CustomerReplyStateUpdate(
+                TicketID        => $TicketID,
+                ChangedByUserID => $User->{user_account_id},
+            );
+            if (!$StateUpdate) {
+                $ArticleCreateError = $TicketObject->Error() || 'Translate:TicketArticleCreateFailed';
+                $Self->{DB}->Rollback();
+            }
+        }
+
+        if ( !$ArticleCreateError ) {
             if ( $Self->{DB}->Commit() ) {
+                $TicketObject->_AgentNotificationSend(
+                    NotificationType => 'customer_reply_in_my_queues',
+                    TicketID         => $TicketID,
+                    ArticleID        => $ArticleID,
+                    ChangedByUserID  => $User->{user_account_id},
+                );
+                if ( $StateUpdate->{Changed} ) {
+                    $TicketObject->_AgentNotificationSend(
+                        NotificationType => 'ticket_state_changed',
+                        TicketID         => $TicketID,
+                        ArticleID        => $ArticleID,
+                        ChangedByUserID  => $User->{user_account_id},
+                    );
+                }
                 $TicketObject->_CustomerAutoResponseSend(
                     ResponseType => $WasClosed
                         ? 'closed_ticket_follow_up'

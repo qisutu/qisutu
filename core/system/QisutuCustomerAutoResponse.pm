@@ -170,8 +170,11 @@ sub Send {
         return 0;
     }
 
-    if ( $Type eq 'incoming_email_rejected' && $Self->_AutomatedMessage( Headers => $Param{Headers} ) ) {
-        $Self->{LastError} = 'Automatic rejection response suppressed for an automated sender';
+    if ( QisutuMail->AutoResponseSuppressed(
+        Headers   => $Param{Headers},
+        Rejection => $Type eq 'incoming_email_rejected' ? 1 : 0,
+    ) ) {
+        $Self->{LastError} = 'Automatic response suppressed by incoming message headers';
         return 0;
     }
 
@@ -303,6 +306,7 @@ sub Send {
         TicketID     => $TicketID || undef,
         ArticleID    => $Param{ArticleID} || undef,
         Operation    => 'customer_auto_response',
+        AutoSubmitted => 'auto-replied',
         FromName     => $FromName,
         FromEmail    => $FromEmail,
         ReplyToName  => $ReplyToName,
@@ -615,12 +619,7 @@ sub _EmailClean {
 sub _AutomatedMessage {
     my ( $Self, %Param ) = @_;
 
-    my $Headers = ref $Param{Headers} eq 'HASH' ? $Param{Headers} : {};
-    my $AutoSubmitted = lc( $Headers->{'auto-submitted'} || '' );
-    return 1 if $AutoSubmitted && $AutoSubmitted ne 'no';
-    return 1 if lc( $Headers->{precedence} || '' ) =~ m{\A(?:bulk|junk|list)\z};
-    return 1 if $Headers->{'x-auto-response-suppress'};
-    return 0;
+    return QisutuMail->AutoResponseSuppressed( Headers => $Param{Headers}, Rejection => 1 );
 }
 
 sub _EventKeyBuild {

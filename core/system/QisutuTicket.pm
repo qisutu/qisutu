@@ -34,6 +34,7 @@ use QisutuChecklist;
 use QisutuCustomerAutoResponse;
 use QisutuDynamicField;
 use QisutuHTML;
+use QisutuMail;
 use QisutuNotification;
 use QisutuService;
 use QisutuSystemSetting;
@@ -1140,18 +1141,25 @@ sub TicketCreateFromEmail {
     my $CreatedByUserID  = $Param{CreatedByUserID} || 1;
     my $ChangedByUserID  = $Param{ChangedByUserID} || $CreatedByUserID;
     my $Attachments      = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
-    my $Visibility       = $PostmasterResult->{ArticleVisibility} || 'both';
-    my $SenderType       = $PostmasterResult->{SenderType} || 'customer';
+    my $AutomatedMessage = QisutuMail->IsAutomatedMessage( Headers => $Param{Headers} );
+    my $AutomatedFollowUp = $AutomatedMessage && $ExistingTicketID ? 1 : 0;
+    my $Visibility       = $PostmasterResult->{ArticleVisibility} || ( $AutomatedFollowUp ? 'agent' : 'both' );
+    my $SenderType       = $PostmasterResult->{SenderType} || ( $AutomatedFollowUp ? 'system' : 'customer' );
 
     $Self->{LastEmailImportAction}   = '';
     $Self->{LastEmailImportTicketID} = 0;
     $Self->{LastEmailImportArticleID} = 0;
+    $Self->{LastEmailImportDetails} = {};
+    $Self->{LastAgentNotificationSent} = 0;
+    $Self->{LastAgentNotificationError} = '';
+    $Self->{LastCustomerAutoResponseSent} = 0;
+    $Self->{LastCustomerAutoResponseError} = '';
 
     if ($ExistingTicketID) {
         my $FollowUp = $Self->ClosedTicketFollowUpGet( TicketID => $ExistingTicketID );
         return if !$FollowUp;
 
-        if ( $FollowUp->{IsClosed} ) {
+        if ( $FollowUp->{IsClosed} && !$AutomatedFollowUp ) {
             if ( $FollowUp->{Mode} eq 'reject' ) {
                 $Self->{LastEmailImportAction}   = 'rejected';
                 $Self->{LastEmailImportTicketID} = $ExistingTicketID;
@@ -1168,7 +1176,7 @@ sub TicketCreateFromEmail {
                 };
                 $Title = $Self->_TicketSubjectReferenceRemove( Subject => $Title );
             }
-            else {
+            elsif ( !defined $PostmasterResult->{StateID} ) {
                 my $OpenStateID = $Self->_OpenStateID();
                 if (!$OpenStateID) {
                     $Self->{LastError} ||= 'Ticket state open was not found';
@@ -1200,6 +1208,7 @@ sub TicketCreateFromEmail {
             CreatedByUserID => $CreatedByUserID,
             ChangedByUserID => $ChangedByUserID,
             Attachments     => $Attachments,
+            Headers         => $Param{Headers},
         );
     }
 
@@ -1335,14 +1344,14 @@ sub TicketCreateFromEmail {
         return;
     }
 
-    $Self->_AgentNotificationSend(
-        NotificationType => 'ticket_new_in_my_queues',
-        TicketID         => $TicketID,
-        ArticleID        => $ArticleID,
-        ChangedByUserID  => $ChangedByUserID,
-    );
-
     if ( $SenderType eq 'customer' ) {
+        $Self->_AgentNotificationSend(
+            NotificationType => 'ticket_new_in_my_queues',
+            TicketID         => $TicketID,
+            ArticleID        => $ArticleID,
+            ChangedByUserID  => $ChangedByUserID,
+        );
+
         $Self->_CustomerAutoResponseSend(
             ResponseType     => 'customer_ticket_created',
             TicketID         => $TicketID,
@@ -1353,12 +1362,18 @@ sub TicketCreateFromEmail {
             IncomingFromName => $FromName,
             IncomingFromEmail => $FromEmail,
             IncomingToEmail  => $ToEmail,
+            Headers          => $Param{Headers},
         );
     }
 
     $Self->{LastEmailImportAction}   = 'created';
     $Self->{LastEmailImportTicketID} = $TicketID;
     $Self->{LastEmailImportArticleID} = $ArticleID;
+    $Self->{LastEmailImportDetails} = {
+        AutomatedMessage => $AutomatedMessage ? 1 : 0,
+        SenderType       => $SenderType,
+        Visibility       => $Self->_ArticleVisibilityNormalize( SenderType => $SenderType, Visibility => $Visibility ),
+    };
 
     $Self->_AddonEventEmit(
         Event => 'ticket.created',
@@ -1385,12 +1400,13 @@ sub _TicketReplyCreateFromEmail {
     my $ToName           = $Param{ToName} || '';
     my $ToEmail          = $Param{ToEmail} || '';
     my $Cc               = $Param{Cc} || $Param{CC} || '';
-    my $Visibility       = $Param{Visibility} || 'both';
-    my $SenderType       = $Param{SenderType} || 'customer';
     my $PostmasterResult = ref $Param{PostmasterResult} eq 'HASH' ? $Param{PostmasterResult} : {};
     my $CreatedByUserID  = $Param{CreatedByUserID} || 1;
     my $ChangedByUserID  = $Param{ChangedByUserID} || $CreatedByUserID;
     my $Attachments      = ref $Param{Attachments} eq 'ARRAY' ? $Param{Attachments} : [];
+    my $AutomatedMessage = QisutuMail->IsAutomatedMessage( Headers => $Param{Headers} );
+    my $Visibility       = $PostmasterResult->{ArticleVisibility} || $Param{Visibility} || ( $AutomatedMessage ? 'agent' : 'both' );
+    my $SenderType       = $PostmasterResult->{SenderType} || $Param{SenderType} || ( $AutomatedMessage ? 'system' : 'customer' );
 
     my $Ticket = $Self->{DB}->SelectRow(
         'SELECT t.*, state.state_type AS current_state_type
@@ -1512,13 +1528,27 @@ sub _TicketReplyCreateFromEmail {
         return;
     }
 
+    if ( !$AutomatedMessage && $SenderType eq 'customer'
+        && !defined $PostmasterResult->{StateID} && !defined $PostmasterResult->{PendingMinutes}
+    ) {
+        my $StateUpdate = $Self->_CustomerReplyStateUpdate(
+            TicketID        => $TicketID,
+            ChangedByUserID => $ChangedByUserID,
+        );
+        if (!$StateUpdate) {
+            $Self->{DB}->Rollback();
+            return;
+        }
+        $Data->{state_id} = $StateUpdate->{StateID};
+    }
+
     if ( !$Self->{DB}->Commit() ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Ticket reply transaction could not be committed';
         $Self->{DB}->Rollback();
         return;
     }
 
-    if ( $SenderType eq 'customer' ) {
+    if ( $SenderType eq 'customer' && !$AutomatedMessage ) {
         $Self->_AgentNotificationSend(
             NotificationType => 'customer_reply_in_my_queues',
             TicketID         => $TicketID,
@@ -1538,6 +1568,7 @@ sub _TicketReplyCreateFromEmail {
             IncomingFromName  => $FromName,
             IncomingFromEmail => $FromEmail,
             IncomingToEmail   => $ToEmail,
+            Headers           => $Param{Headers},
         );
     }
 
@@ -1565,6 +1596,11 @@ sub _TicketReplyCreateFromEmail {
     $Self->{LastEmailImportAction}   = 'updated';
     $Self->{LastEmailImportTicketID} = $TicketID;
     $Self->{LastEmailImportArticleID} = $ArticleID;
+    $Self->{LastEmailImportDetails} = {
+        AutomatedMessage => $AutomatedMessage ? 1 : 0,
+        SenderType       => $SenderType,
+        Visibility       => $Self->_ArticleVisibilityNormalize( SenderType => $SenderType, Visibility => $Visibility ),
+    };
 
     $Self->_AddonEventEmit(
         Event => 'mail.received',
@@ -1572,6 +1608,49 @@ sub _TicketReplyCreateFromEmail {
     );
 
     return $TicketID;
+}
+
+sub _CustomerReplyStateUpdate {
+    my ( $Self, %Param ) = @_;
+
+    my $TicketID = $Param{TicketID} || 0;
+    if ( $TicketID !~ m{\A\d+\z} || !$TicketID ) {
+        $Self->{LastError} = 'Valid TicketID is required';
+        return;
+    }
+
+    # The caller owns the article transaction and sends notifications only
+    # after its commit. Lock the current state before deciding to resume it.
+    my $Ticket = $Self->{DB}->SelectRow(
+        'SELECT t.state_id, state.state_type
+         FROM ticket t
+         INNER JOIN ticket_state state ON state.id = t.state_id
+         WHERE t.id = ?
+         FOR UPDATE',
+        $TicketID,
+    );
+    if (!$Ticket) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Ticket could not be loaded';
+        return;
+    }
+
+    return { Changed => 0, StateID => $Ticket->{state_id} }
+        if ( $Ticket->{state_type} || '' ) ne 'pending';
+
+    my $StateID = $Self->_OpenStateID();
+    if (!$StateID) {
+        $Self->{LastError} = 'Ticket state open was not found';
+        return;
+    }
+
+    return if !$Self->TicketStatusUpdate(
+        TicketID             => $TicketID,
+        StatusID             => $StateID,
+        ChangedByUserID      => $Param{ChangedByUserID} || 1,
+        SuppressNotification => 1,
+    );
+
+    return { Changed => 1, StateID => $StateID };
 }
 
 sub _PostmasterTicketDataResolve {
@@ -2768,13 +2847,7 @@ sub TicketCreateFromAgent {
         return;
     }
 
-    $Self->_AgentNotificationSend(
-        NotificationType => 'ticket_new_in_my_queues',
-        TicketID         => $TicketID,
-        ArticleID        => $ArticleID,
-        ChangedByUserID  => $UserID,
-    );
-
+    # New-ticket notifications are only sent for tickets created by customers.
     $Self->_AddonEventEmit(
         Event => 'ticket.created',
         Payload => { ticket_id => 0 + $TicketID, article_id => 0 + $ArticleID, source => 'agent' },
@@ -2854,6 +2927,11 @@ sub LastEmailImportArticleID {
     my ($Self) = @_;
 
     return $Self->{LastEmailImportArticleID} || 0;
+}
+
+sub LastEmailImportDetails {
+    my ($Self) = @_;
+    return $Self->{LastEmailImportDetails} || {};
 }
 
 sub TicketIDFromSubject {
@@ -4312,6 +4390,74 @@ sub TicketStatusUpdate {
     }
 
     return $Recalculated;
+}
+
+# The caller owns the transaction so the title and its internal note commit together.
+sub TicketTitleUpdate {
+    my ( $Self, %Param ) = @_;
+
+    $Self->{LastError} = '';
+    my $TicketID = $Param{TicketID} || 0;
+    my $User = $Param{User} || {};
+    my $Title = defined $Param{Title} ? $Param{Title} : '';
+    $Title =~ s{\A\s+|\s+\z}{}g;
+
+    if ( $TicketID !~ m{\A\d+\z} || !$TicketID ) {
+        $Self->{LastError} = 'Translate:TicketToolUpdateFailed';
+        return;
+    }
+    if ( !$User->{user_account_id} || ( $User->{account_type} || '' ) ne 'agent' ) {
+        $Self->{LastError} = 'Translate:TicketChangeAccessDenied';
+        return;
+    }
+    if ( !length($Title) || length($Title) > 500 || $Title =~ m{[[:cntrl:]]} ) {
+        $Self->{LastError} = 'Translate:TicketToolTitleInvalid';
+        return;
+    }
+
+    my $Ticket = $Self->{DB}->SelectRow(
+        'SELECT t.id, t.queue_id, t.title, s.name AS state_name
+         FROM ticket t
+         INNER JOIN ticket_state s ON s.id = t.state_id
+         WHERE t.id = ?
+         LIMIT 1 FOR UPDATE',
+        $TicketID,
+    );
+    if (!$Ticket) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:TicketToolUpdateFailed';
+        return;
+    }
+    if ( !$Self->_TicketChangeAllowed( Ticket => $Ticket, User => $User ) ) {
+        $Self->{LastError} = 'Translate:TicketChangeAccessDenied';
+        return;
+    }
+    if ( ( $Ticket->{state_name} || '' ) eq 'merged' ) {
+        $Self->{LastError} = 'Translate:TicketMergedReadOnly';
+        return;
+    }
+    if ( exists $Param{ExpectedTitle} && $Ticket->{title} ne $Param{ExpectedTitle} ) {
+        $Self->{LastError} = 'Translate:TicketToolTitleConflict';
+        return;
+    }
+    if ( $Ticket->{title} eq $Title ) {
+        $Self->{LastError} = 'Translate:TicketToolNoChange';
+        return;
+    }
+
+    # The existing ticket-history trigger records the old/new title and actor.
+    my $Result = $Self->{DB}->Do(
+        'UPDATE ticket
+         SET title = ?, changed_by_user_id = ?, changed_at = NOW()
+         WHERE id = ?',
+        $Title,
+        $User->{user_account_id},
+        $TicketID,
+    );
+    if (!$Result) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Translate:TicketToolUpdateFailed';
+        return;
+    }
+    return 1;
 }
 
 sub TicketPriorityUpdate {
