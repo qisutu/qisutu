@@ -1,7 +1,7 @@
 1abcb169f60a9408f7e95f6dd609b118b583e8d0ba2dcd697345fee9022c3690  ./.gitignore
 708bde74381fecb0b691fde9a82221c002cd5513de9ca1b2a6b376457d0bc8d7  ./.perlcriticrc
 5e35fb4d6382fae66ec7352f5d81a4f69766dd36daa13cbfcec115e817cd924c  ./API.md
-29912571930511a3f597a2d7518346afe77b7c7fa2934a70729d1602d87b9f55  ./CHANGELOG.md
+5c8b68aa9883275cb7b6c3585d1d3b9e5fae555d40f1ef02e66a717088ceba88  ./CHANGELOG.md
 1aba8ff7f9ea9ee7470fa1ba9056011b5779607294ff792d2102fdddac07827b  ./CONTRIBUTING.md
 6b1901bb9c7fbb0a5a91c756f3ec099e6f6e8958f0fa7801c34df3b222682c91  ./COPYRIGHT
 c872b6c23f18ba6decf3f35ead8115a971f884f8a10011c9c551b775af5b431b  ./DEVELOPMENT.md
@@ -170,7 +170,7 @@ b3593b4b7a09a497815e967253e97f46c348a4b8d717a54d7ccfd4d3b05d653d  ./core/module/
 02dbe7529ddab96dc6daa137e3061a77c2c4e99b81154c0441aeb74798a99520  ./core/module/AgentInternalChat.pm
 7418cff53fbd5782aba61febc9bf7d8fa1042e756ee15a3b58f2d17126939722  ./core/module/AgentKnowledgeBase.pm
 4377aa152dd78b6498069d9870c81bc4c7637a799cd56f09ca341e4252caffc9  ./core/module/AgentPreferences.pm
-85067717c0571dccaa84dcf6ae19451e4a2b3a314c47031ef58fe5f96bed45cd  ./core/module/AgentTicketCreate.pm
+ad709e672a987c80e763b5e7e7a0f02d22b6eb7d4c2f6ca21f3461147df23b6a  ./core/module/AgentTicketCreate.pm
 db26a7ebf3521cdee898b5fa871ac4fd97af0cb21ae4dd220a281067856ddc9d  ./core/module/AgentTicketList.pm
 616e4bac778d4632df467e0e408fa36dc66f8f5b9af97941910f18fa6ae8f84c  ./core/module/AgentTicketZoom.pm
 37fb983723b8744732e348ff7acef8eb3c5516d0681a3d7ebc6578e480e30e65  ./core/module/CMDBItems.pm

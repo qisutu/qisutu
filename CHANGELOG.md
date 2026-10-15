@@ -4,6 +4,8 @@ This file records human-readable changes and upgrade impact for published Qisutu
 
 ## 2.0.3
 
+Agent-created tickets now default to the open state in the creation form and when submitting without an explicit state. An explicitly selected state is retained. No database schema change is required.
+
 Agents can now change the ticket title under Ticket actions. The form starts with the current title and accepts up to 500 characters, with an optional internal comment. Queue edit permissions, POST/CSRF protection and merged-ticket restrictions apply. The existing history trigger records the old and new titles; an internal note is saved in the same transaction. Renaming does not send e-mail or change existing article subjects. All eleven interface languages are supported; no database schema change is required.
 
 E-mail follow-up correction: recognized automatic replies and delivery/read reports are retained as internal system articles on existing tickets, including closed queues configured to reject follow-ups or create a new ticket. They do not reopen tickets or trigger customer-reply notifications or receipts. Explicit postmaster reject/ignore and article/state actions still apply. Mailing-list/bulk headers alone suppress receipts without reclassifying a customer's article. Header-based loop prevention now also covers new-ticket receipts, and outgoing automatic receipts carry Auto-Submitted: auto-replied.

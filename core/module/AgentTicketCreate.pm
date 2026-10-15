@@ -671,7 +671,7 @@ sub _DefaultStateID {
            AND active = 1
          ORDER BY sort_order ASC, id ASC
          LIMIT 1',
-        'new',
+        'open',
     );
 
     return $Row ? ( $Row->{id} || 0 ) : 0;
