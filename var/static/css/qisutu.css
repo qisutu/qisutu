@@ -2698,6 +2698,23 @@ a:hover {
     color: var(--qisutu-text);
 }
 
+.qisutu-ticket-article-body.qisutu-article-preview-clipped {
+    max-height: calc(15em + 14px);
+    overflow: hidden;
+}
+
+[data-qisutu-article-preview-content] {
+    display: flow-root;
+}
+
+.qisutu-article-preview-toggle {
+    margin-top: 12px;
+}
+
+.qisutu-article-preview-toggle[hidden] {
+    display: none;
+}
+
 .qisutu-ticket-article-empty {
     margin-top: 0;
 }
@@ -9467,3 +9484,158 @@ html.qisutu-sidebar-collapsed .qisutu-communication-detail-backdrop { left: 68px
 .qisutu-ticket-article-label.is-success { background: #e5f5e9; color: #176b36; }
 .qisutu-ticket-article-label.is-warning { background: #fff1d5; color: #855307; }
 .qisutu-ticket-article-label.is-error { background: #fdebea; color: #9d2b25; }
+
+/* Ticket composer: the page keeps its position while the form scrolls independently. */
+body.qisutu-reply-overlay-open,
+body.qisutu-reply-overlay-open .qisutu-workspace {
+    overflow: hidden;
+}
+
+body.qisutu-reply-overlay-open {
+    --ck-z-modal: 1400;
+}
+
+.qisutu-reply-overlay {
+    --qisutu-reply-sidebar-width: 248px;
+    position: fixed;
+    inset: 0;
+    z-index: 1250;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    padding-left: calc(20px + var(--qisutu-reply-sidebar-width));
+    background: rgba(15, 23, 42, .5);
+    overscroll-behavior: contain;
+}
+
+html.qisutu-sidebar-collapsed .qisutu-reply-overlay {
+    --qisutu-reply-sidebar-width: 68px;
+}
+
+.qisutu-reply-overlay[hidden] {
+    display: none;
+}
+
+.qisutu-reply-overlay > .qisutu-ticket-reply-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: min(100%, 1050px);
+    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 40px);
+    min-height: 0;
+    min-width: 0;
+    margin: 0;
+    border: 1px solid var(--qisutu-border);
+    border-radius: 12px;
+    background: var(--qisutu-surface);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, .25);
+    overflow: hidden;
+}
+
+.qisutu-reply-dialog-header,
+.qisutu-reply-dialog-footer {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    padding: 14px 20px;
+    background: var(--qisutu-surface);
+}
+
+.qisutu-reply-dialog-header {
+    justify-content: space-between;
+    border-bottom: 1px solid var(--qisutu-border);
+}
+
+.qisutu-reply-dialog-footer {
+    justify-content: flex-end;
+    border-top: 1px solid var(--qisutu-border);
+}
+
+.qisutu-reply-dialog-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 12px 18px;
+    min-height: 0;
+    min-width: 0;
+    padding: 18px 20px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+.qisutu-reply-dialog-body > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+}
+
+.qisutu-reply-dialog-body > .qisutu-reply-half {
+    grid-column: auto;
+}
+
+.qisutu-reply-dialog-body .qisutu-form-field {
+    align-content: start;
+}
+
+.qisutu-reply-dialog-body .qisutu-form-help {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.qisutu-reply-dialog-body > input[type="hidden"],
+.qisutu-reply-dialog-body > [data-qisutu-response-template-hidden-inputs],
+.qisutu-reply-dialog-body > [data-qisutu-knowledge-hidden-inputs],
+.qisutu-reply-dialog-body > [data-qisutu-ticket-article-dynamic-fields]:empty {
+    display: none;
+}
+
+.qisutu-reply-overlay .qisutu-form-field .ck.ck-editor__main > .ck-editor__editable,
+.qisutu-reply-overlay #qisutu-article-body,
+.qisutu-reply-overlay .ck-source-editing-area {
+    height: 280px;
+    min-height: 280px;
+    max-height: 280px;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.qisutu-reply-overlay .ck-source-editing-area textarea {
+    height: 100%;
+    min-height: 0;
+    resize: none;
+}
+
+.qisutu-reply-overlay .ck.ck-sticky-panel .ck-sticky-panel__content_sticky {
+    position: static;
+    width: auto !important;
+}
+
+.qisutu-reply-overlay .ck.ck-sticky-panel .ck-sticky-panel__placeholder {
+    display: none !important;
+}
+
+.qisutu-reply-overlay .qisutu-knowledge-insert-overlay {
+    z-index: 1300;
+}
+
+@media (max-width: 900px) {
+    .qisutu-reply-overlay,
+    html.qisutu-sidebar-collapsed .qisutu-reply-overlay {
+        --qisutu-reply-sidebar-width: 0px;
+    }
+}
+
+@media (max-width: 600px) {
+    .qisutu-reply-overlay { padding: 8px; }
+    .qisutu-reply-overlay > .qisutu-ticket-reply-form {
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+    }
+    .qisutu-reply-dialog-body { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+    .qisutu-reply-dialog-header, .qisutu-reply-dialog-footer { padding: 12px; }
+}

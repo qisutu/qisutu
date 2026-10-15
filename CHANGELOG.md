@@ -4,6 +4,8 @@ This file records human-readable changes and upgrade impact for published Qisutu
 
 ## 2.0.3
 
+Agent ticket replies now open in an overlay centered in the workspace beside the navigation (including the collapsed sidebar and mobile layout) with a bounded, internally scrolling editor and permanently visible close/send controls. Closing and reopening the overlay retains the current draft and attachments on the ticket page; switching to another message asks before discarding changed content. Long article bodies start with a compact preview and can be expanded individually. Reply templates, quoted correspondence, FAQ insertion and the existing submission behavior are retained. All eleven interface languages are supported; no database schema change is required.
+
 Agent-created tickets now default to the open state in the creation form and when submitting without an explicit state. An explicitly selected state is retained. No database schema change is required.
 
 Agents can now change the ticket title under Ticket actions. The form starts with the current title and accepts up to 500 characters, with an optional internal comment. Queue edit permissions, POST/CSRF protection and merged-ticket restrictions apply. The existing history trigger records the old and new titles; an internal note is saved in the same transaction. Renaming does not send e-mail or change existing article subjects. All eleven interface languages are supported; no database schema change is required.

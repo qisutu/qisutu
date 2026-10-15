@@ -32,6 +32,39 @@
 
         articles.forEach(function (article) {
             var toggle = article.querySelector('[data-qisutu-article-toggle]');
+            var preview = article.querySelector('[data-qisutu-article-preview]');
+            var content = article.querySelector('[data-qisutu-article-preview-content]');
+            var previewToggle = article.querySelector('[data-qisutu-article-preview-toggle]');
+
+            function previewUpdate() {
+                if (!preview || !content || !previewToggle || !content.getClientRects().length) {
+                    return;
+                }
+                var limit = parseFloat(window.getComputedStyle(preview).fontSize) * 15;
+                var longMessage = content.scrollHeight > limit;
+                var expanded = previewToggle.getAttribute('aria-expanded') === 'true';
+                previewToggle.hidden = !longMessage;
+                preview.classList.toggle('qisutu-article-preview-clipped', longMessage && !expanded);
+            }
+
+            if (preview && content && previewToggle) {
+                previewToggle.addEventListener('click', function () {
+                    var expanded = previewToggle.getAttribute('aria-expanded') !== 'true';
+                    previewToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                    previewToggle.textContent = previewToggle.getAttribute(expanded ? 'data-collapse-label' : 'data-expand-label');
+                    previewUpdate();
+                    if (!expanded) {
+                        article.scrollIntoView({ block: 'nearest' });
+                    }
+                });
+                if (window.ResizeObserver) {
+                    new ResizeObserver(previewUpdate).observe(content);
+                }
+                content.addEventListener('load', previewUpdate, true);
+                window.addEventListener('resize', previewUpdate);
+                article.qisutuPreviewUpdate = previewUpdate;
+                previewUpdate();
+            }
 
             if (!toggle) {
                 return;
@@ -39,13 +72,19 @@
 
             toggle.addEventListener('click', function () {
                 article.classList.toggle('qisutu-ticket-article-open');
+                toggle.setAttribute('aria-expanded', article.classList.contains('qisutu-ticket-article-open') ? 'true' : 'false');
+                previewUpdate();
             });
+            toggle.setAttribute('aria-expanded', article.classList.contains('qisutu-ticket-article-open') ? 'true' : 'false');
         });
 
         openAllButtons.forEach(function (button) {
             button.addEventListener('click', function () {
                 articles.forEach(function (article) {
                     article.classList.add('qisutu-ticket-article-open');
+                    var toggle = article.querySelector('[data-qisutu-article-toggle]');
+                    if (toggle) { toggle.setAttribute('aria-expanded', 'true'); }
+                    if (article.qisutuPreviewUpdate) { article.qisutuPreviewUpdate(); }
                 });
             });
         });
@@ -54,6 +93,8 @@
             button.addEventListener('click', function () {
                 articles.forEach(function (article) {
                     article.classList.remove('qisutu-ticket-article-open');
+                    var toggle = article.querySelector('[data-qisutu-article-toggle]');
+                    if (toggle) { toggle.setAttribute('aria-expanded', 'false'); }
                 });
             });
         });
@@ -106,6 +147,14 @@
         var responseTemplateAttachments = [];
         var responseTemplateRequestSerial = 0;
         var activeReplyBodyTemplate = body ? (body.value || '') : '';
+        var overlay = document.querySelector('[data-qisutu-reply-overlay]');
+        var resumeButtons = document.querySelectorAll('[data-qisutu-reply-resume]');
+        var returnFocus = null;
+        var draftKey = null;
+        var draftBaseline = '';
+        var baselinePending = false;
+        var baselineBodyValue = '';
+        var focusPending = false;
 
         if (!form || !modeInput) {
             return;
@@ -133,15 +182,94 @@
             }
         }
 
-        function formShow(scroll) {
-            form.classList.remove('qisutu-hidden');
+        function draftState() {
+            var fields = Array.prototype.map.call(form.elements, function (field) {
+                if (!field.name || field === body) { return null; }
+                if (field.type === 'file') {
+                    return [field.name, Array.prototype.map.call(field.files || [], function (file) {
+                        return [file.name, file.size, file.lastModified];
+                    })];
+                }
+                if (field.tagName === 'SELECT' && field.multiple) {
+                    return [field.name, Array.prototype.map.call(field.selectedOptions, function (option) { return option.value; })];
+                }
+                return [field.name, field.value, field.checked, field.disabled];
+            });
+            return JSON.stringify([fields, editorGetData()]);
+        }
 
-            if (scroll) {
-                form.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+        function editorFocus(atStart) {
+            if (!body || (overlay && overlay.hidden)) { return; }
+            var editor = body.qisutuEditor;
+            if (editor) {
+                if (atStart) {
+                    editor.model.change(function (writer) {
+                        writer.setSelection(editor.model.document.getRoot(), 0);
+                    });
+                }
+                editor.editing.view.focus();
+                if (atStart) { editor.ui.getEditableElement().scrollTop = 0; }
             }
+            else {
+                body.focus();
+                if (atStart) { body.setSelectionRange(0, 0); body.scrollTop = 0; }
+                focusPending = atStart;
+            }
+        }
+
+        function formShow(fresh, button) {
+            form.classList.remove('qisutu-hidden');
+            if (overlay) {
+                if (button) { returnFocus = button; }
+                overlay.hidden = false;
+                overlay.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('qisutu-reply-overlay-open');
+                resumeButtons.forEach(function (resume) { resume.classList.remove('qisutu-hidden'); });
+            }
+            if (fresh) {
+                draftBaseline = draftState();
+                baselinePending = !!(body && !body.qisutuEditor);
+                baselineBodyValue = body ? body.value : '';
+            }
+            if ((modeInput.value === 'email' || modeInput.value === 'forward') && replyToInput && !replyToInput.value) {
+                replyToInput.focus();
+            }
+            else { editorFocus(fresh); }
+        }
+
+        function formClose() {
+            if (!overlay) { return; }
+            overlay.hidden = true;
+            overlay.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('qisutu-reply-overlay-open');
+            if (returnFocus && returnFocus.isConnected) { returnFocus.focus({ preventScroll: true }); }
+        }
+
+        function draftOpenExisting(mode, articleID, button) {
+            var key = mode + ':' + (articleID || '');
+            if (draftKey === key) {
+                formShow(false, button);
+                return true;
+            }
+            if (draftKey !== null && draftState() !== draftBaseline) {
+                if (!window.confirm(form.getAttribute('data-discard-message'))) {
+                    formShow(false, button);
+                    return true;
+                }
+            }
+            if (draftKey !== null) {
+                form.reset();
+                form.dispatchEvent(new CustomEvent('qisutu:reply-reset'));
+                var status = form.querySelector('[data-qisutu-ticket-status]');
+                if (status) { status.dispatchEvent(new Event('change', { bubbles: true })); }
+                form.querySelectorAll('[data-qisutu-knowledge-hidden-inputs], [data-qisutu-knowledge-selected-attachment-list]').forEach(function (node) { node.textContent = ''; });
+                var attachments = form.querySelector('[data-qisutu-knowledge-selected-attachment-wrap]');
+                if (attachments) { attachments.classList.add('qisutu-hidden'); }
+            }
+            var error = form.querySelector('[data-qisutu-reply-error]');
+            if (error) { error.classList.add('qisutu-hidden'); }
+            draftKey = key;
+            return false;
         }
 
         function emailFieldsToggle(show) {
@@ -400,6 +528,7 @@
         }
 
         function noteModeOpen(button) {
+            if (draftOpenExisting('note', '', button)) { return; }
             modeInput.value = 'note';
             dynamicFieldsToggle(true);
             responseTemplateFieldToggle(false);
@@ -441,21 +570,11 @@
                 submit.textContent = button.getAttribute('data-qisutu-submit-label') || button.textContent;
             }
 
-            formShow(button.getAttribute('data-qisutu-scroll-reply') === '1');
-
-            if (body) {
-                window.setTimeout(function () {
-                    if (body.qisutuEditor && body.qisutuEditor.editing && body.qisutuEditor.editing.view) {
-                        body.qisutuEditor.editing.view.focus();
-                    }
-                    else {
-                        body.focus();
-                    }
-                }, 250);
-            }
+            formShow(true, button);
         }
 
         function articleReplyOpen(button) {
+            if (draftOpenExisting('email', button.getAttribute('data-qisutu-reply-article-id'), button)) { return; }
             var article = button.closest('[data-qisutu-ticket-article]');
             var template = article ? article.querySelector('[data-qisutu-article-reply-template]') : null;
 
@@ -500,26 +619,11 @@
                 submit.textContent = submit.getAttribute('data-qisutu-email-submit-label') || 'Mailantwort senden';
             }
 
-            formShow(true);
-
-            if (replyToInput && !replyToInput.value) {
-                window.setTimeout(function () {
-                    replyToInput.focus();
-                }, 250);
-            }
-            else if (body) {
-                window.setTimeout(function () {
-                    if (body.qisutuEditor && body.qisutuEditor.editing && body.qisutuEditor.editing.view) {
-                        body.qisutuEditor.editing.view.focus();
-                    }
-                    else {
-                        body.focus();
-                    }
-                }, 250);
-            }
+            formShow(true, button);
         }
 
         function articleForwardOpen(button) {
+            if (draftOpenExisting('forward', button.getAttribute('data-qisutu-forward-article-id'), button)) { return; }
             var article = button.closest('[data-qisutu-ticket-article]');
             var template = article ? article.querySelector('[data-qisutu-article-forward-template]') : null;
 
@@ -564,13 +668,7 @@
                 submit.textContent = button.getAttribute('data-qisutu-forward-submit-label') || button.textContent;
             }
 
-            formShow(true);
-
-            if (replyToInput) {
-                window.setTimeout(function () {
-                    replyToInput.focus();
-                }, 250);
-            }
+            formShow(true, button);
         }
 
         if (responseTemplateSelect) {
@@ -609,6 +707,73 @@
 
         if (modeInput.value === 'note' && noteCustomerVisibleField) {
             noteCustomerVisibleField.classList.remove('qisutu-hidden');
+        }
+
+        if (overlay) {
+            document.body.appendChild(overlay);
+            overlay.querySelectorAll('[data-qisutu-reply-close]').forEach(function (button) {
+                button.addEventListener('click', formClose);
+            });
+            overlay.addEventListener('click', function (event) {
+                if (event.target === overlay) { formClose(); }
+            });
+            resumeButtons.forEach(function (button) {
+                button.addEventListener('click', function () { formShow(false, button); });
+            });
+
+            function nestedOverlay() {
+                return Array.prototype.find.call(document.querySelectorAll('[data-qisutu-knowledge-overlay]:not([hidden]), [data-qisutu-attachment-limit-overlay]:not([hidden]), .ck-balloon-panel_visible:not(.ck-powered-by-balloon), .ck-dialog-overlay'), function (node) {
+                    var rect = node.getBoundingClientRect();
+                    return rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.right > 0
+                        && window.getComputedStyle(node).visibility !== 'hidden';
+                });
+            }
+
+            // Capture before child dialogs handle Escape, so only the foremost closes.
+            document.addEventListener('keydown', function (event) {
+                if (overlay.hidden || nestedOverlay()) { return; }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    formClose();
+                }
+                if (event.key === 'Tab') {
+                    var focusable = Array.prototype.filter.call(form.querySelectorAll('button, input, select, textarea, a[href], [tabindex], [contenteditable="true"]'), function (node) {
+                        return !node.disabled && node.tabIndex >= 0 && node.getClientRects().length;
+                    });
+                    var first = focusable[0];
+                    var last = focusable[focusable.length - 1];
+                    if (first && event.shiftKey && (document.activeElement === first || !form.contains(document.activeElement))) {
+                        event.preventDefault(); last.focus();
+                    }
+                    else if (last && !event.shiftKey && (document.activeElement === last || !form.contains(document.activeElement))) {
+                        event.preventDefault(); first.focus();
+                    }
+                }
+            }, true);
+            document.addEventListener('focusin', function (event) {
+                if (!overlay.hidden && !overlay.contains(event.target) && !nestedOverlay()) {
+                    var close = overlay.querySelector('[data-qisutu-reply-close]');
+                    if (close) { close.focus({ preventScroll: true }); }
+                }
+            });
+            if (body) {
+                body.addEventListener('qisutu:richtext-ready', function () {
+                    if (baselinePending && body.value === baselineBodyValue) {
+                        var baseline = JSON.parse(draftBaseline);
+                        baseline[1] = editorGetData();
+                        draftBaseline = JSON.stringify(baseline);
+                    }
+                    baselinePending = false;
+                    if (focusPending) { editorFocus(true); focusPending = false; }
+                });
+            }
+            if (!form.classList.contains('qisutu-hidden')) {
+                draftKey = modeInput.value + ':' + ((replyArticleIDInput && replyArticleIDInput.value !== '0') ? replyArticleIDInput.value : '');
+                formShow(false);
+                var submittedError = form.querySelector('[data-qisutu-reply-error]');
+                if (submittedError && !submittedError.classList.contains('qisutu-hidden')) { submittedError.focus(); }
+            }
         }
 
         document.querySelectorAll('[data-qisutu-reply-mode="note"]').forEach(function (button) {
@@ -681,6 +846,8 @@
             return;
         }
 
+        if (overlay) { document.body.appendChild(overlay); }
+
         removeLabel = list.getAttribute('data-qisutu-attachment-remove-label') || removeLabel;
 
         function dataTransferCreate() {
@@ -743,6 +910,7 @@
 
             overlay.hidden = true;
             overlay.setAttribute('aria-hidden', 'true');
+            input.focus({ preventScroll: true });
         }
 
         function limitOverlayOpen(file) {
@@ -836,6 +1004,12 @@
 
             list.appendChild(ul);
         }
+
+        form.addEventListener('qisutu:reply-reset', function () {
+            selectedFiles = [];
+            input.value = '';
+            render();
+        });
 
         input.addEventListener('change', function () {
             var newFiles = Array.prototype.slice.call(input.files || []);

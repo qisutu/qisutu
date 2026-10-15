@@ -94,6 +94,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         [% ELSE %]
                         <section class="qisutu-ticket-reply-top-actions" aria-label="[% Translate.TicketReplyActionsTitle %]">
                             <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-reply-mode="note" data-qisutu-reply-title="[% Translate.TicketCreateNote %]" data-qisutu-submit-label="[% Translate.TicketArticleSaveNote %]" data-qisutu-scroll-reply="1">[% Translate.TicketCreateNote %]</button>
+                            <button class="qisutu-button qisutu-button-secondary qisutu-hidden" type="button" data-qisutu-reply-resume>[% Translate.TicketReplyResume %]</button>
                             <button class="qisutu-ticket-tools-button" type="button" aria-label="[% Translate.TicketToolsOpen %]" aria-expanded="[% TicketToolsButtonExpanded %]" data-qisutu-ticket-tools-open>
                                 <span aria-hidden="true">⚙</span>
                             </button>
@@ -566,7 +567,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                                                 [% RAW.Article.attachments_html %]
 
-                                                <div class="qisutu-ticket-article-body qisutu-richtext-output">[% RAW.Article.body_html %]</div>
+                                                <div id="qisutu-article-preview-[% Article.id %]" class="qisutu-ticket-article-body qisutu-richtext-output" data-qisutu-article-preview>
+                                                    <div data-qisutu-article-preview-content>[% RAW.Article.body_html %]</div>
+                                                </div>
+                                                <button class="qisutu-button qisutu-button-secondary qisutu-button-small qisutu-article-preview-toggle" type="button" data-qisutu-article-preview-toggle data-expand-label="[% Translate.TicketArticleShowFull %]" data-collapse-label="[% Translate.TicketArticleShowLess %]" aria-controls="qisutu-article-preview-[% Article.id %]" aria-expanded="false" hidden>[% Translate.TicketArticleShowFull %]</button>
 
                                             </div>
                                         </div>
@@ -660,23 +664,26 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                         <section class="qisutu-ticket-reply" aria-label="[% Translate.TicketReplyActionsTitle %]">
                             <div class="qisutu-ticket-reply-actions">
                                 <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-reply-mode="note" data-qisutu-reply-title="[% Translate.TicketCreateNote %]" data-qisutu-submit-label="[% Translate.TicketArticleSaveNote %]">[% Translate.TicketCreateNote %]</button>
+                                <button class="qisutu-button qisutu-button-secondary qisutu-hidden" type="button" data-qisutu-reply-resume>[% Translate.TicketReplyResume %]</button>
                                 <button class="qisutu-ticket-tools-button" type="button" aria-label="[% Translate.TicketToolsOpen %]" aria-expanded="[% TicketToolsButtonExpanded %]" data-qisutu-ticket-tools-open>
                                     <span aria-hidden="true">⚙</span>
                                 </button>
                             </div>
 
-                            <div class="qisutu-form-error [% ArticleCreateErrorClass %]">
-                                [% ArticleCreateError %]
-                            </div>
-
-                            <form class="qisutu-ticket-reply-form [% ArticleReplyFormClass %]" method="post" action="[% ArticleFormAction %]" enctype="multipart/form-data" data-qisutu-ticket-reply-form>
+                            <div class="qisutu-reply-overlay" data-qisutu-reply-overlay hidden aria-hidden="true">
+                            <form class="qisutu-ticket-reply-form [% ArticleReplyFormClass %]" role="dialog" aria-modal="true" aria-labelledby="qisutu-reply-dialog-title" data-discard-message="[% Translate.TicketReplyDiscardConfirm %]" method="post" action="[% ArticleFormAction %]" enctype="multipart/form-data" data-qisutu-ticket-reply-form>
                                 <input type="hidden" name="Page" value="AgentTicketZoom">
                                 <input type="hidden" name="Step" value="ArticleCreate">
                                 <input type="hidden" name="TicketID" value="[% TicketID %]">
                                 <input type="hidden" name="ArticleMode" value="[% DefaultArticleMode %]" data-qisutu-article-mode>
                                 <input type="hidden" name="ReplyArticleID" value="[% SubmittedReplyArticleID %]" data-qisutu-reply-article-id>
 
-                                <h3 class="qisutu-ticket-reply-form-title" data-qisutu-reply-form-title>[% ReplyFormDefaultTitle %]</h3>
+                                <div class="qisutu-reply-dialog-header">
+                                    <h3 id="qisutu-reply-dialog-title" class="qisutu-ticket-reply-form-title" data-qisutu-reply-form-title>[% ReplyFormDefaultTitle %]</h3>
+                                    <button class="qisutu-overlay-close" type="button" data-qisutu-reply-close aria-label="[% Translate.AdminClose %]">×</button>
+                                </div>
+                                <div class="qisutu-reply-dialog-body" data-qisutu-reply-dialog-body>
+                                <div class="qisutu-form-error [% ArticleCreateErrorClass %]" data-qisutu-reply-error role="alert" tabindex="-1">[% ArticleCreateError %]</div>
 
                                 <div class="qisutu-form-field">
                                     <label for="qisutu-article-subject">[% Translate.TicketArticleSubject %]</label>
@@ -696,7 +703,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     </div>
                                 </div>
 
-                                <div class="qisutu-form-field [% ResponseTemplateFieldClass %]" data-qisutu-response-template-field>
+                                <div class="qisutu-form-field qisutu-reply-half [% ResponseTemplateFieldClass %]" data-qisutu-response-template-field>
                                     <label for="qisutu-response-template-select">[% Translate.TicketResponseTemplate %]</label>
                                     <select id="qisutu-response-template-select" name="ResponseTemplateID" data-qisutu-response-template-select data-qisutu-ticket-id="[% TicketID %]">
                                         <option value="">[% Translate.TicketResponseTemplateNone %]</option>
@@ -723,7 +730,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                     [% END %]
                                 </div>
 
-                                <div class="qisutu-form-field">
+                                <div class="qisutu-form-field qisutu-reply-half">
                                     <label for="qisutu-ticket-status">[% Translate.TicketStatusAfterSubmit %]</label>
                                     <select id="qisutu-ticket-status" name="StatusID" data-qisutu-ticket-status>
                                         [% RAW.TicketStatusOptionsHTML %]
@@ -788,10 +795,13 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
                                 [% RAW.ArticleTimeAccountingFieldsHTML %]
 
-                                <div class="qisutu-form-actions">
+                                </div>
+                                <div class="qisutu-form-actions qisutu-reply-dialog-footer">
+                                    <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-reply-close>[% Translate.AdminClose %]</button>
                                     <button class="qisutu-button qisutu-button-primary" type="submit" data-qisutu-reply-submit data-qisutu-email-submit-label="[% Translate.TicketArticleSendEmail %]">[% ReplySubmitDefaultLabel %]</button>
                                 </div>
                             </form>
+                            </div>
 
                             <div class="qisutu-attachment-limit-overlay" data-qisutu-attachment-limit-overlay hidden aria-hidden="true">
                                 <div class="qisutu-attachment-limit-dialog" role="alertdialog" aria-modal="true" aria-labelledby="qisutu-attachment-limit-title">
@@ -1084,7 +1094,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                 window.QISUTU_STATIC_BASE = '[% StaticBase %]';
             </script>
             <script src="[% StaticBase %]/js/ckeditor5/ckeditor5.umd.js"></script>
-            <script src="[% StaticBase %]/js/qisutu-richtext.js?v=2026101301"></script>
+            <script src="[% StaticBase %]/js/qisutu-richtext.js?v=2026101502"></script>
             <script src="[% StaticBase %]/js/qisutu-knowledge-insert.js?v=2026090502"></script>
-            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026092401"></script>
+            <script src="[% StaticBase %]/js/qisutu-ticket-zoom.js?v=2026101502"></script>
             <script src="[% StaticBase %]/js/qisutu-cmdb.js?v=2026071801"></script>

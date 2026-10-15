@@ -130,6 +130,7 @@
             return;
         }
 
+        var initialValue = textarea.value;
         textarea.dataset.qisutuRichtextReady = '1';
 
         ckeditor.ClassicEditor.create(textarea, {
@@ -194,6 +195,9 @@
         }).then(function (editor) {
             editors.push(editor);
             textarea.qisutuEditor = editor;
+            // A reply may be opened while the editor is still initializing.
+            if (textarea.value !== initialValue) { editor.setData(textarea.value); }
+            textarea.dispatchEvent(new CustomEvent('qisutu:richtext-ready'));
         }).catch(function (error) {
             window.console && window.console.error && window.console.error(error);
             textarea.dataset.qisutuRichtextReady = '';
