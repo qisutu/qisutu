@@ -99,7 +99,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                             <div class="qisutu-ticket-article-content">
                                                 <dl class="qisutu-ticket-article-meta">
                                                     <dt>[% Translate.TicketArticleFrom %]</dt>
-                                                    <dd>[% Article.sender_name %]</dd>
+                                                    <dd>[% Article.sender_address_name %]</dd>
                                                     <dt>[% Translate.TicketArticleTo %]</dt>
                                                     <dd>[% Article.recipient %]</dd>
                                                     <dt>[% Translate.TicketArticleChannel %]</dt>

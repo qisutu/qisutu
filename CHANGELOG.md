@@ -4,6 +4,8 @@ This file records human-readable changes and upgrade impact for published Qisutu
 
 ## 2.0.3
 
+Ticket article details now show the stored sender name and e-mail address in the From field; the article header continues to identify the author. In the agent ticket view, the customer panel uses the assigned contact or the customer side of the first public message: its sender for a customer-created ticket and its recipient for an agent-created ticket. Internal notes and system articles are excluded from this fallback. The display correction also applies to existing tickets and requires no database schema change.
+
 Agent ticket replies now open in an overlay centered in the workspace beside the navigation (including the collapsed sidebar and mobile layout) with a bounded, internally scrolling editor and permanently visible close/send controls. Closing and reopening the overlay retains the current draft and attachments on the ticket page; switching to another message asks before discarding changed content. Long article bodies start with a compact preview and can be expanded individually. Reply templates, quoted correspondence, FAQ insertion and the existing submission behavior are retained. All eleven interface languages are supported; no database schema change is required.
 
 Agent-created tickets now default to the open state in the creation form and when submitting without an explicit state. An explicitly selected state is retained. No database schema change is required.

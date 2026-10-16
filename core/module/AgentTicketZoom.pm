@@ -1020,8 +1020,6 @@ sub Run {
         Language => $Language,
     );
 
-    my $FallbackSenderName  = '';
-    my $FallbackSenderEmail = '';
     my $ArticleIndex        = 0;
     my $ArticleCount        = scalar @{$Articles};
     my $ReplyEmailTemplate  = $Self->_QueueReplyTemplate(
@@ -1086,25 +1084,12 @@ sub Run {
         $Article->{origin_ticket_number} = $ArticleOrigin->{ticket_number} || '';
         $Article->{origin_title}         = $ArticleOrigin->{title} || '';
         $Article->{origin_label}         = $ArticleOrigin->{label_key} || '';
-
-        if ( !$FallbackSenderEmail && ( $Article->{channel} || '' ) eq 'email' ) {
-            $FallbackSenderEmail = $Article->{from_email} || '';
-            $FallbackSenderName  = $Article->{from_name}  || $Article->{sender_name} || '';
-        }
     }
 
-    if ( !$FallbackSenderEmail ) {
-        for my $Article ( @{$Articles} ) {
-            if ( $Article->{from_email} ) {
-                $FallbackSenderEmail = $Article->{from_email};
-                $FallbackSenderName  = $Article->{from_name} || $Article->{sender_name} || '';
-                last;
-            }
-        }
-    }
-
-    my $TicketCustomerUser  = $Ticket->{customer_user_name}  || $FallbackSenderName  || '-';
-    my $TicketCustomerEmail = $Ticket->{customer_user_email} || $FallbackSenderEmail || '-';
+    my ( $TicketCustomerUser, $TicketCustomerEmail ) = $Self->_TicketCustomerDisplay(
+        Ticket   => $Ticket,
+        Articles => $Articles,
+    );
     my $TicketOwnerAutocompleteValue = $Ticket->{owner_user_id} ? ( $Ticket->{owner_name} || $Ticket->{owner_login} || '' ) : '';
     my $TicketResponsibleAutocompleteValue = $Ticket->{responsible_user_id} ? ( $Ticket->{responsible_name} || $Ticket->{responsible_login} || '' ) : '';
     my $TicketCustomerAutocompleteValue = $Ticket->{customer_user_id}
@@ -3642,6 +3627,45 @@ sub _UserName {
     }
 
     return $Name;
+}
+
+sub _TicketCustomerDisplay {
+    my ( $Self, %Param ) = @_;
+
+    my $Ticket   = $Param{Ticket} || {};
+    my $Articles = $Param{Articles} || [];
+    my $Name     = $Ticket->{customer_user_name} || '';
+    my $Email    = $Ticket->{customer_user_email} || '';
+
+    $Name = '' if $Name eq '-';
+    return ( $Name || $Email, $Email ) if $Email;
+
+    # Articles are ordered oldest first. Without an assigned contact, use
+    # the customer side of the first public message, never an agent sender.
+    for my $Article ( @{$Articles} ) {
+        my $Channel = $Article->{channel} || '';
+        next if $Channel ne 'email' && $Channel ne 'web';
+        next if $Article->{internal} || ( $Article->{visibility} || '' ) eq 'agent';
+
+        my $SenderType = $Article->{sender_type} || '';
+        my ( $CustomerName, $CustomerEmail );
+        if ( $SenderType eq 'customer' ) {
+            $CustomerName  = $Article->{from_name} || '';
+            $CustomerEmail = $Article->{from_email} || '';
+        }
+        elsif ( $SenderType eq 'agent' ) {
+            $CustomerName  = $Article->{to_name} || '';
+            $CustomerEmail = $Article->{to_email} || '';
+        }
+        else {
+            next;
+        }
+
+        next if !$CustomerEmail;
+        return ( $Name || $CustomerName || $CustomerEmail, $CustomerEmail );
+    }
+
+    return ( $Name || '-', '-' );
 }
 
 sub _ReplyRecipient {

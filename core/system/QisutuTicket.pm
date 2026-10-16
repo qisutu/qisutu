@@ -3199,6 +3199,10 @@ sub ArticleList {
         $Article->{attachments_html}  = '';
 
         $Article->{sender_address_name} = $Article->{from_name} || $Article->{from_email} || '-';
+        if ( $Article->{from_email}
+            && $Article->{sender_address_name} !~ m{\Q$Article->{from_email}\E}i ) {
+            $Article->{sender_address_name} .= ' <' . $Article->{from_email} . '>';
+        }
         $Article->{sender_name} = $Self->_ArticleSenderDisplayName(
             SenderType    => $Article->{sender_type},
             Channel       => $Article->{channel},
