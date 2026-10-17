@@ -52,6 +52,7 @@ sub main {
     require QisutuAddonManager;
     require QisutuAddonEvent;
     require QisutuReportScheduler;
+    require QisutuAppointment;
     require QisutuSystemSetting;
 
     my $Once = 0;
@@ -118,6 +119,8 @@ sub main {
     my $LastMailFetch = 0;
     my $LastMailFetchIntervalCheck = 0;
     my $LastReportScheduleCheck = 0;
+    my $LastAppointmentCheck = 0;
+    my $Appointment = QisutuAppointment->new( Config => $Config, DB => $DB );
     my $LastAddonEventCleanup = 0;
 
     _Log("Automation and mail daemon started as $Worker");
@@ -136,6 +139,12 @@ sub main {
         if ( time - $LastMailFetch >= $MailFetchInterval ) {
             $LastMailFetch = time;
             _MailFetchRun( QisutuHome => $QisutuHome );
+        }
+
+        if ( time - $LastAppointmentCheck >= 30 ) {
+            my $Runs = $Appointment->ProcessDue();
+            _Log( 'ERROR: calendar: ' . $Appointment->Error() ) if !defined $Runs || $Appointment->Error();
+            $LastAppointmentCheck = time;
         }
 
         if ( time - $LastReportScheduleCheck >= 30 ) {

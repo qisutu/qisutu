@@ -23,6 +23,12 @@
 use utf8;
 
 {
+    AppointmentNavigation => 'Takvim',
+    AppointmentIntro => 'Randevular, ekip planlaması ve otomatik talepler.',
+    AppointmentCreate => 'Randevu oluştur',
+    AppointmentLinked => 'Bağlantılı randevular',
+    AppointmentUpcoming => 'Bugünkü ve yaklaşan randevularım',
+
     APIAccountAgent => 'Temsilci',
     APIAccountCustomer => 'İletişim',
     APIAdvancedSettings => 'Gelişmiş koruma',

@@ -1,0 +1,76 @@
+[%#
+Qisutu - Open Source Ticket System
+Copyright (C) 2026 Franziska Steps
+Qisutu - Kim-KI, https://qisutu.de
+
+This file is part of Qisutu.
+
+Qisutu is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qisutu is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with Qisutu. If not, see <https://www.gnu.org/licenses/>.
+
+SPDX-FileCopyrightText: 2026 Franziska Steps
+SPDX-License-Identifier: AGPL-3.0-or-later
+%]
+
+<section id="q-calendar" class="qisutu-dashboard qcal" data-csrf="[% CalendarCSRF %]" data-event-id="[% CalendarEventID %]" data-occurrence-id="[% CalendarOccurrenceID %]" data-ticket-id="[% CalendarTicketID %]">
+  <div class="qisutu-dashboard-header"><div><h1>[% Translate.AppointmentNavigation %]</h1><p>[% Translate.AppointmentIntro %]</p></div><button class="qisutu-button qisutu-button-primary" id="qc-new">+ Termin erstellen</button></div>
+  <p id="qc-error" class="qisutu-form-error" role="alert" hidden></p>
+  <div class="qc-layout">
+    <aside class="qc-sidebar qisutu-panel">
+      <div class="qc-side-head"><h2>Meine Kalender</h2><button type="button" id="qc-add-calendar" class="qc-icon" title="Kalender erstellen" aria-label="Kalender erstellen">+</button></div>
+      <div id="qc-calendars"></div>
+      <p class="qc-hint">Kalender einzeln ein- und ausblenden. Über ⋯ die Freigaben verwalten.</p>
+      <label class="qc-field">Datum<input type="date" id="qc-date"></label>
+      <label class="qc-field">Suche<input type="search" id="qc-search" placeholder="Titel, Kunde oder Ticketnummer"></label>
+      <label class="qc-field">Teilnehmer<select id="qc-person"><option value="">Alle Teilnehmer</option></select></label>
+      <label class="qc-field">Kunde<select id="qc-customer-filter"><option value="">Alle Kunden</option></select></label>
+      <label class="qc-field">Queue<select id="qc-queue-filter"><option value="">Alle Queues</option></select></label>
+      <label class="qc-field">Terminart<select id="qc-type-filter"><option value="">Alle Terminarten</option><option value="meeting">Besprechung</option><option value="callback">Rückruf</option><option value="visit">Kundeneinsatz</option><option value="maintenance">Wartung</option><option value="absence">Abwesenheit</option><option value="holiday">Urlaub</option><option value="other">Sonstiges</option></select></label>
+      <label class="qc-check"><input type="checkbox" id="qc-mine"> Nur meine Termine</label>
+      <label class="qc-field">Anzeige-Zeitzone<input id="qc-zone" list="qc-zones" value="Europe/Berlin"></label>
+      <datalist id="qc-zones"><option value="Europe/Berlin"><option value="Europe/Paris"><option value="Europe/London"><option value="UTC"><option value="America/New_York"><option value="Asia/Tokyo"></datalist>
+    </aside>
+    <div class="qc-main qisutu-panel">
+      <div class="qc-toolbar"><div class="qc-nav"><button type="button" class="qc-icon" id="qc-prev" aria-label="Vorheriger Zeitraum">‹</button><button type="button" class="qc-icon" id="qc-next" aria-label="Nächster Zeitraum">›</button><button type="button" class="qisutu-button qisutu-button-secondary" id="qc-today">Heute</button><h2 id="qc-range" aria-live="polite"></h2></div><div class="qc-views" role="group" aria-label="Kalenderansicht"><button type="button" data-view="day">Tag</button><button type="button" data-view="week">Woche</button><button type="button" data-view="month" class="active">Monat</button><button type="button" data-view="list">Liste</button></div></div>
+      <div id="qc-grid" aria-busy="true"></div>
+      <p id="qc-count" class="qc-hint"></p>
+    </div>
+  </div>
+  <dialog id="qc-event-dialog" class="qc-dialog" aria-labelledby="qc-event-heading">
+    <form id="qc-event-form">
+      <div class="qc-dialog-head"><h2 id="qc-event-heading">Termin erstellen</h2><button type="button" class="qc-icon" data-close aria-label="Schließen">×</button></div>
+      <div class="qc-dialog-body">
+        <p class="qisutu-form-error" id="qc-form-error" role="alert" hidden></p>
+        <div id="qc-series-note" class="qc-notice" hidden><span>Du bearbeitest einen einzelnen Termin der Serie.</span> <button type="button" id="qc-edit-series">Gesamte Serie bearbeiten</button></div>
+        <div class="qc-row"><label class="qc-field qc-grow">Titel<input name="title" required maxlength="500"></label><label class="qc-field">Kalender<select name="calendar_id" required></select></label></div>
+        <div class="qc-row"><label class="qc-field">Beginn<input type="datetime-local" name="start_local" required></label><label class="qc-field">Ende<input type="datetime-local" name="end_local" required></label><label class="qc-field">Zeitzone<input name="timezone" list="qc-zones" required></label></div>
+        <div class="qc-row"><label class="qc-check"><input name="all_day" type="checkbox"> Ganztägig</label><label class="qc-check"><input name="private" type="checkbox"> Privat – Details nur für Ersteller und Teilnehmer</label></div>
+        <p class="qc-hint" id="qc-all-day-hint" hidden>Bei ganztägigen Terminen ist das Ende 00:00 Uhr am Tag nach dem letzten Termintag.</p>
+        <div class="qc-row"><label class="qc-field">Terminart<select name="type"><option value="meeting">Besprechung</option><option value="callback">Rückruf</option><option value="visit">Kundeneinsatz</option><option value="maintenance">Wartung</option><option value="absence">Abwesenheit</option><option value="holiday">Urlaub</option><option value="other">Sonstiges</option></select></label><label class="qc-field qc-grow">Ort<input name="location" maxlength="500"></label></div>
+        <label class="qc-field">Besprechungslink<input type="url" name="meeting_url" placeholder="https://…"></label>
+        <label class="qc-field">Beschreibung<textarea name="description" rows="4" maxlength="100000"></textarea></label>
+        <div class="qc-row"><label class="qc-field qc-grow">Kunde / Unternehmen<select name="customer_id"><option value="">Ohne Zuordnung</option></select></label><label class="qc-field qc-grow">Ansprechpartner<select name="customer_user_id"><option value="">Ohne Zuordnung</option></select></label></div>
+        <div class="qc-row"><label class="qc-field">Verknüpftes Ticket<input name="ticket_number" placeholder="Ticketnummer"><input type="hidden" name="ticket_id"></label><div id="qc-ticket-links" class="qc-ticket-links"></div></div>
+        <details class="qc-section" id="qc-repeat-section"><summary>Wiederholung</summary><div class="qc-row"><label class="qc-field">Wiederholen<select name="frequency"><option value="none">Nicht wiederholen</option><option value="daily">Täglich</option><option value="weekly">Wöchentlich</option><option value="monthly">Monatlich</option><option value="yearly">Jährlich</option></select></label><label class="qc-field">Intervall<input type="number" name="interval" min="1" max="365" value="1"></label><label class="qc-field">Monatsregel<select name="monthly_mode"><option value="date">Gleicher Kalendertag</option><option value="weekday">Gleicher Wochentag, z. B. zweiter Dienstag</option><option value="last">Letzter entsprechender Wochentag</option></select></label></div><div class="qc-row" id="qc-weekdays"><label><input type="checkbox" value="1"> Mo</label><label><input type="checkbox" value="2"> Di</label><label><input type="checkbox" value="3"> Mi</label><label><input type="checkbox" value="4"> Do</label><label><input type="checkbox" value="5"> Fr</label><label><input type="checkbox" value="6"> Sa</label><label><input type="checkbox" value="7"> So</label></div><div class="qc-row"><label class="qc-field">Bis einschließlich<input type="date" name="until"></label><label class="qc-field">Anzahl Termine (leer = unbegrenzt)<input type="number" name="count" min="1" max="10000"></label></div><p class="qc-hint">Nicht vorhandene Kalendertage werden übersprungen. Beispielsweise findet eine Serie am 31. nur in Monaten mit 31 Tagen statt.</p></details>
+        <details class="qc-section"><summary>Teilnehmer und Einladungen</summary><div class="qc-row"><label class="qc-field qc-grow">Agent hinzufügen<select id="qc-agent-add"><option value="">Agent auswählen</option></select></label><button type="button" id="qc-agent-button" class="qisutu-button qisutu-button-secondary">Hinzufügen</button></div><div class="qc-row"><label class="qc-field">Externer Name<input id="qc-external-name"></label><label class="qc-field qc-grow">Externe E-Mail<input type="email" id="qc-external-email"></label><button type="button" id="qc-external-button" class="qisutu-button qisutu-button-secondary">Hinzufügen</button></div><div id="qc-participants"></div><p id="qc-delivery-errors" class="qisutu-form-error" hidden></p><label class="qc-check"><input type="checkbox" name="send_invites"> Einladungen, Änderungen und Absagen per E-Mail senden</label><p class="qc-hint">Teilnahmeantworten gelten für die gesamte Serie. Teilnehmer und Privatsphäre werden über die gesamte Serie verwaltet.</p><button type="button" id="qc-availability" class="qisutu-button qisutu-button-secondary">Verfügbarkeit prüfen</button><p id="qc-conflicts" role="status"></p></details>
+        <details class="qc-section"><summary>Erinnerungen</summary><label class="qc-field">Minuten vor dem Termin, durch Komma getrennt<input name="reminders" placeholder="15, 60, 1440"></label><div class="qc-row"><label class="qc-check"><input type="checkbox" name="reminder_app" checked> In Qisutu</label><label class="qc-check"><input type="checkbox" name="reminder_email"> Per E-Mail</label></div><p class="qc-hint">Erinnerungen erhalten der Ersteller und die teilnehmenden Agenten. Im Hinweis kann die Erinnerung um 10 Minuten verschoben werden.</p></details>
+        <details class="qc-section" id="qc-auto-section"><summary>Automatische Ticketerstellung</summary><label class="qc-check"><input type="checkbox" name="auto_ticket"> Aus diesem Termin automatisch ein Ticket erstellen</label><div class="qc-row"><label class="qc-field qc-grow">Queue<select name="queue_id"><option value="">Queue auswählen</option></select></label><label class="qc-field">Priorität<select name="priority_id"></select></label><label class="qc-field qc-grow">Besitzer<select name="ticket_owner_id"><option value="">Verantwortlicher Agent der Planung</option></select></label></div><div id="qc-ticket-dynamic"></div><label class="qc-field">Vorlauf in Minuten (0 = zum Terminbeginn)<input type="number" name="ticket_lead" min="0" max="525600" value="0"></label><label class="qc-field">Ticketbetreff (leer = Termintitel)<input name="ticket_title" maxlength="500"></label><label class="qc-field">Ticketbeschreibung (leer = Terminbeschreibung)<textarea name="ticket_body" rows="3"></textarea></label><label class="qc-field">Kunden-E-Mail ohne vorhandenen Ansprechpartner (optional)<input type="email" name="recipient_email"></label><p class="qc-hint">Das Ticket wird mit Status „offen“ und einem internen Artikel angelegt. Es wird keine Nachricht an den Kunden versendet. Bei Serien entsteht je Termin genau ein Ticket. Bereits erzeugte Tickets bleiben erhalten.</p><p id="qc-ticket-error" class="qisutu-form-error" hidden></p></details>
+        <details class="qc-section"><summary>Anhänge</summary><div id="qc-attachments"></div><label class="qc-field">Dateien hinzufügen<input type="file" name="Attachments" multiple></label><p class="qc-hint">Bis zu 20 Dateien und insgesamt 25 MB pro Termin. Anhänge gelten für die gesamte Serie.</p></details>
+        <div id="qc-rsvp" class="qc-row" hidden><span>Meine Teilnahme:</span><button type="button" data-response="accepted">Zusagen</button><button type="button" data-response="tentative">Vorläufig</button><button type="button" data-response="declined">Absagen</button></div>
+      </div>
+      <div class="qc-dialog-foot"><button type="button" id="qc-delete" class="qisutu-button qisutu-button-danger">Termin absagen</button><button type="button" id="qc-copy" class="qisutu-button qisutu-button-secondary">Kopieren</button><span class="qc-spacer"></span><button type="button" data-close class="qisutu-button qisutu-button-secondary">Schließen</button><button type="submit" id="qc-save" class="qisutu-button qisutu-button-primary">Speichern</button></div>
+    </form>
+  </dialog>
+  <dialog id="qc-calendar-dialog" class="qc-dialog qc-calendar-dialog" aria-labelledby="qc-calendar-heading"><form id="qc-calendar-form"><div class="qc-dialog-head"><h2 id="qc-calendar-heading">Kalender verwalten</h2><button type="button" data-close class="qc-icon" aria-label="Schließen">×</button></div><div class="qc-dialog-body"><p class="qisutu-form-error" id="qc-calendar-error" role="alert" hidden></p><label class="qc-field">Name<input name="name" required maxlength="160"></label><div class="qc-row"><label class="qc-field">Farbe<input type="color" name="color" value="#087e8b"></label><label class="qc-field qc-grow">Kalendertyp<select name="kind"><option value="personal">Persönlich</option><option value="team">Team / Abteilung</option><option value="company">Unternehmen</option></select></label></div><h3>Freigaben</h3><p class="qc-hint">Ohne Freigabe ist der Kalender nur für seinen Besitzer und die Administration verfügbar. Private Termindetails bleiben auf Ersteller und Teilnehmer begrenzt.</p><div class="qc-row"><label class="qc-field">Typ<select id="qc-share-type"><option value="user">Agent</option><option value="group">Gruppe</option></select></label><label class="qc-field qc-grow">Freigeben für<select id="qc-share-subject"></select></label><label class="qc-field">Berechtigung<select id="qc-share-role"><option value="1">Nur frei / belegt</option><option value="2">Details lesen</option><option value="3">Termine bearbeiten</option><option value="4">Kalender verwalten</option></select></label><button type="button" id="qc-share-add" class="qisutu-button qisutu-button-secondary">Hinzufügen</button></div><div id="qc-shares"></div></div><div class="qc-dialog-foot"><span class="qc-spacer"></span><button type="button" data-close class="qisutu-button qisutu-button-secondary">Abbrechen</button><button type="submit" class="qisutu-button qisutu-button-primary">Speichern</button></div></form></dialog>
+</section>
+<script src="[% StaticBase %]/js/qisutu-calendar.js?v=2026101701" defer></script>

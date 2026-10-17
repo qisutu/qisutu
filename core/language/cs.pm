@@ -23,6 +23,12 @@
 use utf8;
 
 {
+    AppointmentNavigation => 'Kalendář',
+    AppointmentIntro => 'Události, plánování a automatické tikety.',
+    AppointmentCreate => 'Vytvořit událost',
+    AppointmentLinked => 'Propojené události',
+    AppointmentUpcoming => 'Mé dnešní a nadcházející události',
+
     APIAccountAgent => 'Agent',
     APIAccountCustomer => 'Kontakt',
     APIAdvancedSettings => 'Pokročilá ochrana',

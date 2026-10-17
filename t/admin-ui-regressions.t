@@ -117,7 +117,7 @@ like( $ChecklistAdminModule, qr{qisutu-checklist-admin-item-actions}, 'existing 
 
 my $TicketZoomModule = content( 'core', 'module', 'AgentTicketZoom.pm' );
 like( $TicketZoomModule, qr{data-qisutu-checklist-details-open}, 'ticket checklist items expose the details overlay button' );
-like( $TicketZoomModule, qr{\$Action ne 'service' && !\$Self->_BodyHasVisibleContent}, 'service changes can be saved without an additional editor note' );
+like( $TicketZoomModule, qr{\$Action ne 'service' && \$Action ne 'title' && !\$Self->_BodyHasVisibleContent}, 'service and title changes can be saved without an additional editor note' );
 
 my $TicketZoomTemplate = content( 'core', 'output', 'AgentTicketZoom.tt' );
 unlike( $TicketZoomTemplate, qr{id="qisutu-ticket-tool-service-body"[^>]*\brequired\b}, 'the hidden service editor field no longer blocks the save button' );

@@ -36,6 +36,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     <link rel="stylesheet" href="[% StaticBase %]/css/qisutu.css?v=[% SystemVersion %]-2026101503">
     <link rel="stylesheet" href="[% StaticBase %]/css/qisutu-file-input.css?v=[% SystemVersion %]-2026090101">
     [% IF UserIsAgent %]
+    <link rel="stylesheet" href="[% StaticBase %]/css/qisutu-calendar.css?v=2026101701">
     <link rel="stylesheet" href="[% StaticBase %]/css/qisutu-internal-chat.css?v=[% SystemVersion %]-2026090302">
     [% END %]
     <link rel="stylesheet" href="[% StaticBase %]/css/ckeditor5/ckeditor5.css">

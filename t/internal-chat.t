@@ -166,7 +166,7 @@ my $TicketZoom = content('core/output/AgentTicketZoom.tt');
 like( $TicketZoom, qr{data-qisutu-ticket-presence}, 'ticket detail contains the live presence display' );
 
 my $JavaScript = content('var/static/js/qisutu-internal-chat.js');
-like( $JavaScript, qr{AgentRefreshMilliseconds = 10 \* 60 \* 1000}, 'online agent list refreshes every ten minutes' );
+like( $JavaScript, qr{AgentRefreshMilliseconds = 30 \* 1000}, 'online agent list refreshes every thirty seconds' );
 like( $JavaScript, qr{MessageRefreshMilliseconds = 4 \* 1000}, 'an open conversation refreshes promptly' );
 like( $JavaScript, qr{data-qisutu-chat-agent}, 'ticket viewers can be addressed directly' );
 like( $JavaScript, qr{function sidebarActionsSynchronize}, 'sidebar launchers are synchronized through the stable action area' );

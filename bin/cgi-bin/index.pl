@@ -226,6 +226,16 @@ sub main {
         }
     }
 
+    if ( ( $Param->{Page} || '' ) eq 'CalendarReply' ) {
+        require CalendarReply;
+        my $Token = $CurrentUser ? $CurrentUser->{csrf_token}
+            : $Security->PublicCSRFTokenCreate( Purpose => 'public-form' );
+        print CalendarReply->new( Config => $Config, DB => $DB, Output => $Output )->Run(
+            Request => $Param, CSRFToken => $Token,
+        );
+        return;
+    }
+
     if ($CurrentUser) {
         $Session->Touch( Token => $SessionToken, Request => $Param );
     }

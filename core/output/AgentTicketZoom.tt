@@ -30,6 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                     </div>
                     <div class="qisutu-dashboard-header-actions">
                         [% IF TicketFound %]
+                        <a class="qisutu-button qisutu-button-secondary" href="index.pl?Page=AgentCalendar&amp;TicketID=[% TicketID %]">[% Translate.AppointmentCreate %]</a>
                         <a class="qisutu-button qisutu-button-primary" href="index.pl?Page=AgentTicketZoom&amp;Step=TicketPrint&amp;TicketID=[% TicketID %]">[% Translate.TicketPrintWhole %]</a>
                         [% END %]
                         <a class="qisutu-button qisutu-button-secondary" href="[% TicketListURL %]">[% Translate.TicketBackToList %]</a>
@@ -92,6 +93,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                             </div>
                         </section>
                         [% ELSE %]
+                        <section class="qc-widget" data-qc-ticket="[% TicketID %]"><h2>[% Translate.AppointmentLinked %]</h2><div data-qc-widget-content></div></section>
                         <section class="qisutu-ticket-reply-top-actions" aria-label="[% Translate.TicketReplyActionsTitle %]">
                             <button class="qisutu-button qisutu-button-secondary" type="button" data-qisutu-reply-mode="note" data-qisutu-reply-title="[% Translate.TicketCreateNote %]" data-qisutu-submit-label="[% Translate.TicketArticleSaveNote %]" data-qisutu-scroll-reply="1">[% Translate.TicketCreateNote %]</button>
                             <button class="qisutu-button qisutu-button-secondary qisutu-hidden" type="button" data-qisutu-reply-resume>[% Translate.TicketReplyResume %]</button>

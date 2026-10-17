@@ -2301,6 +2301,10 @@ sub TicketCreateFromAgent {
     my $Language            = $Param{Language} || $Self->{Config}->{Language}->{Default} || 'en';
     my $TimeAccounting      = ref $Param{TimeAccounting} eq 'HASH' ? $Param{TimeAccounting} : {};
     my $UserID              = $User->{user_account_id} || 0;
+    if ( $Param{InternalOnly} && $SendEmail ) {
+        $Self->{LastError} = 'Internal tickets cannot send customer e-mail';
+        return;
+    }
 
     if ( $UserID !~ m{\A\d+\z} || !$UserID || ( $User->{account_type} || '' ) ne 'agent' ) {
         $Self->{LastError} = 'Valid agent user is required';
@@ -2323,7 +2327,7 @@ sub TicketCreateFromAgent {
         return;
     }
 
-    if ( !$CustomerUserID && $RecipientEmail !~ m{\A[A-Z0-9._%+\-]+\@[A-Z0-9.\-]+\.[A-Z]{2,}\z}i ) {
+    if ( !$Param{InternalOnly} && !$CustomerUserID && $RecipientEmail !~ m{\A[A-Z0-9._%+\-]+\@[A-Z0-9.\-]+\.[A-Z]{2,}\z}i ) {
         $Self->{LastError} = 'Translate:AgentTicketCreateCustomerUserRequired';
         return;
     }
@@ -2424,7 +2428,7 @@ sub TicketCreateFromAgent {
     }
     else {
         $CustomerUser = {
-            customer_id => undef,
+            customer_id => ( $Param{InternalOnly} && $Param{CustomerID} ? $Param{CustomerID} : undef ),
             login       => $RecipientEmail,
             email       => $RecipientEmail,
             firstname   => '',
@@ -2775,7 +2779,7 @@ sub TicketCreateFromAgent {
         ToEmail              => $ToEmail,
         Cc                   => $Cc,
         ContentType          => $ContentType,
-        Visibility           => 'both',
+        Visibility           => $Param{InternalOnly} ? 'agent' : 'both',
         SkipTicketAccessCheck => 1,
         SkipNotification      => 1,
         CreatedByUserID      => $UserID,
@@ -2841,13 +2845,46 @@ sub TicketCreateFromAgent {
         }
     }
 
+    # Link a scheduled occurrence inside the same transaction as the ticket.
+    # The scheduler holds the calendar advisory lock; the conditional update is
+    # a second guard against retries and concurrent creation after a crash.
+    if ( $Param{AppointmentOccurrenceID} ) {
+        my $OccurrenceID = $Param{AppointmentOccurrenceID};
+        if ( $OccurrenceID !~ m{\A[1-9]\d*\z} ) {
+            $Self->{LastError} = 'Invalid calendar occurrence';
+            $Self->{DB}->Rollback();
+            return;
+        }
+        my $Linked = $Self->{DB}->Do(
+            'UPDATE appointment_occurrence SET ticket_id = ?, ticket_error = NULL,
+             ticket_retry_at = NULL WHERE id = ? AND ticket_id IS NULL AND cancelled = 0',
+            $TicketID, $OccurrenceID,
+        );
+        if ( !$Linked || 0 + $Linked != 1 ) {
+            $Self->{LastError} = 'Calendar occurrence already processed or cancelled';
+            $Self->{DB}->Rollback();
+            return;
+        }
+    }
+
     if ( !$Self->{DB}->Commit() ) {
         $Self->{LastError} = $Self->{DB}->Error() || 'Ticket transaction could not be committed';
         $Self->{DB}->Rollback();
         return;
     }
 
-    # New-ticket notifications are only sent for tickets created by customers.
+    # Scheduled calendar tickets notify their assigned agent after commit.
+    # Manual agent-created tickets still do not trigger queue notifications.
+    if ( $Param{AppointmentOccurrenceID} ) {
+        $Self->_AgentNotificationSend(
+            NotificationType => 'ticket_assigned_to_me',
+            TicketID         => $TicketID,
+            ArticleID        => $ArticleID,
+            TargetUserID     => $OwnerUserID,
+            ChangedByUserID  => $UserID,
+        );
+    }
+
     $Self->_AddonEventEmit(
         Event => 'ticket.created',
         Payload => { ticket_id => 0 + $TicketID, article_id => 0 + $ArticleID, source => 'agent' },

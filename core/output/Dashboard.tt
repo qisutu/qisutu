@@ -22,7 +22,9 @@ SPDX-FileCopyrightText: 2026 Franziska Steps
 SPDX-License-Identifier: AGPL-3.0-or-later
 %]
 
-            <section class="qisutu-dashboard qisutu-live-dashboard" aria-labelledby="qisutu-dashboard-title" [% IF IsAgentDashboard %]data-qisutu-dashboard data-qisutu-dashboard-endpoint="[% DashboardDataEndpoint %]" data-qisutu-dashboard-refresh-seconds="[% AutoRefreshSeconds %]" data-qisutu-dashboard-refreshing="[% Translate.DashboardRefreshing %]" data-qisutu-dashboard-refresh-error="[% Translate.DashboardRefreshFailed %]"[% END %]>
+            <section class="qisutu-dashboard qisutu-live-dashboard" aria-labelledby="qisutu-dashboard-title" [% IF IsAgentDashboard %]
+                <section class="qc-widget" data-qc-upcoming><h2>[% Translate.AppointmentUpcoming %]</h2><div data-qc-widget-content></div></section>
+data-qisutu-dashboard data-qisutu-dashboard-endpoint="[% DashboardDataEndpoint %]" data-qisutu-dashboard-refresh-seconds="[% AutoRefreshSeconds %]" data-qisutu-dashboard-refreshing="[% Translate.DashboardRefreshing %]" data-qisutu-dashboard-refresh-error="[% Translate.DashboardRefreshFailed %]"[% END %]>
                 <div class="qisutu-dashboard-header qisutu-live-dashboard-header">
                     <div>
                         <h1 id="qisutu-dashboard-title">[% ProgramTitle %]</h1>

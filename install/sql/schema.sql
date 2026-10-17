@@ -3857,3 +3857,92 @@ INSERT INTO `database_version` (`version`) VALUES ('2.0.3');
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2026-07-13  6:32:33
+
+-- Appointment calendars, independent from SLA working calendars.
+
+CREATE TABLE `appointment_calendar` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(160) NOT NULL,
+  `color` varchar(7) NOT NULL DEFAULT '#087e8b',
+  `kind` varchar(20) NOT NULL DEFAULT 'personal',
+  `owner_user_id` bigint(20) unsigned NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `version` int unsigned NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`), KEY `appointment_calendar_owner` (`owner_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `appointment_share` (
+  `calendar_id` bigint(20) unsigned NOT NULL,
+  `subject_type` varchar(10) NOT NULL,
+  `subject_id` bigint(20) unsigned NOT NULL,
+  `role` tinyint unsigned NOT NULL,
+  PRIMARY KEY (`calendar_id`,`subject_type`,`subject_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `appointment_event` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `calendar_id` bigint(20) unsigned NOT NULL,
+  `owner_user_id` bigint(20) unsigned NOT NULL,
+  `data_json` mediumtext NOT NULL,
+  `version` int unsigned NOT NULL DEFAULT 1,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `generated_until` date DEFAULT NULL,
+  `created_at` datetime NOT NULL,
+  `changed_at` datetime NOT NULL,
+  PRIMARY KEY (`id`), KEY `appointment_event_calendar` (`calendar_id`,`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `appointment_occurrence` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `event_id` bigint(20) unsigned NOT NULL,
+  `sequence_no` int unsigned NOT NULL,
+  `start_utc` datetime NOT NULL,
+  `end_utc` datetime NOT NULL,
+  `data_json` mediumtext DEFAULT NULL,
+  `is_exception` tinyint(1) NOT NULL DEFAULT 0,
+  `cancelled` tinyint(1) NOT NULL DEFAULT 0,
+  `ticket_id` bigint(20) unsigned DEFAULT NULL,
+  `ticket_due_at` datetime DEFAULT NULL,
+  `ticket_error` text DEFAULT NULL,
+  `ticket_retry_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`), UNIQUE KEY `appointment_occurrence_sequence` (`event_id`,`sequence_no`),
+  KEY `appointment_occurrence_range` (`start_utc`,`end_utc`),
+  KEY `appointment_occurrence_due` (`ticket_due_at`,`ticket_id`,`cancelled`),
+  KEY `appointment_occurrence_ticket` (`ticket_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `appointment_invitee` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `event_id` bigint(20) unsigned NOT NULL,
+  `user_id` bigint(20) unsigned DEFAULT NULL,
+  `email` varchar(254) NOT NULL,
+  `name` varchar(200) NOT NULL,
+  `response` varchar(20) NOT NULL DEFAULT 'pending',
+  `token_hash` varchar(64) DEFAULT NULL,
+  PRIMARY KEY (`id`), UNIQUE KEY `appointment_invitee_email` (`event_id`,`email`),
+  UNIQUE KEY `appointment_invitee_token` (`token_hash`), KEY `appointment_invitee_user` (`user_id`,`event_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `appointment_attachment` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `event_id` bigint(20) unsigned NOT NULL,
+  `filename` varchar(255) NOT NULL,
+  `content_type` varchar(200) NOT NULL,
+  `content_size` bigint unsigned NOT NULL,
+  `content` longblob NOT NULL,
+  PRIMARY KEY (`id`), KEY `appointment_attachment_event` (`event_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `appointment_delivery` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `event_id` bigint(20) unsigned NOT NULL,
+  `occurrence_id` bigint(20) unsigned NOT NULL DEFAULT 0,
+  `recipient_user_id` bigint(20) unsigned DEFAULT NULL,
+  `recipient_email` varchar(254) NOT NULL DEFAULT '',
+  `delivery_key` varchar(64) NOT NULL,
+  `kind` varchar(20) NOT NULL,
+  `channel` varchar(10) NOT NULL,
+  `due_at` datetime NOT NULL,
+  `payload_json` mediumtext NOT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'pending',
+  `attempts` int unsigned NOT NULL DEFAULT 0,
+  `last_error` text DEFAULT NULL,
+  `read_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`), UNIQUE KEY `appointment_delivery_key` (`delivery_key`),
+  KEY `appointment_delivery_due` (`status`,`due_at`),
+  KEY `appointment_delivery_user` (`recipient_user_id`,`channel`,`read_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

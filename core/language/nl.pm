@@ -23,6 +23,12 @@
 use utf8;
 
 {
+    AppointmentNavigation => 'Kalender',
+    AppointmentIntro => 'Afspraken, teamplanning en automatische tickets.',
+    AppointmentCreate => 'Afspraak maken',
+    AppointmentLinked => 'Gekoppelde afspraken',
+    AppointmentUpcoming => 'Mijn afspraken vandaag en binnenkort',
+
     APIAccountAgent => 'Agent',
     APIAccountCustomer => 'Contacteer',
     APIAdvancedSettings => 'Geavanceerde bescherming',

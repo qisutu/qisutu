@@ -23,6 +23,12 @@
 use utf8;
 
 {
+    AppointmentNavigation => 'Calendar',
+    AppointmentIntro => 'Appointments, team planning and automatic tickets.',
+    AppointmentCreate => 'Create appointment',
+    AppointmentLinked => 'Linked appointments',
+    AppointmentUpcoming => 'My appointments today and upcoming',
+
     PageLoginTitle          => 'Qisutu login',
     PageStartTitle          => 'Qisutu',
     LoginIntro              => 'Please sign in.',

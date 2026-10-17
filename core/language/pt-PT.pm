@@ -23,6 +23,12 @@
 use utf8;
 
 {
+    AppointmentNavigation => 'Calendário',
+    AppointmentIntro => 'Compromissos, planeamento e tickets automáticos.',
+    AppointmentCreate => 'Criar compromisso',
+    AppointmentLinked => 'Compromissos associados',
+    AppointmentUpcoming => 'Os meus compromissos de hoje e futuros',
+
     APIAccountAgent => 'Agente',
     APIAccountCustomer => 'Contato',
     APIAdvancedSettings => 'Proteção avançada',

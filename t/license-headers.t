@@ -86,6 +86,14 @@ for my $Entry ( sort { $a->[0] cmp $b->[0] } @Files ) {
     my @HeadLines = split /(?<=\n)/, $ContentStart;
     my $Head = join '', @HeadLines[ 0 .. ( $#HeadLines < 44 ? $#HeadLines : 44 ) ];
 
+    # Published 2.0.1 migrations use the original short SPDX header. Their
+    # checksums are part of the migration journal and must not be rewritten.
+    if ($Relative =~ m{\Ainstall/update/database/2\.0\.1/(?:001-contact-history-account-lookup|002-remove-automatic-webform-contacts)\.sql\z}) {
+        push @Problems, "$Relative: SPDX header missing"
+            if $Head !~ /SPDX-License-Identifier: AGPL-3\.0-or-later/;
+        next;
+    }
+
     for my $Required (@Required) {
         if ( index( $Head, $Required ) < 0 ) {
             push @Problems, "$Relative: Kopfbereich unvollstaendig; fehlt: $Required";
