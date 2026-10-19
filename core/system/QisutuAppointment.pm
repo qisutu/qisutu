@@ -39,6 +39,26 @@ sub _JSON { return JSON::PP->new->canonical->encode($_[0]); }
 sub _Data { my $D=eval { JSON::PP->new->decode($_[0]||'{}') }; return ref($D) eq 'HASH' ? $D : {}; }
 sub _ID { return defined($_[0]) && $_[0] =~ /\A[1-9]\d{0,17}\z/ ? 0+$_[0] : 0; }
 sub _Now { return QisutuAppointmentTime::UTC(time); }
+sub _TicketDueExpired {
+    my ($Due,$Zone,$Now)=@_;
+    my $Epoch=QisutuAppointmentTime::Epoch($Due);
+    die 'Ungültige Ticketfälligkeit.' if !defined $Epoch;
+    $Now=time if !defined $Now;
+    my $DueLocal=QisutuAppointmentTime::Local($Epoch,$Zone);
+    my $NowLocal=QisutuAppointmentTime::Local($Now,$Zone);
+    die 'Ungültige Zeitzone für die Ticketfälligkeit.' if !defined($DueLocal) || !defined($NowLocal);
+    return substr($DueLocal,0,10) lt substr($NowLocal,0,10) ? 1 : 0;
+}
+sub _TicketDueAt {
+    my ($Data,$Start)=@_;
+    return undef if !$Data->{auto_ticket};
+    my $Epoch=QisutuAppointmentTime::Epoch($Start);
+    die 'Ungültiger Terminbeginn.' if !defined $Epoch;
+    my $Due=QisutuAppointmentTime::UTC($Epoch-($Data->{ticket_lead}||0)*60);
+    # Expired ticket deadlines must not be rearmed by the daily expansion.
+    return undef if _TicketDueExpired($Due,$Data->{timezone});
+    return $Due;
+}
 sub _UserID { return ($_[0]->{account_type}||'') eq 'agent' ? _ID($_[0]->{user_account_id}) : 0; }
 sub _Permission { return QisutuPermission->new(Config=>$_[0]->{Config},DB=>$_[0]->{DB}); }
 sub _Ticket { return QisutuTicket->new(Config=>$_[0]->{Config},DB=>$_[0]->{DB},Permission=>$_[0]->_Permission); }
@@ -277,7 +297,7 @@ sub Save {
             for my $K (qw(participants send_invites private repeat)) { $D->{$K}=$Base->{$K}; }
             my $Start=QisutuAppointmentTime::LocalEpoch($D->{start_local},$D->{timezone});
             my $End=QisutuAppointmentTime::LocalEpoch($D->{end_local},$D->{timezone});
-            $S->_Do('UPDATE appointment_occurrence SET start_utc=?,end_utc=?,data_json=?,is_exception=1,ticket_due_at=?,ticket_error=NULL,ticket_retry_at=NULL WHERE id=?',QisutuAppointmentTime::UTC($Start),QisutuAppointmentTime::UTC($End),_JSON($D),$D->{auto_ticket}?QisutuAppointmentTime::UTC($Start-$D->{ticket_lead}*60):undef,$OID);
+            $S->_Do('UPDATE appointment_occurrence SET start_utc=?,end_utc=?,data_json=?,is_exception=1,ticket_due_at=?,ticket_error=NULL,ticket_retry_at=NULL WHERE id=?',QisutuAppointmentTime::UTC($Start),QisutuAppointmentTime::UTC($End),_JSON($D),_TicketDueAt($D,QisutuAppointmentTime::UTC($Start)),$OID);
             $S->_Do('UPDATE appointment_event SET version=version+1,changed_at=? WHERE id=?',_Now(),$ID);
             $S->_Do('UPDATE appointment_delivery SET status="cancelled" WHERE occurrence_id=? AND kind="reminder" AND status="pending"',$OID);
         }
@@ -307,10 +327,10 @@ sub _Expand {
     my %Present;
     for my $O (@$List) {
         $Present{$O->{sequence_no}}=1;
-        my $Due=$D->{auto_ticket} && $O->{start_utc} ge $E->{created_at} ? QisutuAppointmentTime::UTC(QisutuAppointmentTime::Epoch($O->{start_utc})-$D->{ticket_lead}*60) : undef;
+        my $Due=$O->{start_utc} ge $E->{created_at} ? _TicketDueAt($D,$O->{start_utc}) : undef;
         $S->_Do('INSERT INTO appointment_occurrence (event_id,sequence_no,start_utc,end_utc,ticket_due_at) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE
             start_utc=IF(is_exception=0,VALUES(start_utc),start_utc),end_utc=IF(is_exception=0,VALUES(end_utc),end_utc),
-            ticket_due_at=IF(is_exception=0,VALUES(ticket_due_at),ticket_due_at),cancelled=IF(is_exception=0,0,cancelled)',$ID,$O->{sequence_no},$O->{start_utc},$O->{end_utc},$Due);
+            ticket_due_at=IF(is_exception=0 AND ticket_id IS NULL,VALUES(ticket_due_at),ticket_due_at),cancelled=IF(is_exception=0,0,cancelled)',$ID,$O->{sequence_no},$O->{start_utc},$O->{end_utc},$Due);
     }
     if ($Replace) {
         my $Rows=$S->{DB}->SelectAll('SELECT id,sequence_no FROM appointment_occurrence WHERE event_id=? AND is_exception=0',$ID)||[];
@@ -536,6 +556,12 @@ sub ProcessDue {
         my $Processed=0; my @Errors;
         for my $O (@$Due) {
             my $D=_Data($O->{data_json}||$O->{master_json}); next if !$D->{auto_ticket};
+            # Also retire existing deadlines when expansion was already done
+            # or this occurrence is an exception. Compare local dates, not UTC.
+            if (_TicketDueExpired($O->{ticket_due_at},$D->{timezone})) {
+                $S->_Do('UPDATE appointment_occurrence SET ticket_due_at=NULL,ticket_retry_at=NULL WHERE id=? AND ticket_id IS NULL',$O->{id});
+                next;
+            }
             my $Result=eval {
                 my $UID=$D->{ticket_author_id}||$O->{owner_user_id};
                 my $U=$S->{DB}->SelectRow('SELECT *,id AS user_account_id FROM user_account WHERE id=? AND is_active=1 AND is_system_user=0 AND account_type="agent"',$UID);

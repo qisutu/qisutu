@@ -1070,7 +1070,10 @@ sub TicketDeleteComplete {
         for my $Row ( @{$Tables} ) {
             my $Table = $Row->{table_name} || '';
             next if !$Table || $Done{$Table};
-            next if $Table =~ m{\A(?:ticket|ticket_history|automation_job|automation_event|automation_deleted_ticket)\z};
+            # An occurrence is an independent calendar record. Its original
+            # ticket ID also records that this occurrence was already handled,
+            # even after the ticket itself has been permanently removed.
+            next if $Table =~ m{\A(?:ticket|ticket_history|automation_job|automation_event|automation_deleted_ticket|appointment_occurrence)\z};
             next if $Table !~ m{\A[A-Za-z0-9_]+\z};
             my $STH = $DBH->prepare('DELETE FROM `' . $Table . '` WHERE ticket_id = ?');
             $STH->execute($TicketID);

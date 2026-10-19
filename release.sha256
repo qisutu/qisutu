@@ -1,7 +1,7 @@
 1abcb169f60a9408f7e95f6dd609b118b583e8d0ba2dcd697345fee9022c3690  ./.gitignore
 708bde74381fecb0b691fde9a82221c002cd5513de9ca1b2a6b376457d0bc8d7  ./.perlcriticrc
 5e35fb4d6382fae66ec7352f5d81a4f69766dd36daa13cbfcec115e817cd924c  ./API.md
-b4b43614a403a2b5e7ffb39a6657374298e89a310b8623860440ab7a8a79b7d6  ./CHANGELOG.md
+de7edd8079a7100b29a1210f1c3d92aed7ee9b755970618b788e00be9f86e179  ./CHANGELOG.md
 1aba8ff7f9ea9ee7470fa1ba9056011b5779607294ff792d2102fdddac07827b  ./CONTRIBUTING.md
 6b1901bb9c7fbb0a5a91c756f3ec099e6f6e8958f0fa7801c34df3b222682c91  ./COPYRIGHT
 c872b6c23f18ba6decf3f35ead8115a971f884f8a10011c9c551b775af5b431b  ./DEVELOPMENT.md
@@ -282,11 +282,11 @@ dad4a162cbed0940a3d4f5b311e4adf45493b57a75b8d2043eade57bc635c9ac  ./core/system/
 453b37a4805aa1eca27e3bb54d83fa1fcfd8f7d503ad1ea27794782bab967e58  ./core/system/QisutuAddonUI.pm
 47c5595405b317adb6537a1bed1f661a9742cc8905304900d65e91b9e78b0479  ./core/system/QisutuAdmin.pm
 572e2e8c0b0e4acb6db4be43d17f8b7f7648f2fbb502266a0dabdc351ed13d34  ./core/system/QisutuAgentNotificationTemplates.pm
-739a75146d5394bb9c0adc9a7ca97d8e1454f5c1059fc3e1dd56fb404c22811c  ./core/system/QisutuAppointment.pm
+952e87a937cffc5fb54c21ed7b4da2e60d2d0fa94a83ce7ae6341fe2145a9da5  ./core/system/QisutuAppointment.pm
 b4b539d5b3fe7f5e4fad38340ea0a243602a7310bb85be9c48eea9ef2ea2d972  ./core/system/QisutuAppointmentTime.pm
 88994b5974371c49dbc01579b4c91e2595dd3f2fd93738ff5df0781b3c9b11b7  ./core/system/QisutuAuth.pm
 5e1680a8e17b1db74d00af8c42c74cf36042278d95cc136a8c7b7c10f1548852  ./core/system/QisutuAuthProvider.pm
-ae29615f79c1e821dfb250ad2dc943ad0931d93c0a4e67f1e267761e26e7b4a1  ./core/system/QisutuAutomation.pm
+d01853f4cc13b71993aaae3a0e351d148111cbc1ccd576c741a5ed8581f93a84  ./core/system/QisutuAutomation.pm
 22f1bea98e5e5209f6b37a6ebd49c307762f57712e18c7555ef04796b124ec4b  ./core/system/QisutuBulkAction.pm
 10740ddd9a53cf6a0079c5bd1c1df2871308ad4d65bb03bf649b9ece83d3b0e3  ./core/system/QisutuCMDB.pm
 31235ef2adb639fb13fe23bf9e43ced64fdd67d502065bd6300ea0aab28fbb05  ./core/system/QisutuCMDBImport.pm
@@ -360,9 +360,11 @@ f513bbf6b7a56852ae5245f6884f2b6f18d1c808c38f8d7f8a0fbd4832d9b4d0  ./t/agent-noti
 de1d3fdf2af6071c04c9e7bf8b02d082388eca37bb3a87b31c080e15fc48fa43  ./t/agent-themes.t
 a1086ad196439fdf19fc04ccb39edc51fb656d4ebf81df96a72111177fe8785b  ./t/agent-ticket-create-response-templates.t
 a8bf5a1c2305ff423b71e3a21b4e177b9363feaed641bd30a6efacbe56db0a2a  ./t/agent-ticket-services.t
-49f12e20140d53890c9486cb5a57c530ad0be5f0dd4d97d390963d6c08e9fcb9  ./t/appointment-integration.t
+e79a8e355b2ae30201259111c66096a3e3e9f07ca01fd343aa2fe2eeb4121b72  ./t/appointment-expiry-integration.t
+47c0541256fb77c57769df926d917cf91becd2110433ecd9bb3b7007b2a79f96  ./t/appointment-integration.t
 882296ff71cf1909e38ab78fe93a98253111966f9a7f69fabe7aa13c3d25a38d  ./t/appointment-security.t
-7e61b6635c9cd1107df25d9d9a25d19103787885a24c5626f7c723681a5ae4a6  ./t/appointment-ticket-notification.t
+8faec3b4e0bae1c638bff18b40565d244006f37e2c58a29a13146677823485bf  ./t/appointment-ticket-expiry.t
+43760798e6bfa1ce3b3b91387ca9b3a9754e5aab7f47720278302cfbbfca5592  ./t/appointment-ticket-notification.t
 5ae4a818422d3561fdbfd51e509e119e26ae9f0fbfd2969da07c624f2197a69d  ./t/appointment-time.t
 8c54cbb62dd6d20b9d74742f6a1d3998d54548290b9267bcc1324c8290304748  ./t/attachment-security.t
 53fd33d535f2cf8eac0632799ca9073a2f135b1a7627bedd639767834739876d  ./t/automation-form.js
@@ -400,7 +402,7 @@ d0e452750789b45e487dbe1ba4c1f12d0adf4cdbe989d84e45f54bdca87fc17b  ./t/knowledge-
 a0dcfd8e229108774672a127e4dfc1a8bbbf97c5358a88b1bc3eac085da58e30  ./t/languages.t
 b54eb00dab6404cf5b1b7a7884e5d1a13b33795cabf814e3f5ee6ed566af3e79  ./t/ldap-authentication.t
 3f2e4292f7805c3865a44619f6dad3ca1e2c337e222b51c695af17cc1a06432e  ./t/ldap-customer-authentication.t
-696fe8ab091395b4a0184e943e1560b2b21b3de1f6665d72ce713dd5034bf4c3  ./t/lib/QisutuAppointmentTestDB.pm
+8d3361f7ca52b4817d8fa2aea5d360cd9f17157bbf4a0baff564ad6ebe7aec0b  ./t/lib/QisutuAppointmentTestDB.pm
 fb0774d19adb7cce4d612ba93409377843c928aa7378d4943ee04d4994948c1b  ./t/license-headers.t
 60bf2c90828caf1d975e4ca7c59791276c0beaffcae0602178b16e0474fb61bf  ./t/localized-salutations-signatures.t
 be064ba6cee6c6254d37962ea4d6a6dbd537fbbb178fbad3bf49ac4a331facff  ./t/login-language-selection.t

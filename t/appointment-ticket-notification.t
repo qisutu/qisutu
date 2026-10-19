@@ -103,7 +103,7 @@ my $SMTPFailure = 0;
     ok(!$Duplicate, 'Duplicate calendar ticket is rejected');
     is(scalar @Mail, 1, 'Rolled back duplicate does not send an agent notification');
     $DB->Do('UPDATE appointment_occurrence SET ticket_due_at=? WHERE event_id=? AND sequence_no=1',
-        QisutuAppointmentTime::UTC(time - 60), $First->{id}) or die $DB->Error;
+        QisutuAppointmentTime::UTC(time), $First->{id}) or die $DB->Error;
     $Calendar->ProcessDue();
     is(scalar @Mail, 2, 'Next recurring occurrence sends its own ticket notification');
 
@@ -157,7 +157,7 @@ sub due_event {
         start_local => QisutuAppointmentTime::Local(time + 3600, 'Europe/Berlin'),
         end_local => QisutuAppointmentTime::Local(time + 7200, 'Europe/Berlin'),
         type => 'maintenance', repeat => { frequency => 'none' }, auto_ticket => 1,
-        ticket_lead => 120, queue_id => 1, priority_id => 3,
+        ticket_lead => 60, queue_id => 1, priority_id => 3,
         recipient_email => 'customer@example.invalid',
         participants => [], reminders => [], %Overrides,
     }, []) || die $Calendar->Error;

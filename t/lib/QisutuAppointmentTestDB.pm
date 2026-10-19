@@ -99,6 +99,9 @@ sub _SQL {
 sub Do {my ($S,$SQL,@B)=@_;return 1 if $SQL=~/^SET /;return $S->SUPER::Do(_SQL($SQL),@B);}
 sub SelectRow {
     my ($S,$SQL,@B)=@_;
+    if ($SQL=~/information_schema\.TABLES/i) {
+        return $S->{DBH}->selectrow_hashref('SELECT COUNT(*) AS table_count FROM sqlite_master WHERE type="table" AND name=?',undef,$B[0]);
+    }
     if($SQL=~/INFORMATION_SCHEMA\.COLUMNS/i){
         return if $B[0]!~/\A[a-z_]+\z/;
         my $Rows=$S->{DBH}->selectall_arrayref('PRAGMA table_info('.$B[0].')',{Slice=>{}});
@@ -106,6 +109,24 @@ sub SelectRow {
     }
     return $S->SUPER::SelectRow(_SQL($SQL),@B);
 }
-sub SelectAll {my ($S,$SQL,@B)=@_;return $S->SUPER::SelectAll(_SQL($SQL),@B);}
+sub SelectAll {
+    my ($S,$SQL,@B)=@_;
+    if ($SQL=~/information_schema\.COLUMNS/i) {
+        if ($SQL=~/SELECT DISTINCT TABLE_NAME/i) {
+            my $Tables=$S->{DBH}->selectall_arrayref('SELECT name FROM sqlite_master WHERE type="table"',{Slice=>{}});
+            my @Matches;
+            for my $Table (@$Tables) {
+                next if $Table->{name}!~/\A[a-z_]+\z/;
+                my $Columns=$S->{DBH}->selectall_arrayref('PRAGMA table_info('.$Table->{name}.')',{Slice=>{}});
+                push @Matches,{table_name=>$Table->{name}} if grep {$_->{name} eq $B[0]} @$Columns;
+            }
+            return \@Matches;
+        }
+        return [] if $B[0]!~/\A[a-z_]+\z/;
+        my $Columns=$S->{DBH}->selectall_arrayref('PRAGMA table_info('.$B[0].')',{Slice=>{}});
+        return [map {{column_name=>$_->{name}}} @$Columns];
+    }
+    return $S->SUPER::SelectAll(_SQL($SQL),@B);
+}
 sub LastInsertID {return $_[0]->{DBH}->sqlite_last_insert_rowid;}
 1;
