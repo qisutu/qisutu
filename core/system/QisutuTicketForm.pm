@@ -948,10 +948,11 @@ sub SubmissionCreate {
     };
 
     if ( $Context eq 'public' ) {
-        # Public submissions keep their sender data on the article and form snapshot.
-        # They must not create customer records or claim an existing portal identity.
-        $CustomerID      = undef;
-        $CustomerUserID  = undef;
+        # Use the same existing-contact lookup as incoming e-mail. Keep the
+        # public submission's technical author separate from that assignment.
+        ( $CustomerID, $CustomerUserID ) = $TicketObject->_CustomerByEmail(
+            Email => $SubmitterEmail,
+        );
         $CreatedByUserID = 1;
     }
 

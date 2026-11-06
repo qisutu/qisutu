@@ -23,7 +23,7 @@ cd73337addfda24288da671b510115d5ff756b3be52fdf58cc19f912064b44f4  ./SECURITY.md
 2a24d31466960d65efc314af4ce5b58105913a7cce2c5f8d3295ef51209d8a9f  ./SICHERHEITSFIX.txt
 81eacce9917f2389baf52764f6b7b9b2892f066eac580f7eb740fba8c4e0b6b4  ./THIRD_PARTY_NOTICES.md
 aa652ac9cd1c0b4349e16b0e236d40b28ae8729de9dc3da90e9136afad5ff4c9  ./bin/cgi-bin/api.pl
-5d2b1bbd3fb9ee9cef82a68aafc814d4a7149da3caff4c5030b60688b6bf9df0  ./bin/cgi-bin/form.pl
+f8224bbe789b7ef68398be09ee68a38bd9c1139ff1cc37cc348e209f85707172  ./bin/cgi-bin/form.pl
 7d5ab7cb7694651b1e7b4d12b71d6205b74616c9ca948eca10b31e4a1b26ae53  ./bin/cgi-bin/index.pl
 0eb919d5ce5b3c53a394b4e91e765cdc95104e4053418752519f227ba29c4fde  ./bin/cgi-bin/install.pl
 6578f9c873b6a22ee6140e2481cf3bdc94bed4167bcc673bc5d1bd484b6b7dbb  ./bin/qisutu-cmdb-import.pl
@@ -249,7 +249,7 @@ bb9149be572596be627f1310a4e1ce703bc5fccc5fc86ea1e47a239af41eb5d8  ./core/output/
 808e4814478cc569ccfe927e5fbf811e140847a9d7ce07dbbc84d28190a41559  ./core/output/CustomerTicketList.tt
 e2f12406d440a1a25337118ef260aead901a52fbf102a2ebb42ff5fac0fb703e  ./core/output/CustomerTicketZoom.tt
 82762fbe38af95fba372d2cf3d8074e082cb6e4362ab3dbc059648baccee35eb  ./core/output/Customers.tt
-b9b650f08c13e3ba2bbda4cdf0ef09e1a42dcebe4fea35b97d04650cefcc2d63  ./core/output/Dashboard.tt
+616cf8678a6b6a70a4b173fa99936d938fb7cb4130a3eea81c297510ac264865  ./core/output/Dashboard.tt
 2669de05ee6c0d17d617c564dcf669af7bf00916bd1f873af40350517d3fb8ca  ./core/output/Error.tt
 503f5da701242a406e3a9a05e6e0f3ce041c4f182d419e5e7f87893cb3d0999f  ./core/output/Footer.tt
 be49f5d2b84317d2fca5bf495d084e8e3fe319720bc7b2db0ea622ad0bfba298  ./core/output/Head.tt
@@ -328,7 +328,7 @@ e9635932eef8a20dd5ac141d1741718ebddbb75ca8da36ee07780c903229ad3e  ./core/system/
 7440a06ded2d024c480fc81f7d3ea92b4b70257cafa2e668929d370d6f7ca888  ./core/system/QisutuSystemSetting.pm
 554aa15cf16d3d90245d1ddfc70b92b74397bc58af78a5b73cc446612620c554  ./core/system/QisutuTheme.pm
 d7db18a5520b052e91b1c45967398dce85758cc984998f7267d374d88d54c602  ./core/system/QisutuTicket.pm
-f13dfa90d9a4ba8478a3f598c5b37472835ebf2dc509541c748f0a5b84316725  ./core/system/QisutuTicketForm.pm
+f011883993bcd8c6bc402df08dc65f63793aebf2d0497430a91d119efa4fcf25  ./core/system/QisutuTicketForm.pm
 66706d44c27bf0ade8724d68b3aa23bd736ca41bb72e04663afad8108dfd5692  ./core/system/QisutuTicketHistory.pm
 e381db0ab4150850702de18a997d5d799f50b7d1319575272b2fd46d4ee3ce8b  ./core/system/QisutuTicketLink.pm
 2eb503740d03c283808b02f45e06d2241664cbcbca82bd60066de850e3162f9f  ./core/system/QisutuTicketPDF.pm
@@ -415,6 +415,7 @@ a7f1f99bab9e542ec61e13c02a13e5ef96db6d7be38d38bdc35d9a1c87bd2049  ./t/mail-crypt
 acb3ab1a0823de721f2cb0b50ed1d6a9564f6ca6ff239f084c93dab7be1486a6  ./t/notification-article-defaults.t
 9c37dba2b9f2fb8519dd44b9d603d737d9221b56014119392a3dc390ca6072cb  ./t/notification-article-formatting.t
 0746a9c7af07b4a390a5fd65e4dac92723ddc5111c46f2d62bc5cf87a9542ea0  ./t/postmaster-filter-ui.t
+b5ed9def4408f352dbb806c4bad38ba2083ebade2e70a62e91f58323b368dff3  ./t/public-form-addon-runtime.t
 f42c1547f9f3d09e7dc6c708748b1507093b7de9044356a7078a6d4c468cde88  ./t/queue-closed-ticket-follow-up.t
 4799f2a4e73be47c7c83d3ea1d60e0b07c598d63b3906ae2b0bbe51da80e6417  ./t/release-package-integrity.t
 ede7ae1c70a47acf32d992d09b98ce21ac6f474e9f4a5210b684e7cce7f1975d  ./t/report-chart-rendering.js
@@ -432,6 +433,7 @@ e0e0d4ed4a3aaa0a82dac7d7e2e7f9d89d8e20598ba9d364faa4dd704e780629  ./t/smtp-oauth
 690b4cd852bb13aa4ad09c07c9c323edba3bef7332491a59fae3e54b40a31384  ./t/static-analysis-policy.t
 bd6d36a33ab31e93bd2f9622fa09c37c49631513aa193787745b776f4cdbef4f  ./t/system-email-navigation.t
 32b0bdf88e33f05845d4c7a662b30594c65aa032c82915c58a1534794c79deb9  ./t/template-rendering.t
+f8f22c3a0ef6e7439a6c938dd81ba1b69b72236efbd4c09971e006215e12f1f5  ./t/ticket-form-customer-assignment.t
 b3288513176ebe9aa69dff7e3307ce53d08d5aeebb88a16bd1232c8495522cfc  ./t/ticket-form-option-translations.t
 f33c94275f5d08a440228f5f454f12180fa2d4ef7d1546f9aab7175abc245973  ./t/ticket-form-process.t
 74802400335e54a0c2539c1bf5a172754c7ce2672ad63b36ea08d1f9be89d15b  ./t/ticket-history-translations.t

@@ -73,6 +73,18 @@ sub main {
     $Language ||= _LanguageClean( $Config->{Language}->{Default} ) || 'en';
     my $Output = QisutuOutput->new( Config => $Config );
     my $DB = QisutuDB->new( Config => $Config );
+
+    # Public forms need the same installed add-on paths as the main frontend
+    # before a form submission can start its assigned process.
+    my $AddonRuntimeLoaded = eval {
+        require QisutuAddonRuntime;
+        QisutuAddonRuntime->Apply( Config => $Config, DB => $DB );
+        1;
+    };
+    if ( !$AddonRuntimeLoaded ) {
+        $Config->{AddonRuntime} = {};
+    }
+
     my $FormObject = QisutuTicketForm->new(
         Config => $Config,
         DB     => $DB,
