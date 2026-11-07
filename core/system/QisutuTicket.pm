@@ -316,6 +316,41 @@ sub TicketListCount {
     return $Count =~ m{\A\d+\z} ? int($Count) : 0;
 }
 
+sub CustomerUserTicketCounts {
+    my ( $Self, %Param ) = @_;
+
+    my $CustomerUserID = $Param{CustomerUserID} || 0;
+    return if $CustomerUserID !~ m{\A\d+\z} || !$CustomerUserID;
+
+    # Use the same contact filter and visibility rules as the ticket list.
+    my $WhereData = $Self->_TicketListWhereData(
+        User                 => $Param{User} || {},
+        FilterCustomerUserID => $CustomerUserID,
+    );
+    return { Open => 0, Closed => 0 } if $WhereData->{Denied};
+
+    my $Row = $Self->{DB}->SelectRow(
+        'SELECT
+            COALESCE(SUM(CASE WHEN s.state_type <> ? THEN 1 ELSE 0 END), 0) AS open_count,
+            COALESCE(SUM(CASE WHEN s.state_type = ? THEN 1 ELSE 0 END), 0) AS closed_count
+         FROM ticket t
+         INNER JOIN ticket_state s ON s.id = t.state_id
+         ' . $WhereData->{WhereSQL},
+        'closed', 'closed',
+        @{ $WhereData->{Bind} || [] },
+    );
+
+    if ( !$Row ) {
+        $Self->{LastError} = $Self->{DB}->Error() || 'Contact ticket counts could not be loaded';
+        return;
+    }
+
+    return {
+        Open   => int( $Row->{open_count} || 0 ),
+        Closed => int( $Row->{closed_count} || 0 ),
+    };
+}
+
 sub _TicketListWhereData {
     my ( $Self, %Param ) = @_;
 

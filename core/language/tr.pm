@@ -2596,6 +2596,8 @@ use utf8;
     TicketCreatedBy => 'Tarafından oluşturuldu',
     TicketCustomer => 'Müşteri',
     TicketCustomerEmail => 'E-posta',
+    TicketContactOpenTickets        => 'Açık talepler',
+    TicketContactClosedTickets      => 'Kapalı talepler',
     TicketCustomerUser => 'İletişim',
     TicketDates => 'Tarihler',
     TicketDynamicFieldEmptyValue => '-',

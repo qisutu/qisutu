@@ -841,6 +841,16 @@ SPDX-License-Identifier: AGPL-3.0-or-later
                                         <dt>[% Translate.TicketCustomerEmail %]</dt>
                                         <dd>[% TicketCustomerEmail %]</dd>
                                     </div>
+                                    [% IF TicketCustomerUserID %]
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketContactOpenTickets %]</dt>
+                                        <dd>[% TicketContactOpenCount %]</dd>
+                                    </div>
+                                    <div class="qisutu-ticket-info-row">
+                                        <dt>[% Translate.TicketContactClosedTickets %]</dt>
+                                        <dd>[% TicketContactClosedCount %]</dd>
+                                    </div>
+                                    [% END %]
                                 </dl>
                             </div>
                         </div>

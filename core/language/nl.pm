@@ -2596,6 +2596,8 @@ use utf8;
     TicketCreatedBy => 'Gemaakt door',
     TicketCustomer => 'Klant',
     TicketCustomerEmail => 'E-mail',
+    TicketContactOpenTickets        => 'Open tickets',
+    TicketContactClosedTickets      => 'Gesloten tickets',
     TicketCustomerUser => 'Contacteer',
     TicketDates => 'Datums',
     TicketDynamicFieldEmptyValue => '-',

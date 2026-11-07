@@ -82,6 +82,7 @@ sub Run {
             Data => $Self->_CustomerUserInfo(
                 CustomerUserID => $Request->{CustomerUserID},
                 Language       => $Language,
+                User           => $User,
             ),
         );
     }
@@ -922,6 +923,30 @@ sub _CustomerUserInfo {
         ObjectID   => $Row->{customer_user_id},
         Language   => $Language,
     ) };
+
+    my $TicketObject = $Self->_TicketObject();
+    my $TicketCounts = $TicketObject ? $TicketObject->CustomerUserTicketCounts(
+        CustomerUserID => $Row->{customer_user_id},
+        User           => $Param{User} || {},
+    ) : undef;
+
+    push @CustomerUserFields,
+        {
+            label => $Self->_Translation(
+                Key      => 'TicketContactOpenTickets',
+                Language => $Language,
+                Fallback => $Language eq 'de' ? 'Offene Tickets' : 'Open tickets',
+            ),
+            value => $TicketCounts ? $TicketCounts->{Open} : '–',
+        },
+        {
+            label => $Self->_Translation(
+                Key      => 'TicketContactClosedTickets',
+                Language => $Language,
+                Fallback => $Language eq 'de' ? 'Geschlossene Tickets' : 'Closed tickets',
+            ),
+            value => $TicketCounts ? $TicketCounts->{Closed} : '–',
+        };
 
     return {
         success       => 1,

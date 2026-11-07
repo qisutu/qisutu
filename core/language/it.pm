@@ -2596,6 +2596,8 @@ use utf8;
     TicketCreatedBy => 'Creato da',
     TicketCustomer => 'Cliente',
     TicketCustomerEmail => 'E-mail',
+    TicketContactOpenTickets        => 'Ticket aperti',
+    TicketContactClosedTickets      => 'Ticket chiusi',
     TicketCustomerUser => 'Contatto',
     TicketDates => 'Date',
     TicketDynamicFieldEmptyValue => '-',

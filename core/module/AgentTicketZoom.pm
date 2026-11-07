@@ -1090,6 +1090,10 @@ sub Run {
         Ticket   => $Ticket,
         Articles => $Articles,
     );
+    my $ContactTicketCounts = $TicketObject->CustomerUserTicketCounts(
+        CustomerUserID => $Ticket->{customer_user_id},
+        User           => $Param{User} || {},
+    );
     my $TicketOwnerAutocompleteValue = $Ticket->{owner_user_id} ? ( $Ticket->{owner_name} || $Ticket->{owner_login} || '' ) : '';
     my $TicketResponsibleAutocompleteValue = $Ticket->{responsible_user_id} ? ( $Ticket->{responsible_name} || $Ticket->{responsible_login} || '' ) : '';
     my $TicketCustomerAutocompleteValue = $Ticket->{customer_user_id}
@@ -1316,6 +1320,8 @@ sub Run {
             TicketCustomerUser     => $TicketCustomerUser,
             TicketCustomerAutocompleteValue => $TicketCustomerAutocompleteValue,
             TicketCustomerEmail    => $TicketCustomerEmail,
+            TicketContactOpenCount   => $ContactTicketCounts ? $ContactTicketCounts->{Open} : '–',
+            TicketContactClosedCount => $ContactTicketCounts ? $ContactTicketCounts->{Closed} : '–',
             HasKnowledgeAccess     => $KnowledgePermission->{View} ? 1 : 0,
             TicketOwnerID          => $Ticket->{owner_user_id} || 0,
             TicketOwner            => $Ticket->{owner_name} || '-',

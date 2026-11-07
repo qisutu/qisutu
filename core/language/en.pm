@@ -767,6 +767,8 @@ use utf8;
     TicketPrintPage                 => 'Page',
     TicketPrintGeneratedAt          => 'Generated at',
     TicketCustomerEmail             => 'E-mail',
+    TicketContactOpenTickets        => 'Open tickets',
+    TicketContactClosedTickets      => 'Closed tickets',
     TicketPeople                    => 'People',
     TicketCreatedBy                 => 'Created by',
     TicketChangedBy                 => 'Changed by',
